@@ -190,21 +190,204 @@ def check_glip_ready() -> dict:
     return result
 
 
-def set_system_input_to_blackhole() -> bool:
-    """Set macOS system input device to BlackHole 2ch via AppleScript.
+def switch_rc_mic_to_blackhole() -> bool:
+    """Switch RingCentral Video microphone to BlackHole 2ch via Chrome JS injection.
 
-    Note: This changes the SYSTEM default mic, not the RingCentral in-app setting.
-    The user must select BlackHole 2ch in RingCentral audio settings manually.
+    Clicks the audio settings dropdown and selects BlackHole 2ch.
+    Returns True if successful.
     """
+    tab = find_glip_tab()
+    if not tab:
+        logger.error("RingCentral tab not found")
+        return False
+
+    w, t = tab
+
+    # Step 1: Click the audio settings arrow (^ button near mute)
+    # Use JavaScript to find and click UI elements in the RingCentral web app
+    js_click_audio_menu = r'''
+    (function() {
+        // Find the mute/audio area — look for the dropdown arrow near mute button
+        var btns = document.querySelectorAll('[data-test-automation-id]');
+        var audioBtn = null;
+
+        // Try known RingCentral automation IDs
+        var candidates = [
+            'audio-dropdown-button',
+            'audio-menu-button',
+            'mute-dropdown',
+            'audio-settings-button',
+        ];
+
+        for (var c of candidates) {
+            var el = document.querySelector('[data-test-automation-id="' + c + '"]');
+            if (el) { audioBtn = el; break; }
+        }
+
+        // Fallback: find button with aria-label containing "audio" or "microphone"
+        if (!audioBtn) {
+            var allBtns = document.querySelectorAll('button, [role="button"]');
+            for (var b of allBtns) {
+                var label = (b.getAttribute('aria-label') || '').toLowerCase();
+                var title = (b.getAttribute('title') || '').toLowerCase();
+                if (label.includes('audio setting') || label.includes('microphone')
+                    || title.includes('audio setting') || label.includes('select audio')) {
+                    audioBtn = b;
+                    break;
+                }
+            }
+        }
+
+        // Fallback 2: find the small arrow/chevron button near the mute button
+        if (!audioBtn) {
+            var muteBtn = document.querySelector('[data-test-automation-id*="mute"]');
+            if (muteBtn) {
+                // The dropdown arrow is usually the next sibling or parent's next child
+                var parent = muteBtn.parentElement;
+                var siblings = parent ? parent.querySelectorAll('button, [role="button"]') : [];
+                for (var s of siblings) {
+                    if (s !== muteBtn) { audioBtn = s; break; }
+                }
+            }
+        }
+
+        if (audioBtn) {
+            audioBtn.click();
+            return 'clicked_audio_menu';
+        }
+        return 'audio_menu_not_found';
+    })()
+    '''
+
+    # Execute JS to open audio menu
+    result = _run_applescript_js(w, t, js_click_audio_menu)
+    logger.info(f"Open audio menu: {result}")
+
+    if not result or "error" in result.lower() or "not_found" in result:
+        logger.warning("Could not find audio menu button, trying AppleScript GUI")
+        return _switch_mic_via_gui()
+
+    import time
+    time.sleep(1)
+
+    # Step 2: Click BlackHole 2ch in the dropdown
+    js_select_blackhole = r'''
+    (function() {
+        // Look for menu items / list items containing "BlackHole 2ch"
+        var items = document.querySelectorAll(
+            '[role="menuitem"], [role="option"], [role="listbox"] *, li, [class*="menu-item"], [class*="option"]'
+        );
+        for (var item of items) {
+            var text = item.textContent || '';
+            if (text.includes('BlackHole 2ch')) {
+                item.click();
+                return 'selected_blackhole';
+            }
+        }
+
+        // Broader search: any clickable element with BlackHole text
+        var all = document.querySelectorAll('*');
+        for (var el of all) {
+            if (el.children.length === 0 && (el.textContent || '').includes('BlackHole 2ch')) {
+                el.click();
+                return 'selected_blackhole_broad';
+            }
+        }
+
+        return 'blackhole_not_found';
+    })()
+    '''
+
+    result2 = _run_applescript_js(w, t, js_select_blackhole)
+    logger.info(f"Select BlackHole: {result2}")
+
+    if "selected" in result2:
+        return True
+
+    # If JS approach failed, try GUI scripting
+    return _switch_mic_via_gui()
+
+
+def _run_applescript_js(window: int, tab: int, js: str) -> str:
+    """Execute JavaScript in a Chrome tab via AppleScript."""
+    # Escape for AppleScript string embedding
+    escaped_js = js.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+    script = (
+        'tell application "Google Chrome"\n'
+        f"    tell window {window}\n"
+        f'        set jsResult to execute tab {tab} javascript "{escaped_js}"\n'
+        "        return jsResult\n"
+        "    end tell\n"
+        "end tell"
+    )
+    return _run_applescript(script)
+
+
+def _switch_mic_via_gui() -> bool:
+    """Fallback: switch mic using macOS accessibility GUI scripting.
+
+    Clicks through the UI using coordinates relative to the mute button area.
+    """
+    logger.info("Attempting GUI-based mic switch")
+
+    # Use System Events to find and interact with Chrome UI
     script = '''
-    tell application "System Preferences"
-        reveal anchor "input" of pane id "com.apple.preference.sound"
-        activate
+    tell application "Google Chrome" to activate
+    delay 0.5
+
+    tell application "System Events"
+        tell process "Google Chrome"
+            -- Find all buttons, look for audio-related ones
+            set allButtons to every button of front window
+            set foundAudio to false
+
+            -- Try to find by accessibility description
+            repeat with btn in allButtons
+                try
+                    set desc to description of btn
+                    if desc contains "audio" or desc contains "microphone" or desc contains "Audio" then
+                        click btn
+                        set foundAudio to true
+                        exit repeat
+                    end if
+                end try
+            end repeat
+
+            if not foundAudio then
+                return "gui_audio_button_not_found"
+            end if
+
+            delay 1
+
+            -- Now find BlackHole 2ch in the opened menu
+            set allUIElements to every UI element of front window
+            repeat with elem in allUIElements
+                try
+                    if (name of elem) contains "BlackHole 2ch" then
+                        click elem
+                        return "gui_selected_blackhole"
+                    end if
+                end try
+            end repeat
+
+            -- Try static text elements
+            set allTexts to every static text of front window
+            repeat with txt in allTexts
+                try
+                    if (value of txt) contains "BlackHole 2ch" then
+                        click txt
+                        return "gui_clicked_blackhole_text"
+                    end if
+                end try
+            end repeat
+
+            return "gui_blackhole_not_found"
+        end tell
     end tell
     '''
-    _run_applescript(script)
-    logger.info("Opened Sound preferences → Input")
-    return True
+    result = _run_applescript(script)
+    logger.info(f"GUI switch result: {result}")
+    return "selected" in result or "clicked" in result
 
 
 def get_mic_setup_instructions() -> str:
