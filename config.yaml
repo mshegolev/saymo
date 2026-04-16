@@ -45,7 +45,7 @@ analysis:
     - "next.*Max"
 
 tts:
-  engine: "piper"  # Local neural TTS — fast, no API key
+  engine: "coqui_clone"  # Voice clone with YOUR voice via XTTS v2
   piper:
     model_path: ""  # Empty = default ~/.saymo/piper_models/ru_RU-dmitri-medium.onnx
   openai:
