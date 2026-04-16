@@ -121,7 +121,7 @@ def main(ctx, config_path, verbose):
 @main.command()
 @click.option("--model", "-m", default="small", help="Whisper model: tiny, small, medium")
 @click.pass_context
-def auto(ctx):
+def auto(ctx, model):
     """Listen to Glip call, detect your name, auto-speak.
 
     Captures audio from BlackHole 16ch, transcribes with faster-whisper,
@@ -129,7 +129,7 @@ def auto(ctx):
     Requires: prepare (run beforehand to cache audio).
     """
     config = ctx.obj["config"]
-    run_async(_auto(config, ctx.params["model"]))
+    run_async(_auto(config, model))
 
 
 async def _auto(config, whisper_model: str):
