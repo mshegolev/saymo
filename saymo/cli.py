@@ -120,15 +120,18 @@ def main(ctx, config_path, verbose):
 
 @main.command()
 @click.option("--model", "-m", default="small", help="Whisper model: tiny, small, medium")
+@click.option("--mic", is_flag=True, help="Listen from microphone (for testing)")
 @click.pass_context
-def auto(ctx, model):
+def auto(ctx, model, mic):
     """Listen to Glip call, detect your name, auto-speak.
 
-    Captures audio from BlackHole 16ch, transcribes with faster-whisper,
-    triggers speak --glip when your name is detected.
+    By default listens to BlackHole 16ch (call audio from other participants).
+    Use --mic to listen from your microphone (for testing).
     Requires: prepare (run beforehand to cache audio).
     """
     config = ctx.obj["config"]
+    if mic:
+        config.audio.capture_device = "Plantronics Blackwire 3220 Series"
     run_async(_auto(config, model))
 
 
