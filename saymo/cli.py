@@ -166,6 +166,13 @@ async def _compose_text(config, notes: dict) -> str | None:
 async def _speak_text(config, text: str) -> None:
     """Synthesize and play speech."""
     from saymo.tts.macos_say import MacOSSay
+    from saymo.tts.text_normalizer import normalize_for_tts
+
+    # Normalize text: expand abbreviations, numbers, versions
+    normalized = normalize_for_tts(text)
+    if normalized != text:
+        console.print("[dim]Normalized for TTS (abbreviations/numbers expanded)[/]")
+        text = normalized
 
     console.print(f"[bold blue]Speaking ({config.tts.engine})...[/]")
 
