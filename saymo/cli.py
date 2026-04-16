@@ -17,6 +17,65 @@ def run_async(coro):
     return asyncio.run(coro)
 
 
+def _get_cached_audio_path():
+    """Path to today's pre-generated audio file."""
+    from datetime import date
+    from pathlib import Path
+    cache_dir = Path.home() / ".saymo" / "audio_cache"
+    return cache_dir / f"{date.today().isoformat()}.wav"
+
+
+async def _play_cached_audio(config, audio_path, glip_mode: bool = False):
+    """Play pre-generated audio file directly — no TTS needed."""
+    audio_bytes = audio_path.read_bytes()
+
+    if glip_mode:
+        from saymo.glip_control import check_glip_ready, unmute_speak_mute, switch_rc_mic_to_blackhole
+        from saymo.audio.devices import find_device
+
+        bh = find_device("BlackHole 2ch", kind="output")
+        if not bh:
+            console.print("[bold red]BlackHole 2ch not found![/]")
+            return
+
+        status = check_glip_ready()
+        if not status["glip_tab_found"]:
+            console.print("[bold red]RingCentral Video tab not found![/]")
+            return
+
+        console.print("[bold blue]Switching mic to BlackHole...[/]")
+        switch_rc_mic_to_blackhole()
+
+        import asyncio as _aio
+        await _aio.sleep(0.5)
+
+        async def _do_play():
+            playback = "BlackHole 2ch"
+            monitor = config.audio.monitor_device
+            if monitor and monitor.lower() != playback.lower():
+                from saymo.audio.multi_play import play_bytes_to_devices
+                await play_bytes_to_devices(audio_bytes, [playback, monitor])
+            else:
+                from saymo.audio.playback import play_audio_bytes
+                await play_audio_bytes(audio_bytes, playback)
+
+        console.print("[bold blue]Unmute → Play → Mute[/]")
+        await unmute_speak_mute(_do_play)
+    else:
+        playback = config.audio.playback_device
+        monitor = config.audio.monitor_device
+        use_multi = (monitor and monitor.lower() != playback.lower()
+                     and "blackhole" in playback.lower())
+        if use_multi:
+            from saymo.audio.multi_play import play_bytes_to_devices
+            await play_bytes_to_devices(audio_bytes, [playback, monitor])
+        else:
+            from saymo.audio.playback import play_audio_bytes
+            await play_audio_bytes(audio_bytes, playback)
+
+    console.print("[bold green]Done![/]")
+
+
 def _load_cached_summary(config) -> str | None:
     """Check if today's Obsidian note already has a Standup Summary section."""
     if not config.obsidian.vault_path:
@@ -95,11 +154,18 @@ def speak(ctx, source, composer, glip):
 
 async def _speak(config, glip_mode: bool = False):
 
-    # Step 0: Check if today's summary already exists in Obsidian
+    # Step 0: Check for pre-generated audio cache (instant playback)
+    cached_audio = _get_cached_audio_path()
+    if cached_audio.exists():
+        console.print(f"[green]Using cached audio from prepare ({cached_audio.stat().st_size // 1024} KB)[/]")
+        await _play_cached_audio(config, cached_audio, glip_mode)
+        return
+
+    # Step 0b: Check if today's text summary exists in Obsidian
     standup_text = _load_cached_summary(config)
 
     if standup_text:
-        console.print("[green]Using cached summary from Obsidian (already prepared)[/]")
+        console.print("[green]Using cached text from Obsidian (generating audio...)[/]")
     else:
         # Step 1: Get standup content
         notes_text = await _get_standup_content(config)
@@ -611,9 +677,22 @@ async def _prepare(config, save: bool):
             header = f"# {date.today().isoformat()}\n"
             note_path.write_text(header + standup_section, encoding="utf-8")
 
-        console.print(f"[blue]Saved to: {note_path}[/]")
+        console.print(f"[blue]Saved text to: {note_path}[/]")
 
-    console.print("\n[dim]Run 'saymo speak' to voice this summary during the call.[/]")
+    # Pre-generate audio file
+    console.print("\n[bold blue]Pre-generating audio...[/]")
+    from saymo.tts.text_normalizer import normalize_for_tts
+    normalized = normalize_for_tts(text)
+    audio_bytes = await _synthesize(config, normalized)
+    if audio_bytes:
+        audio_path = _get_cached_audio_path()
+        audio_path.parent.mkdir(parents=True, exist_ok=True)
+        audio_path.write_bytes(audio_bytes)
+        console.print(f"[green]Audio cached: {audio_path} ({len(audio_bytes) // 1024} KB)[/]")
+    else:
+        console.print("[yellow]Audio pre-generation failed, will generate on speak[/]")
+
+    console.print("\n[dim]Run 'saymo speak' — instant playback from cache![/]")
 
 
 # ---------------------------------------------------------------------------
