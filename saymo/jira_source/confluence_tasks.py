@@ -111,13 +111,13 @@ def _fetch_sync(config: JiraConfig) -> DailyTasks:
     )
 
 
-TEAM_MEMBERS = {
+DEFAULT_TEAM_MEMBERS = {
     "m.v.shchegolev": "Михаил",
     "oleg.o.korytov": "Олег",
 }
 
 
-def _fetch_team_sync(config: JiraConfig) -> TeamDailyTasks:
+def _fetch_team_sync(config: JiraConfig, team_members: dict | None = None) -> TeamDailyTasks:
     """Fetch tasks for all team members."""
     warnings.filterwarnings("ignore")
 
@@ -131,12 +131,14 @@ def _fetch_team_sync(config: JiraConfig) -> TeamDailyTasks:
     prev_str = prev_day.strftime("%Y-%m-%d")
     next_str = (prev_day + timedelta(days=1)).strftime("%Y-%m-%d")
 
+    members = team_members or DEFAULT_TEAM_MEMBERS
+
     result = TeamDailyTasks(
         today_date=datetime.today().strftime("%Y-%m-%d"),
         yesterday_date=prev_str,
     )
 
-    for username, display_name in TEAM_MEMBERS.items():
+    for username, display_name in members.items():
         # Today
         today_jql = (
             f'project = "Data Platform Engineering" '
@@ -185,9 +187,9 @@ async def fetch_daily_tasks(config: JiraConfig) -> DailyTasks:
     return await asyncio.to_thread(_fetch_sync, config)
 
 
-async def fetch_team_tasks(config: JiraConfig) -> TeamDailyTasks:
+async def fetch_team_tasks(config: JiraConfig, team_members: dict | None = None) -> TeamDailyTasks:
     """Async wrapper for team task fetch."""
-    return await asyncio.to_thread(_fetch_team_sync, config)
+    return await asyncio.to_thread(_fetch_team_sync, config, team_members)
 
 
 def team_tasks_to_notes(team: TeamDailyTasks) -> dict:

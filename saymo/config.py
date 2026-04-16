@@ -159,10 +159,10 @@ class SpeechConfig:
 @dataclass
 class MeetingProfile:
     description: str = ""
+    provider: str = "glip"
     team: bool = False
     source: str = "confluence"
     trigger_phrases: list[str] = field(default_factory=list)
-    glip_url_pattern: str = "v.ringcentral.com/conf"
 
 
 @dataclass

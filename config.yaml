@@ -65,6 +65,11 @@ ollama:
   url: "http://localhost:11434"
   model: "qwen2.5-coder:7b"
 
+# Team members for scrum reports (username: display_name)
+team:
+  m.v.shchegolev: "Михаил"
+  oleg.o.korytov: "Олег"
+
 jira:
   use_selfhelper_config: true
   selfhelper_path: "/opt/develop/selfhelper"
@@ -90,9 +95,14 @@ safety:
 # ═══════════════════════════════════════════════════
 # Meeting profiles — select with: saymo prepare -p standup
 # ═══════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════
+# Meeting profiles — select with: saymo prepare -p standup
+# Providers: glip, zoom, mts_link
+# ═══════════════════════════════════════════════════
 meetings:
   standup:
     description: "Daily standup — personal report"
+    provider: "glip"
     team: false
     source: "confluence"
     trigger_phrases:
@@ -106,10 +116,10 @@ meetings:
       - "Миша.*что.*делал"
       - "your turn.*Misha"
       - "next.*Mikhail"
-    glip_url_pattern: "v.ringcentral.com/conf"
 
   scrum:
     description: "Scrum with team leads — team report"
+    provider: "glip"
     team: true
     source: "confluence"
     trigger_phrases:
@@ -122,23 +132,30 @@ meetings:
       - "quality"
       - "ваша команда"
       - "your team"
-    glip_url_pattern: "v.ringcentral.com/conf"
 
   retro:
     description: "Retrospective — what went well/wrong"
+    provider: "glip"
     team: true
     source: "confluence"
     trigger_phrases:
       - "Михаил"
       - "Миша"
       - "QA"
-    glip_url_pattern: "v.ringcentral.com/conf"
 
-  # Add your own meetings:
-  # weekly:
-  #   description: "Weekly sync"
+  # ── Future providers ──
+  # zoom_weekly:
+  #   description: "Weekly sync via Zoom"
+  #   provider: "zoom"
   #   team: false
   #   source: "obsidian"
   #   trigger_phrases:
   #     - "Михаил"
-  #   glip_url_pattern: "v.ringcentral.com/conf"
+
+  # mts_demo:
+  #   description: "Demo via MTS Link"
+  #   provider: "mts_link"
+  #   team: false
+  #   source: "confluence"
+  #   trigger_phrases:
+  #     - "Михаил"
