@@ -67,7 +67,7 @@ async def _play_cached_audio(config, audio_path, glip_mode: bool = False):
 
         status = check_glip_ready()
         if not status["glip_tab_found"]:
-            console.print("[bold red]RingCentral Video tab not found![/]")
+            console.print("[bold red]Glip call tab not found![/]")
             return
 
         console.print("[bold blue]Switching mic to BlackHole...[/]")
@@ -367,15 +367,15 @@ async def _speak(config, glip_mode: bool = False, team_mode: bool = False):
             console.print("[bold red]Chrome is not running![/]")
             return
         if not status["glip_tab_found"]:
-            console.print("[bold red]RingCentral Video tab not found in Chrome![/]")
-            console.print("[dim]Open v.ringcentral.com/conf/... in Chrome first.[/]")
+            console.print("[bold red]Glip call tab not found in Chrome![/]")
+            console.print("[dim]Open Glip call in Chrome first.[/]")
             return
 
-        console.print(f"[green]RingCentral tab found (window {status['tab_info'][0]}, tab {status['tab_info'][1]})[/]")
+        console.print(f"[green]Glip tab found (window {status['tab_info'][0]}, tab {status['tab_info'][1]})[/]")
 
         # Auto-switch mic to BlackHole 2ch in RingCentral
         from saymo.glip_control import switch_rc_mic_to_blackhole
-        console.print("[bold blue]Switching RingCentral mic to BlackHole 2ch...[/]")
+        console.print("[bold blue]Switching Glip mic to BlackHole 2ch...[/]")
         mic_ok = switch_rc_mic_to_blackhole()
         if mic_ok:
             console.print("[green]Mic switched to BlackHole 2ch[/]")

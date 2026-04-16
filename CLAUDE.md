@@ -4,7 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is Saymo
 
-Saymo is a fully local AI-powered standup automation tool for Glip (RingCentral) calls. It fetches JIRA tasks, composes a natural standup summary via a local LLM, and speaks it using voice cloning — all without cloud APIs.
+Saymo is a fully local AI-powered standup automation tool for Glip calls. It fetches JIRA tasks, composes a natural standup summary via a local LLM, and speaks it using voice cloning — all without cloud APIs.
+
+## Install
+
+```bash
+./install.sh   # installs all deps, checks audio devices, enables Chrome JS
+```
 
 ## Pipeline
 
@@ -18,56 +24,78 @@ Three TTS engines: `coqui_clone` (XTTS v2 voice clone), `piper` (fast neural), `
 ## Commands
 
 ```bash
-python3 -m saymo dashboard          # Interactive TUI — switch devices/engines, prepare & speak
-python3 -m saymo prepare             # Fetch JIRA → compose summary → save to Obsidian
-python3 -m saymo speak               # Voice the summary to configured audio device
-python3 -m saymo speak --source obsidian --composer ollama
-python3 -m saymo test-devices        # List audio devices
-python3 -m saymo test-tts "text"     # Test TTS engine
-python3 -m saymo test-ollama         # Check Ollama status
-python3 -m saymo record-voice -d 30  # Record voice sample for cloning
+# Setup
+./install.sh                             # Full installation
+python3 -m saymo record-voice -d 300     # Record 5-min voice sample
+python3 -m saymo test-devices            # List audio devices
+
+# Daily standup (personal)
+python3 -m saymo prepare                 # JIRA → Ollama → TTS → cache audio
+python3 -m saymo review                  # Listen sentence-by-sentence, fix quality
+python3 -m saymo speak --glip            # Instant playback into Glip call
+
+# Team scrum (Михаил + Олег)
+python3 -m saymo prepare --team          # Fetch both members' tasks
+python3 -m saymo speak --team --glip     # Play team report
+
+# Auto mode (name trigger)
+python3 -m saymo auto                    # Listen for "Михаил/Миша", auto-speak
+python3 -m saymo auto --mic              # Test with own microphone
+
+# Interactive
+python3 -m saymo dashboard              # TUI with hotkeys (p/s/g/d/e/t/x/q)
+
+# Testing
+python3 -m saymo test-tts "text"         # Test TTS engine
+python3 -m saymo test-ollama             # Check Ollama status
+python3 -m saymo test-jira               # Test JIRA connection
+python3 -m saymo test-notes              # Show Obsidian daily notes
+python3 -m saymo test-compose            # Generate text without audio
 ```
 
 ## Architecture
 
-- `saymo/cli.py` — Click CLI, all commands. `_get_standup_content()` → `_compose_text()` → `_speak_text()` is the core flow.
-- `saymo/tui.py` — Interactive dashboard with Rich Live display, background async tasks via threading.
-- `saymo/jira_source/confluence_tasks.py` — Fetches tasks using same JQL as `/Users/m.v.shchegolev/Downloads/qaa2/update_confluence.py`. Reuses selfhelper JIRA credentials.
-- `saymo/speech/ollama_composer.py` — Composes standup text via local Ollama HTTP API (`/api/generate`).
-- `saymo/tts/coqui_clone.py` — XTTS v2 voice cloning. Lazy-loads model (~2GB). Voice sample at `~/.saymo/voice_samples/voice_sample.wav`.
-- `saymo/tts/text_normalizer.py` — Expands abbreviations (NS2→эн-эс-два), numbers, versions before TTS. `ABBREV_MAP` dict is the source of truth.
-- `saymo/tts/piper_tts.py` — Fast local TTS via Piper CLI. Model at `~/.saymo/piper_models/`.
-- `saymo/obsidian/daily_notes.py` — Reads Obsidian vault daily notes by date pattern.
-- `saymo/config.py` — Dataclass-based config with `${ENV_VAR}` substitution. Loaded from `config.yaml`.
+- `saymo/cli.py` — Click CLI. Core flow: `_get_standup_content()` → `_compose_text()` → `_speak_text()`. Three-level cache: audio → text → full pipeline.
+- `saymo/tui.py` — Interactive dashboard with Rich Live, background async tasks via threading.
+- `saymo/glip_control.py` — Chrome automation via AppleScript + JS injection. Find Glip tab, switch mic, unmute/speak/mute.
+- `saymo/jira_source/confluence_tasks.py` — Personal and team task fetch. Same JQL as update_confluence.py.
+- `saymo/speech/ollama_composer.py` — Standup text via Ollama. Personal prompt (first person) + team prompt (I + Олег).
+- `saymo/tts/coqui_clone.py` — XTTS v2 voice cloning. Voice sample at `~/.saymo/voice_samples/voice_sample.wav`.
+- `saymo/tts/text_normalizer.py` — Expands abbreviations, strips build versions, IT terms → Russian phonetics.
+- `saymo/audio/capture.py` — Overlapping sliding window capture (4s chunks, 2s overlap) for auto mode.
+- `saymo/stt/whisper_local.py` — faster-whisper (local STT, no API).
+- `saymo/analysis/turn_detector.py` — Fuzzy name detection with cooldown.
+- `saymo/config.py` — Dataclass config with `${ENV_VAR}` substitution.
 
 ## Key Dependencies
 
-- **PyTorch 2.11+ (arm64)** — required for XTTS v2. Must run in native arm64 terminal, NOT Rosetta.
-- **coqui-tts** — XTTS v2 voice cloning. Install with `pip install coqui-tts[codec]`.
-- **Ollama** — local LLM. Must be running (`ollama serve`). Model: `qwen2.5-coder:7b`.
-- **FFmpeg** — required by torchcodec for audio loading. `brew install ffmpeg`.
-- **BlackHole** — virtual audio for Glip routing. `brew install blackhole-2ch`.
-- **selfhelper** at `/opt/develop/selfhelper` — provides JIRA credentials via `config.constants`.
+- **PyTorch 2.11+ (arm64)** — must run in native arm64 terminal, NOT Rosetta
+- **coqui-tts** — `pip install coqui-tts[codec]`
+- **Ollama** — `ollama serve`, model: `qwen2.5-coder:7b`
+- **FFmpeg** — `brew install ffmpeg`
+- **BlackHole** — `brew install blackhole-2ch blackhole-16ch`
+- **selfhelper** at `/opt/develop/selfhelper` — JIRA credentials
 
-## Config
+## Audio Routing
 
-`config.yaml` in project root. Key settings:
-- `speech.source`: `confluence` | `obsidian` | `jira`
-- `speech.composer`: `ollama` | `anthropic`
-- `tts.engine`: `coqui_clone` | `piper` | `macos_say` | `openai`
-- `audio.playback_device`: device name (e.g., `Plantronics Blackwire 3220 Series`, `BlackHole 2ch`)
-- `user.name_variants`: trigger phrases for turn detection (Phase 3)
+```
+Saymo TTS → BlackHole 2ch → Glip mic input (others hear)
+          → Plantronics   → Headphones (you hear yourself)
 
-## Audio Routing for Glip
-
-BlackHole 2ch acts as virtual microphone:
-1. Glip → Microphone → `BlackHole 2ch`
-2. Saymo → playback_device → `BlackHole 2ch`
-3. Glip hears Saymo's output as mic input
+Glip speakers → Multi-Output Device → Plantronics (you hear others)
+                                    → BlackHole 16ch (Saymo listens for auto mode)
+```
 
 ## Adding Abbreviations
 
 Edit `ABBREV_MAP` in `saymo/tts/text_normalizer.py`:
 ```python
 "NEW_ABBR": "произношение",
+```
+
+## Adding Team Members
+
+Edit `TEAM_MEMBERS` in `saymo/jira_source/confluence_tasks.py`:
+```python
+"username": "Display Name",
 ```
