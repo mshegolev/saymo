@@ -1,4 +1,7 @@
-"""Local speech-to-text using faster-whisper."""
+"""Local speech-to-text using faster-whisper.
+
+Optimized for name detection: no VAD filter, higher beam size.
+"""
 
 import logging
 
@@ -25,23 +28,20 @@ class LocalWhisper:
             logger.info("Whisper model loaded")
         return self._model
 
-    def transcribe(self, audio: np.ndarray, sample_rate: int = 16000) -> str:
+    def transcribe(self, audio: np.ndarray) -> str:
         """Transcribe audio chunk to text.
 
-        Args:
-            audio: float32 numpy array (mono, 16kHz).
-            sample_rate: Sample rate of audio.
-
-        Returns:
-            Transcribed text.
+        VAD filter disabled to catch short words like names.
         """
         model = self._load()
-        segments, info = model.transcribe(
+        segments, _ = model.transcribe(
             audio,
             language=self.language,
-            beam_size=3,
-            vad_filter=True,
-            vad_parameters=dict(min_silence_duration_ms=500),
+            beam_size=5,
+            best_of=3,
+            vad_filter=False,  # Don't filter — we need to catch short names
+            no_speech_threshold=0.5,
+            condition_on_previous_text=False,
         )
         text = " ".join(seg.text.strip() for seg in segments)
         return text

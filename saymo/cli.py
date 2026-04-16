@@ -174,12 +174,13 @@ async def _auto(config, whisper_model: str):
     capture = AudioCapture(
         device_name=config.audio.capture_device,
         sample_rate=16000,
-        chunk_seconds=3.0,
+        chunk_seconds=4.0,    # 4s chunks
+        overlap_seconds=2.0,  # 2s overlap → new chunk every 2s
     )
     whisper = LocalWhisper(model_size=whisper_model, language=config.user.language)
     detector = TurnDetector(
         name_variants=config.user.name_variants,
-        cooldown_seconds=60.0,
+        cooldown_seconds=45.0,
     )
 
     capture.start()
@@ -192,7 +193,7 @@ async def _auto(config, whisper_model: str):
 
             # Skip silence (RMS too low)
             rms = float((chunk ** 2).mean() ** 0.5)
-            if rms < 0.005:
+            if rms < 0.001:
                 continue
 
             # Transcribe
@@ -200,14 +201,15 @@ async def _auto(config, whisper_model: str):
             if not text.strip():
                 continue
 
+            # Show live transcript
             console.print(f"[dim]{text}[/]")
 
             # Check trigger
             if detector.check(text):
                 console.print("\n[bold red]>>> NAME DETECTED! Speaking...[/]\n")
 
-                # Small delay — let the person finish saying your name
-                await asyncio.sleep(1.5)
+                # Brief pause — let the person finish their sentence
+                await asyncio.sleep(2.0)
 
                 # Speak via Glip
                 await _play_cached_audio(config, cached_audio, glip_mode=True)
