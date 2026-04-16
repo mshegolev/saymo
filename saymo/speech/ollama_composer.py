@@ -19,16 +19,21 @@ STANDUP_PROMPT_RU = """\
 {today_notes}
 ---
 
-Составь отчёт в формате:
-1. Что было сделано вчера (кратко)
-2. Что планируется на сегодня
-3. Есть ли блокеры
+ВАЖНЫЕ ПРАВИЛА:
+- Напиши ОДИН сплошной абзац из 2-4 предложений. БЕЗ списков, БЕЗ нумерации, БЕЗ пунктов.
+- Говори от первого лица: "Вчера я занимался...", "Сегодня планирую..."
+- Объединяй похожие задачи в группы, не перечисляй каждую отдельно.
+- НЕ используй номера тикетов (DATA-XXXXX) — только суть задачи.
+- НЕ произноси длинные числа, версии билдов, таймстемпы.
+- IT-термины пиши как произносятся по-русски с английским звучанием: смоук-тесты, стейдж, релиз, хотфикс, деплой, пайплайн, парсинг, ревью, фреймворк, автотесты.
+- Названия продуктов и технологий оставляй как есть: NetSuite, OpenMetadata, FedRamp, Spark, Hive.
+- Будь кратким — максимум 30 секунд при чтении вслух.
+- Говори естественно, как будто рассказываешь коллеге.
+- Если есть блокеры — упомяни одним предложением в конце.
+- Не выдумывай то, чего нет в заметках.
 
-Требования:
-- Говори от первого лица ("Я сделал...", "Я работал над...")
-- Будь кратким — максимум 45 секунд при чтении вслух
-- Говори естественно, как на реальном стендапе
-- Не выдумывай то, чего нет в заметках
+Пример хорошего отчёта:
+"Вчера я в основном занимался верификацией хотфиксов на стейдже и ревью автотестов. Сегодня продолжу работу над смоук-тестами для NetSuite и начну пи-оу-си по валидации данных в OpenMetadata. Пока есть проблема с доступностью NetSuite sandbox, это немного тормозит тестирование."
 """
 
 STANDUP_PROMPT_EN = """\
@@ -44,16 +49,16 @@ Today's notes ({today_date}):
 {today_notes}
 ---
 
-Format:
-1. What was done yesterday (brief)
-2. What's planned for today
-3. Any blockers
-
-Requirements:
-- First person ("I worked on...", "I completed...")
-- Keep it under 45 seconds when spoken aloud
-- Sound natural, like a real standup
-- Don't invent things not in the notes
+RULES:
+- Write ONE short paragraph, 2-4 sentences. NO bullet points, NO numbered lists.
+- First person: "Yesterday I worked on...", "Today I'm planning to..."
+- Group similar tasks together, don't list each one separately.
+- Do NOT mention ticket numbers (DATA-XXXXX).
+- Do NOT read out long build numbers or timestamps.
+- Keep it under 30 seconds when spoken aloud.
+- Sound natural and conversational.
+- Mention blockers briefly at the end if any.
+- Don't invent things not in the notes.
 """
 
 
