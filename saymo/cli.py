@@ -916,7 +916,16 @@ async def _prepare_team(config, save: bool):
 
     console.print("[bold blue]Fetching team tasks (Михаил + Олег)...[/]")
     try:
-        team = await fetch_team_tasks(config.jira)
+        team_members = config.meetings.get("_team_members") if isinstance(config.meetings, dict) else None
+        # Read team from config.yaml top-level 'team' key
+        import yaml
+        from pathlib import Path
+        cfg_path = Path(__file__).parent.parent / "config.yaml"
+        if cfg_path.exists():
+            raw = yaml.safe_load(cfg_path.read_text()) or {}
+            if "team" in raw and isinstance(raw["team"], dict):
+                team_members = raw["team"]
+        team = await fetch_team_tasks(config.jira, team_members)
     except Exception as e:
         console.print(f"[bold red]JIRA fetch failed:[/] {e}")
         return
@@ -1124,7 +1133,7 @@ def record_voice(ctx, duration, output):
     Uses the Plantronics mic (or configured capture device).
     Recommended: 30-60 seconds of natural speech in Russian.
     """
-    from saymo.audio.recorder import record_sample, VOICE_SAMPLES_DIR
+    from saymo.audio.recorder import record_sample
     from saymo.audio.devices import find_device
 
     config = ctx.obj["config"]
