@@ -162,12 +162,22 @@ def normalize_for_tts(text: str, extra_abbrevs: dict[str, str] | None = None) ->
         pattern = re.compile(r'\b' + re.escape(key) + r'\b')
         text = pattern.sub(abbrevs[key], text)
 
+    # Remove ETL build version stamps (e.g., v.2604101636, v2603261416)
+    # These are Jenkins build IDs, not meaningful to pronounce
+    text = re.sub(r'\bv\.?\d{8,}\b', '', text)
+
+    # Remove standalone long numbers (8+ digits) — build IDs, timestamps
+    text = re.sub(r'\b\d{8,}\b', '', text)
+
+    # Remove JIRA ticket numbers in speech (DATA-15989: → skip entirely)
+    text = re.sub(r'\bDATA-\d+\s*:?\s*', '', text)
+
     # Expand version numbers (e.g., 1.0.0, 2.5.3)
     text = re.sub(r'\b\d+\.\d+\.\d+\b', _expand_version, text)
     text = re.sub(r'\bv\.?\d+\.\d+\b', lambda m: _expand_version(m), text)
 
-    # Expand standalone numbers
-    text = re.sub(r'\b\d+\b', _expand_number, text)
+    # Expand standalone numbers (only short ones — up to 4 digits)
+    text = re.sub(r'\b\d{1,4}\b', _expand_number, text)
 
     # Clean up multiple spaces
     text = re.sub(r'\s+', ' ', text).strip()
