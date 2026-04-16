@@ -7,6 +7,7 @@ from saymo.providers.telemost import TelemostProvider
 from saymo.providers.vk_teams import VKTeamsProvider
 from saymo.providers.google_meet import GoogleMeetProvider
 from saymo.providers.ms_teams import MSTeamsProvider
+from saymo.providers.telegram import TelegramProvider
 
 PROVIDERS = {
     # RingCentral
@@ -28,6 +29,9 @@ PROVIDERS = {
     "ms_teams": MSTeamsProvider,
     "teams": MSTeamsProvider,
     "microsoft_teams": MSTeamsProvider,
+    # Telegram
+    "telegram": TelegramProvider,
+    "tg": TelegramProvider,
 }
 
 
