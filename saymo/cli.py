@@ -96,6 +96,31 @@ async def _get_standup_content(config) -> dict | None:
 
         return notes
 
+    elif config.speech.source == "confluence":
+        from saymo.jira_source.confluence_tasks import fetch_daily_tasks, tasks_to_notes
+
+        console.print("[bold blue]Fetching JIRA tasks (confluence mode)...[/]")
+        try:
+            daily = await fetch_daily_tasks(config.jira)
+        except Exception as e:
+            console.print(f"[bold red]JIRA fetch failed:[/] {e}")
+            return None
+
+        if not daily.today and not daily.yesterday:
+            console.print("[yellow]No tasks found.[/]")
+            return None
+
+        if daily.yesterday:
+            console.print(f"[green]Yesterday ({daily.yesterday_date}):[/] {len(daily.yesterday)} tasks")
+            for t in daily.yesterday:
+                console.print(f"  {t.key}: {t.summary} [{t.status}]")
+        if daily.today:
+            console.print(f"[green]Today ({daily.today_date}):[/] {len(daily.today)} tasks")
+            for t in daily.today:
+                console.print(f"  {t.key}: {t.summary} [{t.status}]")
+
+        return tasks_to_notes(daily)
+
     elif config.speech.source == "jira":
         from saymo.jira_source.tasks import fetch_standup_data
 
@@ -111,7 +136,6 @@ async def _get_standup_content(config) -> dict | None:
             return None
 
         console.print(f"[green]Found {len(standup_data.tasks)} tasks[/]")
-        # Convert to notes-like format for unified composer
         tasks_text = "\n".join(standup_data.task_summary_lines)
         return {
             "yesterday": tasks_text,
@@ -402,6 +426,74 @@ async def _test_ollama(config):
                 table.add_row(m["name"], f"{size_gb:.1f} GB")
             console.print(table)
             console.print(f"\n[blue]Configured model: {config.ollama.model}[/]")
+
+
+# ---------------------------------------------------------------------------
+# prepare — pre-daily standup preparation
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("--save/--no-save", default=True, help="Save summary to Obsidian daily note")
+@click.pass_context
+def prepare(ctx, save):
+    """Prepare standup summary BEFORE the daily meeting.
+
+    Fetches JIRA tasks (confluence mode), composes summary via Ollama,
+    optionally saves to today's Obsidian daily note, and prints the text.
+    Run this 5 min before your standup.
+    """
+    config = ctx.obj["config"]
+    # Force confluence source for prepare
+    config.speech.source = "confluence"
+    run_async(_prepare(config, save))
+
+
+async def _prepare(config, save: bool):
+    notes = await _get_standup_content(config)
+    if notes is None:
+        return
+
+    text = await _compose_text(config, notes)
+    if text is None:
+        return
+
+    console.print(f"\n[bold green]Standup summary:[/]\n\n{text}\n")
+
+    if save and config.obsidian.vault_path:
+        from datetime import date
+        from pathlib import Path
+
+        vault = Path(config.obsidian.vault_path)
+        subfolder = config.obsidian.subfolder
+        target = vault / subfolder if subfolder else vault
+        target.mkdir(parents=True, exist_ok=True)
+
+        note_path = target / (date.today().strftime(config.obsidian.date_format) + ".md")
+
+        # Append standup section to daily note
+        standup_section = f"\n\n## Standup Summary\n\n{text}\n"
+        if note_path.exists():
+            existing = note_path.read_text(encoding="utf-8")
+            if "## Standup Summary" in existing:
+                # Replace existing section
+                import re
+                existing = re.sub(
+                    r'## Standup Summary\n.*?(?=\n## |\Z)',
+                    f"## Standup Summary\n\n{text}\n",
+                    existing,
+                    flags=re.DOTALL,
+                )
+                note_path.write_text(existing, encoding="utf-8")
+            else:
+                with open(note_path, "a", encoding="utf-8") as f:
+                    f.write(standup_section)
+        else:
+            header = f"# {date.today().isoformat()}\n"
+            note_path.write_text(header + standup_section, encoding="utf-8")
+
+        console.print(f"[blue]Saved to: {note_path}[/]")
+
+    console.print("\n[dim]Run 'saymo speak' to voice this summary during the call.[/]")
 
 
 # ---------------------------------------------------------------------------
