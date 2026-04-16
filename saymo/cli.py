@@ -83,16 +83,17 @@ async def _speak(config, glip_mode: bool = False):
 
     # Step 3: Glip pre-checks
     if glip_mode:
-        from saymo.glip_control import check_glip_ready, unmute_speak_mute
+        from saymo.glip_control import check_glip_ready, unmute_speak_mute, get_mic_setup_instructions
         from saymo.audio.devices import find_device
 
-        # Verify BlackHole is the playback device
+        # Verify BlackHole 2ch exists
         bh = find_device("BlackHole 2ch", kind="output")
         if not bh:
             console.print("[bold red]BlackHole 2ch not found![/]")
             console.print("Install: brew install blackhole-2ch")
             return
 
+        # Force BlackHole as playback device
         if "blackhole" not in config.audio.playback_device.lower():
             console.print(f"[bold yellow]Switching playback to BlackHole 2ch (was: {config.audio.playback_device})[/]")
             config.audio.playback_device = "BlackHole 2ch"
@@ -103,11 +104,17 @@ async def _speak(config, glip_mode: bool = False):
             console.print("[bold red]Chrome is not running![/]")
             return
         if not status["glip_tab_found"]:
-            console.print("[bold red]Glip tab not found in Chrome![/]")
-            console.print("[dim]Open a Glip/RingCentral call in Chrome first.[/]")
+            console.print("[bold red]RingCentral Video tab not found in Chrome![/]")
+            console.print("[dim]Open v.ringcentral.com/conf/... in Chrome first.[/]")
             return
 
-        console.print(f"[green]Glip tab found (window {status['tab_info'][0]}, tab {status['tab_info'][1]})[/]")
+        console.print(f"[green]RingCentral tab found (window {status['tab_info'][0]}, tab {status['tab_info'][1]})[/]")
+
+        # Remind about BlackHole mic in RingCentral
+        console.print()
+        console.print("[bold yellow]Check RingCentral audio settings:[/]")
+        console.print(get_mic_setup_instructions())
+        console.print()
         console.print("[bold blue]Unmute → Speak → Mute (auto)[/]")
 
         # Unmute → speak → mute
