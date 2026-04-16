@@ -14,8 +14,8 @@ user:
 
 audio:
   capture_device: "BlackHole 16ch"
-  playback_device: "Plantronics Blackwire 3220 Series"  # Change to "BlackHole 2ch" for Glip
-  monitor_device: "Plantronics Blackwire 3220 Series"   # Hear yourself when speaking via BlackHole
+  playback_device: "Plantronics Blackwire 3220 Series"
+  monitor_device: "Plantronics Blackwire 3220 Series"
   sample_rate: 16000
   channels: 1
   chunk_size: 1024
@@ -27,7 +27,7 @@ stt:
     model: "nova-3"
     language: "ru"
   whisper:
-    model_size: "large-v3"
+    model_size: "small"
     device: "cpu"
     compute_type: "int8"
 
@@ -41,22 +41,11 @@ analysis:
     llm_trigger: true
     llm_interval_seconds: 5
     confidence_threshold: 0.8
-  trigger_phrases:
-    - "Михаил"
-    - "Миша"
-    - "Мишань"
-    - "Миш[,.]"
-    - "Mikhail"
-    - "Misha"
-    - "Михаил.*очередь"
-    - "Миша.*что.*делал"
-    - "your turn.*Misha"
-    - "next.*Mikhail"
 
 tts:
-  engine: "coqui_clone"  # Voice clone with YOUR voice via XTTS v2
+  engine: "coqui_clone"
   piper:
-    model_path: ""  # Empty = default ~/.saymo/piper_models/ru_RU-dmitri-medium.onnx
+    model_path: ""
   openai:
     api_key: "${OPENAI_API_KEY}"
     model: "tts-1"
@@ -65,20 +54,17 @@ tts:
     api_key: "${ELEVENLABS_API_KEY}"
     voice_id: ""
   macos_say:
-    voice: "Milena"  # Russian voice (macOS built-in)
+    voice: "Milena"
 
-# Obsidian daily notes as standup source
 obsidian:
   vault_path: "/Users/m.v.shchegolev/Documents/Obsidian Vault"
-  subfolder: ""  # e.g., "Daily Notes" if using subfolder
+  subfolder: ""
   date_format: "%Y-%m-%d"
 
-# Local LLM for text composition
 ollama:
   url: "http://localhost:11434"
   model: "qwen2.5-coder:7b"
 
-# JIRA (fallback source, needs network)
 jira:
   use_selfhelper_config: true
   selfhelper_path: "/opt/develop/selfhelper"
@@ -91,8 +77,8 @@ jira:
 speech:
   style: "concise"
   language: "ru"
-  source: "confluence"  # "confluence" (JIRA like update_confluence), "obsidian", or "jira"
-  composer: "ollama"    # "ollama" (local) or "anthropic" (cloud)
+  source: "confluence"
+  composer: "ollama"
 
 safety:
   require_confirmation: true
@@ -100,3 +86,59 @@ safety:
   hotkey_stop: "<cmd>+<shift>+x"
   hotkey_toggle: "<cmd>+<shift>+m"
   max_speech_duration: 120
+
+# ═══════════════════════════════════════════════════
+# Meeting profiles — select with: saymo prepare -p standup
+# ═══════════════════════════════════════════════════
+meetings:
+  standup:
+    description: "Daily standup — personal report"
+    team: false
+    source: "confluence"
+    trigger_phrases:
+      - "Михаил"
+      - "Миша"
+      - "Мишань"
+      - "Миш"
+      - "Mikhail"
+      - "Misha"
+      - "Михаил.*очередь"
+      - "Миша.*что.*делал"
+      - "your turn.*Misha"
+      - "next.*Mikhail"
+    glip_url_pattern: "v.ringcentral.com/conf"
+
+  scrum:
+    description: "Scrum with team leads — team report"
+    team: true
+    source: "confluence"
+    trigger_phrases:
+      - "Михаил"
+      - "Миша"
+      - "QA"
+      - "кью-эй"
+      - "QA team"
+      - "тестирование"
+      - "quality"
+      - "ваша команда"
+      - "your team"
+    glip_url_pattern: "v.ringcentral.com/conf"
+
+  retro:
+    description: "Retrospective — what went well/wrong"
+    team: true
+    source: "confluence"
+    trigger_phrases:
+      - "Михаил"
+      - "Миша"
+      - "QA"
+    glip_url_pattern: "v.ringcentral.com/conf"
+
+  # Add your own meetings:
+  # weekly:
+  #   description: "Weekly sync"
+  #   team: false
+  #   source: "obsidian"
+  #   trigger_phrases:
+  #     - "Михаил"
+  #   glip_url_pattern: "v.ringcentral.com/conf"

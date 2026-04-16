@@ -157,6 +157,15 @@ class SpeechConfig:
 
 
 @dataclass
+class MeetingProfile:
+    description: str = ""
+    team: bool = False
+    source: str = "confluence"
+    trigger_phrases: list[str] = field(default_factory=list)
+    glip_url_pattern: str = "v.ringcentral.com/conf"
+
+
+@dataclass
 class SafetyConfig:
     require_confirmation: bool = True
     hotkey_speak: str = "<cmd>+<shift>+s"
@@ -177,6 +186,19 @@ class SaymoConfig:
     ollama: OllamaConfig = field(default_factory=OllamaConfig)
     speech: SpeechConfig = field(default_factory=SpeechConfig)
     safety: SafetyConfig = field(default_factory=SafetyConfig)
+    meetings: dict = field(default_factory=dict)
+
+    def get_meeting(self, name: str) -> MeetingProfile | None:
+        """Get meeting profile by name."""
+        data = self.meetings.get(name)
+        if data and isinstance(data, dict):
+            return MeetingProfile(**{k: v for k, v in data.items()
+                                     if k in MeetingProfile.__dataclass_fields__})
+        return None
+
+    def list_meetings(self) -> list[str]:
+        """List available meeting profile names."""
+        return list(self.meetings.keys()) if isinstance(self.meetings, dict) else []
 
 
 def _dict_to_dataclass(cls, data: dict):

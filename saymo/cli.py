@@ -142,32 +142,55 @@ def main(ctx, config_path, verbose):
 
 
 # ---------------------------------------------------------------------------
+# setup — interactive wizard
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.pass_context
+def setup(ctx):
+    """Interactive setup wizard — configure name, meetings, devices, TTS."""
+    from saymo.wizard import run_wizard
+    run_wizard()
+
+
+# ---------------------------------------------------------------------------
 # auto — listen for name trigger and speak automatically
 # ---------------------------------------------------------------------------
 
 @main.command()
+@click.option("--profile", "-p", default="standup", help="Meeting profile: standup, scrum, retro")
 @click.option("--model", "-m", default="small", help="Whisper model: tiny, small, medium")
 @click.option("--mic", is_flag=True, help="Listen from microphone (for testing)")
 @click.pass_context
-def auto(ctx, model, mic):
+def auto(ctx, profile, model, mic):
     """Listen to Glip call, detect your name, auto-speak.
 
-    By default listens to BlackHole 16ch (call audio from other participants).
+    Use -p to select meeting profile and trigger words.
     Use --mic to listen from your microphone (for testing).
     Requires: prepare (run beforehand to cache audio).
     """
     config = ctx.obj["config"]
+    meeting = config.get_meeting(profile)
+    if meeting:
+        console.print(f"[bold blue]Meeting: {profile} — {meeting.description}[/]")
     if mic:
         config.audio.capture_device = "Plantronics Blackwire 3220 Series"
-    run_async(_auto(config, model))
+    run_async(_auto(config, model, profile))
 
 
-async def _auto(config, whisper_model: str):
+async def _auto(config, whisper_model: str, profile: str = "standup"):
     import asyncio
 
+    # Get meeting profile for trigger phrases
+    meeting = config.get_meeting(profile)
+    is_team = meeting.team if meeting else False
+
     # Pre-checks
-    cached_audio = _get_cached_audio_path()
+    cached_audio = _get_cached_audio_path(team=is_team)
     if not cached_audio.exists():
+        label = f"'saymo prepare --profile {profile}'" if meeting else "'saymo prepare'"
+        console.print(f"[bold red]No cached audio! Run {label} first.[/]")
+        return
         console.print("[bold red]No cached audio! Run 'saymo prepare' first.[/]")
         return
 
@@ -184,16 +207,20 @@ async def _auto(config, whisper_model: str):
         console.print("[bold red]Glip tab not found in Chrome![/]")
         return
 
-    console.print("[bold green]Saymo AUTO mode[/]")
+    # Determine trigger phrases from meeting profile or user config
+    trigger_phrases = config.user.name_variants
+    if meeting and meeting.trigger_phrases:
+        trigger_phrases = meeting.trigger_phrases
+
+    console.print(f"[bold green]Saymo AUTO mode — {profile}[/]")
     console.print(f"  Listening on: {config.audio.capture_device}")
     console.print(f"  Whisper model: {whisper_model}")
-    console.print(f"  Triggers: {', '.join(config.user.name_variants)}")
+    console.print(f"  Triggers: {', '.join(trigger_phrases)}")
     console.print(f"  Cached audio: {cached_audio.stat().st_size // 1024} KB")
     console.print()
     console.print("[dim]Press Ctrl+C to stop[/]")
     console.print("[bold yellow]Listening...[/]\n")
 
-    # Init components
     from saymo.audio.capture import AudioCapture
     from saymo.stt.whisper_local import LocalWhisper
     from saymo.analysis.turn_detector import TurnDetector
@@ -206,7 +233,7 @@ async def _auto(config, whisper_model: str):
     )
     whisper = LocalWhisper(model_size=whisper_model, language=config.user.language)
     detector = TurnDetector(
-        name_variants=config.user.name_variants,
+        name_variants=trigger_phrases,
         cooldown_seconds=45.0,
     )
 
@@ -298,18 +325,27 @@ def dashboard(ctx):
 # ---------------------------------------------------------------------------
 
 @main.command()
+@click.option("--profile", "-p", default=None, help="Meeting profile: standup, scrum, retro")
 @click.option("--source", "-s", default=None, help="Source: obsidian, confluence, or jira")
 @click.option("--composer", default=None, help="Composer: ollama or anthropic")
 @click.option("--glip/--no-glip", default=False, help="Auto-control Glip mute via Chrome")
 @click.option("--team", is_flag=True, help="Use team scrum audio cache")
 @click.pass_context
-def speak(ctx, source, composer, glip, team):
+def speak(ctx, profile, source, composer, glip, team):
     """Read daily notes, compose standup, and speak it.
 
-    --team: use team scrum report (prepare --team).
-    --glip: auto-switches to Chrome, unmutes, speaks, mutes back.
+    Use -p to select meeting profile (standup, scrum, retro).
     """
     config = ctx.obj["config"]
+    if profile:
+        meeting = config.get_meeting(profile)
+        if not meeting:
+            console.print(f"[bold red]Unknown profile: {profile}[/]")
+            console.print(f"[dim]Available: {', '.join(config.list_meetings())}[/]")
+            return
+        team = meeting.team
+        if not source:
+            config.speech.source = meeting.source
     if source:
         config.speech.source = source
     if composer:
@@ -784,17 +820,26 @@ async def _test_ollama(config):
 # ---------------------------------------------------------------------------
 
 @main.command()
+@click.option("--profile", "-p", default=None, help="Meeting profile: standup, scrum, retro")
 @click.option("--save/--no-save", default=True, help="Save summary to Obsidian daily note")
 @click.option("--team", is_flag=True, help="Team scrum mode (report on all team members)")
 @click.pass_context
-def prepare(ctx, save, team):
+def prepare(ctx, profile, save, team):
     """Prepare standup summary BEFORE the daily meeting.
 
-    Default: personal standup (your tasks only).
-    --team: scrum with team leads (Михаил + Олег).
+    Use -p to select meeting profile: standup (default), scrum, retro.
     """
     config = ctx.obj["config"]
     config.speech.source = "confluence"
+    if profile:
+        meeting = config.get_meeting(profile)
+        if not meeting:
+            console.print(f"[bold red]Unknown profile: {profile}[/]")
+            console.print(f"[dim]Available: {', '.join(config.list_meetings())}[/]")
+            return
+        team = meeting.team
+        config.speech.source = meeting.source
+        console.print(f"[bold blue]Meeting: {profile} — {meeting.description}[/]")
     if team:
         run_async(_prepare_team(config, save))
     else:
