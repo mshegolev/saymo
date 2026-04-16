@@ -34,8 +34,8 @@ def _resolve_dict(d: dict) -> dict:
 
 @dataclass
 class UserConfig:
-    name: str = "Максим"
-    name_variants: list[str] = field(default_factory=lambda: ["Максим", "Макс"])
+    name: str = "Михаил"
+    name_variants: list[str] = field(default_factory=lambda: ["Михаил", "Миша"])
     language: str = "ru"
 
 
