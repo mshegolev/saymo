@@ -1,10 +1,13 @@
 user:
-  name: "Максим"
+  name: "Михаил"
   name_variants:
-    - "Максим"
-    - "Макс"
-    - "Maksim"
-    - "Max"
+    - "Михаил"
+    - "Миша"
+    - "Мишань"
+    - "Михал"
+    - "Миш"
+    - "Mikhail"
+    - "Misha"
     - "Shchegolev"
     - "Щеголев"
   language: "ru"
@@ -38,11 +41,16 @@ analysis:
     llm_interval_seconds: 5
     confidence_threshold: 0.8
   trigger_phrases:
-    - "Максим.*очередь"
-    - "Макс.*что.*делал"
-    - "your turn.*Max"
-    - "Maksim"
-    - "next.*Max"
+    - "Михаил"
+    - "Миша"
+    - "Мишань"
+    - "Миш[,.]"
+    - "Mikhail"
+    - "Misha"
+    - "Михаил.*очередь"
+    - "Миша.*что.*делал"
+    - "your turn.*Misha"
+    - "next.*Mikhail"
 
 tts:
   engine: "coqui_clone"  # Voice clone with YOUR voice via XTTS v2
@@ -82,8 +90,8 @@ jira:
 speech:
   style: "concise"
   language: "ru"
-  source: "obsidian"   # "obsidian" (read daily note) or "jira" (fetch tasks)
-  composer: "ollama"   # "ollama" (local) or "anthropic" (cloud)
+  source: "confluence"  # "confluence" (JIRA like update_confluence), "obsidian", or "jira"
+  composer: "ollama"    # "ollama" (local) or "anthropic" (cloud)
 
 safety:
   require_confirmation: true
