@@ -162,6 +162,7 @@ def check_glip_ready() -> dict:
         "chrome_running": False,
         "glip_tab_found": False,
         "tab_info": None,
+        "mic_is_blackhole": False,
     }
 
     # Check Chrome is running
@@ -177,4 +178,42 @@ def check_glip_ready() -> dict:
         result["glip_tab_found"] = tab is not None
         result["tab_info"] = tab
 
+    # Check system default input device
+    try:
+        import sounddevice as sd
+        default_input = sd.query_devices(kind="input")
+        if default_input and "blackhole" in default_input["name"].lower():
+            result["mic_is_blackhole"] = True
+    except Exception:
+        pass
+
     return result
+
+
+def set_system_input_to_blackhole() -> bool:
+    """Set macOS system input device to BlackHole 2ch via AppleScript.
+
+    Note: This changes the SYSTEM default mic, not the RingCentral in-app setting.
+    The user must select BlackHole 2ch in RingCentral audio settings manually.
+    """
+    script = '''
+    tell application "System Preferences"
+        reveal anchor "input" of pane id "com.apple.preference.sound"
+        activate
+    end tell
+    '''
+    _run_applescript(script)
+    logger.info("Opened Sound preferences → Input")
+    return True
+
+
+def get_mic_setup_instructions() -> str:
+    """Return instructions for setting up BlackHole as mic in RingCentral."""
+    return (
+        "In the RingCentral Video call:\n"
+        "  1. Click the ^ arrow next to the Mute button\n"
+        "  2. Under Microphone, select 'BlackHole 2ch (Virtual)'\n"
+        "  3. Keep Speakers as 'Plantronics' (so you hear others)\n"
+        "\n"
+        "This only needs to be done once per call."
+    )
