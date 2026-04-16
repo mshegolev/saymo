@@ -77,6 +77,30 @@ class CoquiCloneTTS:
         finally:
             Path(tmp_path).unlink(missing_ok=True)
 
+    async def synthesize_sentences(self, sentences: list[str], temperature: float = 0.65,
+                                    repetition_penalty: float = 2.0) -> list[bytes]:
+        """Synthesize each sentence separately. Returns list of WAV bytes per sentence."""
+        tts = await asyncio.to_thread(self._load_model)
+        results = []
+        for i, sent in enumerate(sentences):
+            if not sent.strip():
+                continue
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp_path = tmp.name
+            try:
+                logger.info(f"Sentence {i+1}/{len(sentences)}: {sent[:60]}...")
+                await asyncio.to_thread(
+                    tts.tts_to_file,
+                    text=sent,
+                    speaker_wav=str(self.voice_sample),
+                    language=self.language,
+                    file_path=tmp_path,
+                )
+                results.append(Path(tmp_path).read_bytes())
+            finally:
+                Path(tmp_path).unlink(missing_ok=True)
+        return results
+
     async def synthesize_to_device(self, text: str, device_name: str) -> None:
         """Synthesize with cloned voice and play to audio device."""
         audio_bytes = await self.synthesize(text)
