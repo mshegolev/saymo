@@ -17,12 +17,13 @@ def run_async(coro):
     return asyncio.run(coro)
 
 
-def _get_cached_audio_path():
+def _get_cached_audio_path(team: bool = False):
     """Path to today's pre-generated audio file."""
     from datetime import date
     from pathlib import Path
     cache_dir = Path.home() / ".saymo" / "audio_cache"
-    return cache_dir / f"{date.today().isoformat()}.wav"
+    suffix = "-team" if team else ""
+    return cache_dir / f"{date.today().isoformat()}{suffix}.wav"
 
 
 async def _play_cached_audio(config, audio_path, glip_mode: bool = False):
@@ -274,25 +275,26 @@ def dashboard(ctx):
 @click.option("--source", "-s", default=None, help="Source: obsidian, confluence, or jira")
 @click.option("--composer", default=None, help="Composer: ollama or anthropic")
 @click.option("--glip/--no-glip", default=False, help="Auto-control Glip mute via Chrome")
+@click.option("--team", is_flag=True, help="Use team scrum audio cache")
 @click.pass_context
-def speak(ctx, source, composer, glip):
+def speak(ctx, source, composer, glip, team):
     """Read daily notes, compose standup, and speak it.
 
-    With --glip: auto-switches to Chrome, unmutes, speaks, mutes back.
-    Checks that BlackHole 2ch is the playback device for Glip mode.
+    --team: use team scrum report (prepare --team).
+    --glip: auto-switches to Chrome, unmutes, speaks, mutes back.
     """
     config = ctx.obj["config"]
     if source:
         config.speech.source = source
     if composer:
         config.speech.composer = composer
-    run_async(_speak(config, glip_mode=glip))
+    run_async(_speak(config, glip_mode=glip, team_mode=team))
 
 
-async def _speak(config, glip_mode: bool = False):
+async def _speak(config, glip_mode: bool = False, team_mode: bool = False):
 
     # Step 0: Check for pre-generated audio cache (instant playback)
-    cached_audio = _get_cached_audio_path()
+    cached_audio = _get_cached_audio_path(team=team_mode)
     if cached_audio.exists():
         console.print(f"[green]Using cached audio from prepare ({cached_audio.stat().st_size // 1024} KB)[/]")
         await _play_cached_audio(config, cached_audio, glip_mode)
@@ -757,18 +759,20 @@ async def _test_ollama(config):
 
 @main.command()
 @click.option("--save/--no-save", default=True, help="Save summary to Obsidian daily note")
+@click.option("--team", is_flag=True, help="Team scrum mode (report on all team members)")
 @click.pass_context
-def prepare(ctx, save):
+def prepare(ctx, save, team):
     """Prepare standup summary BEFORE the daily meeting.
 
-    Fetches JIRA tasks (confluence mode), composes summary via Ollama,
-    optionally saves to today's Obsidian daily note, and prints the text.
-    Run this 5 min before your standup.
+    Default: personal standup (your tasks only).
+    --team: scrum with team leads (Михаил + Олег).
     """
     config = ctx.obj["config"]
-    # Force confluence source for prepare
     config.speech.source = "confluence"
-    run_async(_prepare(config, save))
+    if team:
+        run_async(_prepare_team(config, save))
+    else:
+        run_async(_prepare(config, save))
 
 
 async def _prepare(config, save: bool):
@@ -830,6 +834,88 @@ async def _prepare(config, save: bool):
         console.print("[yellow]Audio pre-generation failed, will generate on speak[/]")
 
     console.print("\n[dim]Run 'saymo speak' — instant playback from cache![/]")
+
+
+async def _prepare_team(config, save: bool):
+    """Prepare team scrum report (Михаил + Олег)."""
+    from saymo.jira_source.confluence_tasks import fetch_team_tasks, team_tasks_to_notes
+    from saymo.speech.ollama_composer import compose_standup_ollama, check_ollama_health, TEAM_SCRUM_PROMPT_RU
+
+    console.print("[bold blue]Fetching team tasks (Михаил + Олег)...[/]")
+    try:
+        team = await fetch_team_tasks(config.jira)
+    except Exception as e:
+        console.print(f"[bold red]JIRA fetch failed:[/] {e}")
+        return
+
+    for name, tasks in team.members.items():
+        console.print(f"[green]{name}:[/] {len(tasks.today)} today, {len(tasks.yesterday)} yesterday")
+        for t in tasks.today:
+            console.print(f"  {t.key}: {t.summary} [{t.status}]")
+
+    notes = team_tasks_to_notes(team)
+
+    if not notes.get("yesterday") and not notes.get("today"):
+        console.print("[yellow]No team tasks found.[/]")
+        return
+
+    # Compose with team prompt
+    console.print("\n[bold blue]Composing team scrum report...[/]")
+    if not await check_ollama_health(config.ollama.url):
+        console.print("[bold red]Ollama not running! Start with: ollama serve[/]")
+        return
+
+    text = await compose_standup_ollama(
+        notes,
+        model=config.ollama.model,
+        ollama_url=config.ollama.url,
+        language=config.speech.language,
+        prompt_override=TEAM_SCRUM_PROMPT_RU,
+    )
+
+    console.print(f"\n[bold green]Team scrum report:[/]\n\n{text}\n")
+
+    # Save to Obsidian
+    if save and config.obsidian.vault_path:
+        from datetime import date
+        from pathlib import Path
+
+        vault = Path(config.obsidian.vault_path)
+        subfolder = config.obsidian.subfolder
+        target = vault / subfolder if subfolder else vault
+        target.mkdir(parents=True, exist_ok=True)
+        note_path = target / (date.today().strftime(config.obsidian.date_format) + ".md")
+
+        section = f"\n\n## Team Scrum Report\n\n{text}\n"
+        if note_path.exists():
+            import re
+            existing = note_path.read_text(encoding="utf-8")
+            if "## Team Scrum Report" in existing:
+                existing = re.sub(
+                    r'## Team Scrum Report\n.*?(?=\n## |\Z)',
+                    f"## Team Scrum Report\n\n{text}\n",
+                    existing, flags=re.DOTALL,
+                )
+                note_path.write_text(existing, encoding="utf-8")
+            else:
+                with open(note_path, "a", encoding="utf-8") as f:
+                    f.write(section)
+        else:
+            note_path.write_text(f"# {date.today().isoformat()}\n{section}", encoding="utf-8")
+        console.print(f"[blue]Saved to: {note_path}[/]")
+
+    # Pre-generate audio
+    console.print("\n[bold blue]Pre-generating team audio...[/]")
+    from saymo.tts.text_normalizer import normalize_for_tts
+    normalized = normalize_for_tts(text)
+    audio_bytes = await _synthesize(config, normalized)
+    if audio_bytes:
+        audio_path = _get_cached_audio_path(team=True)
+        audio_path.parent.mkdir(parents=True, exist_ok=True)
+        audio_path.write_bytes(audio_bytes)
+        console.print(f"[green]Audio cached: {audio_path} ({len(audio_bytes) // 1024} KB)[/]")
+
+    console.print("\n[dim]Run 'saymo speak --team' for instant playback![/]")
 
 
 # ---------------------------------------------------------------------------
