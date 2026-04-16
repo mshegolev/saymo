@@ -174,8 +174,8 @@ async def _auto(config, whisper_model: str):
     capture = AudioCapture(
         device_name=config.audio.capture_device,
         sample_rate=16000,
-        chunk_seconds=4.0,    # 4s chunks
-        overlap_seconds=2.0,  # 2s overlap → new chunk every 2s
+        chunk_seconds=4.0,
+        overlap_seconds=2.0,
     )
     whisper = LocalWhisper(model_size=whisper_model, language=config.user.language)
     detector = TurnDetector(
@@ -183,39 +183,67 @@ async def _auto(config, whisper_model: str):
         cooldown_seconds=45.0,
     )
 
-    capture.start()
+    triggered = asyncio.Event()
+    speaking = asyncio.Event()
 
-    try:
+    async def _transcribe_loop():
+        """Continuously transcribe audio — runs parallel to capture."""
         while True:
-            chunk = await asyncio.to_thread(capture.get_chunk, 5.0)
+            if speaking.is_set():
+                # Don't transcribe while we're speaking (would hear ourselves)
+                await asyncio.sleep(0.5)
+                continue
+
+            chunk = await asyncio.to_thread(capture.get_chunk, 3.0)
             if chunk is None:
                 continue
 
-            # Skip silence (RMS too low)
             rms = float((chunk ** 2).mean() ** 0.5)
             if rms < 0.001:
                 continue
 
-            # Transcribe
             text = await asyncio.to_thread(whisper.transcribe, chunk)
             if not text.strip():
                 continue
 
-            # Show live transcript
             console.print(f"[dim]{text}[/]")
 
-            # Check trigger
             if detector.check(text):
-                console.print("\n[bold red]>>> NAME DETECTED! Speaking...[/]\n")
+                console.print("\n[bold red]>>> NAME DETECTED![/]\n")
+                triggered.set()
 
-                # Brief pause — let the person finish their sentence
-                await asyncio.sleep(2.0)
+    async def _trigger_loop():
+        """Wait for trigger, then speak."""
+        while True:
+            await triggered.wait()
+            triggered.clear()
 
-                # Speak via Glip
+            # Drain audio queue — don't process stale chunks after trigger
+            while not capture.audio_queue.empty():
+                try:
+                    capture.audio_queue.get_nowait()
+                except Exception:
+                    break
+
+            console.print("[bold blue]Speaking in 2 seconds...[/]")
+            await asyncio.sleep(2.0)
+
+            speaking.set()
+            try:
                 await _play_cached_audio(config, cached_audio, glip_mode=True)
-
-                console.print("\n[bold yellow]Listening again...[/]\n")
+            finally:
+                speaking.clear()
                 detector.reset_cooldown()
+
+            console.print("\n[bold yellow]Listening again...[/]\n")
+
+    capture.start()
+
+    try:
+        await asyncio.gather(
+            _transcribe_loop(),
+            _trigger_loop(),
+        )
 
     except KeyboardInterrupt:
         console.print("\n[dim]Stopped.[/]")
