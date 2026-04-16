@@ -93,3 +93,31 @@ class ChromeCallProvider:
     def activate_app(self, app_name: str) -> None:
         from saymo.glip_control import activate_app
         activate_app(app_name)
+
+    async def unmute_speak_mute(self, speak_fn, *args, **kwargs):
+        """Generic flow: activate tab → unmute → speak → mute → restore focus."""
+        import asyncio as _aio
+
+        previous_app = self.get_previous_app()
+        logger.info(f"Current app: {previous_app}")
+
+        if not self.activate_meeting():
+            raise RuntimeError(f"Cannot find {self.name} tab in Chrome")
+
+        await _aio.sleep(0.3)
+        self.toggle_mute()  # unmute
+        await _aio.sleep(0.5)
+
+        try:
+            await speak_fn(*args, **kwargs)
+        finally:
+            await _aio.sleep(0.3)
+            self.activate_meeting()  # re-focus in case it changed
+            await _aio.sleep(0.3)
+            self.toggle_mute()  # mute back
+            logger.info("Muted back")
+
+            await _aio.sleep(0.3)
+            if previous_app and previous_app != "Google Chrome":
+                self.activate_app(previous_app)
+                logger.info(f"Switched back to {previous_app}")

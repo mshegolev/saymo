@@ -143,19 +143,20 @@ meetings:
       - "Миша"
       - "QA"
 
+  mts_demo:
+    description: "Demo via MTS Link"
+    provider: "mts_link"
+    team: false
+    source: "confluence"
+    trigger_phrases:
+      - "Михаил"
+      - "Миша"
+
   # ── Future providers ──
   # zoom_weekly:
   #   description: "Weekly sync via Zoom"
   #   provider: "zoom"
   #   team: false
   #   source: "obsidian"
-  #   trigger_phrases:
-  #     - "Михаил"
-
-  # mts_demo:
-  #   description: "Demo via MTS Link"
-  #   provider: "mts_link"
-  #   team: false
-  #   source: "confluence"
   #   trigger_phrases:
   #     - "Михаил"

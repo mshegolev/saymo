@@ -52,26 +52,31 @@ def _rotate_audio_cache(max_days: int = 7):
         logging.getLogger("saymo").info(f"Rotated {removed} old audio cache files")
 
 
-async def _play_cached_audio(config, audio_path, glip_mode: bool = False):
-    """Play pre-generated audio file directly — no TTS needed."""
+async def _play_cached_audio(config, audio_path, provider_name: str | None = None):
+    """Play pre-generated audio file directly — no TTS needed.
+
+    If provider_name is given, uses that provider to unmute/mute via Chrome.
+    """
     audio_bytes = audio_path.read_bytes()
 
-    if glip_mode:
-        from saymo.glip_control import check_glip_ready, unmute_speak_mute, switch_rc_mic_to_blackhole
+    if provider_name:
+        from saymo.providers.factory import get_provider
         from saymo.audio.devices import find_device
+
+        provider = get_provider(provider_name)
 
         bh = find_device("BlackHole 2ch", kind="output")
         if not bh:
             console.print("[bold red]BlackHole 2ch not found![/]")
             return
 
-        status = check_glip_ready()
-        if not status["glip_tab_found"]:
-            console.print("[bold red]Glip call tab not found![/]")
+        status = provider.check_ready()
+        if not status.meeting_found:
+            console.print(f"[bold red]{provider.name} tab not found in Chrome![/]")
             return
 
-        console.print("[bold blue]Switching mic to BlackHole...[/]")
-        switch_rc_mic_to_blackhole()
+        # Try mic auto-switch (works for Glip, no-op for others)
+        provider.switch_mic("BlackHole 2ch")
 
         import asyncio as _aio
         await _aio.sleep(0.5)
@@ -86,8 +91,8 @@ async def _play_cached_audio(config, audio_path, glip_mode: bool = False):
                 from saymo.audio.playback import play_audio_bytes
                 await play_audio_bytes(audio_bytes, playback)
 
-        console.print("[bold blue]Unmute → Play → Mute[/]")
-        await unmute_speak_mute(_do_play)
+        console.print(f"[bold blue]{provider.name}: Unmute → Play → Mute[/]")
+        await provider.unmute_speak_mute(_do_play)
     else:
         playback = config.audio.playback_device
         monitor = config.audio.monitor_device
@@ -328,13 +333,15 @@ def dashboard(ctx):
 @click.option("--profile", "-p", default=None, help="Meeting profile: standup, scrum, retro")
 @click.option("--source", "-s", default=None, help="Source: obsidian, confluence, or jira")
 @click.option("--composer", default=None, help="Composer: ollama or anthropic")
-@click.option("--glip/--no-glip", default=False, help="Auto-control Glip mute via Chrome")
+@click.option("--provider", default=None, help="Call provider: glip, mts-link, zoom, teams, etc.")
+@click.option("--glip", is_flag=True, help="Shortcut for --provider glip")
 @click.option("--team", is_flag=True, help="Use team scrum audio cache")
 @click.pass_context
-def speak(ctx, profile, source, composer, glip, team):
+def speak(ctx, profile, source, composer, provider, glip, team):
     """Read daily notes, compose standup, and speak it.
 
     Use -p to select meeting profile (standup, scrum, retro).
+    Use --provider to auto-control mute via Chrome (e.g. --provider mts-link).
     """
     config = ctx.obj["config"]
     if profile:
@@ -344,22 +351,26 @@ def speak(ctx, profile, source, composer, glip, team):
             console.print(f"[dim]Available: {', '.join(config.list_meetings())}[/]")
             return
         team = meeting.team
+        if not provider:
+            provider = meeting.provider
         if not source:
             config.speech.source = meeting.source
+    if glip:
+        provider = "glip"
     if source:
         config.speech.source = source
     if composer:
         config.speech.composer = composer
-    run_async(_speak(config, glip_mode=glip, team_mode=team))
+    run_async(_speak(config, provider_name=provider, team_mode=team))
 
 
-async def _speak(config, glip_mode: bool = False, team_mode: bool = False):
+async def _speak(config, provider_name: str | None = None, team_mode: bool = False):
 
     # Step 0: Check for pre-generated audio cache (instant playback)
     cached_audio = _get_cached_audio_path(team=team_mode)
     if cached_audio.exists():
         console.print(f"[green]Using cached audio from prepare ({cached_audio.stat().st_size // 1024} KB)[/]")
-        await _play_cached_audio(config, cached_audio, glip_mode)
+        await _play_cached_audio(config, cached_audio, provider_name)
         return
 
     # Step 0b: Check if today's text summary exists in Obsidian
@@ -380,10 +391,12 @@ async def _speak(config, glip_mode: bool = False, team_mode: bool = False):
 
     console.print(f"\n[bold green]Standup text:[/]\n{standup_text}\n")
 
-    # Step 3: Glip pre-checks
-    if glip_mode:
-        from saymo.glip_control import check_glip_ready, unmute_speak_mute, get_mic_setup_instructions
+    # Step 3: Provider pre-checks (unmute → speak → mute via Chrome)
+    if provider_name:
+        from saymo.providers.factory import get_provider
         from saymo.audio.devices import find_device
+
+        provider = get_provider(provider_name)
 
         # Verify BlackHole 2ch exists
         bh = find_device("BlackHole 2ch", kind="output")
@@ -397,38 +410,28 @@ async def _speak(config, glip_mode: bool = False, team_mode: bool = False):
             console.print(f"[bold yellow]Switching playback to BlackHole 2ch (was: {config.audio.playback_device})[/]")
             config.audio.playback_device = "BlackHole 2ch"
 
-        # Check Chrome + Glip tab
-        status = check_glip_ready()
-        if not status["chrome_running"]:
-            console.print("[bold red]Chrome is not running![/]")
-            return
-        if not status["glip_tab_found"]:
-            console.print("[bold red]Glip call tab not found in Chrome![/]")
-            console.print("[dim]Open Glip call in Chrome first.[/]")
+        # Check Chrome tab
+        status = provider.check_ready()
+        if not status.meeting_found:
+            console.print(f"[bold red]{provider.name} tab not found in Chrome![/]")
+            console.print(f"[dim]Open {provider.name} call ({provider.url_pattern}) in Chrome first.[/]")
             return
 
-        console.print(f"[green]Glip tab found (window {status['tab_info'][0]}, tab {status['tab_info'][1]})[/]")
+        console.print(f"[green]{provider.name} tab found (window {status.tab_info[0]}, tab {status.tab_info[1]})[/]")
 
-        # Auto-switch mic to BlackHole 2ch in RingCentral
-        from saymo.glip_control import switch_rc_mic_to_blackhole
-        console.print("[bold blue]Switching Glip mic to BlackHole 2ch...[/]")
-        mic_ok = switch_rc_mic_to_blackhole()
+        # Auto-switch mic (provider-specific, no-op if not supported)
+        mic_ok = provider.switch_mic("BlackHole 2ch")
         if mic_ok:
             console.print("[green]Mic switched to BlackHole 2ch[/]")
-        else:
-            console.print("[bold yellow]Could not auto-switch mic. Please set manually:[/]")
-            console.print(get_mic_setup_instructions())
-            console.print()
 
         import asyncio as _aio
         await _aio.sleep(0.5)
-        console.print("[bold blue]Unmute → Speak → Mute (auto)[/]")
+        console.print(f"[bold blue]{provider.name}: Unmute → Speak → Mute[/]")
 
-        # Unmute → speak → mute
-        await unmute_speak_mute(_speak_text, config, standup_text)
+        await provider.unmute_speak_mute(_speak_text, config, standup_text)
         return
 
-    # Step 4: Speak without Glip automation
+    # Step 4: Speak without call automation
     await _speak_text(config, standup_text)
 
 
