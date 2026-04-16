@@ -37,7 +37,7 @@ def find_glip_tab() -> tuple[int, int] | None:
             repeat with t from 1 to tabCount
                 set tabURL to URL of tab t of window w
                 set tabTitle to title of tab t of window w
-                if tabURL contains "glip" or tabURL contains "ringcentral" or tabTitle contains "RingCentral" then
+                if tabURL contains "v.ringcentral.com/conf" or tabURL contains "glip.com" or tabTitle contains "RingCentral" then
                     return (w as text) & "," & (t as text)
                 end if
             end repeat
