@@ -30,6 +30,21 @@ def main(ctx, config_path, verbose):
 
 
 # ---------------------------------------------------------------------------
+# dashboard — interactive TUI
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.pass_context
+def dashboard(ctx):
+    """Interactive control panel with hotkeys.
+
+    Switch devices, engines, prepare & speak — all from one screen.
+    """
+    from saymo.tui import run_tui
+    run_tui(ctx.params.get("config_path"))
+
+
+# ---------------------------------------------------------------------------
 # speak — main command
 # ---------------------------------------------------------------------------
 
