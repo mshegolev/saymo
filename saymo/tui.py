@@ -20,7 +20,8 @@ HELP_TEXT = """\
 [bold]Hotkeys:[/]
   [cyan]p[/] — Prepare (fetch JIRA → compose summary)
   [cyan]s[/] — Speak (voice the prepared summary)
-  [cyan]g[/] — Glip speak (unmute → speak → mute via Chrome)
+  [cyan]g[/] — Provider speak (unmute → speak → mute via Chrome)
+  [cyan]c[/] — Cycle call provider (glip, mts_link, zoom, ...)
   [cyan]d[/] — Switch output device (cycle)
   [cyan]e[/] — Switch TTS engine (cycle)
   [cyan]t[/] — Test TTS (short phrase)
@@ -41,6 +42,12 @@ class SaymoTUI:
         self.summary_text: str = ""
         self.status: str = "Ready"
         self.is_speaking: bool = False
+
+        # Call providers
+        from saymo.providers.factory import list_providers
+        self.providers: list[str] = list_providers()
+        self.current_provider_idx: int = 0
+        self._sync_provider_idx()
 
         self._discover_devices()
         self._sync_engine_idx()
@@ -65,6 +72,19 @@ class SaymoTUI:
                 self.current_engine_idx = i
                 break
 
+    def _sync_provider_idx(self):
+        """Set provider index from first meeting profile or default to mts_link."""
+        meetings = self.config.meetings or {}
+        default_provider = "glip"
+        for m in meetings.values():
+            if isinstance(m, dict) and m.get("provider"):
+                default_provider = m["provider"]
+                break
+        for i, name in enumerate(self.providers):
+            if name == default_provider:
+                self.current_provider_idx = i
+                break
+
     @property
     def current_device(self) -> str:
         if self.output_devices:
@@ -74,6 +94,14 @@ class SaymoTUI:
     @property
     def current_engine(self) -> str:
         return TTS_ENGINES[self.current_engine_idx]
+
+    @property
+    def current_provider(self) -> str:
+        return self.providers[self.current_provider_idx]
+
+    def cycle_provider(self):
+        self.current_provider_idx = (self.current_provider_idx + 1) % len(self.providers)
+        self.status = f"Provider → {self.current_provider}"
 
     def cycle_device(self):
         if self.output_devices:
@@ -93,6 +121,7 @@ class SaymoTUI:
         tbl.add_column("key", style="bold cyan", width=12)
         tbl.add_column("value")
 
+        tbl.add_row("Provider:", self._provider_display())
         tbl.add_row("Device:", self._device_display())
         tbl.add_row("TTS Engine:", self._engine_display())
         tbl.add_row("Source:", self.config.speech.source)
@@ -136,6 +165,15 @@ class SaymoTUI:
         parts = []
         for i, name in enumerate(TTS_ENGINES):
             if i == self.current_engine_idx:
+                parts.append(f"[bold green]▸ {name}[/]")
+            else:
+                parts.append(f"[dim]  {name}[/]")
+        return "  ".join(parts)
+
+    def _provider_display(self) -> str:
+        parts = []
+        for i, name in enumerate(self.providers):
+            if i == self.current_provider_idx:
                 parts.append(f"[bold green]▸ {name}[/]")
             else:
                 parts.append(f"[dim]  {name}[/]")
@@ -227,14 +265,16 @@ async def _run_speak(tui: SaymoTUI):
         tui.is_speaking = False
 
 
-async def _run_glip_speak(tui: SaymoTUI):
-    """Speak via Glip: switch to Chrome → unmute → speak → mute → switch back."""
+async def _run_provider_speak(tui: SaymoTUI):
+    """Speak via selected provider: switch to Chrome → unmute → speak → mute → switch back."""
     if not tui.summary_text:
         tui.status = "No summary! Press [p] first"
         return
 
-    from saymo.glip_control import check_glip_ready, unmute_speak_mute
+    from saymo.providers.factory import get_provider
     from saymo.audio.devices import find_device
+
+    provider = get_provider(tui.current_provider)
 
     # Check BlackHole
     bh = find_device("BlackHole 2ch", kind="output")
@@ -242,13 +282,10 @@ async def _run_glip_speak(tui: SaymoTUI):
         tui.status = "BlackHole 2ch not found! brew install blackhole-2ch"
         return
 
-    # Check Glip tab
-    status = check_glip_ready()
-    if not status["chrome_running"]:
-        tui.status = "Chrome not running!"
-        return
-    if not status["glip_tab_found"]:
-        tui.status = "Glip tab not found in Chrome!"
+    # Check provider tab
+    status = provider.check_ready()
+    if not status.meeting_found:
+        tui.status = f"{provider.name} tab not found in Chrome!"
         return
 
     # Force BlackHole as output
@@ -259,7 +296,7 @@ async def _run_glip_speak(tui: SaymoTUI):
     text = normalize_for_tts(tui.summary_text)
 
     tui.is_speaking = True
-    tui.status = "Glip: unmute → speak → mute..."
+    tui.status = f"{provider.name}: unmute → speak → mute..."
 
     async def _do_speak():
         if tui.current_engine == "coqui_clone":
@@ -276,10 +313,10 @@ async def _run_glip_speak(tui: SaymoTUI):
             await eng.synthesize_to_device(text, "BlackHole 2ch")
 
     try:
-        await unmute_speak_mute(_do_speak)
-        tui.status = "Glip: done! (muted back)"
+        await provider.unmute_speak_mute(_do_speak)
+        tui.status = f"{provider.name}: done! (muted back)"
     except Exception as e:
-        tui.status = f"Glip error: {e}"
+        tui.status = f"{provider.name} error: {e}"
     finally:
         tui.is_speaking = False
         tui.config.audio.playback_device = saved_device
@@ -359,7 +396,9 @@ def run_tui(config_path: str | None = None):
             elif key == "s":
                 run_async_task(_run_speak(tui))
             elif key == "g":
-                run_async_task(_run_glip_speak(tui))
+                run_async_task(_run_provider_speak(tui))
+            elif key == "c":
+                tui.cycle_provider()
             elif key == "d":
                 tui.cycle_device()
             elif key == "e":
