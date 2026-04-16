@@ -7,5 +7,6 @@
 | [003](003-prepare-speak-separation.md) | Separation of Prepare and Speak Phases | Accepted |
 | [004](004-voice-cloning-xtts-v2.md) | Voice Cloning with Coqui TTS XTTS v2 | Accepted |
 | [005](005-auto-mode-parallel-pipeline.md) | Auto Mode — Parallel Capture/Transcription Pipeline | Accepted |
-| [006](006-glip-chrome-automation.md) | RingCentral Video Automation via Chrome AppleScript | Accepted |
+| [006](006-glip-chrome-automation.md) | Glip Chrome Automation via AppleScript + JS | Accepted |
 | [007](007-task-sources-and-text-generation.md) | Task Sources and Standup Text Generation | Accepted |
+| [008](008-multi-provider-chrome-base.md) | Multi-Provider Architecture via ChromeCallProvider | Accepted |
