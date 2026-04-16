@@ -62,11 +62,42 @@ RULES:
 """
 
 
+TEAM_SCRUM_PROMPT_RU = """\
+Ты — помощник для скрам-митингов. Составь краткий отчёт по команде QA на русском языке.
+
+Задачи команды за вчера ({yesterday_date}):
+---
+{yesterday_notes}
+---
+
+Задачи команды на сегодня ({today_date}):
+---
+{today_notes}
+---
+
+ВАЖНЫЕ ПРАВИЛА:
+- ОБЯЗАТЕЛЬНО: про задачи Михаила говори от ПЕРВОГО лица: "Я работал...", "Я занимался...", "Я продолжу..."
+- НИКОГДА не пиши "Михаил работал" — только "Я работал"
+- Про Олега говори от третьего лица: "Олег работал над...", "Олег занимался..."
+- По каждому человеку кратко: 1-2 предложения. Группируй задачи.
+- НЕ используй номера тикетов и версии билдов.
+- IT-термины на русском: смоук-тесты, стейдж, деплой, хотфикс, пайплайн, автотесты.
+- Названия продуктов как есть: NetSuite, OpenMetadata, FedRamp.
+- Если есть блокеры — упомяни в конце.
+- Общая длительность — не больше 45 секунд при чтении вслух.
+- БЕЗ списков и нумерации — сплошной текст.
+
+Пример хорошего отчёта:
+"По нашей команде: вчера я занимался верификацией хотфиксов на стейдже и ревью автотестов для FedRamp. Олег работал над смоук-тестами NS2 и тестированием нового пайплайна. Сегодня я продолжу работу над валидацией данных в OpenMetadata, а Олег займётся автоматизацией тестов для Customer 360. Из блокеров — периодическая недоступность NetSuite sandbox."
+"""
+
+
 async def compose_standup_ollama(
     notes: dict,
     model: str = "qwen2.5-coder:7b",
     ollama_url: str = "http://localhost:11434",
     language: str = "ru",
+    prompt_override: str | None = None,
 ) -> str:
     """Compose standup text using local Ollama.
 
@@ -81,7 +112,12 @@ async def compose_standup_ollama(
     yesterday_date = notes.get("yesterday_date", "вчера")
     today_date = notes.get("today_date", "сегодня")
 
-    template = STANDUP_PROMPT_RU if language == "ru" else STANDUP_PROMPT_EN
+    if prompt_override:
+        template = prompt_override
+    elif language == "ru":
+        template = STANDUP_PROMPT_RU
+    else:
+        template = STANDUP_PROMPT_EN
     prompt = template.format(
         yesterday_notes=yesterday_notes,
         today_notes=today_notes,
