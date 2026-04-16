@@ -49,24 +49,25 @@ def dashboard(ctx):
 # ---------------------------------------------------------------------------
 
 @main.command()
-@click.option("--source", "-s", default=None, help="Source: obsidian or jira")
+@click.option("--source", "-s", default=None, help="Source: obsidian, confluence, or jira")
 @click.option("--composer", default=None, help="Composer: ollama or anthropic")
+@click.option("--glip/--no-glip", default=False, help="Auto-control Glip mute via Chrome")
 @click.pass_context
-def speak(ctx, source, composer):
+def speak(ctx, source, composer, glip):
     """Read daily notes, compose standup, and speak it.
 
-    Fully local by default: Obsidian notes + Ollama + macOS say.
+    With --glip: auto-switches to Chrome, unmutes, speaks, mutes back.
+    Checks that BlackHole 2ch is the playback device for Glip mode.
     """
     config = ctx.obj["config"]
     if source:
         config.speech.source = source
     if composer:
         config.speech.composer = composer
-    run_async(_speak(config))
+    run_async(_speak(config, glip_mode=glip))
 
 
-async def _speak(config):
-    from saymo.tts.macos_say import MacOSSay
+async def _speak(config, glip_mode: bool = False):
 
     # Step 1: Get standup content
     notes_text = await _get_standup_content(config)
@@ -80,7 +81,40 @@ async def _speak(config):
 
     console.print(f"\n[bold green]Standup text:[/]\n{standup_text}\n")
 
-    # Step 3: Speak it
+    # Step 3: Glip pre-checks
+    if glip_mode:
+        from saymo.glip_control import check_glip_ready, unmute_speak_mute
+        from saymo.audio.devices import find_device
+
+        # Verify BlackHole is the playback device
+        bh = find_device("BlackHole 2ch", kind="output")
+        if not bh:
+            console.print("[bold red]BlackHole 2ch not found![/]")
+            console.print("Install: brew install blackhole-2ch")
+            return
+
+        if "blackhole" not in config.audio.playback_device.lower():
+            console.print(f"[bold yellow]Switching playback to BlackHole 2ch (was: {config.audio.playback_device})[/]")
+            config.audio.playback_device = "BlackHole 2ch"
+
+        # Check Chrome + Glip tab
+        status = check_glip_ready()
+        if not status["chrome_running"]:
+            console.print("[bold red]Chrome is not running![/]")
+            return
+        if not status["glip_tab_found"]:
+            console.print("[bold red]Glip tab not found in Chrome![/]")
+            console.print("[dim]Open a Glip/RingCentral call in Chrome first.[/]")
+            return
+
+        console.print(f"[green]Glip tab found (window {status['tab_info'][0]}, tab {status['tab_info'][1]})[/]")
+        console.print("[bold blue]Unmute → Speak → Mute (auto)[/]")
+
+        # Unmute → speak → mute
+        await unmute_speak_mute(_speak_text, config, standup_text)
+        return
+
+    # Step 4: Speak without Glip automation
     await _speak_text(config, standup_text)
 
 
