@@ -115,6 +115,110 @@ def main(ctx, config_path, verbose):
 
 
 # ---------------------------------------------------------------------------
+# auto — listen for name trigger and speak automatically
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.option("--model", "-m", default="small", help="Whisper model: tiny, small, medium")
+@click.pass_context
+def auto(ctx):
+    """Listen to Glip call, detect your name, auto-speak.
+
+    Captures audio from BlackHole 16ch, transcribes with faster-whisper,
+    triggers speak --glip when your name is detected.
+    Requires: prepare (run beforehand to cache audio).
+    """
+    config = ctx.obj["config"]
+    run_async(_auto(config, ctx.params["model"]))
+
+
+async def _auto(config, whisper_model: str):
+    import asyncio
+
+    # Pre-checks
+    cached_audio = _get_cached_audio_path()
+    if not cached_audio.exists():
+        console.print("[bold red]No cached audio! Run 'saymo prepare' first.[/]")
+        return
+
+    from saymo.audio.devices import find_device
+    capture_dev = find_device(config.audio.capture_device, kind="input")
+    if not capture_dev:
+        console.print(f"[bold red]Capture device not found: {config.audio.capture_device}[/]")
+        console.print("[dim]Need BlackHole 16ch for capturing Glip audio[/]")
+        return
+
+    from saymo.glip_control import check_glip_ready
+    status = check_glip_ready()
+    if not status["glip_tab_found"]:
+        console.print("[bold red]Glip tab not found in Chrome![/]")
+        return
+
+    console.print("[bold green]Saymo AUTO mode[/]")
+    console.print(f"  Listening on: {config.audio.capture_device}")
+    console.print(f"  Whisper model: {whisper_model}")
+    console.print(f"  Triggers: {', '.join(config.user.name_variants)}")
+    console.print(f"  Cached audio: {cached_audio.stat().st_size // 1024} KB")
+    console.print()
+    console.print("[dim]Press Ctrl+C to stop[/]")
+    console.print("[bold yellow]Listening...[/]\n")
+
+    # Init components
+    from saymo.audio.capture import AudioCapture
+    from saymo.stt.whisper_local import LocalWhisper
+    from saymo.analysis.turn_detector import TurnDetector
+
+    capture = AudioCapture(
+        device_name=config.audio.capture_device,
+        sample_rate=16000,
+        chunk_seconds=3.0,
+    )
+    whisper = LocalWhisper(model_size=whisper_model, language=config.user.language)
+    detector = TurnDetector(
+        name_variants=config.user.name_variants,
+        cooldown_seconds=60.0,
+    )
+
+    capture.start()
+
+    try:
+        while True:
+            chunk = await asyncio.to_thread(capture.get_chunk, 5.0)
+            if chunk is None:
+                continue
+
+            # Skip silence (RMS too low)
+            rms = float((chunk ** 2).mean() ** 0.5)
+            if rms < 0.005:
+                continue
+
+            # Transcribe
+            text = await asyncio.to_thread(whisper.transcribe, chunk)
+            if not text.strip():
+                continue
+
+            console.print(f"[dim]{text}[/]")
+
+            # Check trigger
+            if detector.check(text):
+                console.print("\n[bold red]>>> NAME DETECTED! Speaking...[/]\n")
+
+                # Small delay — let the person finish saying your name
+                await asyncio.sleep(1.5)
+
+                # Speak via Glip
+                await _play_cached_audio(config, cached_audio, glip_mode=True)
+
+                console.print("\n[bold yellow]Listening again...[/]\n")
+                detector.reset_cooldown()
+
+    except KeyboardInterrupt:
+        console.print("\n[dim]Stopped.[/]")
+    finally:
+        capture.stop()
+
+
+# ---------------------------------------------------------------------------
 # dashboard — interactive TUI
 # ---------------------------------------------------------------------------
 
