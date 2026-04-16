@@ -20,6 +20,7 @@ HELP_TEXT = """\
 [bold]Hotkeys:[/]
   [cyan]p[/] — Prepare (fetch JIRA → compose summary)
   [cyan]s[/] — Speak (voice the prepared summary)
+  [cyan]g[/] — Glip speak (unmute → speak → mute via Chrome)
   [cyan]d[/] — Switch output device (cycle)
   [cyan]e[/] — Switch TTS engine (cycle)
   [cyan]t[/] — Test TTS (short phrase)
@@ -226,6 +227,64 @@ async def _run_speak(tui: SaymoTUI):
         tui.is_speaking = False
 
 
+async def _run_glip_speak(tui: SaymoTUI):
+    """Speak via Glip: switch to Chrome → unmute → speak → mute → switch back."""
+    if not tui.summary_text:
+        tui.status = "No summary! Press [p] first"
+        return
+
+    from saymo.glip_control import check_glip_ready, unmute_speak_mute
+    from saymo.audio.devices import find_device
+
+    # Check BlackHole
+    bh = find_device("BlackHole 2ch", kind="output")
+    if not bh:
+        tui.status = "BlackHole 2ch not found! brew install blackhole-2ch"
+        return
+
+    # Check Glip tab
+    status = check_glip_ready()
+    if not status["chrome_running"]:
+        tui.status = "Chrome not running!"
+        return
+    if not status["glip_tab_found"]:
+        tui.status = "Glip tab not found in Chrome!"
+        return
+
+    # Force BlackHole as output
+    saved_device = tui.current_device
+    tui.config.audio.playback_device = "BlackHole 2ch"
+
+    from saymo.tts.text_normalizer import normalize_for_tts
+    text = normalize_for_tts(tui.summary_text)
+
+    tui.is_speaking = True
+    tui.status = "Glip: unmute → speak → mute..."
+
+    async def _do_speak():
+        if tui.current_engine == "coqui_clone":
+            from saymo.tts.coqui_clone import CoquiCloneTTS
+            eng = CoquiCloneTTS(language=tui.config.speech.language)
+            await eng.synthesize_to_device(text, "BlackHole 2ch")
+        elif tui.current_engine == "piper":
+            from saymo.tts.piper_tts import PiperTTS
+            eng = PiperTTS(model_path=tui.config.tts.piper.model_path or None)
+            await eng.synthesize_to_device(text, "BlackHole 2ch")
+        elif tui.current_engine == "macos_say":
+            from saymo.tts.macos_say import MacOSSay
+            eng = MacOSSay(tui.config.tts.macos_say)
+            await eng.synthesize_to_device(text, "BlackHole 2ch")
+
+    try:
+        await unmute_speak_mute(_do_speak)
+        tui.status = "Glip: done! (muted back)"
+    except Exception as e:
+        tui.status = f"Glip error: {e}"
+    finally:
+        tui.is_speaking = False
+        tui.config.audio.playback_device = saved_device
+
+
 async def _run_test_tts(tui: SaymoTUI):
     """Quick TTS test."""
     tui.status = f"Testing TTS ({tui.current_engine})..."
@@ -299,6 +358,8 @@ def run_tui(config_path: str | None = None):
                 run_async_task(_run_prepare(tui))
             elif key == "s":
                 run_async_task(_run_speak(tui))
+            elif key == "g":
+                run_async_task(_run_glip_speak(tui))
             elif key == "d":
                 tui.cycle_device()
             elif key == "e":
