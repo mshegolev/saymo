@@ -696,6 +696,125 @@ async def _prepare(config, save: bool):
 
 
 # ---------------------------------------------------------------------------
+# review — listen and fix audio quality
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.pass_context
+def review(ctx):
+    """Review cached audio sentence-by-sentence.
+
+    Plays each sentence, asks if quality is OK.
+    Bad sentences get regenerated with adjusted parameters.
+    """
+    run_async(_review(ctx.obj["config"]))
+
+
+async def _review(config):
+    import io
+    import numpy as np
+    import sounddevice as sd
+    import soundfile as sf
+    from saymo.tts.text_normalizer import normalize_for_tts
+    from saymo.tts.coqui_clone import CoquiCloneTTS
+
+    # Load text
+    text = _load_cached_summary(config)
+    if not text:
+        console.print("[yellow]No summary found. Run 'saymo prepare' first.[/]")
+        return
+
+    normalized = normalize_for_tts(text)
+
+    # Split into sentences
+    import re
+    sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', normalized) if s.strip()]
+
+    console.print(f"[bold blue]Review mode — {len(sentences)} sentences[/]")
+    console.print("[dim]For each sentence: [y]=ok  [r]=regenerate  [s]=skip  [q]=quit[/]\n")
+
+    clone = CoquiCloneTTS(language=config.speech.language)
+    device_name = config.audio.playback_device
+    from saymo.audio.devices import find_device
+    dev = find_device(device_name, kind="output")
+    device_idx = dev.index if dev else None
+
+    # Generate per-sentence
+    console.print("[bold blue]Generating sentences...[/]")
+    sentence_audio = await clone.synthesize_sentences(sentences)
+
+    # Review loop
+    final_chunks = []
+    for i, (sent, audio_bytes) in enumerate(zip(sentences, sentence_audio)):
+        console.print(f"\n[bold cyan]Sentence {i+1}/{len(sentences)}:[/]")
+        console.print(f"  {sent[:100]}{'...' if len(sent) > 100 else ''}")
+
+        while True:
+            # Play
+            data, sr = sf.read(io.BytesIO(audio_bytes))
+            await asyncio.to_thread(sd.play, data, samplerate=sr, device=device_idx)
+            await asyncio.to_thread(sd.wait)
+
+            console.print("  [y]=ok  [r]=regenerate  [p]=replay  [q]=quit")
+            key = await asyncio.to_thread(_review_read_key)
+
+            if key == "y":
+                final_chunks.append((data, sr))
+                console.print("  [green]Accepted[/]")
+                break
+            elif key == "r":
+                console.print("  [yellow]Regenerating...[/]")
+                new_audio = await clone.synthesize_sentences([sent])
+                if new_audio:
+                    audio_bytes = new_audio[0]
+                    console.print("  [blue]Regenerated — playing...[/]")
+                # Loop back to play
+            elif key == "p":
+                pass  # replay
+            elif key in ("q", "s"):
+                if key == "s":
+                    final_chunks.append((data, sr))
+                    console.print("  [dim]Skipped (kept)[/]")
+                break
+            elif key == "\x03":
+                return
+
+        if key == "q":
+            break
+
+    if not final_chunks:
+        console.print("[yellow]No audio to save[/]")
+        return
+
+    # Concatenate all accepted chunks
+    sample_rate = final_chunks[0][1]
+    all_audio = np.concatenate([chunk for chunk, _ in final_chunks])
+
+    # Save
+    audio_path = _get_cached_audio_path()
+    audio_path.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(audio_path), all_audio, sample_rate)
+
+    console.print(f"\n[bold green]Saved reviewed audio: {audio_path} ({audio_path.stat().st_size // 1024} KB)[/]")
+    console.print(f"[dim]Accepted {len(final_chunks)}/{len(sentences)} sentences[/]")
+
+
+def _review_read_key() -> str:
+    """Read a single keypress for review mode."""
+    import sys
+    import tty
+    import termios
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    return ch
+
+
+# ---------------------------------------------------------------------------
 # voice clone commands
 # ---------------------------------------------------------------------------
 
