@@ -17,6 +17,32 @@ def run_async(coro):
     return asyncio.run(coro)
 
 
+def _load_cached_summary(config) -> str | None:
+    """Check if today's Obsidian note already has a Standup Summary section."""
+    if not config.obsidian.vault_path:
+        return None
+
+    import re
+    from datetime import date
+    from pathlib import Path
+
+    vault = Path(config.obsidian.vault_path)
+    subfolder = config.obsidian.subfolder
+    target = vault / subfolder if subfolder else vault
+    note_path = target / (date.today().strftime(config.obsidian.date_format) + ".md")
+
+    if not note_path.exists():
+        return None
+
+    content = note_path.read_text(encoding="utf-8")
+    match = re.search(r'## Standup Summary\s*\n(.*?)(?=\n## |\Z)', content, re.DOTALL)
+    if match:
+        text = match.group(1).strip()
+        if text:
+            return text
+    return None
+
+
 @click.group()
 @click.option("--config", "-c", "config_path", default=None, help="Path to config.yaml")
 @click.option("--verbose", "-v", is_flag=True, help="Enable debug logging")
@@ -69,15 +95,21 @@ def speak(ctx, source, composer, glip):
 
 async def _speak(config, glip_mode: bool = False):
 
-    # Step 1: Get standup content
-    notes_text = await _get_standup_content(config)
-    if notes_text is None:
-        return
+    # Step 0: Check if today's summary already exists in Obsidian
+    standup_text = _load_cached_summary(config)
 
-    # Step 2: Compose standup text with LLM
-    standup_text = await _compose_text(config, notes_text)
-    if standup_text is None:
-        return
+    if standup_text:
+        console.print("[green]Using cached summary from Obsidian (already prepared)[/]")
+    else:
+        # Step 1: Get standup content
+        notes_text = await _get_standup_content(config)
+        if notes_text is None:
+            return
+
+        # Step 2: Compose standup text with LLM
+        standup_text = await _compose_text(config, notes_text)
+        if standup_text is None:
+            return
 
     console.print(f"\n[bold green]Standup text:[/]\n{standup_text}\n")
 
