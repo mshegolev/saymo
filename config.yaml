@@ -15,6 +15,7 @@ user:
 audio:
   capture_device: "BlackHole 16ch"
   playback_device: "Plantronics Blackwire 3220 Series"  # Change to "BlackHole 2ch" for Glip
+  monitor_device: "Plantronics Blackwire 3220 Series"   # Hear yourself when speaking via BlackHole
   sample_rate: 16000
   channels: 1
   chunk_size: 1024
