@@ -37,7 +37,7 @@ def find_glip_tab() -> tuple[int, int] | None:
             repeat with t from 1 to tabCount
                 set tabURL to URL of tab t of window w
                 set tabTitle to title of tab t of window w
-                if tabURL contains "v.ringcentral.com/conf" or tabURL contains "glip.com" or tabTitle contains "RingCentral" then
+                if tabURL contains "v.ringcentral.com/conf" or tabURL contains "glip.com" then
                     return (w as text) & "," & (t as text)
                 end if
             end repeat
@@ -203,124 +203,94 @@ def switch_rc_mic_to_blackhole() -> bool:
 
     w, t = tab
 
-    # Step 1: Click the audio settings arrow (^ button near mute)
-    # Use JavaScript to find and click UI elements in the RingCentral web app
-    js_click_audio_menu = r'''
-    (function() {
-        // Find the mute/audio area — look for the dropdown arrow near mute button
-        var btns = document.querySelectorAll('[data-test-automation-id]');
-        var audioBtn = null;
-
-        // Try known RingCentral automation IDs
-        var candidates = [
-            'audio-dropdown-button',
-            'audio-menu-button',
-            'mute-dropdown',
-            'audio-settings-button',
-        ];
-
-        for (var c of candidates) {
-            var el = document.querySelector('[data-test-automation-id="' + c + '"]');
-            if (el) { audioBtn = el; break; }
-        }
-
-        // Fallback: find button with aria-label containing "audio" or "microphone"
-        if (!audioBtn) {
-            var allBtns = document.querySelectorAll('button, [role="button"]');
-            for (var b of allBtns) {
-                var label = (b.getAttribute('aria-label') || '').toLowerCase();
-                var title = (b.getAttribute('title') || '').toLowerCase();
-                if (label.includes('audio setting') || label.includes('microphone')
-                    || title.includes('audio setting') || label.includes('select audio')) {
-                    audioBtn = b;
-                    break;
-                }
-            }
-        }
-
-        // Fallback 2: find the small arrow/chevron button near the mute button
-        if (!audioBtn) {
-            var muteBtn = document.querySelector('[data-test-automation-id*="mute"]');
-            if (muteBtn) {
-                // The dropdown arrow is usually the next sibling or parent's next child
-                var parent = muteBtn.parentElement;
-                var siblings = parent ? parent.querySelectorAll('button, [role="button"]') : [];
-                for (var s of siblings) {
-                    if (s !== muteBtn) { audioBtn = s; break; }
-                }
-            }
-        }
-
-        if (audioBtn) {
-            audioBtn.click();
-            return 'clicked_audio_menu';
-        }
-        return 'audio_menu_not_found';
-    })()
-    '''
-
-    # Execute JS to open audio menu
-    result = _run_applescript_js(w, t, js_click_audio_menu)
+    # Step 1: Click "Audio menu" button (^ dropdown arrow)
+    js_open = (
+        '(function() {'
+        ' var btn = document.querySelector(\'[aria-label="Audio menu"]\');'
+        ' if (btn) { btn.click(); return "clicked"; }'
+        ' return "not_found";'
+        '})()'
+    )
+    result = _run_applescript_js(w, t, js_open)
     logger.info(f"Open audio menu: {result}")
 
-    if not result or "error" in result.lower() or "not_found" in result:
-        logger.warning("Could not find audio menu button, trying AppleScript GUI")
+    if not result or "not_found" in result or "missing" in result.lower():
+        logger.warning("Could not find audio menu button, trying GUI fallback")
         return _switch_mic_via_gui()
 
     import time
-    time.sleep(1)
+    time.sleep(2)
 
-    # Step 2: Click BlackHole 2ch in the dropdown
-    js_select_blackhole = r'''
-    (function() {
-        // Look for menu items / list items containing "BlackHole 2ch"
-        var items = document.querySelectorAll(
-            '[role="menuitem"], [role="option"], [role="listbox"] *, li, [class*="menu-item"], [class*="option"]'
-        );
-        for (var item of items) {
-            var text = item.textContent || '';
-            if (text.includes('BlackHole 2ch')) {
-                item.click();
-                return 'selected_blackhole';
-            }
-        }
-
-        // Broader search: any clickable element with BlackHole text
-        var all = document.querySelectorAll('*');
-        for (var el of all) {
-            if (el.children.length === 0 && (el.textContent || '').includes('BlackHole 2ch')) {
-                el.click();
-                return 'selected_blackhole_broad';
-            }
-        }
-
-        return 'blackhole_not_found';
-    })()
-    '''
-
-    result2 = _run_applescript_js(w, t, js_select_blackhole)
+    # Step 2: Click BlackHole 2ch in the Microphone section (first half of radio list)
+    js_select = (
+        '(function() {'
+        ' var radios = document.querySelectorAll(\'li[role="radio"]\');'
+        ' if (radios.length === 0) return "no_radios";'
+        ' var micCount = Math.floor(radios.length / 2);'
+        ' for (var i = 0; i < micCount; i++) {'
+        '   var text = (radios[i].textContent || "").trim();'
+        '   if (text.includes("BlackHole 2ch")) {'
+        '     if (radios[i].classList.contains("media-buttons__opt--selected"))'
+        '       return "already_selected";'
+        '     radios[i].click();'
+        '     return "selected";'
+        '   }'
+        ' }'
+        ' return "not_found";'
+        '})()'
+    )
+    result2 = _run_applescript_js(w, t, js_select)
     logger.info(f"Select BlackHole: {result2}")
 
-    if "selected" in result2:
+    if result2 and ("selected" in result2 or "already" in result2):
+        # Close the dropdown
+        time.sleep(0.3)
+        _run_applescript_js(w, t, "document.body.click()")
         return True
 
-    # If JS approach failed, try GUI scripting
+    # JS approach failed — try GUI fallback
     return _switch_mic_via_gui()
 
 
 def _run_applescript_js(window: int, tab: int, js: str) -> str:
-    """Execute JavaScript in a Chrome tab via AppleScript."""
-    # Escape for AppleScript string embedding
-    escaped_js = js.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
-    script = (
-        'tell application "Google Chrome"\n'
-        f"    tell window {window}\n"
-        f'        set jsResult to execute tab {tab} javascript "{escaped_js}"\n'
-        "        return jsResult\n"
-        "    end tell\n"
-        "end tell"
-    )
-    return _run_applescript(script)
+    """Execute JavaScript in a Chrome tab via AppleScript.
+
+    Uses a temp file for long scripts to avoid escaping issues.
+    """
+    import tempfile
+    from pathlib import Path
+
+    # For short scripts, inline works fine
+    if len(js) < 200 and '"' not in js:
+        escaped_js = js.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+        script = (
+            'tell application "Google Chrome"\n'
+            f"    tell window {window}\n"
+            f'        set jsResult to execute tab {tab} javascript "{escaped_js}"\n'
+            "        return jsResult\n"
+            "    end tell\n"
+            "end tell"
+        )
+        return _run_applescript(script)
+
+    # For long/complex scripts, write to temp file and read via shell
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
+        f.write(js.replace("\n", " "))
+        js_path = f.name
+
+    try:
+        script = (
+            f'set jsCode to do shell script "cat {js_path}"\n'
+            'tell application "Google Chrome"\n'
+            f"    tell window {window}\n"
+            f"        set jsResult to execute tab {tab} javascript jsCode\n"
+            "        return jsResult\n"
+            "    end tell\n"
+            "end tell"
+        )
+        return _run_applescript(script)
+    finally:
+        Path(js_path).unlink(missing_ok=True)
 
 
 def _switch_mic_via_gui() -> bool:
