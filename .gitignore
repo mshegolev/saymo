@@ -7,3 +7,7 @@ build/
 *.egg
 .env
 .venv/
+*.wav
+*.mp3
+*.aiff
+.DS_Store
