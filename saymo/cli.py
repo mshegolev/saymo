@@ -26,6 +26,32 @@ def _get_cached_audio_path(team: bool = False):
     return cache_dir / f"{date.today().isoformat()}{suffix}.wav"
 
 
+def _rotate_audio_cache(max_days: int = 7):
+    """Delete audio cache files older than max_days."""
+    from datetime import date, timedelta
+    from pathlib import Path
+
+    cache_dir = Path.home() / ".saymo" / "audio_cache"
+    if not cache_dir.exists():
+        return
+
+    cutoff = date.today() - timedelta(days=max_days)
+    removed = 0
+    for f in cache_dir.glob("*.wav"):
+        # Parse date from filename: 2026-04-16.wav or 2026-04-16-team.wav
+        try:
+            date_str = f.stem.split("-team")[0]  # strip -team suffix
+            file_date = date.fromisoformat(date_str)
+            if file_date < cutoff:
+                f.unlink()
+                removed += 1
+        except ValueError:
+            continue
+
+    if removed:
+        logging.getLogger("saymo").info(f"Rotated {removed} old audio cache files")
+
+
 async def _play_cached_audio(config, audio_path, glip_mode: bool = False):
     """Play pre-generated audio file directly — no TTS needed."""
     audio_bytes = audio_path.read_bytes()
@@ -776,6 +802,7 @@ def prepare(ctx, save, team):
 
 
 async def _prepare(config, save: bool):
+    _rotate_audio_cache()
     notes = await _get_standup_content(config)
     if notes is None:
         return
@@ -838,6 +865,7 @@ async def _prepare(config, save: bool):
 
 async def _prepare_team(config, save: bool):
     """Prepare team scrum report (Михаил + Олег)."""
+    _rotate_audio_cache()
     from saymo.jira_source.confluence_tasks import fetch_team_tasks, team_tasks_to_notes
     from saymo.speech.ollama_composer import compose_standup_ollama, check_ollama_health, TEAM_SCRUM_PROMPT_RU
 
