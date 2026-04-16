@@ -1,0 +1,93 @@
+user:
+  name: "Максим"
+  name_variants:
+    - "Максим"
+    - "Макс"
+    - "Maksim"
+    - "Max"
+    - "Shchegolev"
+    - "Щеголев"
+  language: "ru"
+
+audio:
+  capture_device: "BlackHole 16ch"
+  playback_device: "Plantronics Blackwire 3220 Series"  # Change to "BlackHole 2ch" for Glip
+  sample_rate: 16000
+  channels: 1
+  chunk_size: 1024
+
+stt:
+  engine: "deepgram"
+  deepgram:
+    api_key: "${DEEPGRAM_API_KEY}"
+    model: "nova-3"
+    language: "ru"
+  whisper:
+    model_size: "large-v3"
+    device: "cpu"
+    compute_type: "int8"
+
+analysis:
+  llm_provider: "ollama"
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"
+    model: "claude-sonnet-4-20250514"
+  turn_detection:
+    keyword_trigger: true
+    llm_trigger: true
+    llm_interval_seconds: 5
+    confidence_threshold: 0.8
+  trigger_phrases:
+    - "Максим.*очередь"
+    - "Макс.*что.*делал"
+    - "your turn.*Max"
+    - "Maksim"
+    - "next.*Max"
+
+tts:
+  engine: "piper"  # Local neural TTS — fast, no API key
+  piper:
+    model_path: ""  # Empty = default ~/.saymo/piper_models/ru_RU-dmitri-medium.onnx
+  openai:
+    api_key: "${OPENAI_API_KEY}"
+    model: "tts-1"
+    voice: "onyx"
+  elevenlabs:
+    api_key: "${ELEVENLABS_API_KEY}"
+    voice_id: ""
+  macos_say:
+    voice: "Milena"  # Russian voice (macOS built-in)
+
+# Obsidian daily notes as standup source
+obsidian:
+  vault_path: "/Users/m.v.shchegolev/Documents/Obsidian Vault"
+  subfolder: ""  # e.g., "Daily Notes" if using subfolder
+  date_format: "%Y-%m-%d"
+
+# Local LLM for text composition
+ollama:
+  url: "http://localhost:11434"
+  model: "qwen2.5-coder:7b"
+
+# JIRA (fallback source, needs network)
+jira:
+  use_selfhelper_config: true
+  selfhelper_path: "/opt/develop/selfhelper"
+  url: ""
+  token: ""
+  user_query: "assignee = currentUser() AND updated >= -1d ORDER BY updated DESC"
+  worklog_query: "worklogAuthor = currentUser() AND worklogDate >= -1d"
+  max_results: 15
+
+speech:
+  style: "concise"
+  language: "ru"
+  source: "obsidian"   # "obsidian" (read daily note) or "jira" (fetch tasks)
+  composer: "ollama"   # "ollama" (local) or "anthropic" (cloud)
+
+safety:
+  require_confirmation: true
+  hotkey_speak: "<cmd>+<shift>+s"
+  hotkey_stop: "<cmd>+<shift>+x"
+  hotkey_toggle: "<cmd>+<shift>+m"
+  max_speech_duration: 120
