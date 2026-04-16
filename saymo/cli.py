@@ -433,82 +433,37 @@ async def _speak(config, glip_mode: bool = False, team_mode: bool = False):
 
 
 async def _get_standup_content(config) -> dict | None:
-    """Get standup content from configured source (obsidian or jira)."""
-    if config.speech.source == "obsidian":
-        from saymo.obsidian.daily_notes import read_standup_notes
+    """Get standup content via plugin system."""
+    from saymo.plugins.base import get_plugin, list_plugins
 
-        vault = config.obsidian.vault_path
-        if not vault:
-            console.print("[bold red]Obsidian vault_path not configured in config.yaml[/]")
-            return None
+    source = config.speech.source
+    console.print(f"[bold blue]Source: {source}[/]")
 
-        console.print(f"[bold blue]Reading Obsidian daily notes from {vault}...[/]")
-        notes = read_standup_notes(
-            vault, config.obsidian.subfolder, config.obsidian.date_format
-        )
-
-        if not notes.get("yesterday") and not notes.get("today"):
-            console.print("[yellow]No daily notes found for today or yesterday.[/]")
-            console.print(f"  Expected: {vault}/{notes['yesterday_date']}.md or {notes['today_date']}.md")
-            return None
-
-        if notes.get("yesterday"):
-            console.print(f"[green]Yesterday ({notes['yesterday_date']}):[/] found")
-        if notes.get("today"):
-            console.print(f"[green]Today ({notes['today_date']}):[/] found")
-
-        return notes
-
-    elif config.speech.source == "confluence":
-        from saymo.jira_source.confluence_tasks import fetch_daily_tasks, tasks_to_notes
-
-        console.print("[bold blue]Fetching JIRA tasks (confluence mode)...[/]")
-        try:
-            daily = await fetch_daily_tasks(config.jira)
-        except Exception as e:
-            console.print(f"[bold red]JIRA fetch failed:[/] {e}")
-            return None
-
-        if not daily.today and not daily.yesterday:
-            console.print("[yellow]No tasks found.[/]")
-            return None
-
-        if daily.yesterday:
-            console.print(f"[green]Yesterday ({daily.yesterday_date}):[/] {len(daily.yesterday)} tasks")
-            for t in daily.yesterday:
-                console.print(f"  {t.key}: {t.summary} [{t.status}]")
-        if daily.today:
-            console.print(f"[green]Today ({daily.today_date}):[/] {len(daily.today)} tasks")
-            for t in daily.today:
-                console.print(f"  {t.key}: {t.summary} [{t.status}]")
-
-        return tasks_to_notes(daily)
-
-    elif config.speech.source == "jira":
-        from saymo.jira_source.tasks import fetch_standup_data
-
-        console.print("[bold blue]Fetching JIRA tasks...[/]")
-        try:
-            standup_data = await fetch_standup_data(config.jira)
-        except Exception as e:
-            console.print(f"[bold red]JIRA fetch failed:[/] {e}")
-            return None
-
-        if not standup_data.tasks:
-            console.print("[yellow]No tasks found for the last day.[/]")
-            return None
-
-        console.print(f"[green]Found {len(standup_data.tasks)} tasks[/]")
-        tasks_text = "\n".join(standup_data.task_summary_lines)
-        return {
-            "yesterday": tasks_text,
-            "today": "(plan based on task statuses)",
-            "yesterday_date": "вчера",
-            "today_date": "сегодня",
-        }
-    else:
-        console.print(f"[bold red]Unknown source: {config.speech.source}[/]")
+    try:
+        plugin = get_plugin(source)
+    except ValueError:
+        console.print(f"[bold red]Unknown source plugin: {source}[/]")
+        console.print(f"[dim]Available: {', '.join(list_plugins())}[/]")
         return None
+
+    console.print(f"[dim]{plugin.description}[/]")
+
+    try:
+        notes = await plugin.fetch(config)
+    except Exception as e:
+        console.print(f"[bold red]Source '{source}' failed:[/] {e}")
+        return None
+
+    if not notes:
+        console.print(f"[yellow]No content from '{source}'[/]")
+        return None
+
+    if notes.get("yesterday"):
+        console.print(f"[green]Yesterday: found[/]")
+    if notes.get("today"):
+        console.print(f"[green]Today: found[/]")
+
+    return notes
 
 
 async def _compose_text(config, notes: dict) -> str | None:
@@ -726,6 +681,30 @@ async def _test_jira(config):
         table.add_row(t.key, t.summary, t.status, t.issue_type)
 
     console.print(table)
+
+
+@main.command("list-plugins")
+def list_plugins_cmd():
+    """Show available source plugins and call providers."""
+    from saymo.plugins.base import discover_plugins
+    from saymo.providers.factory import list_providers
+
+    table = Table(title="Source Plugins")
+    table.add_column("Name")
+    table.add_column("Description")
+    for name, cls in sorted(discover_plugins().items()):
+        table.add_row(name, getattr(cls, "description", ""))
+    console.print(table)
+
+    table2 = Table(title="Call Providers")
+    table2.add_column("Name")
+    table2.add_column("URL Pattern")
+    table2.add_column("Mute Key")
+    from saymo.providers.factory import get_provider
+    for name in list_providers():
+        p = get_provider(name)
+        table2.add_row(name, getattr(p, "url_pattern", ""), repr(getattr(p, "mute_key", "")))
+    console.print(table2)
 
 
 @main.command("test-notes")
