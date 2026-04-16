@@ -1,8 +1,9 @@
 """Glip call control — Chrome tab automation via AppleScript.
 
 Handles:
-- Finding Chrome tab with Glip call
+- Finding Chrome tab with Glip call (v.ringcentral.com/conf)
 - Pressing Space to toggle mute/unmute
+- Auto-switching mic to BlackHole via JS injection
 - Switching to Chrome and back
 """
 
@@ -25,7 +26,7 @@ def _run_applescript(script: str) -> str:
 
 
 def find_glip_tab() -> tuple[int, int] | None:
-    """Find Chrome window and tab index with Glip/RingCentral call.
+    """Find Chrome window and tab index with Glip call.
 
     Returns (window_index, tab_index) or None if not found.
     """
@@ -191,14 +192,14 @@ def check_glip_ready() -> dict:
 
 
 def switch_rc_mic_to_blackhole() -> bool:
-    """Switch RingCentral Video microphone to BlackHole 2ch via Chrome JS injection.
+    """Switch Glip microphone to BlackHole 2ch via Chrome JS injection.
 
     Clicks the audio settings dropdown and selects BlackHole 2ch.
     Returns True if successful.
     """
     tab = find_glip_tab()
     if not tab:
-        logger.error("RingCentral tab not found")
+        logger.error("Glip tab not found")
         return False
 
     w, t = tab
@@ -361,9 +362,9 @@ def _switch_mic_via_gui() -> bool:
 
 
 def get_mic_setup_instructions() -> str:
-    """Return instructions for setting up BlackHole as mic in RingCentral."""
+    """Return instructions for setting up BlackHole as mic in Glip."""
     return (
-        "In the RingCentral Video call:\n"
+        "In the Glip call:\n"
         "  1. Click the ^ arrow next to the Mute button\n"
         "  2. Under Microphone, select 'BlackHole 2ch (Virtual)'\n"
         "  3. Keep Speakers as 'Plantronics' (so you hear others)\n"
