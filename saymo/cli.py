@@ -284,8 +284,7 @@ async def _compose_text(config, notes: dict) -> str | None:
 
 
 async def _speak_text(config, text: str) -> None:
-    """Synthesize and play speech."""
-    from saymo.tts.macos_say import MacOSSay
+    """Synthesize and play speech. Plays to monitor device too if configured."""
     from saymo.tts.text_normalizer import normalize_for_tts
 
     # Normalize text: expand abbreviations, numbers, versions
@@ -296,41 +295,66 @@ async def _speak_text(config, text: str) -> None:
 
     console.print(f"[bold blue]Speaking ({config.tts.engine})...[/]")
 
+    # Build list of output devices
+    playback = config.audio.playback_device
+    monitor = config.audio.monitor_device
+    use_multi = (monitor and monitor.lower() != playback.lower()
+                 and "blackhole" in playback.lower())
+
+    if use_multi:
+        console.print(f"[dim]Output: {playback} + {monitor} (monitor)[/]")
+
+    try:
+        # Step 1: Synthesize to bytes
+        audio_bytes = await _synthesize(config, text)
+        if audio_bytes is None:
+            return
+
+        # Step 2: Play to device(s)
+        if use_multi:
+            from saymo.audio.multi_play import play_bytes_to_devices
+            await play_bytes_to_devices(audio_bytes, [playback, monitor])
+        else:
+            from saymo.audio.playback import play_audio_bytes
+            await play_audio_bytes(audio_bytes, playback)
+
+    except Exception as e:
+        console.print(f"[bold red]TTS/playback failed:[/] {e}")
+        console.print("[yellow]Falling back to macOS say...[/]")
+        from saymo.tts.macos_say import MacOSSay
+        say = MacOSSay(config.tts.macos_say)
+        try:
+            await say.synthesize_to_device(text, playback)
+        except Exception as e2:
+            console.print(f"[bold red]Fallback also failed:[/] {e2}")
+
+
+async def _synthesize(config, text: str) -> bytes | None:
+    """Synthesize text to audio bytes using configured TTS engine."""
     try:
         if config.tts.engine == "coqui_clone":
             from saymo.tts.coqui_clone import CoquiCloneTTS
-            clone = CoquiCloneTTS(language=config.speech.language)
-            await clone.synthesize_to_device(text, config.audio.playback_device)
+            return await CoquiCloneTTS(language=config.speech.language).synthesize(text)
 
         elif config.tts.engine == "piper":
             from saymo.tts.piper_tts import PiperTTS
-            piper = PiperTTS(model_path=config.tts.piper.model_path or None)
-            await piper.synthesize_to_device(text, config.audio.playback_device)
+            return await PiperTTS(model_path=config.tts.piper.model_path or None).synthesize(text)
 
         elif config.tts.engine == "macos_say":
-            say = MacOSSay(config.tts.macos_say)
-            await say.synthesize_to_device(text, config.audio.playback_device)
+            from saymo.tts.macos_say import MacOSSay
+            return await MacOSSay(config.tts.macos_say).synthesize(text)
 
         elif config.tts.engine == "openai":
             from saymo.tts.openai_tts import OpenAITTS
-            from saymo.audio.playback import play_audio_bytes
-            tts = OpenAITTS(config.tts.openai)
-            audio_bytes = await tts.synthesize(text)
-            await play_audio_bytes(audio_bytes, config.audio.playback_device)
+            return await OpenAITTS(config.tts.openai).synthesize(text)
 
         else:
             console.print(f"[bold red]Unknown TTS engine: {config.tts.engine}[/]")
-            return
+            return None
 
     except Exception as e:
-        console.print(f"[bold red]TTS failed:[/] {e}")
-        console.print("[yellow]Falling back to macOS say...[/]")
-        say = MacOSSay(config.tts.macos_say)
-        try:
-            await say.synthesize_to_device(text, config.audio.playback_device)
-        except Exception as e2:
-            console.print(f"[bold red]Fallback also failed:[/] {e2}")
-            return
+        console.print(f"[bold red]TTS synthesis failed:[/] {e}")
+        return None
 
     console.print("[bold green]Done![/]")
 
