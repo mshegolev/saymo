@@ -13,9 +13,9 @@ user:
   language: "ru"
 
 audio:
-  capture_device: "BlackHole 16ch"
-  playback_device: "Plantronics Blackwire 3220 Series"
-  monitor_device: "Plantronics Blackwire 3220 Series"
+  capture_device: "Микрофон MacBook Pro"
+  playback_device: "BlackHole 2ch"
+  monitor_device: "Внешние наушники"
   sample_rate: 16000
   channels: 1
   chunk_size: 1024
@@ -143,14 +143,33 @@ meetings:
       - "Миша"
       - "QA"
 
-  mts_demo:
-    description: "Demo via MTS Link"
+  mts_standup:
+    description: "Daily standup via MTS Link — personal report"
     provider: "mts_link"
     team: false
     source: "confluence"
     trigger_phrases:
       - "Михаил"
       - "Миша"
+      - "Мишань"
+      - "Миш"
+      - "Mikhail"
+      - "Misha"
+      - "Михаил.*очередь"
+      - "Миша.*что.*делал"
+
+  mts_scrum:
+    description: "Scrum via MTS Link — team report"
+    provider: "mts_link"
+    team: true
+    source: "confluence"
+    trigger_phrases:
+      - "Михаил"
+      - "Миша"
+      - "QA"
+      - "кью-эй"
+      - "тестирование"
+      - "ваша команда"
 
   # ── Future providers ──
   # zoom_weekly:
