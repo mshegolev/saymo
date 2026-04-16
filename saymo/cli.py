@@ -110,11 +110,19 @@ async def _speak(config, glip_mode: bool = False):
 
         console.print(f"[green]RingCentral tab found (window {status['tab_info'][0]}, tab {status['tab_info'][1]})[/]")
 
-        # Remind about BlackHole mic in RingCentral
-        console.print()
-        console.print("[bold yellow]Check RingCentral audio settings:[/]")
-        console.print(get_mic_setup_instructions())
-        console.print()
+        # Auto-switch mic to BlackHole 2ch in RingCentral
+        from saymo.glip_control import switch_rc_mic_to_blackhole
+        console.print("[bold blue]Switching RingCentral mic to BlackHole 2ch...[/]")
+        mic_ok = switch_rc_mic_to_blackhole()
+        if mic_ok:
+            console.print("[green]Mic switched to BlackHole 2ch[/]")
+        else:
+            console.print("[bold yellow]Could not auto-switch mic. Please set manually:[/]")
+            console.print(get_mic_setup_instructions())
+            console.print()
+
+        import asyncio as _aio
+        await _aio.sleep(0.5)
         console.print("[bold blue]Unmute → Speak → Mute (auto)[/]")
 
         # Unmute → speak → mute
