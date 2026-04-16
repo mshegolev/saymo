@@ -170,7 +170,12 @@ async def _speak_text(config, text: str) -> None:
     console.print(f"[bold blue]Speaking ({config.tts.engine})...[/]")
 
     try:
-        if config.tts.engine == "piper":
+        if config.tts.engine == "coqui_clone":
+            from saymo.tts.coqui_clone import CoquiCloneTTS
+            clone = CoquiCloneTTS(language=config.speech.language)
+            await clone.synthesize_to_device(text, config.audio.playback_device)
+
+        elif config.tts.engine == "piper":
             from saymo.tts.piper_tts import PiperTTS
             piper = PiperTTS(model_path=config.tts.piper.model_path or None)
             await piper.synthesize_to_device(text, config.audio.playback_device)
