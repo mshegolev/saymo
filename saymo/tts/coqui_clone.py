@@ -101,8 +101,8 @@ class CoquiCloneTTS:
                 # Load base model first, then override GPT weights
                 from TTS.utils.manage import ModelManager
                 manager = ModelManager()
-                model_path, _, _ = manager.download_model(XTTS_MODEL_NAME)
-                base_dir = str(Path(model_path).parent)
+                base_dir_path, _, _ = manager.download_model(XTTS_MODEL_NAME)
+                base_dir = str(base_dir_path)
                 model.load_checkpoint(config, checkpoint_dir=base_dir)
 
                 # Load fine-tuned GPT weights on top

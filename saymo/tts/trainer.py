@@ -8,8 +8,10 @@ Target hardware: Apple M1 Pro, 16GB RAM.
 Training time: ~2-3 hours on MPS, ~4-6 hours on CPU.
 """
 
+import csv
 import json
 import logging
+import random
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -109,7 +111,10 @@ class VoiceTrainer:
         resume: bool = False,
         progress_callback=None,
     ) -> TrainingResult:
-        """Run XTTS v2 GPT fine-tuning.
+        """Run XTTS v2 GPT fine-tuning via Coqui GPTTrainer.
+
+        Uses the official Coqui Trainer pipeline with GPTTrainer model,
+        which handles data loading, audio encoding, and loss computation.
 
         Args:
             epochs: Number of training epochs.
@@ -122,8 +127,7 @@ class VoiceTrainer:
             TrainingResult with checkpoint path and metrics.
         """
         import torch
-        from TTS.tts.configs.xtts_config import XttsConfig
-        from TTS.tts.models.xtts import Xtts
+        from trainer import Trainer, TrainerArgs
 
         self.validate_dataset()
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -131,138 +135,48 @@ class VoiceTrainer:
         device = self._detect_device()
         start_time = time.time()
 
-        # Load base XTTS v2 model
-        logger.info("Loading XTTS v2 base model for fine-tuning...")
-        config = XttsConfig()
-        config.load_json(self._get_base_config_path())
+        # Build GPTTrainer config from base XTTS v2 config
+        config = self._build_training_config(epochs, batch_size, learning_rate)
 
-        model = Xtts.init_from_config(config)
-        model.load_checkpoint(config, checkpoint_dir=self._get_base_model_dir())
+        # Init GPTTrainer model
+        from TTS.tts.layers.xtts.trainer.gpt_trainer import GPTTrainer
+        model = GPTTrainer(config)
 
-        # Freeze everything except GPT decoder
-        for param in model.parameters():
-            param.requires_grad = False
-
-        # Unfreeze GPT layers
-        gpt = model.gpt
-        for param in gpt.parameters():
-            param.requires_grad = True
-
-        trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        total = sum(p.numel() for p in model.parameters())
-        logger.info(f"Trainable parameters: {trainable:,} / {total:,} ({100*trainable/total:.1f}%)")
-
-        model.to(device)
-        model.train()
-
-        # Prepare dataset
-        from TTS.tts.datasets import load_tts_samples
-
-        train_samples, eval_samples = load_tts_samples(
-            datasets=[{
-                "name": "custom",
-                "path": str(self.dataset_dir),
-                "meta_file_train": "metadata.csv",
-                "meta_file_val": "eval/metadata.csv" if self.eval_dir.exists() else None,
-                "language": self.language,
-            }],
-            eval_split=True,
-            eval_split_max_size=20,
-            eval_split_size=0.1,
+        # Setup Coqui Trainer
+        trainer_args = TrainerArgs(
+            restore_path=None,
+            skip_train_epoch=False,
+            start_with_eval=False,
+            grad_accum_steps=1,
         )
 
-        logger.info(f"Train samples: {len(train_samples)}, Eval samples: {len(eval_samples)}")
+        # Load training samples
+        train_samples = self._load_samples()
+        eval_samples = self._load_samples(eval_set=True)
+        if not eval_samples:
+            # Use 10% of train as eval
+            n_eval = max(1, len(train_samples) // 10)
+            eval_samples = train_samples[:n_eval]
+            train_samples = train_samples[n_eval:]
 
-        # Optimizer
-        optimizer = torch.optim.AdamW(
-            filter(lambda p: p.requires_grad, model.parameters()),
-            lr=learning_rate,
-            weight_decay=0.01,
+        logger.info(f"Train: {len(train_samples)}, Eval: {len(eval_samples)}")
+
+        # Run training via Coqui Trainer
+        trainer = Trainer(
+            trainer_args,
+            config,
+            output_path=str(self.output_dir),
+            model=model,
+            train_samples=train_samples,
+            eval_samples=eval_samples,
         )
 
-        # Training loop
-        total_steps = 0
-        losses = []
-        best_loss = float("inf")
-
-        for epoch in range(epochs):
-            epoch_losses = []
-
-            for step, sample in enumerate(train_samples):
-                try:
-                    # Process sample through model
-                    wav_path = Path(sample["audio_file"])
-                    text = sample["text"]
-
-                    if not wav_path.exists():
-                        continue
-
-                    # Load audio
-                    import torchaudio
-
-                    waveform, sr = torchaudio.load(str(wav_path))
-                    if sr != 22050:
-                        waveform = torchaudio.functional.resample(waveform, sr, 22050)
-
-                    waveform = waveform.to(device)
-
-                    # Get speaker embedding from reference
-                    gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
-                        audio_path=[str(wav_path)]
-                    )
-
-                    # Forward pass through GPT
-                    loss = model.gpt.compute_loss(
-                        text,
-                        waveform,
-                        gpt_cond_latent,
-                        speaker_embedding,
-                        language=self.language,
-                    )
-
-                    # Backward
-                    optimizer.zero_grad()
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(
-                        filter(lambda p: p.requires_grad, model.parameters()),
-                        max_norm=1.0,
-                    )
-                    optimizer.step()
-
-                    loss_val = loss.item()
-                    epoch_losses.append(loss_val)
-                    total_steps += 1
-
-                    if progress_callback:
-                        progress_callback(epoch + 1, step + 1, loss_val)
-
-                    if total_steps % 50 == 0:
-                        avg = sum(epoch_losses[-50:]) / min(50, len(epoch_losses))
-                        logger.info(f"Epoch {epoch+1}/{epochs} Step {step+1} Loss: {avg:.4f}")
-
-                except Exception as e:
-                    logger.warning(f"Error processing sample: {e}")
-                    continue
-
-            # Epoch summary
-            if epoch_losses:
-                avg_loss = sum(epoch_losses) / len(epoch_losses)
-                losses.append(avg_loss)
-                logger.info(f"Epoch {epoch+1}/{epochs} complete. Avg loss: {avg_loss:.4f}")
-
-                # Save best model
-                if avg_loss < best_loss:
-                    best_loss = avg_loss
-                    self._save_checkpoint(model, config, "best_model.pth")
-                    logger.info(f"New best model saved (loss: {best_loss:.4f})")
-
-            # Save periodic checkpoint
-            self._save_checkpoint(model, config, f"checkpoint_epoch{epoch+1}.pth")
-
-        # Save final model
-        self._save_checkpoint(model, config, "model.pth")
+        trainer.fit()
 
         duration = time.time() - start_time
+
+        # Find best checkpoint
+        best_model = self._find_best_checkpoint()
 
         # Save training log
         log = {
@@ -270,24 +184,101 @@ class VoiceTrainer:
             "batch_size": batch_size,
             "learning_rate": learning_rate,
             "device": device,
-            "total_steps": total_steps,
-            "final_loss": losses[-1] if losses else 0.0,
-            "loss_history": losses,
+            "total_steps": trainer.total_steps_done if hasattr(trainer, 'total_steps_done') else 0,
+            "final_loss": 0.0,
             "duration_sec": duration,
-            "trainable_params": trainable,
-            "total_params": total,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
         log_path = self.output_dir / "training_log.json"
         log_path.write_text(json.dumps(log, indent=2))
 
         return TrainingResult(
-            checkpoint_path=self.output_dir / "best_model.pth",
+            checkpoint_path=best_model,
             epochs=epochs,
-            final_loss=losses[-1] if losses else 0.0,
+            final_loss=0.0,
             duration_sec=duration,
-            total_steps=total_steps,
+            total_steps=log.get("total_steps", 0),
         )
+
+    def _build_training_config(self, epochs: int, batch_size: int, lr: float):
+        """Build GPTTrainer-compatible config from base XTTS v2."""
+        from TTS.tts.configs.xtts_config import XttsConfig
+
+        config = XttsConfig()
+        config.load_json(self._get_base_config_path())
+
+        # Training parameters
+        config.epochs = epochs
+        config.batch_size = batch_size
+        config.lr = lr
+        config.num_loader_workers = 0  # macOS compatibility
+        config.output_path = str(self.output_dir)
+
+        # Dataset config
+        config.datasets = [{
+            "formatter": "ljspeech",
+            "dataset_name": "voice_training",
+            "path": str(self.dataset_dir) + "/",
+            "meta_file_train": "metadata.csv",
+            "meta_file_val": "eval/metadata.csv" if (self.eval_dir / "metadata.csv").exists() else "",
+            "language": self.language,
+        }]
+
+        # Model checkpoint
+        config.model_dir = self._get_base_model_dir()
+
+        # Eval settings
+        config.eval_split_size = 0.1
+        config.print_step = 50
+        config.save_step = 500
+        config.save_n_checkpoints = 2
+        config.save_best_after = 100
+
+        return config
+
+    def _find_best_checkpoint(self) -> Path:
+        """Find the best checkpoint in output directory."""
+        # Coqui Trainer saves in subdirectories
+        for pattern in ["**/best_model.pth", "**/best_model*.pth",
+                        "**/checkpoint_*.pth", "best_model.pth", "model.pth"]:
+            matches = sorted(self.output_dir.glob(pattern))
+            if matches:
+                return matches[-1]
+        return self.output_dir / "model.pth"
+
+    def _load_samples(self, eval_set: bool = False) -> list[dict]:
+        """Load training samples from metadata.csv.
+
+        Returns list of dicts with keys: audio_file, text, speaker_name, language, root_path.
+        Compatible with Coqui TTS dataset format.
+        """
+        if eval_set:
+            meta_path = self.eval_dir / "metadata.csv"
+            wavs_dir = self.eval_dir / "wavs"
+        else:
+            meta_path = self.metadata_path
+            wavs_dir = self.wavs_dir
+
+        if not meta_path.exists():
+            return []
+
+        samples = []
+        with open(meta_path, newline="") as f:
+            reader = csv.reader(f, delimiter="|")
+            for row in reader:
+                if len(row) < 2:
+                    continue
+                filename, text = row[0], row[1]
+                wav_path = wavs_dir / f"{filename}.wav"
+                if wav_path.exists() and text.strip():
+                    samples.append({
+                        "audio_file": str(wav_path),
+                        "text": text.strip(),
+                        "speaker_name": "user",
+                        "language": self.language,
+                        "root_path": str(wavs_dir.parent),
+                    })
+        return samples
 
     def _save_checkpoint(self, model, config, filename: str) -> None:
         """Save model checkpoint."""
@@ -309,13 +300,16 @@ class VoiceTrainer:
         from TTS.utils.manage import ModelManager
 
         manager = ModelManager()
-        model_path, _, _ = manager.download_model("tts_models/multilingual/multi-dataset/xtts_v2")
-        return str(Path(model_path).parent)
+        model_dir, config_path, _ = manager.download_model("tts_models/multilingual/multi-dataset/xtts_v2")
+        return str(model_dir)
 
     def _get_base_config_path(self) -> str:
         """Find the base XTTS v2 config.json."""
-        model_dir = self._get_base_model_dir()
-        return str(Path(model_dir) / "config.json")
+        from TTS.utils.manage import ModelManager
+
+        manager = ModelManager()
+        model_dir, config_path, _ = manager.download_model("tts_models/multilingual/multi-dataset/xtts_v2")
+        return str(config_path)
 
     def get_training_status(self) -> dict:
         """Get status of previous training runs."""
