@@ -111,14 +111,15 @@ class VoiceTrainer:
         resume: bool = False,
         progress_callback=None,
     ) -> TrainingResult:
-        """Run XTTS v2 GPT fine-tuning via Coqui GPTTrainer.
+        """Run XTTS v2 GPT fine-tuning.
 
-        Uses the official Coqui Trainer pipeline with GPTTrainer model,
-        which handles data loading, audio encoding, and loss computation.
+        Loads the full XTTS model, freezes everything except GPT,
+        and trains on audio-text pairs using the native GPT.forward()
+        which returns (loss_text, loss_mel, logits).
 
         Args:
             epochs: Number of training epochs.
-            batch_size: Batch size (2 recommended for 16GB RAM).
+            batch_size: Batch size (unused, processes one sample at a time).
             learning_rate: Learning rate for GPT decoder.
             resume: Resume from last checkpoint.
             progress_callback: Optional callback(epoch, step, loss) for progress.
@@ -127,7 +128,11 @@ class VoiceTrainer:
             TrainingResult with checkpoint path and metrics.
         """
         import torch
-        from trainer import Trainer, TrainerArgs
+        import torchaudio
+        from TTS.tts.configs.xtts_config import XttsConfig
+        from TTS.tts.models.xtts import Xtts
+        from TTS.tts.layers.xtts.dvae import DiscreteVAE
+        from TTS.tts.layers.tortoise.arch_utils import TorchMelSpectrogram
 
         self.validate_dataset()
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -135,116 +140,213 @@ class VoiceTrainer:
         device = self._detect_device()
         start_time = time.time()
 
-        # Build GPTTrainer config from base XTTS v2 config
-        config = self._build_training_config(epochs, batch_size, learning_rate)
+        # Ensure DVAE and mel_stats are available
+        dvae_path, mel_stats_path = self._ensure_training_files()
 
-        # Init GPTTrainer model
-        from TTS.tts.layers.xtts.trainer.gpt_trainer import GPTTrainer
-        model = GPTTrainer(config)
+        # Load base XTTS v2 model
+        logger.info("Loading XTTS v2 base model for fine-tuning...")
+        config = XttsConfig()
+        config.load_json(self._get_base_config_path())
 
-        # Setup Coqui Trainer
-        trainer_args = TrainerArgs(
-            restore_path=None,
-            skip_train_epoch=False,
-            start_with_eval=False,
-            grad_accum_steps=1,
+        model = Xtts.init_from_config(config)
+        model.load_checkpoint(config, checkpoint_dir=self._get_base_model_dir())
+
+        # Load DVAE for audio encoding
+        logger.info("Loading DVAE for audio code extraction...")
+        # Detect num_tokens from checkpoint to avoid size mismatch
+        dvae_state = torch.load(dvae_path, map_location="cpu", weights_only=False)
+        # Infer num_tokens from codebook shape
+        if "codebook.embed" in dvae_state:
+            dvae_num_tokens = dvae_state["codebook.embed"].shape[1]
+        else:
+            dvae_num_tokens = 1024  # XTTS v2 DVAE default
+
+        dvae = DiscreteVAE(
+            channels=80,
+            normalization=None,
+            positional_dims=1,
+            num_tokens=dvae_num_tokens,
+            codebook_dim=512,
+            hidden_dim=512,
+            num_resnet_blocks=3,
+            kernel_size=3,
+            num_layers=2,
+            use_transposed_convs=False,
+        )
+        dvae.load_state_dict(dvae_state, strict=False)
+        dvae.eval()
+
+        # Mel spectrogram extractor for DVAE
+        dvae_sr = getattr(config.audio, 'dvae_sample_rate', 22050)
+        mel_transform = TorchMelSpectrogram(
+            mel_norm_file=mel_stats_path,
+            sampling_rate=dvae_sr,
         )
 
-        # Load training samples
+        # Mel spectrogram for conditioning (style encoder)
+        cond_mel_transform = TorchMelSpectrogram(
+            filter_length=4096,
+            hop_length=1024,
+            win_length=4096,
+            normalize=False,
+            sampling_rate=config.audio.sample_rate,
+            mel_fmin=0,
+            mel_fmax=8000,
+            n_mel_channels=80,
+            mel_norm_file=mel_stats_path,
+        )
+
+        # Freeze everything except GPT decoder
+        for param in model.parameters():
+            param.requires_grad = False
+        for param in model.gpt.parameters():
+            param.requires_grad = True
+
+        trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        total = sum(p.numel() for p in model.parameters())
+        logger.info(f"Trainable: {trainable:,} / {total:,} ({100*trainable/total:.1f}%)")
+
+        model.to(device)
+        dvae.to(device)
+        mel_transform.to(device)
+        cond_mel_transform.to(device)
+
+        # Load dataset
         train_samples = self._load_samples()
-        eval_samples = self._load_samples(eval_set=True)
-        if not eval_samples:
-            # Use 10% of train as eval
-            n_eval = max(1, len(train_samples) // 10)
-            eval_samples = train_samples[:n_eval]
-            train_samples = train_samples[n_eval:]
+        if not train_samples:
+            raise ValueError("No valid training samples in metadata.csv")
+        logger.info(f"Train samples: {len(train_samples)}")
 
-        logger.info(f"Train: {len(train_samples)}, Eval: {len(eval_samples)}")
-
-        # Run training via Coqui Trainer
-        trainer = Trainer(
-            trainer_args,
-            config,
-            output_path=str(self.output_dir),
-            model=model,
-            train_samples=train_samples,
-            eval_samples=eval_samples,
+        # Optimizer
+        optimizer = torch.optim.AdamW(
+            [p for p in model.parameters() if p.requires_grad],
+            lr=learning_rate,
+            weight_decay=0.01,
         )
 
-        trainer.fit()
+        # Pre-compute speaker conditioning from voice sample
+        from saymo.audio.recorder import get_voice_sample_path
+        voice_sample = get_voice_sample_path()
+        if not voice_sample:
+            voice_sample = Path(train_samples[0]["audio_file"])
+        logger.info(f"Speaker reference: {voice_sample}")
 
+        gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
+            audio_path=[str(voice_sample)]
+        )
+
+        # Training loop
+        total_steps = 0
+        losses = []
+        best_loss = float("inf")
+        model.train()
+
+        for epoch in range(epochs):
+            epoch_losses = []
+            random.shuffle(train_samples)
+
+            for step, sample in enumerate(train_samples):
+                try:
+                    wav_path = sample["audio_file"]
+                    text = sample["text"]
+
+                    # Load audio
+                    waveform, sr = torchaudio.load(wav_path)
+                    if sr != 22050:
+                        waveform = torchaudio.functional.resample(waveform, sr, 22050)
+                    waveform = waveform.to(device)
+
+                    # Tokenize text
+                    text_tokens = torch.IntTensor(
+                        model.tokenizer.encode(text, lang=self.language)
+                    ).unsqueeze(0).to(device)
+
+                    with torch.no_grad():
+                        # Compute mel spectrogram and get DVAE codes
+                        dvae_mel = mel_transform(waveform.unsqueeze(0) if waveform.dim() == 1 else waveform)
+                        audio_codes = dvae.get_codebook_indices(dvae_mel)
+
+                        # Compute conditioning mel for this sample
+                        cond_mel = cond_mel_transform(waveform.unsqueeze(0) if waveform.dim() == 1 else waveform)
+                        cond_mel = cond_mel.unsqueeze(1)  # (B, 1, n_mel, T)
+
+                    # GPT forward: returns (loss_text, loss_mel, mel_logits)
+                    loss_text, loss_mel, _ = model.gpt(
+                        text_inputs=text_tokens,
+                        text_lengths=torch.tensor([text_tokens.shape[-1]], device=device),
+                        audio_codes=audio_codes,
+                        wav_lengths=torch.tensor([waveform.shape[-1]], device=device),
+                        cond_mels=cond_mel,
+                        cond_idxs=None,
+                        cond_lens=torch.tensor([cond_mel.shape[-1]], device=device),
+                    )
+
+                    loss = loss_text + loss_mel
+
+                    # Backward
+                    optimizer.zero_grad()
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(
+                        [p for p in model.parameters() if p.requires_grad],
+                        max_norm=1.0,
+                    )
+                    optimizer.step()
+
+                    loss_val = loss.item()
+                    epoch_losses.append(loss_val)
+                    total_steps += 1
+
+                    if progress_callback:
+                        progress_callback(epoch + 1, step + 1, loss_val)
+
+                    if total_steps % 50 == 0:
+                        avg = sum(epoch_losses[-50:]) / min(50, len(epoch_losses))
+                        logger.info(f"Epoch {epoch+1}/{epochs} Step {step+1}/{len(train_samples)} Loss: {avg:.4f}")
+
+                except Exception as e:
+                    logger.warning(f"Step {step} error: {e}")
+                    continue
+
+            # Epoch summary
+            if epoch_losses:
+                avg_loss = sum(epoch_losses) / len(epoch_losses)
+                losses.append(avg_loss)
+                logger.info(f"Epoch {epoch+1}/{epochs} complete. Avg loss: {avg_loss:.4f}")
+
+                if avg_loss < best_loss:
+                    best_loss = avg_loss
+                    self._save_checkpoint(model, config, "best_model.pth")
+                    logger.info(f"New best model (loss: {best_loss:.4f})")
+
+            self._save_checkpoint(model, config, f"checkpoint_epoch{epoch+1}.pth")
+
+        # Save final
+        self._save_checkpoint(model, config, "model.pth")
         duration = time.time() - start_time
 
-        # Find best checkpoint
-        best_model = self._find_best_checkpoint()
-
-        # Save training log
+        # Training log
         log = {
             "epochs": epochs,
             "batch_size": batch_size,
             "learning_rate": learning_rate,
             "device": device,
-            "total_steps": trainer.total_steps_done if hasattr(trainer, 'total_steps_done') else 0,
-            "final_loss": 0.0,
+            "total_steps": total_steps,
+            "final_loss": losses[-1] if losses else 0.0,
+            "loss_history": losses,
             "duration_sec": duration,
+            "trainable_params": trainable,
+            "total_params": total,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
-        log_path = self.output_dir / "training_log.json"
-        log_path.write_text(json.dumps(log, indent=2))
+        (self.output_dir / "training_log.json").write_text(json.dumps(log, indent=2))
 
         return TrainingResult(
-            checkpoint_path=best_model,
+            checkpoint_path=self.output_dir / "best_model.pth",
             epochs=epochs,
-            final_loss=0.0,
+            final_loss=losses[-1] if losses else 0.0,
             duration_sec=duration,
-            total_steps=log.get("total_steps", 0),
+            total_steps=total_steps,
         )
-
-    def _build_training_config(self, epochs: int, batch_size: int, lr: float):
-        """Build GPTTrainer-compatible config from base XTTS v2."""
-        from TTS.tts.configs.xtts_config import XttsConfig
-
-        config = XttsConfig()
-        config.load_json(self._get_base_config_path())
-
-        # Training parameters
-        config.epochs = epochs
-        config.batch_size = batch_size
-        config.lr = lr
-        config.num_loader_workers = 0  # macOS compatibility
-        config.output_path = str(self.output_dir)
-
-        # Dataset config
-        config.datasets = [{
-            "formatter": "ljspeech",
-            "dataset_name": "voice_training",
-            "path": str(self.dataset_dir) + "/",
-            "meta_file_train": "metadata.csv",
-            "meta_file_val": "eval/metadata.csv" if (self.eval_dir / "metadata.csv").exists() else "",
-            "language": self.language,
-        }]
-
-        # Model checkpoint
-        config.model_dir = self._get_base_model_dir()
-
-        # Eval settings
-        config.eval_split_size = 0.1
-        config.print_step = 50
-        config.save_step = 500
-        config.save_n_checkpoints = 2
-        config.save_best_after = 100
-
-        return config
-
-    def _find_best_checkpoint(self) -> Path:
-        """Find the best checkpoint in output directory."""
-        # Coqui Trainer saves in subdirectories
-        for pattern in ["**/best_model.pth", "**/best_model*.pth",
-                        "**/checkpoint_*.pth", "best_model.pth", "model.pth"]:
-            matches = sorted(self.output_dir.glob(pattern))
-            if matches:
-                return matches[-1]
-        return self.output_dir / "model.pth"
 
     def _load_samples(self, eval_set: bool = False) -> list[dict]:
         """Load training samples from metadata.csv.
@@ -310,6 +412,40 @@ class VoiceTrainer:
         manager = ModelManager()
         model_dir, config_path, _ = manager.download_model("tts_models/multilingual/multi-dataset/xtts_v2")
         return str(config_path)
+
+    def _ensure_training_files(self) -> tuple[str, str]:
+        """Download DVAE and mel_stats required for training.
+
+        These are not part of the standard XTTS v2 download but are needed
+        to encode audio into VQ-VAE codes for GPT training.
+
+        Returns:
+            (dvae_path, mel_stats_path)
+        """
+        import subprocess
+
+        base_dir = Path(self._get_base_model_dir())
+        dvae_path = base_dir / "dvae.pth"
+        mel_stats_path = base_dir / "mel_stats.pth"
+
+        base_url = "https://huggingface.co/coqui/XTTS-v2/resolve/main"
+
+        for filename, path in [("dvae.pth", dvae_path), ("mel_stats.pth", mel_stats_path)]:
+            if not path.exists():
+                url = f"{base_url}/{filename}"
+                logger.info(f"Downloading {filename} from HuggingFace...")
+                result = subprocess.run(
+                    ["curl", "-sL", "-o", str(path), url],
+                    capture_output=True, text=True, timeout=120,
+                )
+                if result.returncode != 0 or not path.exists():
+                    raise RuntimeError(
+                        f"Failed to download {filename}: {result.stderr}\n"
+                        f"Download manually: curl -L -o '{path}' '{url}'"
+                    )
+                logger.info(f"Saved {filename} ({path.stat().st_size} bytes)")
+
+        return str(dvae_path), str(mel_stats_path)
 
     def get_training_status(self) -> dict:
         """Get status of previous training runs."""
