@@ -1,181 +1,148 @@
 user:
-  name: "Михаил"
+  name: Михаил
   name_variants:
-    - "Михаил"
-    - "Миша"
-    - "Мишань"
-    - "Михал"
-    - "Миш"
-    - "Mikhail"
-    - "Misha"
-    - "Shchegolev"
-    - "Щеголев"
-  language: "ru"
-
+  - Михаил
+  - Миша
+  - Мишань
+  - Михал
+  - Миш
+  - Mikhail
+  - Misha
+  - Shchegolev
+  - Щеголев
+  language: ru
 audio:
-  capture_device: "Микрофон MacBook Pro"
-  playback_device: "BlackHole 2ch"
-  monitor_device: "Внешние наушники"
+  capture_device: Микрофон MacBook Pro
+  playback_device: '9'
+  monitor_device: Внешние наушники
   sample_rate: 16000
   channels: 1
   chunk_size: 1024
-
 stt:
-  engine: "deepgram"
+  engine: deepgram
   deepgram:
-    api_key: "${DEEPGRAM_API_KEY}"
-    model: "nova-3"
-    language: "ru"
+    api_key: ${DEEPGRAM_API_KEY}
+    model: nova-3
+    language: ru
   whisper:
-    model_size: "small"
-    device: "cpu"
-    compute_type: "int8"
-
+    model_size: small
+    device: cpu
+    compute_type: int8
 analysis:
-  llm_provider: "ollama"
+  llm_provider: ollama
   anthropic:
-    api_key: "${ANTHROPIC_API_KEY}"
-    model: "claude-sonnet-4-20250514"
+    api_key: ${ANTHROPIC_API_KEY}
+    model: claude-sonnet-4-20250514
   turn_detection:
     keyword_trigger: true
     llm_trigger: true
     llm_interval_seconds: 5
     confidence_threshold: 0.8
-
 tts:
-  engine: "coqui_clone"
+  engine: coqui_clone
   piper:
-    model_path: ""
+    model_path: ''
   openai:
-    api_key: "${OPENAI_API_KEY}"
-    model: "tts-1"
-    voice: "onyx"
+    api_key: ${OPENAI_API_KEY}
+    model: tts-1
+    voice: onyx
   elevenlabs:
-    api_key: "${ELEVENLABS_API_KEY}"
-    voice_id: ""
+    api_key: ${ELEVENLABS_API_KEY}
+    voice_id: ''
   macos_say:
-    voice: "Milena"
-
+    voice: Milena
 obsidian:
-  vault_path: "/Users/m.v.shchegolev/Documents/Obsidian Vault"
-  subfolder: ""
-  date_format: "%Y-%m-%d"
-
+  vault_path: /Users/mvschegole/Documents/Obsidian Vault
+  subfolder: ''
+  date_format: '%Y-%m-%d'
 ollama:
-  url: "http://localhost:11434"
-  model: "qwen2.5-coder:7b"
-
-# Team members for scrum reports (username: display_name)
+  url: http://localhost:11434
+  model: Qwen2.5-Coder-7B-Instruct-Q4_K_M:latest
 team:
-  m.v.shchegolev: "Михаил"
-  oleg.o.korytov: "Олег"
-
+  mvschegole: Михаил
 jira:
   use_selfhelper_config: true
-  selfhelper_path: "/opt/develop/selfhelper"
-  url: ""
-  token: ""
-  user_query: "assignee = currentUser() AND updated >= -1d ORDER BY updated DESC"
-  worklog_query: "worklogAuthor = currentUser() AND worklogDate >= -1d"
+  selfhelper_path: /opt/develop/selfhelper
+  url: ''
+  token: ''
+  user_query: assignee = currentUser() AND updated >= -1d ORDER BY updated DESC
+  worklog_query: worklogAuthor = currentUser() AND worklogDate >= -10d
   max_results: 15
-
 speech:
-  style: "concise"
-  language: "ru"
-  source: "confluence"
-  composer: "ollama"
-
+  style: concise
+  language: ru
+  source: confluence
+  composer: ollama
 safety:
   require_confirmation: true
-  hotkey_speak: "<cmd>+<shift>+s"
-  hotkey_stop: "<cmd>+<shift>+x"
-  hotkey_toggle: "<cmd>+<shift>+m"
+  hotkey_speak: <cmd>+<shift>+s
+  hotkey_stop: <cmd>+<shift>+x
+  hotkey_toggle: <cmd>+<shift>+m
   max_speech_duration: 120
-
-# ═══════════════════════════════════════════════════
-# Meeting profiles — select with: saymo prepare -p standup
-# ═══════════════════════════════════════════════════
-# ═══════════════════════════════════════════════════
-# Meeting profiles — select with: saymo prepare -p standup
-# Providers: glip, zoom, mts_link
-# ═══════════════════════════════════════════════════
 meetings:
   standup:
-    description: "Daily standup — personal report"
-    provider: "glip"
+    description: Daily standup — personal report
+    provider: glip
     team: false
-    source: "confluence"
+    source: confluence
     trigger_phrases:
-      - "Михаил"
-      - "Миша"
-      - "Мишань"
-      - "Миш"
-      - "Mikhail"
-      - "Misha"
-      - "Михаил.*очередь"
-      - "Миша.*что.*делал"
-      - "your turn.*Misha"
-      - "next.*Mikhail"
-
+    - Михаил
+    - Миша
+    - Мишань
+    - Миш
+    - Mikhail
+    - Misha
+    - Михаил.*очередь
+    - Миша.*что.*делал
+    - your turn.*Misha
+    - next.*Mikhail
   scrum:
-    description: "Scrum with team leads — team report"
-    provider: "glip"
+    description: Scrum with team leads — team report
+    provider: glip
     team: true
-    source: "confluence"
+    source: confluence
     trigger_phrases:
-      - "Михаил"
-      - "Миша"
-      - "QA"
-      - "кью-эй"
-      - "QA team"
-      - "тестирование"
-      - "quality"
-      - "ваша команда"
-      - "your team"
-
+    - Михаил
+    - Миша
+    - QA
+    - кью-эй
+    - QA team
+    - тестирование
+    - quality
+    - ваша команда
+    - your team
   retro:
-    description: "Retrospective — what went well/wrong"
-    provider: "glip"
+    description: Retrospective — what went well/wrong
+    provider: glip
     team: true
-    source: "confluence"
+    source: confluence
     trigger_phrases:
-      - "Михаил"
-      - "Миша"
-      - "QA"
-
+    - Михаил
+    - Миша
+    - QA
   mts_standup:
-    description: "Daily standup via MTS Link — personal report"
-    provider: "mts_link"
+    description: Daily standup via MTS Link — personal report
+    provider: mts_link
     team: false
-    source: "confluence"
+    source: confluence
     trigger_phrases:
-      - "Михаил"
-      - "Миша"
-      - "Мишань"
-      - "Миш"
-      - "Mikhail"
-      - "Misha"
-      - "Михаил.*очередь"
-      - "Миша.*что.*делал"
-
+    - Михаил
+    - Миша
+    - Мишань
+    - Миш
+    - Mikhail
+    - Misha
+    - Михаил.*очередь
+    - Миша.*что.*делал
   mts_scrum:
-    description: "Scrum via MTS Link — team report"
-    provider: "mts_link"
+    description: Scrum via MTS Link — team report
+    provider: mts_link
     team: true
-    source: "confluence"
+    source: confluence
     trigger_phrases:
-      - "Михаил"
-      - "Миша"
-      - "QA"
-      - "кью-эй"
-      - "тестирование"
-      - "ваша команда"
-
-  # ── Future providers ──
-  # zoom_weekly:
-  #   description: "Weekly sync via Zoom"
-  #   provider: "zoom"
-  #   team: false
-  #   source: "obsidian"
-  #   trigger_phrases:
-  #     - "Михаил"
+    - Михаил
+    - Миша
+    - QA
+    - кью-эй
+    - тестирование
+    - ваша команда

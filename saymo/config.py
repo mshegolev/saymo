@@ -44,6 +44,7 @@ class AudioConfig:
     capture_device: str = "BlackHole 16ch"
     playback_device: str = "BlackHole 2ch"
     monitor_device: str = ""  # Hear yourself (e.g., Plantronics) when playback goes to BlackHole
+    recording_device: str = ""  # Mic for voice sample recording (e.g., MacBook Pro Microphone)
     sample_rate: int = 16000
     channels: int = 1
     chunk_size: int = 1024

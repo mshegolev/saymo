@@ -2,6 +2,12 @@
 
 import asyncio
 import logging
+import os
+
+# Ensure localhost requests bypass corporate proxy (tinyproxy etc.)
+os.environ.setdefault("NO_PROXY", "localhost,127.0.0.1")
+if "NO_PROXY" in os.environ and "localhost" not in os.environ["NO_PROXY"]:
+    os.environ["NO_PROXY"] += ",localhost,127.0.0.1"
 
 import click
 from rich.console import Console
@@ -647,6 +653,14 @@ async def _test_tts(config, text):
     elif config.tts.engine == "macos_say":
         say = MacOSSay(config.tts.macos_say)
         await say.synthesize_to_device(text, config.audio.playback_device)
+    elif config.tts.engine == "coqui_clone":
+        from saymo.tts.coqui_clone import CoquiCloneTTS
+        tts = CoquiCloneTTS()
+        await tts.synthesize_to_device(text, config.audio.playback_device)
+    elif config.tts.engine == "piper":
+        from saymo.tts.piper_tts import PiperTTS
+        tts = PiperTTS(config.tts.piper)
+        await tts.synthesize_to_device(text, config.audio.playback_device)
     else:
         console.print(f"[red]Unknown engine: {config.tts.engine}[/]")
 
@@ -795,6 +809,77 @@ async def _test_ollama(config):
                 table.add_row(m["name"], f"{size_gb:.1f} GB")
             console.print(table)
             console.print(f"\n[blue]Configured model: {config.ollama.model}[/]")
+
+
+# ---------------------------------------------------------------------------
+# quick — brief notes → full standup text via Ollama
+# ---------------------------------------------------------------------------
+
+@main.command()
+@click.argument("notes", nargs=-1)
+@click.option("--duration", "-d", default=30, help="Target speech duration in seconds")
+@click.option("--file", "-f", "file_path", default=None, type=click.Path(exists=True), help="Read notes from file")
+@click.pass_context
+def quick(ctx, notes, duration, file_path):
+    """Type brief notes, Ollama expands them into a full standup.
+
+    Examples:
+        saymo quick "фиксил баги в авторизации, ревью автотестов, сегодня деплой"
+        saymo quick -d 60 "вчера разбирался с кафкой, сегодня нагрузочное"
+        saymo quick -f notes.txt
+        saymo quick -f ~/daily.md -d 45
+    """
+    config = ctx.obj["config"]
+
+    if file_path:
+        from pathlib import Path
+        brief = Path(file_path).read_text(encoding="utf-8").strip()
+        if not brief:
+            console.print(f"[bold red]Файл пустой: {file_path}[/]")
+            return
+        console.print(f"[dim]Прочитано из {file_path} ({len(brief)} символов)[/]")
+    else:
+        brief = " ".join(notes).strip()
+        if not brief:
+            brief = click.prompt("Кратко опиши чем занимался")
+
+    run_async(_quick_expand(config, brief, duration))
+
+
+async def _quick_expand(config, brief: str, duration: int):
+    from saymo.speech.ollama_composer import expand_brief, check_ollama_health
+
+    if not await check_ollama_health(config.ollama.url):
+        console.print("[yellow]Ollama не запущена, запускаю...[/]")
+        import subprocess, time
+        subprocess.Popen(
+            ["ollama", "serve"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        for _ in range(15):
+            time.sleep(1)
+            if await check_ollama_health(config.ollama.url):
+                break
+        else:
+            console.print("[bold red]Не удалось запустить Ollama![/]")
+            return
+        console.print("[green]Ollama запущена[/]")
+
+    console.print(f"[bold blue]Расширяю заметки через Ollama (~{duration}с речи)...[/]\n")
+
+    text = await expand_brief(
+        brief=brief,
+        duration=duration,
+        model=config.ollama.model,
+        ollama_url=config.ollama.url,
+    )
+
+    console.print(f"[bold green]Готовый текст:[/]\n\n{text}\n")
+
+    # Offer TTS
+    if click.confirm("Озвучить?", default=True):
+        await _speak_text(config, text)
 
 
 # ---------------------------------------------------------------------------
@@ -1115,17 +1200,29 @@ def record_voice(ctx, duration, output):
     Uses the Plantronics mic (or configured capture device).
     Recommended: 30-60 seconds of natural speech in Russian.
     """
+    import sounddevice as sd
+
     from saymo.audio.recorder import record_sample
     from saymo.audio.devices import find_device
 
     config = ctx.obj["config"]
 
-    # Use the input device (mic) — find Plantronics or first available input
-    mic_name = "Plantronics"
-    mic = find_device(mic_name, kind="input")
+    # Use configured recording device, or fall back to system default
+    mic_name = config.audio.recording_device or None
+    mic = find_device(mic_name, kind="input") if mic_name else None
     if not mic:
-        console.print(f"[yellow]'{mic_name}' not found, using default mic[/]")
-        mic_name = "MacBook Pro Microphone"
+        default_dev = sd.query_devices(kind="input")
+        if default_dev:
+            default_name = default_dev["name"]
+            if mic_name:
+                console.print(f"[yellow]'{mic_name}' not found, using default: {default_name}[/]")
+            else:
+                console.print(f"[yellow]No recording device configured, using default: {default_name}[/]")
+            mic_name = default_name
+            mic = find_device(mic_name, kind="input")
+        else:
+            console.print("[bold red]No input devices found![/]")
+            return
 
     console.print(f"[bold blue]Recording voice sample[/]")
     console.print(f"  Mic: {mic_name}")
