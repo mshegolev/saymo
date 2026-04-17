@@ -127,7 +127,7 @@ async def compose_standup_ollama(
 
     logger.info(f"Composing standup with Ollama ({model})")
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=120.0, proxy=None) as client:
         response = await client.post(
             f"{ollama_url}/api/generate",
             json={
@@ -148,10 +148,73 @@ async def compose_standup_ollama(
     return text
 
 
+EXPAND_PROMPT_RU = """\
+Тебе дали заметки. Перепиши их в естественную устную речь на русском языке.
+
+Заметки:
+---
+{brief}
+---
+
+СТРОГИЕ ПРАВИЛА:
+- Выведи ТОЛЬКО готовый текст речи. Никаких пояснений, заголовков, форматирования, маркдауна, списков, тире, нумерации.
+- Говори от первого лица: "Я сегодня расскажу...", "Мы сделали..."
+- IT-термины пиши как произносятся: деплой, пайплайн, ревью, автотесты, мерж-реквест.
+- Числа пиши словами: "сто двадцать", "семьдесят пять процентов".
+- Стиль — живой, разговорный, как будто выступаешь перед коллегами.
+- Целевая длительность при чтении вслух: {duration} секунд.
+- НЕ выдумывай то, чего нет в заметках. Только переформулируй и оформляй.
+- Начинай сразу с текста речи, без вступлений вроде "Вот текст:" или "---".
+"""
+
+
+async def expand_brief(
+    brief: str,
+    duration: int = 30,
+    model: str = "qwen2.5-coder:7b",
+    ollama_url: str = "http://localhost:11434",
+) -> str:
+    """Expand a brief user summary into a full standup text.
+
+    Args:
+        brief: Short user notes (a few words/sentences).
+        duration: Target speech duration in seconds.
+        model: Ollama model name.
+        ollama_url: Ollama API endpoint.
+
+    Returns:
+        Expanded standup text.
+    """
+    prompt = EXPAND_PROMPT_RU.format(brief=brief, duration=duration)
+    logger.info(f"Expanding brief ({len(brief)} chars) to ~{duration}s with {model}")
+
+    num_predict = max(200, duration * 8)  # ~8 tokens per second of speech
+
+    async with httpx.AsyncClient(timeout=120.0, proxy=None) as client:
+        response = await client.post(
+            f"{ollama_url}/api/generate",
+            json={
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "num_predict": num_predict,
+                },
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+    text = data.get("response", "").strip()
+    logger.info(f"Expanded brief: {len(text)} chars")
+    return text
+
+
 async def check_ollama_health(ollama_url: str = "http://localhost:11434") -> bool:
     """Check if Ollama is running."""
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, proxy=None) as client:
             resp = await client.get(ollama_url)
             return resp.status_code == 200
     except Exception:
