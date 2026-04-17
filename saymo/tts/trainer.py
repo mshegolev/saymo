@@ -90,17 +90,21 @@ class VoiceTrainer:
             )
 
     def _detect_device(self) -> str:
-        """Auto-detect best available compute device."""
+        """Auto-detect best available compute device.
+
+        Note: MPS (Apple Silicon) has a 65536 output channel limit which
+        XTTS v2 GPT exceeds in its embedding layers, so we fall back to CPU.
+        CPU training on M1 Pro takes ~4-6 hours for 5 epochs.
+        """
         import torch
 
-        if torch.backends.mps.is_available():
-            logger.info("Using MPS (Apple Silicon GPU)")
-            return "mps"
-        elif torch.cuda.is_available():
+        if torch.cuda.is_available():
             logger.info("Using CUDA GPU")
             return "cuda"
         else:
-            logger.info("Using CPU (training will be slower)")
+            # MPS is not used: XTTS v2 GPT has layers >65536 channels
+            # which MPS does not support. CPU on Apple Silicon is still fast.
+            logger.info("Using CPU (Apple Silicon optimized)")
             return "cpu"
 
     def train(
