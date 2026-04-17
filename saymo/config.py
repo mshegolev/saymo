@@ -34,8 +34,11 @@ def _resolve_dict(d: dict) -> dict:
 
 @dataclass
 class UserConfig:
-    name: str = "Михаил"
-    name_variants: list[str] = field(default_factory=lambda: ["Михаил", "Миша"])
+    name: str = "User"
+    name_variants: list[str] = field(default_factory=list)
+    role: str = ""
+    team: str = ""
+    tech_stack: str = ""
     language: str = "ru"
 
 
@@ -138,8 +141,8 @@ class TTSConfig:
 
 @dataclass
 class JiraConfig:
-    use_selfhelper_config: bool = True
-    selfhelper_path: str = "/opt/develop/selfhelper"
+    use_selfhelper_config: bool = False
+    selfhelper_path: str = ""
     url: str = ""
     token: str = ""
     user_query: str = "assignee = currentUser() AND updated >= -1d ORDER BY updated DESC"
@@ -199,6 +202,8 @@ class SaymoConfig:
     speech: SpeechConfig = field(default_factory=SpeechConfig)
     safety: SafetyConfig = field(default_factory=SafetyConfig)
     meetings: dict = field(default_factory=dict)
+    prompts: dict = field(default_factory=dict)
+    vocabulary: dict = field(default_factory=dict)
 
     def get_meeting(self, name: str) -> MeetingProfile | None:
         """Get meeting profile by name."""
