@@ -1,7 +1,7 @@
 #!/bin/bash
-set -e
+set -eo pipefail
 
-echo "=== Saymo Installer ==="
+echo "=== Saymo Installer (uv + Python 3.12) ==="
 echo ""
 
 GREEN='\033[0;32m'
@@ -14,6 +14,8 @@ warn() { echo -e "${YELLOW}!${NC} $1"; }
 fail() { echo -e "${RED}✗${NC} $1"; }
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+VENV_DIR="$SCRIPT_DIR/.venv"
+PY_VERSION="3.12"
 
 # ── Architecture ──
 ARCH=$(uname -m)
@@ -24,33 +26,36 @@ if [ "$ARCH" != "arm64" ]; then
 fi
 ok "Architecture: arm64"
 
-# ── Python ──
-PYTHON=$(which python3 2>/dev/null)
-if [ -z "$PYTHON" ]; then
-    fail "Python 3 not found"
+# ── uv (required) ──
+if ! command -v uv &>/dev/null; then
+    fail "uv not found. Install first:"
+    echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"
     exit 1
 fi
-ok "Python: $(python3 --version 2>&1 | awk '{print $2}')"
+ok "uv: $(uv --version | awk '{print $2}')"
 
-# ── Package manager: prefer uv, fallback to pip ──
-USE_UV=false
-if command -v uv &>/dev/null; then
-    UV_VER=$(uv --version 2>/dev/null | awk '{print $2}')
-    ok "uv: $UV_VER (will use for fast installs)"
-    USE_UV=true
-else
-    warn "uv not found, using pip (install uv for 10-50x faster installs: curl -LsSf https://astral.sh/uv/install.sh | sh)"
+# ── Create venv with Python 3.12 ──
+echo ""
+echo "--- Virtualenv (Python $PY_VERSION) ---"
+
+if [ -d "$VENV_DIR" ]; then
+    EXISTING_VER=$(grep '^version' "$VENV_DIR/pyvenv.cfg" 2>/dev/null | awk '{print $3}' | cut -d. -f1,2)
+    if [ "$EXISTING_VER" != "$PY_VERSION" ]; then
+        warn "Existing venv uses Python $EXISTING_VER — recreating with $PY_VERSION"
+        rm -rf "$VENV_DIR"
+    fi
 fi
 
-install_pkg() {
-    if $USE_UV; then
-        uv pip install --system "$@" 2>&1 | tail -1
-    else
-        pip3 install "$@" 2>&1 | tail -1
-    fi
-}
+if [ ! -d "$VENV_DIR" ]; then
+    uv venv --python "$PY_VERSION" "$VENV_DIR"
+fi
+ok "venv: $VENV_DIR ($(grep '^version' "$VENV_DIR/pyvenv.cfg" | awk '{print $3}'))"
 
-# ── Brew dependencies ──
+# All uv pip calls target this venv
+export VIRTUAL_ENV="$VENV_DIR"
+PY="$VENV_DIR/bin/python"
+
+# ── Brew system deps ──
 echo ""
 echo "--- System dependencies ---"
 
@@ -77,48 +82,38 @@ else
     ok "BlackHole 16ch: installed"
 fi
 
-# ── Python package ──
+# ── Saymo core + extras ──
 echo ""
 echo "--- Saymo core ---"
-
-if $USE_UV; then
-    uv pip install --system -e "$SCRIPT_DIR" 2>&1 | tail -3
-else
-    pip3 install -e "$SCRIPT_DIR" 2>&1 | tail -3
-fi
+uv pip install -e "$SCRIPT_DIR" 2>&1 | tail -3
 ok "Saymo core: installed"
 
-# ── TTS dependencies (voice cloning) ──
 echo ""
-echo "--- TTS (voice cloning) ---"
+echo "--- TTS (voice cloning + piper) ---"
+uv pip install -e "$SCRIPT_DIR[tts]" 2>&1 | tail -3
+ok "TTS dependencies: installed (coqui-tts, torch, piper)"
 
-if $USE_UV; then
-    uv pip install --system -e "$SCRIPT_DIR[tts]" 2>&1 | tail -3
-else
-    pip3 install -e "$SCRIPT_DIR[tts]" 2>&1 | tail -3
-fi
-ok "TTS dependencies: installed"
-
-# ── STT dependencies (speech recognition) ──
 echo ""
 echo "--- STT (speech recognition) ---"
-
-if $USE_UV; then
-    uv pip install --system -e "$SCRIPT_DIR[stt]" 2>&1 | tail -3
-else
-    pip3 install -e "$SCRIPT_DIR[stt]" 2>&1 | tail -3
-fi
+uv pip install -e "$SCRIPT_DIR[stt]" 2>&1 | tail -3
 ok "STT dependencies: installed"
+
+# verify coqui TTS import
+if "$PY" -c "from TTS.api import TTS" 2>/dev/null; then
+    ok "Coqui TTS import: OK"
+else
+    fail "Coqui TTS import failed in $VENV_DIR"
+fi
 
 # ── Verify PyTorch ──
 echo ""
 echo "--- PyTorch ---"
 
-PY_TORCH=$(python3 -c "import torch; print(torch.__version__)" 2>/dev/null || echo "MISSING")
+PY_TORCH=$("$PY" -c "import torch; print(torch.__version__)" 2>/dev/null || echo "MISSING")
 if [ "$PY_TORCH" = "MISSING" ]; then
-    fail "PyTorch not working. Try: pip3 install --force-reinstall torch torchaudio"
+    fail "PyTorch not working. Try: VIRTUAL_ENV=$VENV_DIR uv pip install --force-reinstall torch torchaudio"
 else
-    MPS=$(python3 -c "import torch; print(torch.backends.mps.is_available())" 2>/dev/null)
+    MPS=$("$PY" -c "import torch; print(torch.backends.mps.is_available())" 2>/dev/null)
     ok "PyTorch: $PY_TORCH (MPS: $MPS)"
 fi
 
@@ -126,20 +121,49 @@ fi
 echo ""
 echo "--- Ollama ---"
 
-if command -v ollama &>/dev/null; then
-    ok "Ollama: installed"
-    if curl -s http://localhost:11434 &>/dev/null; then
-        ok "Ollama service: running"
+OLLAMA_MODEL="qwen2.5-coder:7b"
+
+if ! command -v ollama &>/dev/null; then
+    if brew list ollama &>/dev/null; then
+        ok "Ollama: installed via brew"
     else
-        warn "Ollama not running. Start: ollama serve"
-    fi
-    if ollama list 2>/dev/null | grep -q "qwen2.5-coder:7b"; then
-        ok "Model qwen2.5-coder:7b: available"
-    else
-        warn "Model not found. Install: ollama pull qwen2.5-coder:7b"
+        echo "Installing Ollama via brew..."
+        brew install ollama
+        ok "Ollama: installed"
     fi
 else
-    warn "Ollama not found. Install: https://ollama.ai"
+    ok "Ollama: $(ollama --version 2>/dev/null | head -1)"
+fi
+
+# Ensure service is up before pull
+if ! curl -fsS http://localhost:11434 >/dev/null 2>&1; then
+    echo "Starting ollama service..."
+    if command -v brew &>/dev/null && brew services list 2>/dev/null | grep -q '^ollama'; then
+        brew services start ollama >/dev/null 2>&1 || true
+    else
+        nohup ollama serve >/dev/null 2>&1 &
+    fi
+    # wait up to 15s for API to come up
+    for i in {1..15}; do
+        if curl -fsS http://localhost:11434 >/dev/null 2>&1; then break; fi
+        sleep 1
+    done
+fi
+
+if curl -fsS http://localhost:11434 >/dev/null 2>&1; then
+    ok "Ollama service: running"
+    if ollama list 2>/dev/null | awk '{print $1}' | grep -qx "$OLLAMA_MODEL"; then
+        ok "Model $OLLAMA_MODEL: available"
+    else
+        echo "Pulling model $OLLAMA_MODEL (~4.4GB, several minutes)..."
+        if ollama pull "$OLLAMA_MODEL"; then
+            ok "Model $OLLAMA_MODEL: installed"
+        else
+            fail "Model pull failed. Retry manually: ollama pull $OLLAMA_MODEL"
+        fi
+    fi
+else
+    warn "Ollama API not responding on :11434. Start it with: ollama serve"
 fi
 
 # ── Piper voice (fallback TTS) ──
@@ -166,20 +190,30 @@ echo "--- Chrome ---"
 
 if pgrep -x "Google Chrome" &>/dev/null; then
     ok "Chrome: running"
-    osascript -e '
-    tell application "Google Chrome" to activate
-    delay 0.3
-    tell application "System Events"
-        tell process "Google Chrome"
-            try
-                click menu item "Developer" of menu "View" of menu bar 1
-                delay 0.3
-                click menu item "Allow JavaScript from Apple Events" of menu 1 of menu item "Developer" of menu "View" of menu bar 1
-            end try
-        end tell
-    end tell
-    ' 2>/dev/null
-    ok "Chrome JS from Apple Events: enabled"
+    JS_RESULT=$(osascript \
+        -e 'tell application "Google Chrome" to activate' \
+        -e 'delay 0.3' \
+        -e 'tell application "System Events" to tell process "Google Chrome"' \
+        -e '  set viewMenuName to ""' \
+        -e '  repeat with m in (menu bar items of menu bar 1)' \
+        -e '    if name of m is in {"View", "Вид"} then set viewMenuName to name of m' \
+        -e '  end repeat' \
+        -e '  if viewMenuName is "" then return "no_view_menu"' \
+        -e '  try' \
+        -e '    click menu item 1 of menu 1 of menu item "Developer" of menu viewMenuName of menu bar 1' \
+        -e '    return "ok_en"' \
+        -e '  end try' \
+        -e '  try' \
+        -e '    click menu item 1 of menu 1 of menu item "Разработка" of menu viewMenuName of menu bar 1' \
+        -e '    return "ok_ru"' \
+        -e '  end try' \
+        -e '  return "menu_not_found"' \
+        -e 'end tell' \
+        2>&1 || true)
+    case "$JS_RESULT" in
+        ok_en|ok_ru) ok "Chrome JS from Apple Events: toggled (Developer menu)" ;;
+        *) warn "Could not toggle JS permission automatically ($JS_RESULT). Enable manually: View → Developer → Allow JavaScript from Apple Events" ;;
+    esac
 else
     warn "Chrome not running — start Chrome and re-run to enable JS permissions"
 fi
@@ -188,19 +222,25 @@ fi
 echo ""
 echo "--- Verification ---"
 
-python3 -m saymo test-devices 2>/dev/null && ok "Saymo CLI: working" || fail "Saymo CLI error"
+"$PY" -m saymo test-devices 2>/dev/null && ok "Saymo CLI: working" || fail "Saymo CLI error"
 
 echo ""
 echo -e "${GREEN}=== Installation complete ===${NC}"
 echo ""
+echo "Activate venv:"
+echo "  source .venv/bin/activate"
+echo ""
+echo "Or run directly without activating:"
+echo "  .venv/bin/saymo <command>"
+echo ""
 echo "First time setup:"
-echo "  python3 -m saymo setup              # Interactive wizard"
-echo "  python3 -m saymo record-voice -d 300 # Record 5-min voice sample"
+echo "  .venv/bin/saymo setup              # Interactive wizard"
+echo "  .venv/bin/saymo record-voice -d 300 # Record 5-min voice sample"
 echo ""
 echo "Daily usage:"
-echo "  python3 -m saymo prepare -p standup  # Before meeting"
-echo "  python3 -m saymo speak --glip        # During meeting"
-echo "  python3 -m saymo auto -p standup     # Full auto mode"
+echo "  .venv/bin/saymo prepare -p standup  # Before meeting"
+echo "  .venv/bin/saymo speak --glip        # During meeting"
+echo "  .venv/bin/saymo auto -p standup     # Full auto mode"
 echo ""
 echo "Audio setup (one-time):"
 echo "  1. Audio MIDI Setup → Create Multi-Output Device"
