@@ -1282,5 +1282,333 @@ def test_voice_sample(ctx):
     console.print("[green]Done![/]")
 
 
+# ---------------------------------------------------------------------------
+# Voice training commands
+# ---------------------------------------------------------------------------
+
+@main.command("train-prepare")
+@click.option("--duration", "-d", default=1800, help="Max total recording duration in seconds")
+@click.option("--resume", "-r", is_flag=True, help="Resume interrupted recording session")
+@click.option("--category", type=click.Choice(["standup", "qa", "general", "it"]),
+              default=None, help="Prompt category (default: all)")
+@click.pass_context
+def train_prepare(ctx, duration, resume, category):
+    """Record training samples with guided prompts for voice fine-tuning.
+
+    Shows prompts one by one. Read each prompt aloud naturally.
+    Press Ctrl+C to stop early (progress is saved for --resume).
+    """
+    import time
+    import sounddevice as sd
+
+    from saymo.audio.devices import find_device
+    from saymo.audio.recorder import record_guided_session
+    from saymo.tts.prompts import get_prompts
+    from saymo.tts.dataset import DatasetBuilder
+
+    config = ctx.obj["config"]
+    prompts = get_prompts(category)
+
+    # Detect mic
+    mic_name = config.audio.recording_device or None
+    mic = find_device(mic_name, kind="input") if mic_name else None
+    if not mic:
+        default_dev = sd.query_devices(kind="input")
+        if default_dev:
+            mic_name = default_dev["name"]
+            console.print(f"[yellow]Using default mic: {mic_name}[/]")
+        else:
+            console.print("[bold red]No input devices found![/]")
+            return
+
+    console.print(f"[bold blue]Voice Training — Dataset Preparation[/]")
+    console.print(f"  Prompts: {len(prompts)} ({category or 'all categories'})")
+    console.print(f"  Mic: {mic_name}")
+    console.print(f"  Max duration: {duration}s")
+    console.print()
+    console.print("[dim]Read each prompt aloud naturally. Press Enter to start, Ctrl+C to stop.[/]")
+
+    # Calculate max duration per prompt
+    max_per_prompt = min(20, duration // max(1, len(prompts)))
+
+    # Guided recording with Rich output
+    from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
+
+    recorded = []
+
+    try:
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("{task.completed}/{task.total}"),
+            TimeElapsedColumn(),
+        ) as progress:
+            task = progress.add_task("Recording", total=len(prompts))
+
+            for i, prompt in enumerate(prompts):
+                # Check if already recorded (resume mode)
+                from pathlib import Path
+                raw_dir = Path.home() / ".saymo" / "training_dataset" / "raw"
+                raw_dir.mkdir(parents=True, exist_ok=True)
+                wav_path = raw_dir / f"{i:04d}.wav"
+
+                if resume and wav_path.exists():
+                    recorded.append(wav_path)
+                    progress.update(task, advance=1)
+                    continue
+
+                console.print()
+                console.print(f"[bold cyan][{i+1}/{len(prompts)}][/] {prompt}")
+                console.print("[dim]Press Enter to record, 's' to skip, 'q' to quit...[/]")
+
+                user_input = input().strip().lower()
+                if user_input == "q":
+                    break
+                if user_input == "s":
+                    progress.update(task, advance=1)
+                    continue
+
+                console.print("[bold red]RECORDING...[/]", end=" ")
+
+                import numpy as np
+                audio = sd.rec(
+                    int(max_per_prompt * 22050),
+                    samplerate=22050,
+                    channels=1,
+                    dtype="int16",
+                    device=find_device(mic_name, kind="input").index,
+                )
+                sd.wait()
+                audio = audio.flatten()
+
+                # Trim silence
+                from saymo.audio.recorder import _trim_silence
+                audio = _trim_silence(audio)
+
+                # Save
+                import wave as wave_mod
+                with wave_mod.open(str(wav_path), "wb") as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(22050)
+                    wf.writeframes(audio.tobytes())
+
+                dur = len(audio) / 22050
+                console.print(f"[green]{dur:.1f}s saved[/]")
+                recorded.append(wav_path)
+                progress.update(task, advance=1)
+
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Recording interrupted. Use --resume to continue later.[/]")
+
+    if not recorded:
+        console.print("[yellow]No samples recorded.[/]")
+        return
+
+    console.print(f"\n[bold green]Recorded {len(recorded)} samples[/]")
+
+    # Build dataset
+    console.print("\n[blue]Building dataset (segmenting + transcribing)...[/]")
+    try:
+        builder = DatasetBuilder()
+        # Use prompts as transcriptions for guided recordings
+        prompt_texts = [prompts[int(p.stem)] for p in recorded if int(p.stem) < len(prompts)]
+        report = builder.build(prompts=prompt_texts if len(prompt_texts) == len(recorded) else None)
+        console.print(f"\n[bold green]Dataset ready![/]")
+        console.print(report.summary())
+    except Exception as e:
+        console.print(f"[bold red]Dataset build failed:[/] {e}")
+        console.print("[dim]You can run 'saymo train-prepare --resume' to continue.[/]")
+
+
+@main.command("train-status")
+@click.pass_context
+def train_status(ctx):
+    """Show training dataset and model status."""
+    from saymo.tts.dataset import DatasetBuilder
+
+    builder = DatasetBuilder()
+    status = builder.get_status()
+
+    console.print("[bold blue]Voice Training Status[/]\n")
+
+    # Dataset info
+    table = Table(title="Dataset")
+    table.add_column("Property", style="cyan")
+    table.add_column("Value")
+
+    table.add_row("Raw recordings", str(status["raw_files"]))
+    table.add_row("Segments", str(status["segments"]))
+    table.add_row("Duration", f"{status['duration_sec'] / 60:.1f} min")
+    table.add_row("Metadata", "Yes" if status["has_metadata"] else "No")
+    table.add_row("Fine-tuned model", "Yes" if status["has_model"] else "No")
+
+    console.print(table)
+
+    # Training log
+    if "last_report" in status:
+        r = status["last_report"]
+        console.print(f"\n[dim]Last build: {r.get('good_segments', '?')} good segments, "
+                      f"ready: {r.get('ready', '?')}[/]")
+
+    # Training results
+    from saymo.tts.trainer import VoiceTrainer
+    trainer = VoiceTrainer()
+    train_status_data = trainer.get_training_status()
+
+    if "epochs" in train_status_data:
+        console.print(f"\n[bold]Last training:[/]")
+        console.print(f"  Epochs: {train_status_data['epochs']}")
+        console.print(f"  Final loss: {train_status_data.get('final_loss', '?'):.4f}")
+        console.print(f"  Duration: {train_status_data.get('duration_sec', 0) / 60:.1f} min")
+        console.print(f"  Device: {train_status_data.get('device', '?')}")
+        console.print(f"  Timestamp: {train_status_data.get('timestamp', '?')}")
+
+    # Recommendations
+    console.print()
+    if not status["has_metadata"]:
+        console.print("[yellow]Next step: run 'saymo train-prepare' to record training data[/]")
+    elif not status["has_model"]:
+        if status["segments"] >= 50:
+            console.print("[green]Dataset ready! Run 'saymo train-voice' to start fine-tuning[/]")
+        else:
+            console.print(f"[yellow]Need more data: {status['segments']}/50 segments. "
+                          f"Run 'saymo train-prepare --resume' to add more.[/]")
+    else:
+        console.print("[green]Fine-tuned model available. Run 'saymo train-eval' to evaluate.[/]")
+
+
+@main.command("train-voice")
+@click.option("--epochs", "-e", default=5, help="Number of training epochs")
+@click.option("--batch-size", "-b", default=2, help="Batch size (2 for 16GB RAM)")
+@click.option("--resume", "-r", is_flag=True, help="Resume from last checkpoint")
+@click.pass_context
+def train_voice(ctx, epochs, batch_size, resume):
+    """Fine-tune XTTS v2 on your voice samples.
+
+    Trains only the GPT decoder (~50M params), keeping audio encoder frozen.
+    Takes ~2-3 hours on Apple Silicon, ~4-6 hours on CPU.
+    """
+    from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn
+
+    from saymo.tts.trainer import VoiceTrainer
+    from saymo.tts.dataset import DatasetBuilder
+
+    config = ctx.obj["config"]
+    tc = config.tts.voice_training
+
+    from pathlib import Path
+    dataset_dir = Path(tc.dataset_dir) if tc.dataset_dir else None
+    model_dir = Path(tc.model_dir) if tc.model_dir else None
+
+    # Validate dataset
+    builder = DatasetBuilder(raw_dir=dataset_dir / "raw" if dataset_dir else None,
+                             output_dir=dataset_dir)
+    status = builder.get_status()
+
+    if status["segments"] < 10:
+        console.print(f"[bold red]Insufficient training data: {status['segments']} segments (need 10+)[/]")
+        console.print("[yellow]Run 'saymo train-prepare' first.[/]")
+        return
+
+    console.print("[bold blue]XTTS v2 Voice Fine-Tuning[/]\n")
+    console.print(f"  Dataset: {status['segments']} segments, {status['duration_sec']/60:.1f} min")
+    console.print(f"  Epochs: {epochs}")
+    console.print(f"  Batch size: {batch_size}")
+    console.print(f"  Learning rate: {tc.learning_rate}")
+    console.print()
+
+    trainer = VoiceTrainer(dataset_dir=dataset_dir, output_dir=model_dir)
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+    ) as progress:
+        task = progress.add_task("Training", total=epochs)
+        current_epoch = [0]
+
+        def on_progress(epoch, step, loss):
+            if epoch > current_epoch[0]:
+                current_epoch[0] = epoch
+                progress.update(task, advance=1,
+                                description=f"Epoch {epoch}/{epochs} loss={loss:.4f}")
+
+        try:
+            result = trainer.train(
+                epochs=epochs,
+                batch_size=batch_size,
+                learning_rate=tc.learning_rate,
+                resume=resume,
+                progress_callback=on_progress,
+            )
+            console.print(f"\n[bold green]{result.summary()}[/]")
+            console.print(f"\n[dim]Run 'saymo train-eval' to evaluate quality.[/]")
+
+        except Exception as e:
+            console.print(f"\n[bold red]Training failed:[/] {e}")
+            console.print("[dim]Try: --batch-size 1, or check memory with Activity Monitor.[/]")
+
+
+@main.command("train-eval")
+@click.option("--sentences", "-s", default=None, help="Custom test sentences (comma-separated)")
+@click.pass_context
+def train_eval(ctx, sentences):
+    """Evaluate fine-tuned voice model with A/B comparison.
+
+    Generates test sentences with both base and fine-tuned models,
+    plays them for blind comparison, and computes similarity metrics.
+    """
+    from pathlib import Path
+
+    config = ctx.obj["config"]
+    tc = config.tts.voice_training
+    model_dir = Path(tc.model_dir) if tc.model_dir else Path.home() / ".saymo" / "models" / "xtts_finetuned"
+
+    if not (model_dir / "best_model.pth").exists() and not (model_dir / "model.pth").exists():
+        console.print("[bold red]No fine-tuned model found.[/]")
+        console.print("[yellow]Run 'saymo train-voice' first.[/]")
+        return
+
+    from saymo.tts.quality import QualityEvaluator
+
+    # Test sentences
+    if sentences:
+        test_sentences = [s.strip() for s in sentences.split(",")]
+    else:
+        test_sentences = [
+            "Добрый день, коллеги. Вчера я работал над автотестами.",
+            "Сегодня планирую провести ревью и подготовить релиз.",
+            "Блокеров нет, все задачи идут по плану.",
+            "Ориентируюсь закончить задачу сегодня к вечеру.",
+            "Нужно обновить конфигурацию на стейдже перед деплоем.",
+            "Провёл анализ логов, нашёл три паттерна ошибок.",
+            "Автотесты прошли успешно на UAT окружении.",
+            "Хотфикс уже применён и работает корректно.",
+            "Задеплоил новую версию пайплайна на стейдж.",
+            "Документация обновлена в конфлюенсе.",
+        ]
+
+    evaluator = QualityEvaluator(config=config, model_dir=model_dir)
+
+    console.print("[bold blue]Voice Quality Evaluation[/]\n")
+    console.print(f"Test sentences: {len(test_sentences)}")
+    console.print("[dim]Generating audio with both models...[/]\n")
+
+    try:
+        report = evaluator.evaluate_interactive(test_sentences)
+        console.print(f"\n[bold green]Results:[/]")
+        console.print(f"  Fine-tuned preferred: {report['finetuned_preferred']}/{report['total']} "
+                      f"({100*report['finetuned_preferred']/report['total']:.0f}%)")
+        console.print(f"  Base preferred: {report['base_preferred']}/{report['total']}")
+        console.print(f"  Same: {report['same']}/{report['total']}")
+        if report.get("avg_similarity"):
+            console.print(f"  Avg similarity (fine-tuned): {report['avg_similarity']:.3f}")
+            console.print(f"  Avg similarity (base): {report['avg_similarity_base']:.3f}")
+    except Exception as e:
+        console.print(f"[bold red]Evaluation failed:[/] {e}")
+
+
 if __name__ == "__main__":
     main()
