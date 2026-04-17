@@ -187,8 +187,14 @@ saymo/
 │   ├── audio/              # Capture, playback, multi-device, recorder
 │   ├── jira_source/        # JIRA task fetching
 │   ├── analysis/           # Name trigger detection
+│   ├── plugins/            # Source plugins (Confluence, Obsidian, JIRA, file)
 │   └── obsidian/           # Daily notes reader
+├── docs/PLUGINS.md         # How to add a source plugin / call provider
 ├── docs/adr/               # 8 Architecture Decision Records
 ├── voice_reading_script.md # Script for recording voice sample
 └── CLAUDE.md               # Instructions for Claude Code
 ```
+
+## Extending Saymo
+
+Add a new task source (Notion, Linear, GitHub) or a new meeting app — see **[docs/PLUGINS.md](docs/PLUGINS.md)** for copy-pasteable examples.
