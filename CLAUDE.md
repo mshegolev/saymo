@@ -54,7 +54,13 @@ saymo/
 │   ├── composer.py        # Cloud composer (optional, via Anthropic)
 │   └── ollama_composer.py # Local LLM composer (DEFAULT prompts + overrides)
 ├── tts/
-│   ├── coqui_clone.py     # XTTS v2 voice cloning
+│   ├── qwen3_tts.py       # Qwen3-TTS voice cloning via MLX (recommended)
+│   ├── qwen3_trainer.py   # Qwen3-TTS LoRA fine-tuning pipeline
+│   ├── coqui_clone.py     # XTTS v2 voice cloning (legacy fallback)
+│   ├── trainer.py         # XTTS v2 GPT decoder fine-tuning
+│   ├── dataset.py         # Training dataset builder
+│   ├── prompts.py         # Training prompts for recording
+│   ├── quality.py         # A/B quality evaluation
 │   └── text_normalizer.py # Abbreviations / numbers / tracker IDs stripping
 ├── plugins/               # Pluggable task sources (tracker, notes, files)
 ├── providers/             # Per-app Chrome automation (mute/unmute)
@@ -70,7 +76,7 @@ saymo/
 - **Fully local dependency chain:**
   - LLM → Ollama
   - STT → faster-whisper
-  - TTS → Coqui XTTS v2 / Piper / macOS `say`
+  - TTS → Qwen3-TTS (MLX) / Coqui XTTS v2 / Piper / macOS `say`
   - Call automation → Chrome via per-provider JS in `saymo/providers/`.
 
 ## Audio routing

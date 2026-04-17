@@ -120,6 +120,15 @@ class PiperConfig:
 
 
 @dataclass
+class Qwen3Config:
+    model: str = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
+    lora_adapter: str = ""  # path to LoRA adapter, empty = base model
+    lora_epochs: int = 10
+    lora_rank: int = 8
+    lora_scale: float = 0.3
+
+
+@dataclass
 class VoiceTrainingConfig:
     dataset_dir: str = ""  # defaults to ~/.saymo/training_dataset/
     model_dir: str = ""  # defaults to ~/.saymo/models/xtts_finetuned/
@@ -136,6 +145,7 @@ class TTSConfig:
     openai: OpenAITTSConfig = field(default_factory=OpenAITTSConfig)
     elevenlabs: ElevenLabsTTSConfig = field(default_factory=ElevenLabsTTSConfig)
     macos_say: MacOSSayConfig = field(default_factory=MacOSSayConfig)
+    qwen3: Qwen3Config = field(default_factory=Qwen3Config)
     voice_training: VoiceTrainingConfig = field(default_factory=VoiceTrainingConfig)
 
 

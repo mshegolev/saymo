@@ -579,6 +579,14 @@ async def _synthesize(config, text: str) -> bytes | None:
             from saymo.tts.openai_tts import OpenAITTS
             return await OpenAITTS(config.tts.openai).synthesize(text)
 
+        elif config.tts.engine == "qwen3_clone":
+            from saymo.tts.qwen3_tts import Qwen3CloneTTS
+            return await Qwen3CloneTTS(
+                language=config.speech.language,
+                model=config.tts.qwen3.model,
+                lora_adapter=config.tts.qwen3.lora_adapter or None,
+            ).synthesize(text)
+
         else:
             console.print(f"[bold red]Unknown TTS engine: {config.tts.engine}[/]")
             return None
@@ -660,6 +668,14 @@ async def _test_tts(config, text):
     elif config.tts.engine == "piper":
         from saymo.tts.piper_tts import PiperTTS
         tts = PiperTTS(config.tts.piper)
+        await tts.synthesize_to_device(text, config.audio.playback_device)
+    elif config.tts.engine == "qwen3_clone":
+        from saymo.tts.qwen3_tts import Qwen3CloneTTS
+        tts = Qwen3CloneTTS(
+            language=config.speech.language,
+            model=config.tts.qwen3.model,
+            lora_adapter=config.tts.qwen3.lora_adapter or None,
+        )
         await tts.synthesize_to_device(text, config.audio.playback_device)
     else:
         console.print(f"[red]Unknown engine: {config.tts.engine}[/]")
@@ -1479,27 +1495,30 @@ def train_status(ctx):
 
 
 @main.command("train-voice")
-@click.option("--epochs", "-e", default=5, help="Number of training epochs")
+@click.option("--epochs", "-e", default=None, type=int, help="Number of training epochs")
 @click.option("--batch-size", "-b", default=2, help="Batch size (2 for 16GB RAM)")
 @click.option("--resume", "-r", is_flag=True, help="Resume from last checkpoint")
+@click.option("--engine", default=None, type=click.Choice(["xtts", "qwen3"]),
+              help="Training engine (default: auto-detect from tts.engine)")
 @click.pass_context
-def train_voice(ctx, epochs, batch_size, resume):
-    """Fine-tune XTTS v2 on your voice samples.
+def train_voice(ctx, epochs, batch_size, resume, engine):
+    """Fine-tune voice model on your samples.
 
-    Trains only the GPT decoder (~50M params), keeping audio encoder frozen.
-    Takes ~2-3 hours on Apple Silicon, ~4-6 hours on CPU.
+    Supports XTTS v2 (GPT decoder) and Qwen3-TTS (LoRA).
+    Engine auto-detected from config tts.engine, or specify --engine.
     """
     from rich.progress import Progress, BarColumn, TextColumn, SpinnerColumn
-
-    from saymo.tts.trainer import VoiceTrainer
     from saymo.tts.dataset import DatasetBuilder
 
     config = ctx.obj["config"]
     tc = config.tts.voice_training
 
+    # Determine engine
+    if engine is None:
+        engine = "qwen3" if config.tts.engine == "qwen3_clone" else "xtts"
+
     from pathlib import Path
     dataset_dir = Path(tc.dataset_dir) if tc.dataset_dir else None
-    model_dir = Path(tc.model_dir) if tc.model_dir else None
 
     # Validate dataset
     builder = DatasetBuilder(raw_dir=dataset_dir / "raw" if dataset_dir else None,
@@ -1511,13 +1530,63 @@ def train_voice(ctx, epochs, batch_size, resume):
         console.print("[yellow]Run 'saymo train-prepare' first.[/]")
         return
 
+    if engine == "qwen3":
+        # Qwen3-TTS LoRA fine-tuning
+        default_epochs = epochs or config.tts.qwen3.lora_epochs or 10
+        console.print("[bold blue]Qwen3-TTS LoRA Fine-Tuning[/]\n")
+        console.print(f"  Model: {config.tts.qwen3.model}")
+        console.print(f"  Dataset: {status['segments']} segments, {status['duration_sec']/60:.1f} min")
+        console.print(f"  Epochs: {default_epochs}")
+        console.print(f"  LoRA rank: {config.tts.qwen3.lora_rank}")
+        console.print(f"  LoRA scale: {config.tts.qwen3.lora_scale}")
+        console.print()
+
+        from saymo.tts.qwen3_trainer import Qwen3VoiceTrainer
+        trainer = Qwen3VoiceTrainer(
+            model_name=config.tts.qwen3.model,
+            dataset_dir=dataset_dir,
+        )
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("{task.completed}/{task.total}"),
+        ) as progress:
+            task = progress.add_task("Training", total=default_epochs)
+            current_epoch = [0]
+
+            def on_progress(epoch, step, loss):
+                if epoch > current_epoch[0]:
+                    current_epoch[0] = epoch
+                    progress.update(task, advance=1,
+                                    description=f"Epoch {epoch}/{default_epochs} loss={loss:.4f}")
+
+            try:
+                result = trainer.train(
+                    epochs=default_epochs,
+                    lora_rank=config.tts.qwen3.lora_rank,
+                    lora_scale=config.tts.qwen3.lora_scale,
+                    progress_callback=on_progress,
+                )
+                console.print(f"\n[bold green]{result.summary()}[/]")
+                console.print(f"\n[dim]Set tts.qwen3.lora_adapter in config.yaml to use.[/]")
+            except Exception as e:
+                console.print(f"\n[bold red]Training failed:[/] {e}")
+        return
+
+    # XTTS v2 fine-tuning (default)
+    default_epochs = epochs or tc.epochs or 5
+    model_dir = Path(tc.model_dir) if tc.model_dir else None
+
     console.print("[bold blue]XTTS v2 Voice Fine-Tuning[/]\n")
     console.print(f"  Dataset: {status['segments']} segments, {status['duration_sec']/60:.1f} min")
-    console.print(f"  Epochs: {epochs}")
+    console.print(f"  Epochs: {default_epochs}")
     console.print(f"  Batch size: {batch_size}")
     console.print(f"  Learning rate: {tc.learning_rate}")
     console.print()
 
+    from saymo.tts.trainer import VoiceTrainer
     trainer = VoiceTrainer(dataset_dir=dataset_dir, output_dir=model_dir)
 
     with Progress(
@@ -1526,18 +1595,18 @@ def train_voice(ctx, epochs, batch_size, resume):
         BarColumn(),
         TextColumn("{task.completed}/{task.total}"),
     ) as progress:
-        task = progress.add_task("Training", total=epochs)
+        task = progress.add_task("Training", total=default_epochs)
         current_epoch = [0]
 
         def on_progress(epoch, step, loss):
             if epoch > current_epoch[0]:
                 current_epoch[0] = epoch
                 progress.update(task, advance=1,
-                                description=f"Epoch {epoch}/{epochs} loss={loss:.4f}")
+                                description=f"Epoch {epoch}/{default_epochs} loss={loss:.4f}")
 
         try:
             result = trainer.train(
-                epochs=epochs,
+                epochs=default_epochs,
                 batch_size=batch_size,
                 learning_rate=tc.learning_rate,
                 resume=resume,
