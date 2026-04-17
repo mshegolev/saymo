@@ -1,7 +1,8 @@
-"""Fetch tasks using the same logic as update_confluence.py.
+"""Fetch tasks from JIRA for the speech composer.
 
-Reuses the JQL from TaskSyncer to get today's active tasks
-and yesterday's tasks from the previous business day.
+Both the Jira project key and the team-member mapping are supplied through
+``config.yaml`` — no project-specific identifiers or usernames are hardcoded
+in source.
 """
 
 import asyncio
@@ -15,11 +16,35 @@ from saymo.config import JiraConfig
 
 logger = logging.getLogger("saymo.jira.confluence")
 
-# Same JQL as update_confluence.py TaskSyncer.get_today_tasks()
-TODAY_JQL = """project = "Data Platform Engineering" AND \
-(status in ("In Progress", "Blocked", "Review") OR \
-status changed from "In Progress" to Closed during (now(), -1d)) \
-AND assignee in (m.v.shchegolev, oleg.o.korytov)"""
+
+# JQL templates — ``{project_key}`` and ``{assignees}`` / ``{assignee}`` are
+# resolved at runtime from config. Keep templates here instead of string-
+# concatenating inside functions so users can override them in config too.
+PERSONAL_TODAY_JQL = (
+    'project = "{project_key}" AND '
+    '(status in ("In Progress", "Blocked", "Review") OR '
+    'status changed from "In Progress" to Closed during (now(), -1d)) AND '
+    'assignee = currentUser()'
+)
+
+PERSONAL_YESTERDAY_JQL = (
+    'project = "{project_key}" AND assignee = currentUser() '
+    'AND updated >= "{yesterday}" AND updated < "{today}" '
+    'ORDER BY updated DESC'
+)
+
+TEAM_TODAY_JQL = (
+    'project = "{project_key}" AND '
+    '(status in ("In Progress", "Blocked", "Review") OR '
+    'status changed from "In Progress" to Closed during (now(), -1d)) AND '
+    'assignee = {assignee}'
+)
+
+TEAM_YESTERDAY_JQL = (
+    'project = "{project_key}" AND assignee = {assignee} '
+    'AND updated >= "{yesterday}" AND updated < "{today}" '
+    'ORDER BY updated DESC'
+)
 
 
 @dataclass
@@ -56,24 +81,45 @@ def _get_previous_business_day() -> datetime:
     return previous
 
 
+def _jira_client(config: JiraConfig):
+    """Build a JIRA client honouring selfhelper / direct-config styles."""
+    if config.selfhelper_path:
+        sys.path.insert(0, config.selfhelper_path)
+        from jira import JIRA
+        from config.constants import JIRA_URL, JIRA_TOKEN
+        return JIRA(server=JIRA_URL, token_auth=JIRA_TOKEN, options={"verify": False})
+    from jira import JIRA
+    return JIRA(server=config.url, token_auth=config.token, options={"verify": False})
+
+
+def _project_key(config: JiraConfig) -> str:
+    """Extract the configured Jira project key. Empty when user didn't set one."""
+    return getattr(config, "project_key", "") or ""
+
+
 def _fetch_sync(config: JiraConfig) -> DailyTasks:
-    """Synchronous fetch of today + yesterday tasks from JIRA."""
+    """Synchronous fetch of today + yesterday tasks for the current user."""
     warnings.filterwarnings("ignore")
 
-    sys.path.insert(0, config.selfhelper_path)
-    from jira import JIRA
-    from config.constants import JIRA_URL, JIRA_TOKEN
+    jira = _jira_client(config)
 
-    jira = JIRA(server=JIRA_URL, token_auth=JIRA_TOKEN, options={"verify": False})
+    prev_day = _get_previous_business_day()
+    prev_str = prev_day.strftime("%Y-%m-%d")
+    next_str = (prev_day + timedelta(days=1)).strftime("%Y-%m-%d")
+    project_key = _project_key(config)
 
-    # Today's tasks — same JQL as update_confluence.py
-    today_issues = jira.search_issues(TODAY_JQL, maxResults=30)
+    today_jql = PERSONAL_TODAY_JQL.format(project_key=project_key)
+    yesterday_jql = PERSONAL_YESTERDAY_JQL.format(
+        project_key=project_key, yesterday=prev_str, today=next_str
+    )
+
+    today_issues = jira.search_issues(today_jql, maxResults=30)
     today_tasks = []
     for issue in today_issues:
         assignee = ""
         if issue.fields.assignee:
             assignee = getattr(issue.fields.assignee, 'displayName',
-                              getattr(issue.fields.assignee, 'name', ''))
+                               getattr(issue.fields.assignee, 'name', ''))
         today_tasks.append(TaskInfo(
             key=issue.key,
             summary=issue.fields.summary,
@@ -81,28 +127,13 @@ def _fetch_sync(config: JiraConfig) -> DailyTasks:
             assignee=assignee,
         ))
 
-    # Yesterday's tasks — tasks updated on previous business day
-    prev_day = _get_previous_business_day()
-    prev_str = prev_day.strftime("%Y-%m-%d")
-    next_str = (prev_day + timedelta(days=1)).strftime("%Y-%m-%d")
-    yesterday_jql = (
-        f'project = "Data Platform Engineering" '
-        f'AND assignee = m.v.shchegolev '
-        f'AND updated >= "{prev_str}" AND updated < "{next_str}" '
-        f'ORDER BY updated DESC'
-    )
-
     yesterday_issues = jira.search_issues(yesterday_jql, maxResults=30)
-    yesterday_tasks = []
-    for issue in yesterday_issues:
-        yesterday_tasks.append(TaskInfo(
-            key=issue.key,
-            summary=issue.fields.summary,
-            status=str(issue.fields.status),
-        ))
+    yesterday_tasks = [
+        TaskInfo(key=i.key, summary=i.fields.summary, status=str(i.fields.status))
+        for i in yesterday_issues
+    ]
 
     logger.info(f"Fetched {len(today_tasks)} today + {len(yesterday_tasks)} yesterday tasks")
-
     return DailyTasks(
         today=today_tasks,
         yesterday=yesterday_tasks,
@@ -111,27 +142,26 @@ def _fetch_sync(config: JiraConfig) -> DailyTasks:
     )
 
 
-DEFAULT_TEAM_MEMBERS = {
-    "m.v.shchegolev": "Михаил",
-    "oleg.o.korytov": "Олег",
-}
+# Team-member map is always supplied by the caller via ``config.yaml`` —
+# either ``meetings.<profile>.team_members`` or a top-level ``team`` section.
+# Empty default ensures no personal usernames end up in source control.
+DEFAULT_TEAM_MEMBERS: dict[str, str] = {}
 
 
 def _fetch_team_sync(config: JiraConfig, team_members: dict | None = None) -> TeamDailyTasks:
-    """Fetch tasks for all team members."""
+    """Fetch tasks for each configured team member."""
     warnings.filterwarnings("ignore")
 
-    sys.path.insert(0, config.selfhelper_path)
-    from jira import JIRA
-    from config.constants import JIRA_URL, JIRA_TOKEN
-
-    jira = JIRA(server=JIRA_URL, token_auth=JIRA_TOKEN, options={"verify": False})
+    jira = _jira_client(config)
 
     prev_day = _get_previous_business_day()
     prev_str = prev_day.strftime("%Y-%m-%d")
     next_str = (prev_day + timedelta(days=1)).strftime("%Y-%m-%d")
+    project_key = _project_key(config)
 
     members = team_members or DEFAULT_TEAM_MEMBERS
+    if not members:
+        logger.warning("No team members configured — returning empty TeamDailyTasks")
 
     result = TeamDailyTasks(
         today_date=datetime.today().strftime("%Y-%m-%d"),
@@ -139,35 +169,23 @@ def _fetch_team_sync(config: JiraConfig, team_members: dict | None = None) -> Te
     )
 
     for username, display_name in members.items():
-        # Today
-        today_jql = (
-            f'project = "Data Platform Engineering" '
-            f'AND (status in ("In Progress", "Blocked", "Review") '
-            f'OR status changed from "In Progress" to Closed during (now(), -1d)) '
-            f'AND assignee = {username}'
+        today_jql = TEAM_TODAY_JQL.format(project_key=project_key, assignee=username)
+        yesterday_jql = TEAM_YESTERDAY_JQL.format(
+            project_key=project_key, assignee=username,
+            yesterday=prev_str, today=next_str,
         )
+
         today_issues = jira.search_issues(today_jql, maxResults=30)
+        yesterday_issues = jira.search_issues(yesterday_jql, maxResults=30)
+
         today_tasks = [
-            TaskInfo(
-                key=i.key, summary=i.fields.summary,
-                status=str(i.fields.status), assignee=display_name,
-            )
+            TaskInfo(key=i.key, summary=i.fields.summary,
+                     status=str(i.fields.status), assignee=display_name)
             for i in today_issues
         ]
-
-        # Yesterday
-        yesterday_jql = (
-            f'project = "Data Platform Engineering" '
-            f'AND assignee = {username} '
-            f'AND updated >= "{prev_str}" AND updated < "{next_str}" '
-            f'ORDER BY updated DESC'
-        )
-        yesterday_issues = jira.search_issues(yesterday_jql, maxResults=30)
         yesterday_tasks = [
-            TaskInfo(
-                key=i.key, summary=i.fields.summary,
-                status=str(i.fields.status), assignee=display_name,
-            )
+            TaskInfo(key=i.key, summary=i.fields.summary,
+                     status=str(i.fields.status), assignee=display_name)
             for i in yesterday_issues
         ]
 
@@ -196,7 +214,6 @@ def team_tasks_to_notes(team: TeamDailyTasks) -> dict:
     """Convert TeamDailyTasks to notes dict for team scrum composer."""
     yesterday_lines = []
     today_lines = []
-
     for name, tasks in team.members.items():
         if tasks.yesterday:
             yesterday_lines.append(f"\n{name}:")
@@ -206,7 +223,6 @@ def team_tasks_to_notes(team: TeamDailyTasks) -> dict:
             today_lines.append(f"\n{name}:")
             for t in tasks.today:
                 today_lines.append(f"  - {t.summary} (status: {t.status})")
-
     return {
         "yesterday": "\n".join(yesterday_lines) if yesterday_lines else None,
         "today": "\n".join(today_lines) if today_lines else None,
@@ -216,15 +232,9 @@ def team_tasks_to_notes(team: TeamDailyTasks) -> dict:
 
 
 def tasks_to_notes(daily: DailyTasks) -> dict:
-    """Convert DailyTasks to notes dict format for composer."""
-    yesterday_lines = []
-    for t in daily.yesterday:
-        yesterday_lines.append(f"- [{t.key}] {t.summary} (status: {t.status})")
-
-    today_lines = []
-    for t in daily.today:
-        today_lines.append(f"- [{t.key}] {t.summary} (status: {t.status})")
-
+    """Convert DailyTasks to notes dict for the personal composer."""
+    yesterday_lines = [f"- {t.summary} (status: {t.status})" for t in daily.yesterday]
+    today_lines = [f"- {t.summary} (status: {t.status})" for t in daily.today]
     return {
         "yesterday": "\n".join(yesterday_lines) if yesterday_lines else None,
         "today": "\n".join(today_lines) if today_lines else None,
