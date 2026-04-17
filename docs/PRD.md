@@ -2,7 +2,7 @@
 
 ## Overview
 
-Saymo is a fully local AI standup automation tool for macOS. It fetches task data, composes a natural standup summary using a local LLM, synthesizes speech with the user's cloned voice, and delivers it into an active call — all without cloud APIs.
+Saymo is a fully local AI voice assistant for macOS. It pulls optional context from plugin sources (tracker, notes, files), composes natural speech with a local LLM, synthesizes it in the user's cloned voice, and delivers audio into any live call — all without cloud APIs.
 
 ## Core Architecture
 
@@ -218,27 +218,30 @@ Converts written text to TTS-friendly pronunciation. Runs automatically before a
 ### File: `saymo/tts/text_normalizer.py`
 
 ### Abbreviation map (`ABBREV_MAP`)
+Generic IT/DevOps vocabulary ships in source. Example entries:
 ```python
-"NS2": "эн-эс-два",
 "QA": "кью-эй",
 "ETL": "и-ти-эл",
+"API": "эй-пи-ай",
 "smoke": "смоук",
 "stage": "стейдж",
 ```
 
 ### Rules applied (in order)
-1. Remove ETL build versions (`v.2604101636` → empty)
-2. Remove JIRA IDs (`DATA-15989:` → empty)
+1. Remove build versions (long numeric stamps, e.g. `v.2604101636`)
+2. Remove tracker IDs (regex `FOO-123:`)
 3. Remove standalone long numbers (8+ digits)
-4. Expand abbreviations from `ABBREV_MAP`
+4. Expand abbreviations from `ABBREV_MAP` + `config.vocabulary.abbreviations`
 5. Expand version numbers (`1.0.0` → `один точка ноль точка ноль`)
 6. Expand short numbers to Russian words (`15` → `пятнадцать`)
 7. Strip markdown artifacts (`---`, `**`, `#`)
 
-### Adding terms
-```python
-# In ABBREV_MAP dict:
-"NEW_TERM": "произношение-по-русски",
+### Adding project-specific terms
+Do **not** edit source. Add them to your `config.yaml`:
+```yaml
+vocabulary:
+  abbreviations:
+    NEW_TERM: "произношение-по-русски"
 ```
 
 ---
@@ -254,15 +257,15 @@ meetings:
     team: false                   # Personal or team report
     source: "confluence"          # Source plugin name
     trigger_phrases:              # Words for auto-mode trigger
-      - "Михаил"
-      - "QA team"
+      - "{user_name}"
+      - "your team"
 ```
 
 ### Trigger phrases
 Used by `saymo auto` mode. When faster-whisper transcription contains any of these phrases, Saymo auto-speaks. Supports:
-- Exact match: `"Михаил"`
-- Regex patterns: `"Михаил.*очередь"`
-- Fuzzy variants (built into turn_detector): `"Миш"`, `"Мишка"`, `"Михоил"`
+- Exact match: `"Alex"`
+- Regex patterns: `"Alex.*очередь"`
+- Fuzzy variants (supplied via `config.vocabulary.fuzzy_expansions`)
 
 ---
 

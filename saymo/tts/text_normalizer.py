@@ -1,30 +1,17 @@
-"""Text normalizer for TTS — expand abbreviations, numbers, and mixed lang terms.
+"""Text normalizer for TTS — expand abbreviations, numbers, and mixed-lang terms.
 
-Converts text like:
-  "NS2 UAT smoke тесты, верификация SRS 1.0.0"
-→ "эн-эс-два ю-эй-ти смоук тесты, верификация эс-ар-эс один точка ноль точка ноль"
+Default abbreviation map below covers generic IT/DevOps vocabulary. Project
+or company-specific terms (internal pipelines, product codenames, etc.)
+should be added via ``config.vocabulary.abbreviations`` rather than edited
+here, so the source remains project-agnostic.
 """
 
 import re
 
-# Abbreviation → pronunciation mapping (Russian phonetic)
-# Add your own terms here as needed
+# Default abbreviation → pronunciation mapping (Russian phonetic).
+# Covers generic IT / DevOps / QA vocabulary. For project-specific terms use
+# ``config.vocabulary.abbreviations`` which is merged on top of this map.
 ABBREV_MAP = {
-    # ETL pipelines
-    "NS2": "эн-эс-два",
-    "NS1": "эн-эс-один",
-    "ERR": "и-ар-ар",
-    "ERD": "и-ар-ди",
-    "FDM": "эф-ди-эм",
-    "AGW": "эй-джи-дабл-ю",
-    "CCR": "си-си-ар",
-    "EDR": "и-ди-ар",
-    "MTA": "эм-ти-эй",
-    "SRS": "эс-ар-эс",
-    "UMD": "ю-эм-ди",
-    "HDG": "эйч-ди-джи",
-    "CSN": "си-эс-эн",
-    "SFDC": "эс-эф-ди-си",
     # Environments
     "UAT": "ю-эй-ти",
     "QA": "кью-эй",
@@ -66,16 +53,9 @@ ABBREV_MAP = {
     "JIRA": "джира",
     "GIT": "гит",
     "NPM": "эн-пи-эм",
-    # Company specific
-    "FedRamp": "фед-рамп",
-    "NetSuite": "нет-сьют",
-    "OpenMetadata": "опен-метадата",
-    "Snowflake": "сноуфлейк",
-    "Oozie": "узи",
     "Kafka": "кафка",
     "Spark": "спарк",
     "Hive": "хайв",
-    "Glip": "глип",
     "Parquet": "паркет",
     "Jenkins": "дженкинс",
     "Docker": "докер",
@@ -194,8 +174,8 @@ def normalize_for_tts(text: str, extra_abbrevs: dict[str, str] | None = None) ->
     # Remove standalone long numbers (8+ digits) — build IDs, timestamps
     text = re.sub(r'\b\d{8,}\b', '', text)
 
-    # Remove JIRA ticket numbers in speech (DATA-15989: → skip entirely)
-    text = re.sub(r'\bDATA-\d+\s*:?\s*', '', text)
+    # Remove tracker ticket numbers like `FOO-12345:` that are noise in speech
+    text = re.sub(r'\b[A-Z][A-Z0-9]{1,9}-\d+\s*:?\s*', '', text)
 
     # Expand version numbers (e.g., 1.0.0, 2.5.3)
     text = re.sub(r'\b\d+\.\d+\.\d+\b', _expand_version, text)

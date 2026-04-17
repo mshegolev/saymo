@@ -1,7 +1,9 @@
-"""Detect when it's the user's turn to speak during a standup call.
+"""Detect when it's the user's turn to speak during a live call.
 
-Uses fuzzy keyword matching across sliding window of transcript chunks.
-Handles Whisper misspellings: "Миш", "миша", "Мишка", "Михоил", etc.
+Uses fuzzy keyword matching across a sliding window of transcript chunks.
+The fuzzy variant map is loaded from ``config.vocabulary.fuzzy_expansions``
+so users can add Speech-to-Text misspellings for their own name without
+editing source.
 """
 
 import logging
@@ -9,14 +11,6 @@ import re
 import time
 
 logger = logging.getLogger("saymo.analysis.turn")
-
-# Common Whisper misspellings for Russian names
-FUZZY_EXPANSIONS = {
-    "Михаил": ["Михаил", "Михоил", "Михаел", "михаил", "Микаил"],
-    "Миша": ["Миша", "Миш", "Мишa", "миша", "Мишка", "Мишань", "Мишу"],
-    "Mikhail": ["Mikhail", "Mikail", "Mihail", "mikhail"],
-    "Misha": ["Misha", "Mesha", "misha"],
-}
 
 
 class TurnDetector:
@@ -30,14 +24,16 @@ class TurnDetector:
         self,
         name_variants: list[str],
         cooldown_seconds: float = 45.0,
+        fuzzy_expansions: dict[str, list[str]] | None = None,
     ):
+        fuzzy_expansions = fuzzy_expansions or {}
         # Build expanded pattern list with fuzzy variants
         all_names = set()
         for name in name_variants:
             all_names.add(name)
             all_names.add(name.lower())
-            # Add fuzzy expansions if available
-            for key, expansions in FUZZY_EXPANSIONS.items():
+            # Add fuzzy expansions if user supplied them in config
+            for key, expansions in fuzzy_expansions.items():
                 if name.lower() == key.lower():
                     all_names.update(expansions)
 
