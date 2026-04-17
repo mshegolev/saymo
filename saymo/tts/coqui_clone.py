@@ -18,17 +18,52 @@ from saymo.audio.devices import find_device
 logger = logging.getLogger("saymo.tts.coqui_clone")
 
 DEFAULT_VOICE_SAMPLE = Path.home() / ".saymo" / "voice_samples" / "voice_sample.wav"
+DEFAULT_FINETUNED_DIR = Path.home() / ".saymo" / "models" / "xtts_finetuned"
 XTTS_MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
 
 
+class _FinetunedTTSWrapper:
+    """Wraps a raw Xtts model to match the TTS API interface (tts_to_file)."""
+
+    def __init__(self, model):
+        self._model = model
+
+    def tts_to_file(self, text: str, speaker_wav: str, language: str, file_path: str):
+        import torch
+        import torchaudio
+
+        with torch.no_grad():
+            outputs = self._model.synthesize(
+                text,
+                self._model.config,
+                speaker_wav=speaker_wav,
+                language=language,
+            )
+        wav = torch.tensor(outputs["wav"]).unsqueeze(0)
+        torchaudio.save(file_path, wav, 22050)
+
+
 class CoquiCloneTTS:
-    """Text-to-speech using XTTS v2 with cloned voice."""
+    """Text-to-speech using XTTS v2 with cloned voice.
+
+    Automatically loads fine-tuned checkpoint if available at
+    ~/.saymo/models/xtts_finetuned/. Falls back to base model.
+    """
 
     _model = None  # lazy-loaded, shared across instances
+    _model_type = None  # "base" or "finetuned"
 
-    def __init__(self, voice_sample: str | None = None, language: str = "ru"):
+    def __init__(
+        self,
+        voice_sample: str | None = None,
+        language: str = "ru",
+        use_finetuned: bool = True,
+        checkpoint_dir: str | None = None,
+    ):
         self.language = language
         self.voice_sample = Path(voice_sample) if voice_sample else DEFAULT_VOICE_SAMPLE
+        self.use_finetuned = use_finetuned
+        self.checkpoint_dir = Path(checkpoint_dir) if checkpoint_dir else DEFAULT_FINETUNED_DIR
 
         if not self.voice_sample.exists():
             raise FileNotFoundError(
@@ -37,16 +72,63 @@ class CoquiCloneTTS:
             )
 
     @classmethod
-    def _get_model(cls):
-        if cls._model is None:
-            from TTS.api import TTS
-            logger.info(f"Loading XTTS v2 model ({XTTS_MODEL_NAME})...")
-            cls._model = TTS(XTTS_MODEL_NAME)
+    def _get_model(cls, checkpoint_dir: Path | None = None, use_finetuned: bool = True):
+        """Load XTTS v2 model, preferring fine-tuned checkpoint if available."""
+        finetuned_dir = checkpoint_dir or DEFAULT_FINETUNED_DIR
+        finetuned_model = finetuned_dir / "best_model.pth"
+        if not finetuned_model.exists():
+            finetuned_model = finetuned_dir / "model.pth"
+
+        want_finetuned = use_finetuned and finetuned_model.exists()
+
+        # Check if we need to reload (model type changed)
+        desired_type = "finetuned" if want_finetuned else "base"
+        if cls._model is not None and cls._model_type == desired_type:
+            return cls._model
+
+        if want_finetuned:
+            logger.info(f"Loading fine-tuned XTTS v2 from {finetuned_dir}")
+            try:
+                from TTS.tts.configs.xtts_config import XttsConfig
+                from TTS.tts.models.xtts import Xtts
+
+                config = XttsConfig()
+                config_path = finetuned_dir / "config.json"
+                if config_path.exists():
+                    config.load_json(str(config_path))
+
+                model = Xtts.init_from_config(config)
+                # Load base model first, then override GPT weights
+                from TTS.utils.manage import ModelManager
+                manager = ModelManager()
+                model_path, _, _ = manager.download_model(XTTS_MODEL_NAME)
+                base_dir = str(Path(model_path).parent)
+                model.load_checkpoint(config, checkpoint_dir=base_dir)
+
+                # Load fine-tuned GPT weights on top
+                import torch
+                gpt_state = torch.load(str(finetuned_model), map_location="cpu", weights_only=True)
+                model.gpt.load_state_dict(gpt_state)
+                model.eval()
+
+                # Wrap in TTS-compatible interface
+                cls._model = _FinetunedTTSWrapper(model)
+                cls._model_type = "finetuned"
+                logger.info("Fine-tuned XTTS v2 loaded successfully")
+                return cls._model
+            except Exception as e:
+                logger.warning(f"Failed to load fine-tuned model, falling back to base: {e}")
+
+        # Fall back to base model
+        from TTS.api import TTS
+        logger.info(f"Loading base XTTS v2 model ({XTTS_MODEL_NAME})...")
+        cls._model = TTS(XTTS_MODEL_NAME)
+        cls._model_type = "base"
         return cls._model
 
     def _synthesize_sync(self, text: str, output_path: str) -> str:
         logger.info(f"Synthesizing {len(text)} chars with cloned voice")
-        model = self._get_model()
+        model = self._get_model(self.checkpoint_dir, self.use_finetuned)
         model.tts_to_file(
             text=text,
             speaker_wav=str(self.voice_sample),

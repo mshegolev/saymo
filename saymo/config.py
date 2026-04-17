@@ -117,12 +117,23 @@ class PiperConfig:
 
 
 @dataclass
+class VoiceTrainingConfig:
+    dataset_dir: str = ""  # defaults to ~/.saymo/training_dataset/
+    model_dir: str = ""  # defaults to ~/.saymo/models/xtts_finetuned/
+    epochs: int = 5
+    batch_size: int = 2
+    learning_rate: float = 5e-6
+    use_finetuned: bool = True  # prefer fine-tuned model for synthesis
+
+
+@dataclass
 class TTSConfig:
     engine: str = "piper"
     piper: PiperConfig = field(default_factory=PiperConfig)
     openai: OpenAITTSConfig = field(default_factory=OpenAITTSConfig)
     elevenlabs: ElevenLabsTTSConfig = field(default_factory=ElevenLabsTTSConfig)
     macos_say: MacOSSayConfig = field(default_factory=MacOSSayConfig)
+    voice_training: VoiceTrainingConfig = field(default_factory=VoiceTrainingConfig)
 
 
 @dataclass
