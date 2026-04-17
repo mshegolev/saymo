@@ -976,12 +976,12 @@ async def _prepare(config, save: bool):
 
 
 async def _prepare_team(config, save: bool):
-    """Prepare team scrum report (Михаил + Олег)."""
+    """Prepare team scrum report (your team)."""
     _rotate_audio_cache()
     from saymo.jira_source.confluence_tasks import fetch_team_tasks, team_tasks_to_notes
-    from saymo.speech.ollama_composer import compose_standup_ollama, check_ollama_health, TEAM_SCRUM_PROMPT_RU
+    from saymo.speech.ollama_composer import compose_standup_ollama, check_ollama_health, DEFAULT_TEAM_SCRUM_PROMPT_RU
 
-    console.print("[bold blue]Fetching team tasks (Михаил + Олег)...[/]")
+    console.print("[bold blue]Fetching team tasks (your team)...[/]")
     try:
         team_members = config.meetings.get("_team_members") if isinstance(config.meetings, dict) else None
         # Read team from config.yaml top-level 'team' key
@@ -1019,7 +1019,7 @@ async def _prepare_team(config, save: bool):
         model=config.ollama.model,
         ollama_url=config.ollama.url,
         language=config.speech.language,
-        prompt_override=TEAM_SCRUM_PROMPT_RU,
+        prompt_override=DEFAULT_TEAM_SCRUM_PROMPT_RU,
     )
 
     console.print(f"\n[bold green]Team scrum report:[/]\n\n{text}\n")

@@ -15,14 +15,14 @@ Saymo должен получать информацию о задачах и г
 **1. `confluence` (default)** — используется тот же JQL что и `update_confluence.py`:
 ```sql
 -- Today: активные + закрытые за последний день
-project = "Data Platform Engineering"
+project = "{project_key}"
 AND (status in ("In Progress", "Blocked", "Review")
      OR status changed from "In Progress" to Closed during (now(), -1d))
-AND assignee in (m.v.shchegolev, oleg.o.korytov)
+AND assignee in (currentUser(), {another_assignee})
 
 -- Yesterday: обновлённые в предыдущий рабочий день
-project = "Data Platform Engineering"
-AND assignee = m.v.shchegolev
+project = "{project_key}"
+AND assignee = currentUser()
 AND updated >= "YYYY-MM-DD" AND updated < "YYYY-MM-DD+1"
 ```
 
