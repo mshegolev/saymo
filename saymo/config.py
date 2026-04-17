@@ -145,9 +145,11 @@ class JiraConfig:
     selfhelper_path: str = ""
     url: str = ""
     token: str = ""
+    project_key: str = ""  # e.g. "ABC" — scopes JQL queries
     user_query: str = "assignee = currentUser() AND updated >= -1d ORDER BY updated DESC"
     worklog_query: str = "worklogAuthor = currentUser() AND worklogDate >= -1d"
     max_results: int = 15
+    team_members: dict = field(default_factory=dict)  # {username: display_name}
 
 
 @dataclass
