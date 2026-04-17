@@ -101,7 +101,12 @@ Key sections:
 - `team` — JIRA usernames → display names for scrum mode
 - `meetings.*` — profiles with provider, trigger phrases, team flag
 
-## Adding a New Call Provider
+## Extending Saymo (plugins & providers)
+
+Two extension points — full guide with copy-pasteable examples in **[docs/PLUGINS.md](docs/PLUGINS.md)**:
+
+- **Source plugin** (`saymo/plugins/`) — auto-discovered, fetches standup content from a new system (Notion, GitHub, Linear, …).
+- **Call provider** (`saymo/providers/`) — drives a new meeting app. Browser apps subclass `ChromeCallProvider`:
 
 ```python
 # saymo/providers/new_app.py
@@ -113,7 +118,7 @@ class NewAppProvider(ChromeCallProvider):
     mute_key = "m"
 ```
 
-Then add to `saymo/providers/factory.py` PROVIDERS dict.
+Then register in `saymo/providers/factory.py` `PROVIDERS` dict. (Source plugins need no registration — `discover_plugins()` finds them.)
 
 ## Adding Team Members
 
