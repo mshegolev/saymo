@@ -28,6 +28,12 @@ saymo speak -p scrum --glip          # Team report
 saymo auto -p standup                # Full auto: listen → detect name → speak
 saymo auto -p standup --mic          # Test trigger with own microphone
 
+# Voice training (fine-tune for maximum similarity):
+saymo train-prepare                  # Record 100 prompts with guided session
+saymo train-voice --epochs 5         # Fine-tune XTTS v2 GPT decoder (~2-3h)
+saymo train-eval                     # A/B blind comparison (base vs fine-tuned)
+saymo train-status                   # Dataset & model status
+
 # Other:
 saymo dashboard                      # Interactive TUI (p/s/g/d/e/t/x/q)
 saymo test-devices                   # List audio devices
@@ -70,7 +76,11 @@ saymo/
 │   ├── ollama_composer.py    # Standup text via Ollama (personal + team prompts)
 │   └── composer.py           # Claude API composer (cloud fallback)
 ├── tts/
-│   ├── coqui_clone.py        # XTTS v2 voice cloning
+│   ├── coqui_clone.py        # XTTS v2 voice cloning (auto-loads fine-tuned model)
+│   ├── trainer.py            # XTTS v2 GPT decoder fine-tuning pipeline
+│   ├── dataset.py            # Training dataset builder (segment + transcribe)
+│   ├── prompts.py            # 100 Russian training prompts for recording
+│   ├── quality.py            # A/B quality evaluation (base vs fine-tuned)
 │   ├── piper_tts.py          # Piper TTS (fast, local)
 │   ├── macos_say.py          # macOS say (builtin fallback)
 │   ├── openai_tts.py         # OpenAI TTS (cloud)
@@ -81,7 +91,7 @@ saymo/
 │   ├── playback.py           # Play to single device
 │   ├── multi_play.py         # Play to multiple devices simultaneously
 │   ├── devices.py            # Device discovery
-│   └── recorder.py           # Voice sample recorder
+│   └── recorder.py           # Voice sample + guided training recorder
 ├── stt/
 │   └── whisper_local.py      # faster-whisper (local, no API)
 ├── analysis/
@@ -100,6 +110,7 @@ Key sections:
 - `speech.composer` — `ollama` | `anthropic`
 - `team` — JIRA usernames → display names for scrum mode
 - `meetings.*` — profiles with provider, trigger phrases, team flag
+- `tts.voice_training` — fine-tuning config (epochs, batch_size, learning_rate, use_finetuned)
 
 ## Extending Saymo (plugins & providers)
 
