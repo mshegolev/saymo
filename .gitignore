@@ -11,3 +11,6 @@ build/
 *.mp3
 *.aiff
 .DS_Store
+
+# User-local config (use config.example.yaml as template)
+config.yaml
