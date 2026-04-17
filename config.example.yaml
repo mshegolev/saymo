@@ -1,0 +1,140 @@
+# Saymo config template. Copy this file to `config.yaml` (gitignored) and fill in
+# your own values. All secrets use `${ENV_VAR}` — keep them in your shell or a
+# .env, never commit keys here.
+
+user:
+  # Your display name in prompts and turn-detection.
+  name: "Your Name"
+  # Any short forms / nicknames that colleagues use on the call.
+  name_variants:
+    - "Your Name"
+  # Optional — used by prompts that accept {user_role}, {team_name}, {tech_stack}.
+  role: ""          # e.g. "Senior Engineer"
+  team: ""          # e.g. "Platform"
+  tech_stack: ""    # e.g. "Python, Kubernetes, Postgres"
+  language: ru      # `ru` or `en`
+
+audio:
+  capture_device: "BlackHole 16ch"
+  playback_device: "BlackHole 2ch"
+  monitor_device: ""          # e.g. "External Headphones" — to hear yourself
+  recording_device: ""        # mic used for voice-sample recording
+  sample_rate: 16000
+  channels: 1
+  chunk_size: 1024
+
+stt:
+  engine: whisper             # `whisper` (local) or `deepgram` (cloud)
+  whisper:
+    model_size: small
+    device: cpu
+    compute_type: int8
+  deepgram:
+    api_key: ${DEEPGRAM_API_KEY}
+    model: nova-3
+    language: ru
+
+analysis:
+  llm_provider: ollama        # `ollama` (local, default) or `anthropic` (cloud)
+  anthropic:
+    api_key: ${ANTHROPIC_API_KEY}
+    model: claude-sonnet-4-20250514
+  turn_detection:
+    keyword_trigger: true
+    llm_trigger: true
+    llm_interval_seconds: 5
+    confidence_threshold: 0.8
+
+tts:
+  engine: coqui_clone         # `coqui_clone` | `piper` | `openai` | `elevenlabs` | `macos_say`
+  piper:
+    model_path: ""
+  openai:
+    api_key: ${OPENAI_API_KEY}
+    model: tts-1
+    voice: onyx
+  elevenlabs:
+    api_key: ${ELEVENLABS_API_KEY}
+    voice_id: ""
+  macos_say:
+    voice: Milena
+
+obsidian:
+  vault_path: ""              # e.g. "~/Documents/Obsidian Vault"
+  subfolder: ""
+  date_format: "%Y-%m-%d"
+
+ollama:
+  url: http://localhost:11434
+  model: qwen2.5-coder:7b
+
+jira:
+  use_selfhelper_config: false
+  selfhelper_path: ""
+  url: ""
+  token: ${JIRA_TOKEN}
+  user_query: "assignee = currentUser() AND updated >= -1d ORDER BY updated DESC"
+  worklog_query: "worklogAuthor = currentUser() AND worklogDate >= -10d"
+  max_results: 15
+
+speech:
+  style: concise
+  language: ru
+  source: obsidian            # `obsidian` | `jira` | `confluence` | `file`
+  composer: ollama            # `ollama` | `anthropic`
+
+safety:
+  require_confirmation: true
+  hotkey_speak: "<cmd>+<shift>+s"
+  hotkey_stop: "<cmd>+<shift>+x"
+  hotkey_toggle: "<cmd>+<shift>+m"
+  max_speech_duration: 120
+
+# Meeting profiles — each one picks a source plugin, a call provider, and the
+# trigger phrases used by `saymo auto`. Add as many as you need.
+meetings:
+  personal:
+    description: "Personal update — first-person brief"
+    provider: glip
+    team: false
+    source: obsidian
+    trigger_phrases:
+      - "Your Name"
+  team:
+    description: "Team update — you + teammates"
+    provider: glip
+    team: true
+    source: obsidian
+    trigger_phrases:
+      - "Your Name"
+      - "your team"
+
+# Prompt templates — overrides for the defaults in saymo/speech/ollama_composer.py.
+# Placeholders are resolved at runtime; see module docstrings for the full list.
+prompts:
+  # standup_ru: |
+  #   Ты — помощник для ежедневных встреч. Составь отчёт на русском...
+  #   Заметки за вчера ({yesterday_date}):
+  #   ---
+  #   {yesterday_notes}
+  #   ---
+  #   Заметки на сегодня ({today_date}):
+  #   ---
+  #   {today_notes}
+  #   ---
+  # standup_en: |
+  #   You are a speaking assistant. Compose a brief verbal update in English...
+  # team_scrum_ru: |
+  #   Ты — помощник для командных митингов...
+  # autonomous_daily_ru: |
+  #   Ты — автономный голосовой ассистент...
+  # qa_system_ru: |
+  #   Ты — {user_name}, {user_role}...
+  # expand_ru: |
+  #   Тебе дали заметки. Перепиши в устную речь...
+
+# Project-specific vocabulary — merged on top of the default abbreviation map
+# in saymo/tts/text_normalizer.py. Use this instead of editing source.
+vocabulary:
+  abbreviations: {}           # e.g. { MYAPI: "май-эй-пи-ай", K8S: "кубернетес" }
+  fuzzy_expansions: {}        # e.g. { Alex: ["Alex", "Алекс", "Саша", "Саня"] }
