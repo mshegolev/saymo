@@ -129,17 +129,19 @@ class STTEngine:
 
 **Level 1 — Keyword trigger (fast, regex):**
 ```python
+# Patterns are built at runtime from config.user.name_variants.
+# Example (name_variants=["Alex", "Саша"]):
 QUESTION_PATTERNS = [
-    r"Миш[аь]?\s*,?\s*(а |вопрос|скажи|расскажи|объясни|почему|когда|как )",
-    r"(Михаил|Миша)\s*,?\s*\?",
-    r"Миш[аь]?\s*,?\s*что\s+(такое|значит|делать|будет)",
+    r"(Alex|Саша)\s*,?\s*(а |вопрос|скажи|расскажи|объясни|почему|когда|как )",
+    r"(Alex|Саша)\s*,?\s*\?",
+    r"(Alex|Саша)\s*,?\s*что\s+(такое|значит|делать|будет)",
 ]
 ```
 
 **Level 2 — LLM classification (if keyword matched):**
 ```python
 CLASSIFICATION_PROMPT = """
-Ты — классификатор. Определи, является ли фраза вопросом к Михаилу.
+Ты — классификатор. Определи, является ли фраза вопросом к {user_name}.
 Ответь ТОЛЬКО "yes" или "no".
 
 Фраза: "{text}"
@@ -165,21 +167,22 @@ This avoids answering when someone just mentions the name in passing.
 **System prompt with context:**
 
 ```python
+# Template is user-configurable via config.prompts.qa_system_ru.
+# Default template (generic, placeholders resolved at runtime):
 QA_SYSTEM_PROMPT = """
-Ты — Михаил Щеголев, QA инженер. Тебе задают вопросы на стендапе.
+Ты — {user_name}, {user_role}. Тебе задают вопросы на встрече.
 
 Контекст твоей работы:
 {standup_summary}
 
-Задачи из JIRA:
+Задачи из трекера:
 {jira_tasks}
 
 Правила ответа:
 - Отвечай кратко, 1-3 предложения
 - Говори от первого лица
-- Используй разговорный стиль
-- IT термины произноси по-русски: деплой, стейдж, смоук-тесты
-- Если не знаешь ответа — скажи "не уверен, уточню позже"
+- Разговорный стиль
+- Если не знаешь ответа — «не уверен, уточню позже»
 - Не выдумывай факты
 - Максимум 15 секунд устной речи
 """

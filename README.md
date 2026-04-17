@@ -1,200 +1,140 @@
-# Saymo — AI Standup Automation
+# Saymo — Local AI Voice Assistant
 
-Fully local AI assistant for standup meetings. Fetches JIRA tasks, composes summary via Ollama, speaks in your cloned voice — all without cloud APIs.
+Fully local AI voice assistant for macOS. Speaks into any live call in **your cloned voice** — no cloud APIs required.
 
-**Supports 8 call providers:** Glip, Zoom, Google Meet, MS Teams, Telegram, Yandex Telemost, VK Teams, MTS Link.
+Saymo composes short, natural speech from optional data sources (tracker, notes, text files), synthesizes it with voice cloning, and routes audio into the active call through a virtual microphone. Everything — language model, speech-to-text, text-to-speech — runs on-device.
+
+- **Local:** Ollama + faster-whisper + Coqui XTTS v2 (or Piper / macOS `say` as fallback).
+- **Voice cloning:** 5-minute sample → your voice, fine-tuning optional.
+- **Routing:** BlackHole virtual mic → any browser-based call app.
+- **Call automation:** Chrome-driven mute/unmute for 8 providers (Glip, Zoom, Google Meet, MS Teams, Telegram, Yandex Telemost, VK Teams, MTS Link).
+- **Listening mode:** auto-detects when your name is called, answers questions from provided context.
+- **User-configurable prompts and vocabulary** — no source edits required.
+
+> **Project status:** early public alpha. Expect rough edges. Contributions welcome.
+
+---
 
 ## Requirements
 
-- macOS with Apple Silicon (M1/M2/M3/M4) — **arm64 terminal, NOT Rosetta**
+- macOS with Apple Silicon (M1/M2/M3/M4), **arm64 terminal, not Rosetta**
 - Python 3.11+
 - Homebrew
 - Google Chrome
 - ~10 GB free disk space
 
-## Quick Install
+## Quick install
 
 ```bash
-git clone <repo-url> saymo && cd saymo
+git clone https://github.com/mshegolev/saymo && cd saymo
+cp config.example.yaml config.yaml   # fill in your details
 ./install.sh
 ```
 
-The installer handles everything: brew deps, Python packages (via uv or pip), Ollama check, Piper voice model, Chrome permissions.
+The installer handles brew deps, Python packages (via `uv` or `pip`), an Ollama check, a Piper voice model, and Chrome permissions.
 
-## First Time Setup
+## First-time setup
 
 ```bash
-# 1. Interactive wizard — configure name, audio devices, meeting profiles:
-saymo setup
-
-# 2. Record your voice (5 minutes, speak naturally):
-saymo record-voice -d 300
-
-# 3. Verify audio devices:
-saymo test-devices
-
-# 4. Test TTS:
-saymo test-tts "Привет, это тест"
+saymo setup                        # Interactive wizard: name, devices, profiles
+saymo record-voice -d 300          # Record a 5-minute voice sample
+saymo test-devices                 # Verify audio devices
+saymo test-tts "Привет, это тест"  # Check that TTS works
 ```
 
-### Audio Routing (one-time, manual)
+### One-time audio routing
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     Audio MIDI Setup                        │
-│                                                             │
+│                   Audio MIDI Setup                          │
 │  Create "Multi-Output Device":                              │
-│    ✓ Plantronics / headphones  (master, no drift correction)│
-│    ✓ BlackHole 16ch            (drift correction ON)        │
+│    ✓ Your headphones   (master, no drift correction)        │
+│    ✓ BlackHole 16ch    (drift correction ON)                │
 │                                                             │
-│  In your call app (Glip/Zoom/Meet/etc):                     │
+│  In your call app:                                          │
 │    Microphone → BlackHole 2ch                               │
 │    Speakers   → Multi-Output Device                         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Daily Usage
+## Daily usage
 
 ```bash
-# ═══ Before meeting (5 min) ═══
-saymo prepare -p standup        # Personal standup
-saymo prepare -p scrum          # Team report (you + teammates)
-saymo review                    # Optional: fix audio quality
+# Before the call: prepare text + cached audio
+saymo prepare -p personal
+saymo review                    # optional: check generated audio
 
-# ═══ During meeting ═══
-saymo speak --glip              # Manual trigger — instant playback
-saymo auto -p standup           # Full auto — listens for your name, speaks when called
+# During the call
+saymo speak --glip              # manual trigger, instant playback
+saymo auto -p personal          # listen for your name, speak when called
 
-# ═══ Quick shortcuts ═══
-saymo speak -p scrum --glip     # Team report in Glip
-saymo auto -p scrum --mic       # Test auto mode with your mic
-saymo dashboard                 # Interactive TUI
+# Extras
+saymo dashboard                 # interactive TUI
 ```
 
-## Meeting Profiles
+## Configurable prompts
 
-Configure in `config.yaml` → `meetings:` section:
+All LLM prompts are templates loaded from `config.yaml` → `prompts.*` at runtime, with sensible generic defaults in source. To customize voice/tone:
 
 ```yaml
-meetings:
-  standup:
-    provider: "glip"          # glip, zoom, google_meet, teams, telegram, telemost, vk, mts_link
-    team: false               # personal or team report
-    source: "confluence"      # confluence, obsidian, jira
-    trigger_phrases:          # words that trigger auto-speak
-      - "Михаил"
-      - "Миша"
-
-  scrum:
-    provider: "glip"
-    team: true
-    trigger_phrases:
-      - "QA"
-      - "QA team"
-      - "Михаил"
+prompts:
+  standup_ru: |
+    Ты — помощник для ежедневных встреч. Составь отчёт на русском...
+    {yesterday_notes}
+    {today_notes}
+  qa_system_ru: |
+    Ты — {user_name}, {user_role}. Отвечай кратко, 1-3 предложения...
 ```
 
-## Porting to Another Mac
+See `config.example.yaml` for all available keys and the default set.
 
-### What to copy:
-```bash
-# 1. The project itself
-git clone <repo-url> saymo
+## Project-specific vocabulary
 
-# 2. Voice sample (your recorded voice)
-mkdir -p ~/.saymo/voice_samples
-scp old-mac:~/.saymo/voice_samples/voice_sample.wav ~/.saymo/voice_samples/
+Adding your own abbreviations or fuzzy name expansions to the TTS normalizer is done through config, not source:
 
-# 3. Config with your settings
-# (already in repo, edit config.yaml for new machine paths)
-```
-
-### On the new Mac:
-```bash
-# Ensure arm64 terminal (NOT Rosetta!)
-uname -m  # must show arm64
-
-# Install everything
-cd saymo && ./install.sh
-
-# Install Ollama if not present
-brew install ollama
-ollama pull qwen2.5-coder:7b
-
-# Configure for your setup
-saymo setup
-
-# Set up audio routing in Audio MIDI Setup (see above)
-
-# Test
-saymo test-devices
-saymo test-tts "Тест"
-saymo prepare -p standup
-saymo speak
-```
-
-### Environment-specific settings in `config.yaml`:
 ```yaml
-# Update these paths for the new machine:
-audio:
-  playback_device: "Your Headphones"     # saymo test-devices to find name
-  monitor_device: "Your Headphones"
-  capture_device: "BlackHole 16ch"
-
-obsidian:
-  vault_path: "/Users/YOUR_USERNAME/Documents/Obsidian Vault"
-
-jira:
-  selfhelper_path: "/path/to/selfhelper"  # or set use_selfhelper_config: false
+vocabulary:
+  abbreviations:
+    MYAPI: "май-эй-пи-ай"
+    K8S: "кубернетес"
+  fuzzy_expansions:
+    Alex: ["Alex", "Алекс", "Саша", "Саня"]
 ```
 
-### Files stored outside the repo:
-```
-~/.saymo/
-├── voice_samples/
-│   └── voice_sample.wav          # Your 5-min voice recording (~13 MB)
-├── piper_models/
-│   └── ru_RU-dmitri-medium.onnx  # Piper Russian voice (~60 MB, auto-downloaded)
-└── audio_cache/
-    ├── 2026-04-17.wav            # Today's cached standup audio (auto-rotated 7 days)
-    └── 2026-04-17-team.wav       # Today's cached team audio
-```
-
-## Tech Stack
-
-| Component | Technology | Size |
-|-----------|-----------|------|
-| LLM | Ollama (qwen2.5-coder:7b) | 4.4 GB |
-| Voice Clone | Coqui TTS XTTS v2 | ~2 GB |
-| STT | faster-whisper (small) | ~500 MB |
-| TTS Fallback | Piper (ru_RU-dmitri) | 60 MB |
-| Audio | BlackHole 2ch + 16ch | — |
-| Automation | AppleScript + Chrome JS | — |
-
-## Project Structure
+## Architecture
 
 ```
-saymo/
-├── install.sh              # Full setup script
-├── config.yaml             # All settings, meeting profiles, team members
-├── pyproject.toml           # Dependencies (core, [tts], [stt], [cloud])
-├── saymo/                  # Python package
-│   ├── cli.py              # All CLI commands
-│   ├── providers/          # 8 call providers (Chrome-based)
-│   ├── tts/                # 4 TTS engines + text normalizer
-│   ├── stt/                # Local Whisper STT
-│   ├── speech/             # Ollama/Claude text composition
-│   ├── audio/              # Capture, playback, multi-device, recorder
-│   ├── jira_source/        # JIRA task fetching
-│   ├── analysis/           # Name trigger detection
-│   ├── plugins/            # Source plugins (Confluence, Obsidian, JIRA, file)
-│   └── obsidian/           # Daily notes reader
-├── docs/PLUGINS.md         # How to add a source plugin / call provider
-├── docs/adr/               # 8 Architecture Decision Records
-├── voice_reading_script.md # Script for recording voice sample
-└── CLAUDE.md               # Instructions for Claude Code
+┌───────────────┐   ┌──────────────┐   ┌────────────────┐   ┌──────────────┐
+│ Source plugin │──▶│ LLM composer │──▶│ Text normalizer│──▶│  TTS engine  │
+│  (optional)   │   │   (Ollama)   │   │   (abbrevs,    │   │  (XTTS clone │
+│               │   │              │   │    numbers)    │   │  / Piper)    │
+└───────────────┘   └──────────────┘   └────────────────┘   └──────┬───────┘
+                                                                   │
+┌──────────────┐   ┌──────────────┐   ┌────────────────┐           │
+│Call provider │◀──│ Auto trigger │◀──│  STT (Whisper) │       Audio bytes
+│(mute/unmute) │   │(name detect) │   │ (capture call) │           │
+└──────┬───────┘   └──────────────┘   └────────────────┘           │
+       │                                                           │
+       ▼                                                           ▼
+  BlackHole 2ch ─────────────────────────────────────────── Audio output + monitor
+  (virtual mic)
 ```
 
-## Extending Saymo
+Details in `docs/PRD.md` and ADRs under `docs/adr/`.
 
-Add a new task source (Notion, Linear, GitHub) or a new meeting app — see **[docs/PLUGINS.md](docs/PLUGINS.md)** for copy-pasteable examples.
+## Security & privacy
+
+- Everything runs on-device by default. Cloud TTS / STT providers are optional and disabled in the example config.
+- Voice samples and secrets are listed in `.gitignore` — they never leave your machine.
+- Prompts, vocabulary, trigger phrases are all in your config file — source stays generic.
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).
+
+## Acknowledgements
+
+- [Coqui TTS](https://github.com/coqui-ai/TTS) for XTTS v2.
+- [Ollama](https://ollama.com) for local LLM hosting.
+- [faster-whisper](https://github.com/SYSTRAN/faster-whisper) for transcription.
+- [BlackHole](https://existential.audio/blackhole/) for virtual audio routing.

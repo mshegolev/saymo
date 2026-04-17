@@ -104,7 +104,7 @@ from qwen3_tts import Qwen3TTS
 
 tts = Qwen3TTS(model="Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice")
 audio = tts.clone_and_speak(
-    text="Вчера я работал над автотестами для NS2 пайплайна.",
+    text="Вчера я работал над автотестами основного пайплайна.",
     reference_audio="voice_sample.wav",
     language="ru",
 )

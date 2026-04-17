@@ -15,14 +15,14 @@ Saymo должен получать информацию о задачах и г
 **1. `confluence` (default)** — используется тот же JQL что и `update_confluence.py`:
 ```sql
 -- Today: активные + закрытые за последний день
-project = "Data Platform Engineering"
+project = "{project_key}"
 AND (status in ("In Progress", "Blocked", "Review")
      OR status changed from "In Progress" to Closed during (now(), -1d))
-AND assignee in (m.v.shchegolev, oleg.o.korytov)
+AND assignee in (currentUser(), {another_assignee})
 
 -- Yesterday: обновлённые в предыдущий рабочий день
-project = "Data Platform Engineering"
-AND assignee = m.v.shchegolev
+project = "{project_key}"
+AND assignee = currentUser()
 AND updated >= "YYYY-MM-DD" AND updated < "YYYY-MM-DD+1"
 ```
 
@@ -34,18 +34,19 @@ AND updated >= "YYYY-MM-DD" AND updated < "YYYY-MM-DD+1"
 
 **Ollama** (qwen2.5-coder:7b) с промптом оптимизированным для TTS:
 
-Ключевые правила промпта:
+Ключевые правила промпта (`config.prompts.standup_ru`):
 - **Один абзац**, 2-4 предложения (не списки/пункты)
 - Группировать похожие задачи (не перечислять каждую)
-- Без номеров тикетов (DATA-XXXXX)
+- Без номеров тикетов трекера
 - Без длинных чисел и версий билдов
 - IT-термины на русском с английским звучанием: смоук-тесты, стейдж, деплой, хотфикс
-- Названия продуктов как есть: NetSuite, OpenMetadata, FedRamp
+- Названия продуктов — как есть (пользователь сам перечисляет свой стек в `config.user.tech_stack`)
 
 ### Text Normalizer (post-processing перед TTS):
-- 80+ маппингов аббревиатур → фонетика
-- Удаление build stamps (v.2604101636)
-- Удаление JIRA ID (DATA-15989)
+- Дефолтный набор аббревиатур → фонетика (generic IT/DevOps)
+- Проект-специфичные термины добавляются через `config.vocabulary.abbreviations`
+- Удаление build stamps (длинные цифровые стемпы)
+- Удаление tracker ID (регексп `FOO-123:`)
 - Числа → русские слова (только до 4 цифр)
 - IT-термины → русская транскрипция (smoke → смоук)
 
