@@ -1,6 +1,6 @@
 [project]
 name = "saymo"
-version = "0.2.0"
+version = "0.4.0"
 description = "AI-powered standup automation tool for Glip calls"
 requires-python = ">=3.11"
 
