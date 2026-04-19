@@ -133,6 +133,13 @@ class VoiceTrainer:
         """
         import torch
         import torchaudio
+
+        # Compatibility patch: transformers >=5.x removed isin_mps_friendly
+        # which Coqui TTS still imports. Provide a fallback.
+        import transformers.pytorch_utils as _pu
+        if not hasattr(_pu, "isin_mps_friendly"):
+            _pu.isin_mps_friendly = torch.isin
+
         from TTS.tts.configs.xtts_config import XttsConfig
         from TTS.tts.models.xtts import Xtts
         from TTS.tts.layers.xtts.dvae import DiscreteVAE
@@ -228,7 +235,12 @@ class VoiceTrainer:
             weight_decay=0.01,
         )
 
-        # Pre-compute speaker conditioning from voice sample
+        # Pre-compute speaker conditioning from voice sample.
+        # CRITICAL: Use a SEPARATE reference recording (voice_sample.wav),
+        # NOT the training audio itself. Self-conditioning (using the same
+        # audio for both conditioning and target) causes a train/inference
+        # mismatch: at inference the model receives voice_sample.wav as
+        # reference, but it was never trained with that conditioning signal.
         from saymo.audio.recorder import get_voice_sample_path
         voice_sample = get_voice_sample_path()
         if not voice_sample:
@@ -238,6 +250,24 @@ class VoiceTrainer:
         gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(
             audio_path=[str(voice_sample)]
         )
+
+        # Pre-compute conditioning mel from voice_sample (used for ALL training steps).
+        # Truncate to ~10 seconds — longer references make GPT attention
+        # extremely slow on CPU and don't improve conditioning quality.
+        ref_waveform, ref_sr = torchaudio.load(str(voice_sample))
+        if ref_sr != 22050:
+            ref_waveform = torchaudio.functional.resample(ref_waveform, ref_sr, 22050)
+        max_ref_samples = 10 * 22050  # 10 seconds
+        if ref_waveform.shape[-1] > max_ref_samples:
+            ref_waveform = ref_waveform[..., :max_ref_samples]
+            logger.info(f"Truncated reference audio to 10s ({max_ref_samples} samples)")
+        ref_waveform = ref_waveform.to(device)
+        with torch.no_grad():
+            ref_cond_mel = cond_mel_transform(
+                ref_waveform.unsqueeze(0) if ref_waveform.dim() == 1 else ref_waveform
+            )
+            ref_cond_mel = ref_cond_mel.unsqueeze(1)  # (B, 1, n_mel, T)
+        logger.info(f"Reference conditioning mel shape: {ref_cond_mel.shape}")
 
         # Training loop
         total_steps = 0
@@ -254,7 +284,7 @@ class VoiceTrainer:
                     wav_path = sample["audio_file"]
                     text = sample["text"]
 
-                    # Load audio
+                    # Load training audio
                     waveform, sr = torchaudio.load(wav_path)
                     if sr != 22050:
                         waveform = torchaudio.functional.resample(waveform, sr, 22050)
@@ -266,23 +296,21 @@ class VoiceTrainer:
                     ).unsqueeze(0).to(device)
 
                     with torch.no_grad():
-                        # Compute mel spectrogram and get DVAE codes
+                        # Compute mel spectrogram and get DVAE codes from TRAINING audio
                         dvae_mel = mel_transform(waveform.unsqueeze(0) if waveform.dim() == 1 else waveform)
                         audio_codes = dvae.get_codebook_indices(dvae_mel)
 
-                        # Compute conditioning mel for this sample
-                        cond_mel = cond_mel_transform(waveform.unsqueeze(0) if waveform.dim() == 1 else waveform)
-                        cond_mel = cond_mel.unsqueeze(1)  # (B, 1, n_mel, T)
-
-                    # GPT forward: returns (loss_text, loss_mel, mel_logits)
+                    # GPT forward with REFERENCE conditioning (voice_sample.wav).
+                    # This matches inference: model learns to produce this speaker's
+                    # voice when conditioned on voice_sample.wav.
                     loss_text, loss_mel, _ = model.gpt(
                         text_inputs=text_tokens,
                         text_lengths=torch.tensor([text_tokens.shape[-1]], device=device),
                         audio_codes=audio_codes,
                         wav_lengths=torch.tensor([waveform.shape[-1]], device=device),
-                        cond_mels=cond_mel,
+                        cond_mels=ref_cond_mel,
                         cond_idxs=None,
-                        cond_lens=torch.tensor([cond_mel.shape[-1]], device=device),
+                        cond_lens=torch.tensor([ref_cond_mel.shape[-1]], device=device),
                     )
 
                     loss = loss_text + loss_mel

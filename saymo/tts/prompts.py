@@ -129,7 +129,7 @@ EXPRESSIVE_PROMPTS = [
 
 
 def all_prompts() -> list[str]:
-    """Return the combined default prompt list (~100 sentences)."""
+    """Return the combined default prompt list."""
     return (
         STATUS_PROMPTS
         + TECH_PROMPTS
@@ -137,3 +137,22 @@ def all_prompts() -> list[str]:
         + PANGRAM_PROMPTS
         + EXPRESSIVE_PROMPTS
     )
+
+
+CATEGORY_MAP = {
+    "standup": STATUS_PROMPTS,
+    "it": TECH_PROMPTS,
+    "qa": QUESTION_PROMPTS,
+    "general": PANGRAM_PROMPTS + EXPRESSIVE_PROMPTS,
+}
+
+
+def get_prompts(category: str | None = None) -> list[str]:
+    """Return prompts, optionally filtered by category.
+
+    Args:
+        category: One of 'standup', 'it', 'qa', 'general', or None for all.
+    """
+    if category and category in CATEGORY_MAP:
+        return CATEGORY_MAP[category]
+    return all_prompts()

@@ -14,3 +14,6 @@ build/
 
 # User-local config (use config.example.yaml as template)
 config.yaml
+
+# Claude Code per-user settings (not shared)
+.claude/settings.local.json

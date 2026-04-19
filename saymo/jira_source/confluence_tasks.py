@@ -7,7 +7,6 @@ in source.
 
 import asyncio
 import logging
-import sys
 import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -82,12 +81,7 @@ def _get_previous_business_day() -> datetime:
 
 
 def _jira_client(config: JiraConfig):
-    """Build a JIRA client honouring selfhelper / direct-config styles."""
-    if config.selfhelper_path:
-        sys.path.insert(0, config.selfhelper_path)
-        from jira import JIRA
-        from config.constants import JIRA_URL, JIRA_TOKEN
-        return JIRA(server=JIRA_URL, token_auth=JIRA_TOKEN, options={"verify": False})
+    """Build a JIRA client using token-based auth from user config."""
     from jira import JIRA
     return JIRA(server=config.url, token_auth=config.token, options={"verify": False})
 

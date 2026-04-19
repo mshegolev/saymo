@@ -51,6 +51,15 @@ class AudioConfig:
     sample_rate: int = 16000
     channels: int = 1
     chunk_size: int = 1024
+    # Mic input processing — tune via `saymo mic-check`. Defaults are no-op:
+    # no gain change, gate off at -120 dB (never triggers), high-pass off,
+    # noise reduction off. So existing installs are unaffected until the
+    # user runs the calibration wizard.
+    input_gain_db: float = 0.0
+    noise_gate_db: float = -120.0
+    highpass_cutoff_hz: float = 0.0
+    noise_reduction: bool = False
+    noise_reduction_strength: float = 0.75
 
 
 @dataclass
@@ -151,8 +160,6 @@ class TTSConfig:
 
 @dataclass
 class JiraConfig:
-    use_selfhelper_config: bool = False
-    selfhelper_path: str = ""
     url: str = ""
     token: str = ""
     project_key: str = ""  # e.g. "ABC" — scopes JQL queries
@@ -202,6 +209,23 @@ class SafetyConfig:
 
 
 @dataclass
+class ResponsesConfig:
+    """Tier-A response cache for CPU-only real-time Q&A.
+
+    ``library`` is a dict of per-intent overrides keyed by the stable
+    response key. Each override may provide ``triggers`` (list of
+    keyword phrases), ``variants`` (list of candidate answer texts),
+    and ``description`` (optional). Keys not present here fall back to
+    ``DEFAULT_RESPONSE_LIBRARY`` in ``saymo/analysis/response_cache.py``.
+    """
+
+    enabled: bool = True
+    confidence_threshold: float = 0.6
+    cache_dir: str = ""  # defaults to ~/.saymo/audio_cache/responses/
+    library: dict = field(default_factory=dict)
+
+
+@dataclass
 class SaymoConfig:
     user: UserConfig = field(default_factory=UserConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
@@ -213,6 +237,7 @@ class SaymoConfig:
     ollama: OllamaConfig = field(default_factory=OllamaConfig)
     speech: SpeechConfig = field(default_factory=SpeechConfig)
     safety: SafetyConfig = field(default_factory=SafetyConfig)
+    responses: ResponsesConfig = field(default_factory=ResponsesConfig)
     meetings: dict = field(default_factory=dict)
     prompts: dict = field(default_factory=dict)
     vocabulary: dict = field(default_factory=dict)
@@ -253,10 +278,20 @@ def _dict_to_dataclass(cls, data: dict):
 
 
 def load_config(config_path: Optional[str] = None) -> SaymoConfig:
-    """Load config from YAML file, resolve env vars, return SaymoConfig."""
+    """Load config from YAML file, resolve env vars, return SaymoConfig.
+
+    When ``config_path`` is not given, look at (in order):
+    1. ``~/.saymo/config.yaml`` — where ``saymo mic-check --auto`` writes
+       calibration output, and the conventional per-user location.
+    2. ``./config.yaml`` — project-local override, useful during dev.
+    3. ``<repo>/config.yaml`` — packaged-with-source fallback.
+
+    The **first** existing file wins. Typical user installs ship no
+    project-level file, so the user-local file is the authoritative one.
+    """
     if config_path is None:
-        # Look in current dir, then project root
         candidates = [
+            Path.home() / ".saymo" / "config.yaml",
             Path.cwd() / "config.yaml",
             Path(__file__).parent.parent / "config.yaml",
         ]
