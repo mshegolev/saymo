@@ -906,11 +906,14 @@ async def _quick_expand(config, brief: str, duration: int):
 @click.option("--profile", "-p", default=None, help="Meeting profile: standup, scrum, retro")
 @click.option("--save/--no-save", default=True, help="Save summary to Obsidian daily note")
 @click.option("--team", is_flag=True, help="Team scrum mode (report on all team members)")
+@click.option("--skip-responses", is_flag=True, help="Skip Tier-A response-cache rebuild")
 @click.pass_context
-def prepare(ctx, profile, save, team):
+def prepare(ctx, profile, save, team, skip_responses):
     """Prepare standup summary BEFORE the daily meeting.
 
     Use -p to select meeting profile: standup (default), scrum, retro.
+    Also rebuilds the Tier-A response cache (pre-synthesised answers
+    for common stand-up follow-ups). Pass --skip-responses to disable.
     """
     config = ctx.obj["config"]
     config.speech.source = "confluence"
@@ -927,6 +930,9 @@ def prepare(ctx, profile, save, team):
         run_async(_prepare_team(config, save))
     else:
         run_async(_prepare(config, save))
+    if not skip_responses and config.responses.enabled:
+        console.print("")
+        run_async(_prepare_responses(config, force=False))
 
 
 async def _prepare(config, save: bool):
@@ -1255,11 +1261,22 @@ def record_voice(ctx, duration, output):
     console.print("[bold red]RECORDING![/]")
 
     try:
+        from saymo.audio.mic_processor import MicProcessor
+
+        processor = MicProcessor.from_config(config.audio, sample_rate=22050)
+        if not processor.is_noop():
+            console.print(
+                f"[dim]Mic chain: gain {processor.gain_db:+.1f} dB, "
+                f"gate {processor.noise_gate_db:.0f} dB, "
+                f"highpass {processor.highpass_cutoff_hz:.0f} Hz, "
+                f"denoise {'on' if processor.noise_reduction else 'off'}[/]"
+            )
         path = record_sample(
             device_name=mic_name,
             duration=duration,
             sample_rate=22050,
             output_path=output,
+            processor=processor,
         )
         console.print(f"\n[bold green]Saved:[/] {path}")
         console.print(f"[blue]Size: {path.stat().st_size / 1024:.0f} KB[/]")
@@ -1307,8 +1324,15 @@ def test_voice_sample(ctx):
 @click.option("--resume", "-r", is_flag=True, help="Resume interrupted recording session")
 @click.option("--category", type=click.Choice(["standup", "qa", "general", "it"]),
               default=None, help="Prompt category (default: all)")
+@click.option("--extra", "-e", "extra_file", type=click.Path(), default=None,
+              help="Append prompts from a text file (one per line). Useful for mixing in your own domain sentences.")
+@click.option("--only-extra", is_flag=True,
+              help="Use ONLY the --extra file, skipping the default prompt set.")
+@click.option("--dataset-dir", type=click.Path(), default=None,
+              help="Write recordings to a custom dataset dir (default: ~/.saymo/training_dataset/). "
+                   "Use a different name for a parallel dataset, e.g. ~/.saymo/training_dataset_bigdata.")
 @click.pass_context
-def train_prepare(ctx, duration, resume, category):
+def train_prepare(ctx, duration, resume, category, extra_file, only_extra, dataset_dir):
     """Record training samples with guided prompts for voice fine-tuning.
 
     Shows prompts one by one. Read each prompt aloud naturally.
@@ -1318,12 +1342,25 @@ def train_prepare(ctx, duration, resume, category):
     import sounddevice as sd
 
     from saymo.audio.devices import find_device
+    from saymo.audio.mic_processor import MicProcessor
     from saymo.audio.recorder import record_guided_session
     from saymo.tts.prompts import get_prompts
     from saymo.tts.dataset import DatasetBuilder
 
     config = ctx.obj["config"]
-    prompts = get_prompts(category)
+    prompts = [] if only_extra else list(get_prompts(category))
+    if extra_file:
+        from pathlib import Path
+        extra = _read_prompts_file(Path(extra_file))
+        if not extra:
+            console.print(f"[yellow]No prompts read from {extra_file} — skipping[/]")
+        else:
+            console.print(f"[blue]+{len(extra)} personal prompts from {extra_file}[/]")
+            prompts.extend(extra)
+    if not prompts:
+        console.print("[bold red]No prompts to record — check --category / --extra[/]")
+        return
+    processor = MicProcessor.from_config(config.audio, sample_rate=22050)
 
     # Detect mic
     mic_name = config.audio.recording_device or None
@@ -1344,75 +1381,241 @@ def train_prepare(ctx, duration, resume, category):
     console.print()
     console.print("[dim]Read each prompt aloud naturally. Press Enter to start, Ctrl+C to stop.[/]")
 
-    # Calculate max duration per prompt
-    max_per_prompt = min(20, duration // max(1, len(prompts)))
-
-    # Guided recording with Rich output
-    from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
+    # Rendering imports — big live banner while recording, clear rule between prompts.
+    from rich.live import Live
+    from rich.panel import Panel
+    from rich.text import Text
 
     recorded = []
 
     try:
-        with Progress(
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TextColumn("{task.completed}/{task.total}"),
-            TimeElapsedColumn(),
-        ) as progress:
-            task = progress.add_task("Recording", total=len(prompts))
+        from pathlib import Path as _Path
+        dataset_root = _Path(dataset_dir).expanduser() if dataset_dir else _Path.home() / ".saymo" / "training_dataset"
+        raw_dir = dataset_root / "raw"
+        raw_dir.mkdir(parents=True, exist_ok=True)
+        console.print(f"[dim]Dataset dir: {dataset_root}[/]")
 
-            for i, prompt in enumerate(prompts):
-                # Check if already recorded (resume mode)
-                from pathlib import Path
-                raw_dir = Path.home() / ".saymo" / "training_dataset" / "raw"
-                raw_dir.mkdir(parents=True, exist_ok=True)
-                wav_path = raw_dir / f"{i:04d}.wav"
+        quit_requested = False
+        i = 0
+        while i < len(prompts):
+            prompt = prompts[i]
+            # Check if already recorded (resume mode)
+            wav_path = raw_dir / f"{i:04d}.wav"
 
-                if resume and wav_path.exists():
-                    recorded.append(wav_path)
-                    progress.update(task, advance=1)
-                    continue
+            if resume and wav_path.exists() and wav_path not in recorded:
+                recorded.append(wav_path)
+                i += 1
+                continue
 
-                console.print()
-                console.print(f"[bold cyan][{i+1}/{len(prompts)}][/] {prompt}")
-                console.print("[dim]Press Enter to record, 's' to skip, 'q' to quit...[/]")
+            console.print()
+            console.rule(
+                f"[bold cyan]Prompt {i+1}/{len(prompts)}  ·  saved: {len(recorded)}",
+                style="cyan",
+            )
+            console.print()
+            console.print(f"  [bold]{prompt}[/]")
+            console.print()
+            # Adaptive per-prompt cap: ~0.45 s per word + 2 s slack, floor 4 s, cap 20 s.
+            words = max(1, len(prompt.split()))
+            adaptive_cap = int(min(20, max(4, words * 0.45 + 2)))
+            can_redo_prev = i > 0
+            controls = (
+                "  [dim]press Enter → start (max {cap}s)   "
+                "Enter again → stop   "
+                "[yellow]s[/] → skip   "
+                "[red]q[/] → quit"
+                + ("   [magenta]r[/] → redo previous prompt" if can_redo_prev else "")
+                + "[/]"
+            ).format(cap=adaptive_cap)
+            console.print(controls)
 
-                user_input = input().strip().lower()
-                if user_input == "q":
-                    break
-                if user_input == "s":
-                    progress.update(task, advance=1)
-                    continue
+            try:
+                user_input = input("  > ").strip().lower()
+            except EOFError:
+                break
+            if user_input == "q":
+                quit_requested = True
+                break
+            if user_input == "s":
+                console.print("  [yellow]· skipped[/]")
+                i += 1
+                continue
+            if user_input == "r" and can_redo_prev:
+                prev_path = raw_dir / f"{i-1:04d}.wav"
+                try:
+                    prev_path.unlink()
+                except FileNotFoundError:
+                    pass
+                if recorded and recorded[-1] == prev_path:
+                    recorded.pop()
+                console.print(f"  [magenta]↶ rewinding to prompt {i}[/]")
+                i -= 1
+                continue
 
-                console.print("[bold red]RECORDING...[/]", end=" ")
+            # Small breath before recording starts so the mic does not
+            # catch the Enter-key click.
+            import time as _t
+            _t.sleep(0.35)
 
-                import numpy as np
-                audio = sd.rec(
-                    int(max_per_prompt * 22050),
+            import numpy as np
+            import threading
+
+            mic_dev = find_device(mic_name, kind="input")
+            if mic_dev is None:
+                console.print("[bold red]Mic lost[/]")
+                break
+
+            chunks: list[np.ndarray] = []
+            stop_event = threading.Event()
+
+            def _stopper():
+                try:
+                    input()
+                except EOFError:
+                    pass
+                stop_event.set()
+
+            stopper_thread = threading.Thread(target=_stopper, daemon=True)
+            stopper_thread.start()
+
+            def _cb(indata, frames, time_info, status):
+                if status:
+                    pass
+                chunks.append(indata.copy().flatten())
+                if stop_event.is_set():
+                    raise sd.CallbackStop
+
+            def _render_banner(elapsed: float, cap: float, phase: int) -> Panel:
+                # Alternate two loud styles to fake a blink on terminals that
+                # do not honour the ANSI blink attribute (most modern ones).
+                if phase % 2 == 0:
+                    body_style = "bold white on red"
+                    dot = "●"
+                else:
+                    body_style = "bold yellow on red"
+                    dot = "○"
+                remaining = max(0.0, cap - elapsed)
+                text = Text(
+                    f"{dot}  SPEAK NOW   —   {elapsed:0.1f}s elapsed   —   "
+                    f"{remaining:0.1f}s left   —   press Enter to stop",
+                    style=body_style,
+                    justify="center",
+                )
+                return Panel(text, border_style="bright_red", padding=(0, 1))
+
+            try:
+                with sd.InputStream(
                     samplerate=22050,
                     channels=1,
                     dtype="int16",
-                    device=find_device(mic_name, kind="input").index,
-                )
-                sd.wait()
-                audio = audio.flatten()
+                    device=mic_dev.index,
+                    callback=_cb,
+                ):
+                    start = _t.time()
+                    phase = 0
+                    # Transient so the banner clears when the block exits —
+                    # final output is just the tidy "saved N.Xs" line.
+                    with Live(
+                        _render_banner(0.0, float(adaptive_cap), phase),
+                        console=console,
+                        refresh_per_second=8,
+                        transient=True,
+                    ) as live:
+                        while not stop_event.is_set() and _t.time() - start < adaptive_cap:
+                            elapsed = _t.time() - start
+                            phase = int(elapsed * 2.5)  # flip twice per second
+                            live.update(_render_banner(elapsed, float(adaptive_cap), phase))
+                            _t.sleep(0.1)
+                    stop_event.set()
+            except Exception as e:
+                console.print(f"  [red]capture error: {e}[/]")
+                continue
 
-                # Trim silence
-                from saymo.audio.recorder import _trim_silence
-                audio = _trim_silence(audio)
+            audio = (
+                np.concatenate(chunks).astype(np.int16)
+                if chunks
+                else np.array([], dtype=np.int16)
+            )
 
-                # Save
-                import wave as wave_mod
-                with wave_mod.open(str(wav_path), "wb") as wf:
-                    wf.setnchannels(1)
-                    wf.setsampwidth(2)
-                    wf.setframerate(22050)
-                    wf.writeframes(audio.tobytes())
+            # Mic input chain (gain / gate / high-pass / denoise)
+            if not processor.is_noop():
+                audio = processor.process_int16(audio)
 
-                dur = len(audio) / 22050
-                console.print(f"[green]{dur:.1f}s saved[/]")
-                recorded.append(wav_path)
-                progress.update(task, advance=1)
+            # Trim silence
+            from saymo.audio.recorder import _trim_silence
+            audio = _trim_silence(audio)
+
+            # Save
+            import wave as wave_mod
+            with wave_mod.open(str(wav_path), "wb") as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2)
+                wf.setframerate(22050)
+                wf.writeframes(audio.tobytes())
+
+            dur = len(audio) / 22050
+            console.print(
+                f"  [green]✓ saved {dur:.1f}s[/] → {wav_path.name}   "
+                f"[dim]({len(recorded) + 1}/{len(prompts)})[/]"
+            )
+            recorded.append(wav_path)
+
+            # Post-save review — allow the user to redo the take they just
+            # made without advancing. 'p' replays the file so the user can
+            # verify mic calibration by ear. Blank line / Enter accepts
+            # and moves on. 'q' quits the whole session.
+            redo = False
+            while True:
+                try:
+                    review = input(
+                        "  [Enter] keep & next   [p] play back   "
+                        "[r] redo this one   [q] quit: "
+                    ).strip().lower()
+                except EOFError:
+                    review = ""
+                if review == "p":
+                    try:
+                        import soundfile as _sf
+                        data, sr_play = _sf.read(str(wav_path))
+                        # Monitor device if configured, else playback device,
+                        # else system default. Matches the same resolution
+                        # logic used by `saymo test-voice-sample`.
+                        mon_name = (
+                            config.audio.monitor_device
+                            or config.audio.playback_device
+                            or None
+                        )
+                        out_dev = find_device(mon_name, kind="output") if mon_name else None
+                        out_idx = out_dev.index if out_dev else None
+                        console.print(
+                            f"  [blue]♪ playing {dur:.1f}s on {mon_name or 'default'}[/]"
+                        )
+                        sd.play(data, samplerate=sr_play, device=out_idx)
+                        sd.wait()
+                    except Exception as e:
+                        console.print(f"  [red]playback error: {e}[/]")
+                    continue  # re-ask the review question
+                if review == "r":
+                    try:
+                        wav_path.unlink()
+                    except FileNotFoundError:
+                        pass
+                    if recorded and recorded[-1] == wav_path:
+                        recorded.pop()
+                    console.print("  [magenta]↶ redo[/]")
+                    redo = True
+                if review == "q":
+                    quit_requested = True
+                break
+            if redo:
+                continue  # do not advance i — loop re-records same prompt
+            if quit_requested:
+                break
+
+            i += 1
+
+        if quit_requested:
+            pass  # fall through to post-loop summary
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Recording interrupted. Use --resume to continue later.[/]")
@@ -1423,18 +1626,79 @@ def train_prepare(ctx, duration, resume, category):
 
     console.print(f"\n[bold green]Recorded {len(recorded)} samples[/]")
 
-    # Build dataset
-    console.print("\n[blue]Building dataset (segmenting + transcribing)...[/]")
+    # Build dataset with ground-truth transcriptions (not Whisper!)
+    console.print("\n[blue]Building dataset with ground-truth prompts...[/]")
     try:
-        builder = DatasetBuilder()
-        # Use prompts as transcriptions for guided recordings
+        builder = DatasetBuilder(
+            raw_dir=dataset_root / "raw",
+            output_dir=dataset_root,
+        )
+        # Map each recorded file to its original prompt by filename index.
+        # This gives XTTS v2 correct text-audio alignment instead of
+        # relying on Whisper which mangles Russian IT vocabulary.
         prompt_texts = [prompts[int(p.stem)] for p in recorded if int(p.stem) < len(prompts)]
-        report = builder.build(prompts=prompt_texts if len(prompt_texts) == len(recorded) else None)
-        console.print(f"\n[bold green]Dataset ready![/]")
+        report = builder.build(prompts=prompt_texts)
+        console.print(f"\n[bold green]Dataset ready at {dataset_root}![/]")
         console.print(report.summary())
     except Exception as e:
         console.print(f"[bold red]Dataset build failed:[/] {e}")
-        console.print("[dim]You can run 'saymo train-prepare --resume' to continue.[/]")
+        console.print(
+            f"[dim]You can run 'saymo train-prepare --resume "
+            f"--dataset-dir {dataset_root}' to continue.[/]"
+        )
+
+
+@main.command("train-rebuild")
+@click.pass_context
+def train_rebuild(ctx):
+    """Rebuild dataset from existing raw recordings with correct transcriptions.
+
+    Uses the original prompts from prompts.py as ground-truth text instead
+    of Whisper (which produces poor transcriptions for Russian IT vocabulary).
+    No re-recording needed — just rebuilds metadata.csv from raw/ files.
+    """
+    from saymo.tts.dataset import DatasetBuilder
+    from saymo.tts.prompts import all_prompts
+    from pathlib import Path
+
+    raw_dir = Path.home() / ".saymo" / "training_dataset" / "raw"
+    raw_files = sorted(raw_dir.glob("*.wav")) if raw_dir.exists() else []
+
+    if not raw_files:
+        console.print("[bold red]No raw recordings found. Run 'saymo train-prepare' first.[/]")
+        return
+
+    prompts = all_prompts()
+
+    # Match prompts to raw files by index (0000.wav → prompt[0], etc.)
+    matched_prompts = []
+    for f in raw_files:
+        idx = int(f.stem)
+        if idx < len(prompts):
+            matched_prompts.append(prompts[idx])
+        else:
+            console.print(f"[yellow]Warning: {f.name} has no matching prompt (idx={idx}), skipping[/]")
+
+    if len(matched_prompts) != len(raw_files):
+        console.print(f"[yellow]Matched {len(matched_prompts)}/{len(raw_files)} files to prompts[/]")
+        # Filter raw_files to only those with matching prompts
+        raw_files = [f for f in raw_files if int(f.stem) < len(prompts)]
+
+    console.print(f"[bold blue]Rebuilding dataset[/]")
+    console.print(f"  Raw files: {len(raw_files)}")
+    console.print(f"  Prompts: {len(matched_prompts)}")
+    console.print(f"  Mode: ground-truth transcriptions (no Whisper)")
+    console.print()
+
+    builder = DatasetBuilder()
+    try:
+        report = builder.build(prompts=matched_prompts)
+        console.print(f"\n[bold green]Dataset rebuilt![/]")
+        console.print(report.summary())
+        console.print()
+        console.print("[dim]Now run 'saymo train-voice --epochs 5' to retrain.[/]")
+    except Exception as e:
+        console.print(f"[bold red]Rebuild failed:[/] {e}")
 
 
 @main.command("train-status")
@@ -1677,6 +1941,428 @@ def train_eval(ctx, sentences):
             console.print(f"  Avg similarity (base): {report['avg_similarity_base']:.3f}")
     except Exception as e:
         console.print(f"[bold red]Evaluation failed:[/] {e}")
+
+
+# ---------------------------------------------------------------------------
+# response cache (Tier-A CPU-only real-time Q&A)
+# ---------------------------------------------------------------------------
+
+@main.command("prepare-responses")
+@click.option("--force", is_flag=True, help="Regenerate all cached responses (ignore existing files)")
+@click.pass_context
+def prepare_responses(ctx, force):
+    """Pre-synthesise the Tier-A response library for real-time Q&A.
+
+    Synthesises every entry of DEFAULT_RESPONSE_LIBRARY (plus any
+    overrides under config.responses.library) through the configured
+    tts.engine and writes WAV files to ~/.saymo/audio_cache/responses/.
+    Runtime lookup in _auto() then plays these files instantly (no live
+    synthesis), which is what makes real-time Q&A work on CPU-only
+    machines.
+    """
+    run_async(_prepare_responses(ctx.obj["config"], force=force))
+
+
+async def _prepare_responses(config, force: bool = False) -> int:
+    from pathlib import Path
+    from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
+    from saymo.analysis.response_cache import ResponseCache, build_library
+
+    if not config.responses.enabled:
+        console.print("[yellow]config.responses.enabled=false — skipping response cache[/]")
+        return 0
+
+    library = build_library(config.responses.library)
+    cache_dir = Path(config.responses.cache_dir) if config.responses.cache_dir else None
+
+    cache = ResponseCache(
+        library=library,
+        cache_dir=cache_dir,
+        confidence_threshold=config.responses.confidence_threshold,
+    )
+
+    total_variants = sum(len(e.variants) for e in library.values())
+    console.print(
+        f"[bold blue]Preparing response cache[/] — {len(library)} intents, "
+        f"{total_variants} variants, engine: {config.tts.engine}"
+    )
+
+    async def synth(text: str) -> bytes:
+        audio = await _synthesize(config, text)
+        if audio is None:
+            raise RuntimeError(f"TTS returned no audio for: {text[:60]}")
+        return audio
+
+    columns = [
+        TextColumn("[bold]{task.description}"),
+        BarColumn(),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeRemainingColumn(),
+    ]
+    with Progress(*columns, console=console) as progress:
+        task = progress.add_task("synthesising", total=total_variants)
+
+        def on_progress(key: str, idx: int, total: int):
+            progress.update(task, completed=idx, description=f"[dim]{key}")
+
+        written = await cache.build(synth, progress=on_progress, force=force)
+
+    console.print(
+        f"[bold green]Done[/] — wrote {len(written)} files "
+        f"to {cache.cache_dir} "
+        f"(skipped {total_variants - len(written)} already cached)"
+    )
+    return len(written)
+
+
+# ---------------------------------------------------------------------------
+# extra-prompts helper
+# ---------------------------------------------------------------------------
+
+def _read_prompts_file(path) -> list[str]:
+    """Read user-supplied training prompts (one per line).
+
+    Used by ``saymo train-prepare --extra <file>`` so people can mix in
+    their own domain-specific sentences without forking the repo. Empty
+    lines and ``#``-comments are skipped.
+    """
+    from pathlib import Path
+
+    p = Path(path)
+    if not p.exists():
+        return []
+    out: list[str] = []
+    for raw in p.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        out.append(line)
+    return out
+
+
+# ---------------------------------------------------------------------------
+# mic calibration wizard
+# ---------------------------------------------------------------------------
+
+def _record_buffer(sd, sample_rate: int, seconds: float, device_index: int):
+    import numpy as np
+
+    frames = int(seconds * sample_rate)
+    buf = sd.rec(
+        frames,
+        samplerate=sample_rate,
+        channels=1,
+        dtype="float32",
+        device=device_index,
+    )
+    sd.wait()
+    return np.asarray(buf, dtype=np.float32).flatten()
+
+
+def _resolve_input_device(config, device_override: str | None):
+    import sounddevice as sd
+    from saymo.audio.devices import find_device
+
+    name = device_override or config.audio.recording_device or None
+    dev = find_device(name, kind="input") if name else None
+    if not dev:
+        default_dev = sd.query_devices(kind="input")
+        if default_dev and isinstance(default_dev, dict):
+            name = default_dev["name"]
+            dev = find_device(name, kind="input")
+    return name, dev
+
+
+def _write_audio_settings_to_user_config(settings: dict):
+    """Merge ``settings`` into the ``audio:`` block of ~/.saymo/config.yaml.
+
+    Creates the file if it does not exist. Preserves every other key of
+    the existing config so we never clobber the user's unrelated state.
+    """
+    from pathlib import Path
+    import yaml
+
+    config_path = Path.home() / ".saymo" / "config.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if config_path.exists():
+        with open(config_path) as f:
+            data = yaml.safe_load(f) or {}
+    else:
+        data = {}
+
+    audio_block = data.get("audio")
+    if not isinstance(audio_block, dict):
+        audio_block = {}
+    for k, v in settings.items():
+        audio_block[k] = v
+    data["audio"] = audio_block
+
+    with open(config_path, "w") as f:
+        yaml.safe_dump(data, f, sort_keys=False, allow_unicode=True)
+    return config_path
+
+
+def _run_mic_autocalibrate(config, device_name, sample_rate, max_passes):
+    """Record → autocalibrate → (optionally raise hw volume) → retry loop.
+
+    Stops as soon as the verdict is ``excellent`` or when no further
+    hardware-volume bump is possible. Writes the best settings found to
+    ~/.saymo/config.yaml regardless of whether we reached ``excellent`` —
+    something is always better than the no-op defaults.
+    """
+    import sounddevice as sd
+    from saymo.audio.autocalibrate import autocalibrate
+    from saymo.audio import macos_audio
+
+    mic_name, mic = _resolve_input_device(config, device_name)
+    if not mic or not mic_name:
+        console.print("[bold red]No input device available[/]")
+        return
+
+    console.print(
+        f"[bold blue]Mic auto-calibration[/] — {mic_name} @ {sample_rate} Hz "
+        f"(up to {max_passes} pass{'' if max_passes == 1 else 'es'})"
+    )
+
+    initial_sys_volume = macos_audio.get_input_volume()
+    if initial_sys_volume is not None:
+        console.print(
+            f"  system input volume: {initial_sys_volume * 100:.0f}% "
+            "(will be raised only if software gain saturates)"
+        )
+
+    best_verdict = None
+    for pass_num in range(1, max_passes + 1):
+        console.print(f"\n[bold]Pass {pass_num}/{max_passes}[/]")
+        console.print("[dim]Stay silent for 3 s after countdown.[/]")
+        for i in range(3, 0, -1):
+            console.print(f"  {i}...")
+            import time as _t
+            _t.sleep(1)
+        console.print("[bold red]Silent...[/]")
+        noise = _record_buffer(sd, sample_rate, 3.0, mic.index)
+
+        console.print(
+            "[dim]Read this sentence at normal volume for 5 s:[/]"
+        )
+        console.print(
+            '  [bold]«Я провожу калибровку микрофона, чтобы голос звучал '
+            'чисто и разборчиво.»[/]'
+        )
+        for i in range(3, 0, -1):
+            console.print(f"  {i}...")
+            import time as _t
+            _t.sleep(1)
+        console.print("[bold red]Speak...[/]")
+        voice = _record_buffer(sd, sample_rate, 5.0, mic.index)
+
+        verdict = autocalibrate(noise, voice, sample_rate)
+        console.print(
+            f"  input: noise {verdict.noise_floor_db:.1f} dB, "
+            f"voice rms {verdict.input_voice_rms_db:.1f} dB, "
+            f"peak {verdict.input_voice_peak_db:.1f} dB"
+        )
+        console.print(
+            f"  projected after chain: rms {verdict.projected_voice_rms_db:.1f} dB, "
+            f"peak {verdict.projected_voice_peak_db:.1f} dB, "
+            f"snr {verdict.projected_snr_db:.1f} dB"
+        )
+        console.print(f"  verdict: [bold]{verdict.quality}[/]")
+        for w in verdict.warnings:
+            console.print(f"  [yellow]! {w}[/]")
+
+        if best_verdict is None or (
+            not best_verdict.excellent() and verdict.quality != "poor"
+        ):
+            best_verdict = verdict
+
+        if verdict.excellent():
+            break
+        if not verdict.actionable():
+            console.print("[yellow]No further automatic adjustment will help.[/]")
+            break
+        if initial_sys_volume is None:
+            console.print(
+                "[yellow]Cannot read macOS input volume — skipping "
+                "hardware bump. Raise the mic level manually and re-run.[/]"
+            )
+            break
+        before, after = macos_audio.bump_input_volume(
+            verdict.system_volume_recommendation or 0.1
+        )
+        if after is None or (before is not None and abs(after - before) < 0.01):
+            console.print(
+                "[yellow]macOS input volume already at max or unchanged.[/]"
+            )
+            break
+        console.print(
+            f"  raised macOS input volume {before * 100:.0f}% "
+            f"→ {after * 100:.0f}% — re-recording"
+        )
+
+    assert best_verdict is not None
+    path = _write_audio_settings_to_user_config(best_verdict.settings)
+    console.print()
+    console.print(f"[bold green]Wrote settings to {path}[/]")
+    console.print(best_verdict.yaml_snippet())
+    if best_verdict.excellent():
+        console.print(
+            "[bold green]Result: excellent — ready for saymo train-prepare.[/]"
+        )
+    else:
+        console.print(
+            f"[yellow]Result: {best_verdict.quality}. "
+            "Settings written anyway, but consider a quieter room / closer "
+            "mic distance before re-running.[/]"
+        )
+
+
+@main.command("mic-check")
+@click.option("--device", "-d", default=None, help="Input device name (overrides config)")
+@click.option("--sample-rate", "-r", default=22050, type=int, help="Sample rate in Hz")
+@click.option("--no-playback", is_flag=True, help="Skip A/B playback step")
+@click.option("--auto", is_flag=True, help="Run autocalibration: record, tune, adjust macOS input volume, retry up to 3 times, write config.yaml")
+@click.option("--max-passes", default=3, type=int, show_default=True, help="Max record→tune→retry passes in --auto mode")
+@click.pass_context
+def mic_check(ctx, device, sample_rate, no_playback, auto, max_passes):
+    """Interactive microphone calibration.
+
+    Records 3 s of silence to measure the noise floor, 5 s of voice to
+    measure signal level, then prints a config.yaml snippet with suggested
+    gain + noise-gate values. Optionally plays back the raw and processed
+    versions so you can A/B compare before committing to the settings.
+
+    With --auto: no questions asked. Records one silence + one voice
+    buffer, runs autocalibration, and if the result is not "excellent"
+    because software gain saturated, raises the macOS system input
+    volume and re-records — up to --max-passes times. Writes the final
+    settings into ~/.saymo/config.yaml.
+    """
+    if auto:
+        _run_mic_autocalibrate(
+            ctx.obj["config"],
+            device_name=device,
+            sample_rate=sample_rate,
+            max_passes=max_passes,
+        )
+        return
+    import sounddevice as sd
+    from saymo.audio.devices import find_device
+    from saymo.audio.mic_processor import (
+        MicProcessor,
+        recommend_calibration,
+        rms_db,
+        peak_db,
+    )
+
+    config = ctx.obj["config"]
+    mic_name = device or config.audio.recording_device or None
+    mic = find_device(mic_name, kind="input") if mic_name else None
+    if not mic:
+        default_dev = sd.query_devices(kind="input")
+        if default_dev and isinstance(default_dev, dict):
+            mic_name = default_dev["name"]
+            console.print(f"[yellow]Using default mic: {mic_name}[/]")
+            mic = find_device(mic_name, kind="input")
+    if not mic or not mic_name:
+        console.print("[bold red]No input device available[/]")
+        return
+
+    import numpy as np
+
+    def _record(seconds: float) -> np.ndarray:
+        frames = int(seconds * sample_rate)
+        buf = sd.rec(
+            frames,
+            samplerate=sample_rate,
+            channels=1,
+            dtype="float32",
+            device=mic.index,
+        )
+        sd.wait()
+        return np.asarray(buf, dtype=np.float32).flatten()
+
+    console.print(f"[bold blue]Mic calibration[/] — {mic_name} @ {sample_rate} Hz")
+    console.print(
+        "[dim]Step 1/3 — measure ambient noise floor. "
+        "Stay silent for 3 seconds after the countdown.[/]"
+    )
+    for i in range(3, 0, -1):
+        console.print(f"  {i}...")
+        import time as _t
+        _t.sleep(1)
+    console.print("[bold red]Silent for 3 s...[/]")
+    noise = _record(3.0)
+    noise_rms = rms_db(noise)
+    noise_peak = peak_db(noise)
+    console.print(
+        f"  noise floor: rms {noise_rms:.1f} dB, peak {noise_peak:.1f} dB"
+    )
+
+    console.print()
+    console.print(
+        "[dim]Step 2/3 — measure voice level. Read this sentence at your "
+        "normal speaking volume for 5 seconds:[/]"
+    )
+    console.print(
+        '  [bold]«Я провожу калибровку микрофона, чтобы голос звучал '
+        'чисто и разборчиво.»[/]'
+    )
+    for i in range(3, 0, -1):
+        console.print(f"  {i}...")
+        import time as _t
+        _t.sleep(1)
+    console.print("[bold red]Speak for 5 s...[/]")
+    voice = _record(5.0)
+    voice_rms = rms_db(voice)
+    voice_peak = peak_db(voice)
+    console.print(
+        f"  voice: rms {voice_rms:.1f} dB, peak {voice_peak:.1f} dB"
+    )
+
+    result = recommend_calibration(noise, voice)
+
+    console.print()
+    console.print("[bold blue]Step 3/3 — recommendation[/]")
+    console.print(f"  suggested input_gain_db:  [bold]{result.suggested_gain_db:+.1f}[/]")
+    console.print(f"  suggested noise_gate_db:  [bold]{result.suggested_gate_db:.1f}[/]")
+    console.print(f"  signal-to-noise:          [bold]{result.voice_rms_db - result.noise_floor_db:.1f} dB[/]")
+    for w in result.warnings:
+        console.print(f"  [yellow]! {w}[/]")
+
+    if not no_playback:
+        console.print()
+        console.print(
+            "[dim]Playing back 5 s: raw → processed. "
+            "Listen for cleaner tail and steadier level.[/]"
+        )
+        playback_dev = find_device(config.audio.monitor_device or mic_name, kind="output")
+        playback_idx = playback_dev.index if playback_dev else None
+        try:
+            sd.play(voice, samplerate=sample_rate, device=playback_idx)
+            sd.wait()
+            processor = MicProcessor(
+                sample_rate=sample_rate,
+                gain_db=result.suggested_gain_db,
+                noise_gate_db=result.suggested_gate_db,
+                highpass_cutoff_hz=80.0,
+            )
+            processed = processor.process(voice)
+            sd.play(processed, samplerate=sample_rate, device=playback_idx)
+            sd.wait()
+        except Exception as e:
+            console.print(f"[yellow]Playback skipped: {e}[/]")
+
+    console.print()
+    console.print("[bold green]Add this to your config.yaml:[/]")
+    console.print()
+    console.print(result.yaml_snippet())
+    console.print()
+    console.print(
+        "[dim]Re-run `saymo mic-check` any time the room, mic, or "
+        "distance changes.[/]"
+    )
 
 
 if __name__ == "__main__":

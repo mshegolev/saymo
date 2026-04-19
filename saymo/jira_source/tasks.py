@@ -1,8 +1,12 @@
-"""JIRA task fetcher for standup reports. Wraps selfhelper JiraCrud."""
+"""JIRA task fetcher for stand-up reports.
+
+Uses the official ``jira`` Python SDK with token-based auth. Both the
+Jira server URL and the PAT/token come from ``config.yaml`` —
+nothing is hardcoded here.
+"""
 
 import asyncio
 import logging
-import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -32,20 +36,14 @@ class StandupData:
 
 
 def _create_jira_client(config: JiraConfig):
-    """Create JiraCrud instance using selfhelper or direct config."""
-    if config.use_selfhelper_config:
-        sys.path.insert(0, config.selfhelper_path)
-        from scripts.jira_crud import JiraCrud
-        return JiraCrud()
-    else:
-        # Direct JIRA connection without selfhelper
-        from jira import JIRA
-        client = JIRA(
-            server=config.url,
-            token_auth=config.token,
-            options={"verify": False},
-        )
-        return client
+    """Create a JIRA client using token-based auth from user config."""
+    from jira import JIRA
+
+    return JIRA(
+        server=config.url,
+        token_auth=config.token,
+        options={"verify": False},
+    )
 
 
 def _fetch_tasks_sync(config: JiraConfig) -> StandupData:
@@ -53,19 +51,11 @@ def _fetch_tasks_sync(config: JiraConfig) -> StandupData:
     import warnings
     warnings.filterwarnings("ignore")
 
-    jira_crud = _create_jira_client(config)
-
-    if config.use_selfhelper_config:
-        # Use JiraCrud.jira property to get the underlying JIRA client
-        issues = jira_crud.jira.search_issues(
-            config.user_query,
-            maxResults=config.max_results,
-        )
-    else:
-        issues = jira_crud.search_issues(
-            config.user_query,
-            maxResults=config.max_results,
-        )
+    client = _create_jira_client(config)
+    issues = client.search_issues(
+        config.user_query,
+        maxResults=config.max_results,
+    )
 
     tasks = []
     for issue in issues:
@@ -85,5 +75,5 @@ def _fetch_tasks_sync(config: JiraConfig) -> StandupData:
 
 
 async def fetch_standup_data(config: JiraConfig) -> StandupData:
-    """Fetch JIRA tasks for standup report (async wrapper)."""
+    """Fetch JIRA tasks for stand-up report (async wrapper)."""
     return await asyncio.to_thread(_fetch_tasks_sync, config)

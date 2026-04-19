@@ -198,6 +198,27 @@ class DatasetBuilder:
         files = sorted(self.raw_dir.glob("*.wav"))
         return [f for f in files if f.name != "session_progress.json"]
 
+    def _copy_raw_files(self, raw_files: list[Path]) -> list[Path]:
+        """Copy raw files to wavs_dir without segmentation.
+
+        Used for guided recordings where each file maps 1:1 to a prompt.
+        """
+        import shutil
+
+        self.wavs_dir.mkdir(parents=True, exist_ok=True)
+
+        # Clear old segments to avoid stale data
+        for old in self.wavs_dir.glob("*.wav"):
+            old.unlink()
+
+        copied = []
+        for idx, raw_path in enumerate(raw_files):
+            dst = self.wavs_dir / f"{idx:04d}.wav"
+            shutil.copy2(raw_path, dst)
+            copied.append(dst)
+
+        return copied
+
     def segment_audio(
         self,
         min_duration: float = 3.0,
@@ -303,7 +324,7 @@ class DatasetBuilder:
                 report.too_short_segments += 1
                 problems.append(f"too short ({duration:.1f}s)")
 
-            if duration > 15.0:
+            if duration > 25.0:
                 report.too_long_segments += 1
                 problems.append(f"too long ({duration:.1f}s)")
 
@@ -338,22 +359,40 @@ class DatasetBuilder:
             max_duration: Max segment duration.
             whisper_model: Whisper model for transcription.
             eval_ratio: Fraction of data for evaluation set.
-            prompts: If provided, use as transcriptions instead of Whisper.
+            prompts: If provided, use as ground-truth transcriptions instead
+                     of Whisper. When prompts are given, raw files are copied
+                     as-is (no segmentation) so that each prompt maps 1:1
+                     to its recording.
 
         Returns:
             DatasetReport with results.
         """
-        # Step 1: Segment
-        segments = self.segment_audio(min_duration, max_duration)
+        raw_files = self._get_raw_files()
 
-        # Step 2: Transcribe
-        if prompts and len(prompts) == len(segments):
-            # Use provided prompts as transcriptions (guided recording)
+        # Step 1: Segment (or copy as-is for guided recordings)
+        if prompts:
+            # Guided recording mode: copy raw files directly, no segmentation.
+            # Raw files are ~15-20s each — XTTS v2 handles up to 30s fine.
+            # Segmenting would break the 1:1 prompt-to-audio mapping.
+            #
+            # If we have fewer prompts than raw files (e.g., extra recordings
+            # beyond the prompt set), only use raw files that have prompts.
+            usable_raw = raw_files[:len(prompts)]
+            if len(usable_raw) < len(raw_files):
+                logger.info(
+                    f"Using {len(usable_raw)}/{len(raw_files)} raw files "
+                    f"(matched to {len(prompts)} prompts)"
+                )
+            segments = self._copy_raw_files(usable_raw)
+            logger.info(f"Guided mode: copied {len(segments)} raw files as-is (no segmentation)")
+
+            # Use provided prompts as ground-truth transcriptions
             transcriptions = {}
             for seg_path, prompt_text in zip(segments, prompts):
                 transcriptions[seg_path.name] = prompt_text
-            logger.info(f"Using {len(prompts)} provided prompts as transcriptions")
+            logger.info(f"Using {len(prompts)} ground-truth transcriptions")
         else:
+            segments = self.segment_audio(min_duration, max_duration)
             transcriptions = self.transcribe_segments(whisper_model)
 
         # Step 3: Validate
