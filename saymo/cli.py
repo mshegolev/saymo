@@ -202,8 +202,6 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
         label = f"'saymo prepare --profile {profile}'" if meeting else "'saymo prepare'"
         console.print(f"[bold red]No cached audio! Run {label} first.[/]")
         return
-        console.print("[bold red]No cached audio! Run 'saymo prepare' first.[/]")
-        return
 
     from saymo.audio.devices import find_device
     capture_dev = find_device(config.audio.capture_device, kind="input")
@@ -295,7 +293,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
             speaking.set()
             try:
-                await _play_cached_audio(config, cached_audio, glip_mode=True)
+                await _play_cached_audio(config, cached_audio, provider_name="glip")
             finally:
                 speaking.clear()
                 detector.reset_cooldown()
@@ -1230,12 +1228,12 @@ def record_voice(ctx, duration, output):
     config = ctx.obj["config"]
 
     # Use configured recording device, or fall back to system default
-    mic_name = config.audio.recording_device or None
+    mic_name: str = config.audio.recording_device or ""
     mic = find_device(mic_name, kind="input") if mic_name else None
     if not mic:
         default_dev = sd.query_devices(kind="input")
-        if default_dev:
-            default_name = default_dev["name"]
+        if isinstance(default_dev, dict):
+            default_name = str(default_dev["name"])
             if mic_name:
                 console.print(f"[yellow]'{mic_name}' not found, using default: {default_name}[/]")
             else:
@@ -1338,12 +1336,10 @@ def train_prepare(ctx, duration, resume, category, extra_file, only_extra, datas
     Shows prompts one by one. Read each prompt aloud naturally.
     Press Ctrl+C to stop early (progress is saved for --resume).
     """
-    import time
     import sounddevice as sd
 
     from saymo.audio.devices import find_device
     from saymo.audio.mic_processor import MicProcessor
-    from saymo.audio.recorder import record_guided_session
     from saymo.tts.prompts import get_prompts
     from saymo.tts.dataset import DatasetBuilder
 
@@ -1363,12 +1359,12 @@ def train_prepare(ctx, duration, resume, category, extra_file, only_extra, datas
     processor = MicProcessor.from_config(config.audio, sample_rate=22050)
 
     # Detect mic
-    mic_name = config.audio.recording_device or None
+    mic_name: str = config.audio.recording_device or ""
     mic = find_device(mic_name, kind="input") if mic_name else None
     if not mic:
         default_dev = sd.query_devices(kind="input")
-        if default_dev:
-            mic_name = default_dev["name"]
+        if isinstance(default_dev, dict):
+            mic_name = str(default_dev["name"])
             console.print(f"[yellow]Using default mic: {mic_name}[/]")
         else:
             console.print("[bold red]No input devices found![/]")
@@ -1388,12 +1384,13 @@ def train_prepare(ctx, duration, resume, category, extra_file, only_extra, datas
 
     recorded = []
 
+    from pathlib import Path as _Path
+    dataset_root = _Path(dataset_dir).expanduser() if dataset_dir else _Path.home() / ".saymo" / "training_dataset"
+    raw_dir = dataset_root / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    console.print(f"[dim]Dataset dir: {dataset_root}[/]")
+
     try:
-        from pathlib import Path as _Path
-        dataset_root = _Path(dataset_dir).expanduser() if dataset_dir else _Path.home() / ".saymo" / "training_dataset"
-        raw_dir = dataset_root / "raw"
-        raw_dir.mkdir(parents=True, exist_ok=True)
-        console.print(f"[dim]Dataset dir: {dataset_root}[/]")
 
         quit_requested = False
         i = 0
@@ -2196,8 +2193,9 @@ def _run_mic_autocalibrate(config, device_name, sample_rate, max_passes):
                 "[yellow]macOS input volume already at max or unchanged.[/]"
             )
             break
+        before_pct = f"{before * 100:.0f}%" if before is not None else "?"
         console.print(
-            f"  raised macOS input volume {before * 100:.0f}% "
+            f"  raised macOS input volume {before_pct} "
             f"→ {after * 100:.0f}% — re-recording"
         )
 
