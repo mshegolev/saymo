@@ -4,11 +4,13 @@ import json
 import logging
 import wave
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import sounddevice as sd
 
 from saymo.audio.devices import find_device
+from saymo.audio.mic_processor import MicProcessor
 
 logger = logging.getLogger("saymo.audio.recorder")
 
@@ -21,6 +23,7 @@ def record_sample(
     duration: int = 30,
     sample_rate: int = 22050,
     output_path: str | None = None,
+    processor: Optional[MicProcessor] = None,
 ) -> Path:
     """Record a voice sample from the microphone.
 
@@ -29,6 +32,9 @@ def record_sample(
         duration: Recording duration in seconds.
         sample_rate: Sample rate (22050 recommended for XTTS).
         output_path: Custom output path. If None, saves to ~/.saymo/voice_samples/.
+        processor: Optional mic-input chain (gain / gate / high-pass /
+            denoise). When ``None`` or a no-op, the raw buffer is written
+            unchanged — identical to pre-calibration behaviour.
 
     Returns:
         Path to the saved WAV file.
@@ -54,13 +60,24 @@ def record_sample(
         device=device.index,
     )
     sd.wait()
+    audio_1d = np.asarray(audio, dtype=np.int16).flatten()
+
+    if processor is not None and not processor.is_noop():
+        audio_1d = processor.process_int16(audio_1d)
+        stats = processor.last_stats
+        if stats is not None:
+            logger.info(
+                f"mic chain: rms {stats.rms_in_db:.1f} → {stats.rms_out_db:.1f} dB, "
+                f"peak {stats.peak_in_db:.1f} → {stats.peak_out_db:.1f} dB"
+                + (" [CLIPPED]" if stats.clipped else "")
+            )
 
     # Save as WAV
     with wave.open(str(path), "wb") as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)  # int16
         wf.setframerate(sample_rate)
-        wf.writeframes(audio.tobytes())
+        wf.writeframes(audio_1d.tobytes())
 
     logger.info(f"Saved voice sample: {path} ({path.stat().st_size} bytes)")
     return path
@@ -116,6 +133,7 @@ def record_guided_session(
     max_duration_per_prompt: int = 20,
     trim_silence: bool = True,
     resume: bool = False,
+    processor: Optional[MicProcessor] = None,
 ) -> list[Path]:
     """Record voice samples one prompt at a time with guided prompts.
 
@@ -175,6 +193,10 @@ def record_guided_session(
 
         # Flatten to 1D
         audio = audio.flatten()
+
+        # Mic input chain (gain / gate / high-pass / denoise)
+        if processor is not None and not processor.is_noop():
+            audio = processor.process_int16(audio)
 
         # Trim silence
         if trim_silence:

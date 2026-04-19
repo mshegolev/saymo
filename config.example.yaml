@@ -22,6 +22,16 @@ audio:
   sample_rate: 16000
   channels: 1
   chunk_size: 1024
+  # --- Mic input chain ---
+  # Run `saymo mic-check` to have Saymo measure your room + mic and print
+  # ready-to-paste values for these fields. Defaults below are no-op, so an
+  # un-calibrated install behaves identically to before the calibration
+  # feature was added.
+  input_gain_db: 0.0          # +3..+12 = louder; -3..-12 = quieter; 0 = off
+  noise_gate_db: -120.0       # frames below this RMS (dB) go silent; -120 disables
+  highpass_cutoff_hz: 0.0     # cuts rumble/hum; try 80 Hz for close-talk mics; 0 disables
+  noise_reduction: false      # spectral denoise via `noisereduce` (soft dep, pip-installed)
+  noise_reduction_strength: 0.75  # 0..1 — higher = more aggressive, more artefacts
 
 stt:
   engine: whisper             # `whisper` (local) or `deepgram` (cloud)
@@ -69,10 +79,9 @@ ollama:
   model: qwen2.5-coder:7b
 
 jira:
-  use_selfhelper_config: false
-  selfhelper_path: ""
-  url: ""
+  url: ""                       # e.g. https://your-company.atlassian.net
   token: ${JIRA_TOKEN}
+  project_key: ""               # e.g. "ABC" — scopes JQL queries to one project
   user_query: "assignee = currentUser() AND updated >= -1d ORDER BY updated DESC"
   worklog_query: "worklogAuthor = currentUser() AND worklogDate >= -10d"
   max_results: 15
@@ -138,3 +147,34 @@ prompts:
 vocabulary:
   abbreviations: {}           # e.g. { MYAPI: "май-эй-пи-ай", K8S: "кубернетес" }
   fuzzy_expansions: {}        # e.g. { Alex: ["Alex", "Алекс", "Саша", "Саня"] }
+
+# Tier-A response cache — pre-synthesised short answers for common stand-up
+# follow-up questions. Lets real-time Q&A work on CPU-only machines: at
+# runtime `_auto()` looks up a matching cached answer and plays it in ~100 ms
+# instead of synthesising live. Defaults live in
+# `saymo/analysis/response_cache.py::DEFAULT_RESPONSE_LIBRARY`. Entries under
+# `library` extend or override those defaults — add your own intents or
+# replace the wording of existing ones without touching source.
+responses:
+  enabled: true
+  confidence_threshold: 0.6   # 0..1 — lower = more willing to match loose wording
+  cache_dir: ""               # empty → ~/.saymo/audio_cache/responses/
+  library: {}
+    # Example — uncomment to override the default generic status answer:
+    # status_generic:
+    #   triggers:
+    #     - "как дела"
+    #     - "что по задаче"
+    #   variants:
+    #     - "В работе, детали скину в чат после митинга."
+    #   description: "Generic status, my wording"
+    #
+    # Example — add a new intent that is not in the default library:
+    # release_today:
+    #   triggers:
+    #     - "когда релиз"
+    #     - "когда выкатка"
+    #   variants:
+    #     - "Планирую выкатить сегодня после обеда."
+    #     - "Релиз уезжает на стейдж до конца дня."
+    #   description: "Project-specific release question"

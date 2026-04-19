@@ -1,19 +1,39 @@
 [project]
 name = "saymo"
-version = "0.6.0"
+version = "0.7.0"
 description = "Local AI voice assistant for macOS — speaks in your cloned voice on live calls, fully on-device"
+readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-keywords = ["voice-assistant", "voice-cloning", "local-ai", "ollama", "xtts", "tts", "stt", "llm", "agent"]
+authors = [
+    { name = "Mikhail Shchegolev" },
+]
+keywords = [
+    "voice-assistant",
+    "voice-cloning",
+    "local-ai",
+    "ollama",
+    "xtts",
+    "qwen3-tts",
+    "tts",
+    "stt",
+    "llm",
+    "agent",
+    "macos",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Environment :: Console",
     "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",
     "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
 ]
 
 dependencies = [
@@ -53,6 +73,16 @@ all = [
 [project.scripts]
 saymo = "saymo.cli:main"
 
+[project.urls]
+Homepage = "https://github.com/mshegolev/saymo"
+Repository = "https://github.com/mshegolev/saymo"
+Issues = "https://github.com/mshegolev/saymo/issues"
+Documentation = "https://github.com/mshegolev/saymo#readme"
+
 [build-system]
 requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["saymo*"]
+exclude = ["tests*", "docs*"]
