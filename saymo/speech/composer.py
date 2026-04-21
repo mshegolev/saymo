@@ -10,6 +10,17 @@ from saymo.jira_source.tasks import StandupData
 
 logger = logging.getLogger("saymo.speech.composer")
 
+
+def _resolve_prompt(config: SaymoConfig, key: str, default: str) -> str:
+    """Load a prompt template from config.prompts.<key> with fallback to default."""
+    prompts = getattr(config, "prompts", None)
+    if isinstance(prompts, dict):
+        override = prompts.get(key)
+        if override:
+            return override
+    return default
+
+
 STANDUP_PROMPT_RU = """\
 Ты — помощник для стендап-митингов. Составь краткий устный отчёт на русском языке.
 
@@ -62,9 +73,11 @@ async def compose_standup(
     tasks_text = "\n".join(standup_data.task_summary_lines)
 
     if config.speech.language == "ru":
-        prompt = STANDUP_PROMPT_RU.format(tasks=tasks_text)
+        template = _resolve_prompt(config, "standup_ru", STANDUP_PROMPT_RU)
+        prompt = template.format(tasks=tasks_text)
     else:
-        prompt = STANDUP_PROMPT_EN.format(tasks=tasks_text)
+        template = _resolve_prompt(config, "standup_en", STANDUP_PROMPT_EN)
+        prompt = template.format(tasks=tasks_text)
 
     api_key = config.analysis.anthropic.api_key or os.environ.get("ANTHROPIC_API_KEY", "")
     model = config.analysis.anthropic.model

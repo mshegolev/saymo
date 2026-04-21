@@ -85,6 +85,7 @@ jira:
   user_query: "assignee = currentUser() AND updated >= -1d ORDER BY updated DESC"
   worklog_query: "worklogAuthor = currentUser() AND worklogDate >= -10d"
   max_results: 15
+  team_members: {}              # Optional: {jira_username: Display Name} for team scrum report
 
 speech:
   style: concise

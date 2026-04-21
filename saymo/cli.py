@@ -185,7 +185,7 @@ def auto(ctx, profile, model, mic):
     if meeting:
         console.print(f"[bold blue]Meeting: {profile} — {meeting.description}[/]")
     if mic:
-        config.audio.capture_device = "Plantronics Blackwire 3220 Series"
+        config.audio.capture_device = config.audio.recording_device
     run_async(_auto(config, model, profile))
 
 
@@ -585,6 +585,11 @@ async def _synthesize(config, text: str) -> bytes | None:
                 lora_adapter=config.tts.qwen3.lora_adapter or None,
             ).synthesize(text)
 
+        elif config.tts.engine == "elevenlabs":
+            console.print("[bold red]ElevenLabs engine is not yet implemented.[/]")
+            console.print("[yellow]Use openai, qwen3_clone, coqui_clone, piper, or macos_say.[/]")
+            return None
+
         else:
             console.print(f"[bold red]Unknown TTS engine: {config.tts.engine}[/]")
             return None
@@ -592,8 +597,6 @@ async def _synthesize(config, text: str) -> bytes | None:
     except Exception as e:
         console.print(f"[bold red]TTS synthesis failed:[/] {e}")
         return None
-
-    console.print("[bold green]Done![/]")
 
 
 # ---------------------------------------------------------------------------
@@ -675,8 +678,13 @@ async def _test_tts(config, text):
             lora_adapter=config.tts.qwen3.lora_adapter or None,
         )
         await tts.synthesize_to_device(text, config.audio.playback_device)
+    elif config.tts.engine == "elevenlabs":
+        console.print("[bold red]ElevenLabs engine is not yet implemented.[/]")
+        console.print("[yellow]Use openai, qwen3_clone, coqui_clone, piper, or macos_say.[/]")
+        return
     else:
         console.print(f"[red]Unknown engine: {config.tts.engine}[/]")
+        return
 
     console.print("[green]Done![/]")
 
@@ -1003,15 +1011,7 @@ async def _prepare_team(config, save: bool):
 
     console.print("[bold blue]Fetching team tasks (your team)...[/]")
     try:
-        team_members = config.meetings.get("_team_members") if isinstance(config.meetings, dict) else None
-        # Read team from config.yaml top-level 'team' key
-        import yaml
-        from pathlib import Path
-        cfg_path = Path(__file__).parent.parent / "config.yaml"
-        if cfg_path.exists():
-            raw = yaml.safe_load(cfg_path.read_text()) or {}
-            if "team" in raw and isinstance(raw["team"], dict):
-                team_members = raw["team"]
+        team_members = config.jira.team_members or None
         team = await fetch_team_tasks(config.jira, team_members)
     except Exception as e:
         console.print(f"[bold red]JIRA fetch failed:[/] {e}")

@@ -292,15 +292,14 @@ class Qwen3VoiceTrainer:
     @staticmethod
     def _compute_loss(model, text, audio_path):
         """Compute loss for a single text-audio pair."""
-        import mlx.core as mx
-
-        # This is a placeholder — actual implementation depends on
-        # Qwen3-TTS internal API for computing reconstruction loss.
-        # Will be refined after testing model's forward() signature.
         output = model(text, audio_path)
         if isinstance(output, dict) and "loss" in output:
             return output["loss"]
-        return mx.mean(output)  # type: ignore[arg-type]
+        raise NotImplementedError(
+            "Qwen3-TTS model.forward() did not return a dict with 'loss'. "
+            "Inspect model(text, audio_path) output and implement loss computation "
+            "based on its actual return type before running fine-tuning."
+        )
 
     def _save_adapter(self, model, lora_layers, name: str) -> None:
         """Save LoRA adapter weights."""

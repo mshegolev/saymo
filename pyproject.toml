@@ -57,6 +57,11 @@ tts = [
     "piper-tts",
     "scipy",
 ]
+apple = [
+    "mlx>=0.22.0",
+    "mlx-lm>=0.21.0",
+    "mlx-audio>=0.1.0",
+]
 stt = [
     "faster-whisper>=1.0.0",
 ]
@@ -67,7 +72,7 @@ cloud = [
     "aiohttp>=3.9.0",
 ]
 all = [
-    "saymo[tts,stt,cloud]",
+    "saymo[tts,stt,cloud,apple]",
 ]
 
 [project.scripts]
@@ -86,3 +91,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["saymo*"]
 exclude = ["tests*", "docs*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
