@@ -157,6 +157,7 @@ class Qwen3VoiceTrainer:
         import mlx.core as mx
         import mlx.nn as nn
         import mlx.optimizers as optim
+        import mlx.utils as mlx_utils
 
         self.validate_dataset()
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -173,8 +174,8 @@ class Qwen3VoiceTrainer:
         logger.info(f"Applying LoRA (rank={lora_rank}, scale={lora_scale})...")
         lora_layers = self._apply_lora(model, rank=lora_rank, scale=lora_scale)
 
-        trainable = sum(p.size for _, p in nn.utils.tree_flatten(lora_layers))
-        total = sum(p.size for _, p in nn.utils.tree_flatten(model.parameters()))
+        trainable = sum(p.size for _, p in mlx_utils.tree_flatten(lora_layers))  # type: ignore[union-attr]
+        total = sum(p.size for _, p in mlx_utils.tree_flatten(model.parameters()))  # type: ignore[union-attr]
         logger.info(f"Trainable: {trainable:,} / {total:,} ({100*trainable/total:.1f}%)")
 
         # Prepare data
@@ -266,14 +267,15 @@ class Qwen3VoiceTrainer:
     def _apply_lora(self, model, rank: int = 8, scale: float = 0.3):
         """Apply LoRA adapters to model's linear layers."""
         import mlx.nn as nn
+        from mlx_lm.tuner.lora import LoRALinear
 
         lora_layers = []
 
         def apply_to_module(module, path=""):
             for name, child in module.named_modules():
                 if isinstance(child, nn.Linear):
-                    lora = nn.LoRALinear.from_linear(
-                        child, rank=rank, scale=scale
+                    lora = LoRALinear.from_base(
+                        child, r=rank, scale=scale
                     )
                     setattr(module, name, lora)
                     lora_layers.append(lora)
@@ -298,7 +300,7 @@ class Qwen3VoiceTrainer:
         output = model(text, audio_path)
         if isinstance(output, dict) and "loss" in output:
             return output["loss"]
-        return mx.mean(output)
+        return mx.mean(output)  # type: ignore[arg-type]
 
     def _save_adapter(self, model, lora_layers, name: str) -> None:
         """Save LoRA adapter weights."""

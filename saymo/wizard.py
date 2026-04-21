@@ -18,8 +18,6 @@ def _record_voice_interactive(recording_device: str, ollama_url: str = "http://l
     import time
     import threading
     from saymo.audio.devices import find_device
-    from rich.status import Status
-
     DURATION = 300  # 5 minutes
     SAMPLE_RATE = 22050
 
@@ -30,7 +28,7 @@ def _record_voice_interactive(recording_device: str, ollama_url: str = "http://l
             import sounddevice as sd
             default_dev = sd.query_devices(kind="input")
             if default_dev:
-                recording_device = default_dev["name"]
+                recording_device = default_dev["name"]  # type: ignore[index]
                 mic = find_device(recording_device, kind="input")
         except Exception:
             pass
@@ -89,8 +87,8 @@ def _record_voice_interactive(recording_device: str, ollama_url: str = "http://l
 
     rec_thread = threading.Thread(target=_record, daemon=True)
     rec_thread.start()
-
-    console.print("  [bold red]\u25cf ЗАПИСЬ[/]\n")
+    import datetime
+    console.print(f"  [bold green]● ЗАПИСЬ НАЧАТА[/] {datetime.datetime.now().strftime('%H:%M:%S')}\n")
 
     # Display paragraphs one by one with timing
     seconds_per_para = DURATION / len(paragraphs)
@@ -102,10 +100,17 @@ def _record_voice_interactive(recording_device: str, ollama_url: str = "http://l
         console.print()
 
         if i < len(paragraphs) - 1:
-            time.sleep(seconds_per_para)
+            deadline = time.monotonic() + seconds_per_para
+            while time.monotonic() < deadline:
+                left = deadline - time.monotonic()
+                mins_left, secs_left = divmod(int(left), 60)
+                print(f"\r  ● REC  |  следующий абзац через {mins_left}:{secs_left:02d}    ", end="", flush=True)
+                time.sleep(1)
+            print("\r" + " " * 60 + "\r", end="", flush=True)
 
     # Wait for recording to finish
-    console.print("  [dim]Завершаю запись...[/]")
+    console.print(f"  [bold yellow]■ ЗАПИСЬ ОСТАНОВЛЕНА[/] {datetime.datetime.now().strftime('%H:%M:%S')}")
+    console.print("  [dim]Сохраняю файл...[/]")
     recording_done.wait(timeout=60)
 
     if not audio_data:
@@ -303,10 +308,10 @@ def run_wizard(config_path: str | None = None):
     ollama_url = ollama_cfg.get("url", "http://localhost:11434")
 
     # Check if Ollama is running
+    import httpx
     ollama_running = False
     models = []
     try:
-        import httpx
         resp = httpx.get(ollama_url, timeout=5.0, proxy=None)
         ollama_running = resp.status_code == 200
     except Exception:
@@ -394,8 +399,8 @@ def run_wizard(config_path: str | None = None):
     coqui_available = False
     if tts_python.exists():
         try:
-            from saymo.tts.coqui_clone import _check_tts_available
-            coqui_available = _check_tts_available()
+            import importlib.util
+            coqui_available = importlib.util.find_spec("TTS") is not None
         except Exception:
             pass
 

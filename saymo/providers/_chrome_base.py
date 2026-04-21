@@ -37,7 +37,7 @@ class ChromeCallProvider:
         end tell
         return "not_found"
         ''')
-        found = result and result != "not_found"
+        found = bool(result and result != "not_found")
         tab = None
         if found:
             parts = result.split(",")

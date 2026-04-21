@@ -665,7 +665,7 @@ async def _test_tts(config, text):
         await tts.synthesize_to_device(text, config.audio.playback_device)
     elif config.tts.engine == "piper":
         from saymo.tts.piper_tts import PiperTTS
-        tts = PiperTTS(config.tts.piper)
+        tts = PiperTTS(model_path=config.tts.piper.model_path or None)
         await tts.synthesize_to_device(text, config.audio.playback_device)
     elif config.tts.engine == "qwen3_clone":
         from saymo.tts.qwen3_tts import Qwen3CloneTTS
