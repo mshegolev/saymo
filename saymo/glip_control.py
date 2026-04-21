@@ -183,7 +183,7 @@ def check_glip_ready() -> dict:
     try:
         import sounddevice as sd
         default_input = sd.query_devices(kind="input")
-        if default_input and "blackhole" in default_input["name"].lower():
+        if default_input and "blackhole" in default_input["name"].lower():  # type: ignore[index]
             result["mic_is_blackhole"] = True
     except Exception:
         pass

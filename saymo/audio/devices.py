@@ -21,10 +21,10 @@ def list_devices() -> list[AudioDevice]:
     for i, d in enumerate(devices):
         result.append(AudioDevice(
             index=i,
-            name=d['name'],
-            max_input_channels=d['max_input_channels'],
-            max_output_channels=d['max_output_channels'],
-            default_samplerate=d['default_samplerate'],
+            name=d['name'],  # type: ignore[index]
+            max_input_channels=d['max_input_channels'],  # type: ignore[index,arg-type]
+            max_output_channels=d['max_output_channels'],  # type: ignore[index,arg-type]
+            default_samplerate=d['default_samplerate'],  # type: ignore[index,arg-type]
         ))
     return result
 

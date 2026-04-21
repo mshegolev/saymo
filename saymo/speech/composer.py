@@ -84,6 +84,6 @@ async def compose_standup(
         messages=[{"role": "user", "content": prompt}],
     )
 
-    text = message.content[0].text
+    text = message.content[0].text  # type: ignore[union-attr]
     logger.info(f"Composed standup: {len(text)} chars")
     return text

@@ -27,7 +27,7 @@ class OpenAITTS:
         response = await asyncio.to_thread(
             self._client.audio.speech.create,
             model=self.config.model,
-            voice=self.config.voice,
+            voice=self.config.voice,  # type: ignore[arg-type]
             input=text,
             response_format="mp3",
         )

@@ -93,7 +93,7 @@ class CoquiCloneTTS:
                 import torch
                 import transformers.pytorch_utils as _pu
                 if not hasattr(_pu, "isin_mps_friendly"):
-                    _pu.isin_mps_friendly = torch.isin
+                    _pu.isin_mps_friendly = torch.isin  # type: ignore[attr-defined]
 
                 from TTS.tts.configs.xtts_config import XttsConfig
                 from TTS.tts.models.xtts import Xtts
@@ -114,7 +114,7 @@ class CoquiCloneTTS:
                 # Load fine-tuned GPT weights on top
                 import torch
                 gpt_state = torch.load(str(finetuned_model), map_location="cpu", weights_only=True)
-                model.gpt.load_state_dict(gpt_state)
+                model.gpt.load_state_dict(gpt_state)  # type: ignore[union-attr]
                 model.eval()
 
                 # Wrap in TTS-compatible interface

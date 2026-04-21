@@ -138,7 +138,7 @@ class VoiceTrainer:
         # which Coqui TTS still imports. Provide a fallback.
         import transformers.pytorch_utils as _pu
         if not hasattr(_pu, "isin_mps_friendly"):
-            _pu.isin_mps_friendly = torch.isin
+            _pu.isin_mps_friendly = torch.isin  # type: ignore[attr-defined]
 
         from TTS.tts.configs.xtts_config import XttsConfig
         from TTS.tts.models.xtts import Xtts
@@ -210,7 +210,7 @@ class VoiceTrainer:
         # Freeze everything except GPT decoder
         for param in model.parameters():
             param.requires_grad = False
-        for param in model.gpt.parameters():
+        for param in model.gpt.parameters():  # type: ignore[union-attr]
             param.requires_grad = True
 
         trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -303,7 +303,7 @@ class VoiceTrainer:
                     # GPT forward with REFERENCE conditioning (voice_sample.wav).
                     # This matches inference: model learns to produce this speaker's
                     # voice when conditioned on voice_sample.wav.
-                    loss_text, loss_mel, _ = model.gpt(
+                    loss_text, loss_mel, _ = model.gpt(  # type: ignore[misc]
                         text_inputs=text_tokens,
                         text_lengths=torch.tensor([text_tokens.shape[-1]], device=device),
                         audio_codes=audio_codes,
