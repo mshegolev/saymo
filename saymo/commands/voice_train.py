@@ -556,14 +556,42 @@ def train_status(ctx):
         console.print("[green]Fine-tuned model available. Run 'saymo train-eval' to evaluate.[/]")
 
 
+@main.command("train-qwen3")
+@click.option("--epochs", "-e", default=None, type=int, help="Number of LoRA epochs")
+@click.option("--rank", default=None, type=int, help="LoRA rank override (default: from config)")
+@click.option("--scale", default=None, type=float, help="LoRA scale override (default: from config)")
+@click.option("--lr", default=None, type=float, help="Learning rate override (default: from config)")
+@click.pass_context
+def train_qwen3(ctx, epochs, rank, scale, lr):
+    """Fine-tune Qwen3-TTS with LoRA on your recorded samples.
+
+    Shortcut for `train-voice --engine qwen3` with dedicated flags for
+    LoRA hyperparameters. Use this when you're committed to the Qwen3
+    path — for XTTS or auto-detect based on tts.engine, use `train-voice`.
+    """
+    ctx.invoke(
+        train_voice,
+        epochs=epochs,
+        batch_size=2,
+        resume=False,
+        engine="qwen3",
+        rank=rank,
+        scale=scale,
+        lr=lr,
+    )
+
+
 @main.command("train-voice")
 @click.option("--epochs", "-e", default=None, type=int, help="Number of training epochs")
 @click.option("--batch-size", "-b", default=2, help="Batch size (2 for 16GB RAM)")
 @click.option("--resume", "-r", is_flag=True, help="Resume from last checkpoint")
 @click.option("--engine", default=None, type=click.Choice(["xtts", "qwen3"]),
               help="Training engine (default: auto-detect from tts.engine)")
+@click.option("--rank", default=None, type=int, help="[qwen3] LoRA rank override")
+@click.option("--scale", default=None, type=float, help="[qwen3] LoRA scale override")
+@click.option("--lr", default=None, type=float, help="[qwen3] Learning rate override")
 @click.pass_context
-def train_voice(ctx, epochs, batch_size, resume, engine):
+def train_voice(ctx, epochs, batch_size, resume, engine, rank, scale, lr):
     """Fine-tune voice model on your samples.
 
     Supports XTTS v2 (GPT decoder) and Qwen3-TTS (LoRA).
@@ -625,12 +653,17 @@ def train_voice(ctx, epochs, batch_size, resume, engine):
                                     description=f"Epoch {epoch}/{default_epochs} loss={loss:.4f}")
 
             try:
-                result = trainer.train(
+                effective_rank = rank if rank is not None else config.tts.qwen3.lora_rank
+                effective_scale = scale if scale is not None else config.tts.qwen3.lora_scale
+                train_kwargs = dict(
                     epochs=default_epochs,
-                    lora_rank=config.tts.qwen3.lora_rank,
-                    lora_scale=config.tts.qwen3.lora_scale,
+                    lora_rank=effective_rank,
+                    lora_scale=effective_scale,
                     progress_callback=on_progress,
                 )
+                if lr is not None:
+                    train_kwargs["learning_rate"] = lr
+                result = trainer.train(**train_kwargs)
                 console.print(f"\n[bold green]{result.summary()}[/]")
                 console.print(f"\n[dim]Set tts.qwen3.lora_adapter in config.yaml to use.[/]")
             except Exception as e:
