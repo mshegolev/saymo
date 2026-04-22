@@ -634,19 +634,20 @@ async def _quick_expand(config, brief: str, duration: int):
 
 @main.command()
 @click.option("--profile", "-p", default=None, help="Meeting profile: standup, scrum, retro")
+@click.option("--source", "-s", default=None, help="Source: obsidian, confluence, jira, file")
 @click.option("--save/--no-save", default=True, help="Save summary to Obsidian daily note")
 @click.option("--team", is_flag=True, help="Team scrum mode (report on all team members)")
 @click.option("--skip-responses", is_flag=True, help="Skip Tier-A response-cache rebuild")
 @click.pass_context
-def prepare(ctx, profile, save, team, skip_responses):
+def prepare(ctx, profile, source, save, team, skip_responses):
     """Prepare standup summary BEFORE the daily meeting.
 
+    Source resolution priority: --source flag > profile.source > config.speech.source.
     Use -p to select meeting profile: standup (default), scrum, retro.
     Also rebuilds the Tier-A response cache (pre-synthesised answers
     for common stand-up follow-ups). Pass --skip-responses to disable.
     """
     config = ctx.obj["config"]
-    config.speech.source = "confluence"
     if profile:
         meeting = config.get_meeting(profile)
         if not meeting:
@@ -654,8 +655,11 @@ def prepare(ctx, profile, save, team, skip_responses):
             console.print(f"[dim]Available: {', '.join(config.list_meetings())}[/]")
             return
         team = meeting.team
-        config.speech.source = meeting.source
+        if not source:
+            config.speech.source = meeting.source
         console.print(f"[bold blue]Meeting: {profile} — {meeting.description}[/]")
+    if source:
+        config.speech.source = source
     if team:
         run_async(_prepare_team(config, save))
     else:
