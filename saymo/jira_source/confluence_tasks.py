@@ -82,6 +82,18 @@ def _get_previous_business_day() -> datetime:
 
 def _jira_client(config: JiraConfig):
     """Build a JIRA client using token-based auth from user config."""
+    if not config.url:
+        raise RuntimeError(
+            "JIRA URL is not configured. Set `jira.url` in config.yaml "
+            "(e.g. https://your-company.atlassian.net), or switch "
+            "`speech.source` away from `confluence`/`jira` if you don't "
+            "have a JIRA account."
+        )
+    if not config.token:
+        raise RuntimeError(
+            "JIRA token is not configured. Set `jira.token` in config.yaml "
+            "(or via ${JIRA_TOKEN} env var)."
+        )
     from jira import JIRA
     return JIRA(server=config.url, token_auth=config.token, options={"verify": False})
 
