@@ -560,40 +560,12 @@ async def _speak_text(config, text: str) -> None:
 
 async def _synthesize(config, text: str) -> bytes | None:
     """Synthesize text to audio bytes using configured TTS engine."""
+    from saymo.tts.factory import get_tts_engine, UnsupportedTTSEngine
     try:
-        if config.tts.engine == "coqui_clone":
-            from saymo.tts.coqui_clone import CoquiCloneTTS
-            return await CoquiCloneTTS(language=config.speech.language).synthesize(text)
-
-        elif config.tts.engine == "piper":
-            from saymo.tts.piper_tts import PiperTTS
-            return await PiperTTS(model_path=config.tts.piper.model_path or None).synthesize(text)
-
-        elif config.tts.engine == "macos_say":
-            from saymo.tts.macos_say import MacOSSay
-            return await MacOSSay(config.tts.macos_say).synthesize(text)
-
-        elif config.tts.engine == "openai":
-            from saymo.tts.openai_tts import OpenAITTS
-            return await OpenAITTS(config.tts.openai).synthesize(text)
-
-        elif config.tts.engine == "qwen3_clone":
-            from saymo.tts.qwen3_tts import Qwen3CloneTTS
-            return await Qwen3CloneTTS(
-                language=config.speech.language,
-                model=config.tts.qwen3.model,
-                lora_adapter=config.tts.qwen3.lora_adapter or None,
-            ).synthesize(text)
-
-        elif config.tts.engine == "elevenlabs":
-            console.print("[bold red]ElevenLabs engine is not yet implemented.[/]")
-            console.print("[yellow]Use openai, qwen3_clone, coqui_clone, piper, or macos_say.[/]")
-            return None
-
-        else:
-            console.print(f"[bold red]Unknown TTS engine: {config.tts.engine}[/]")
-            return None
-
+        return await get_tts_engine(config).synthesize(text)
+    except UnsupportedTTSEngine as e:
+        console.print(f"[bold red]{e}[/]")
+        return None
     except Exception as e:
         console.print(f"[bold red]TTS synthesis failed:[/] {e}")
         return None
@@ -647,44 +619,24 @@ def test_tts(ctx, text, engine):
 
 
 async def _test_tts(config, text):
-    from saymo.tts.macos_say import MacOSSay
+    from saymo.tts.factory import get_tts_engine, UnsupportedTTSEngine
 
     console.print(f"[blue]TTS engine: {config.tts.engine}[/]")
     console.print(f"[blue]Text: {text}[/]")
     console.print(f"[blue]Device: {config.audio.playback_device}[/]")
 
-    if config.tts.engine == "openai":
-        from saymo.tts.openai_tts import OpenAITTS
+    try:
+        tts = get_tts_engine(config)
+    except UnsupportedTTSEngine as e:
+        console.print(f"[bold red]{e}[/]")
+        return
+
+    if hasattr(tts, "synthesize_to_device"):
+        await tts.synthesize_to_device(text, config.audio.playback_device)
+    else:
         from saymo.audio.playback import play_audio_bytes
-        tts = OpenAITTS(config.tts.openai)
         audio_bytes = await tts.synthesize(text)
         await play_audio_bytes(audio_bytes, config.audio.playback_device)
-    elif config.tts.engine == "macos_say":
-        say = MacOSSay(config.tts.macos_say)
-        await say.synthesize_to_device(text, config.audio.playback_device)
-    elif config.tts.engine == "coqui_clone":
-        from saymo.tts.coqui_clone import CoquiCloneTTS
-        tts = CoquiCloneTTS()
-        await tts.synthesize_to_device(text, config.audio.playback_device)
-    elif config.tts.engine == "piper":
-        from saymo.tts.piper_tts import PiperTTS
-        tts = PiperTTS(model_path=config.tts.piper.model_path or None)
-        await tts.synthesize_to_device(text, config.audio.playback_device)
-    elif config.tts.engine == "qwen3_clone":
-        from saymo.tts.qwen3_tts import Qwen3CloneTTS
-        tts = Qwen3CloneTTS(
-            language=config.speech.language,
-            model=config.tts.qwen3.model,
-            lora_adapter=config.tts.qwen3.lora_adapter or None,
-        )
-        await tts.synthesize_to_device(text, config.audio.playback_device)
-    elif config.tts.engine == "elevenlabs":
-        console.print("[bold red]ElevenLabs engine is not yet implemented.[/]")
-        console.print("[yellow]Use openai, qwen3_clone, coqui_clone, piper, or macos_say.[/]")
-        return
-    else:
-        console.print(f"[red]Unknown engine: {config.tts.engine}[/]")
-        return
 
     console.print("[green]Done![/]")
 
