@@ -217,12 +217,13 @@ def run_wizard(config_path: str | None = None):
         )
 
     playback = click.prompt(
-        "  Playback device (headphones)",
-        default=config.get("audio", {}).get("playback_device", "Plantronics Blackwire 3220 Series")
+        "  Playback device (virtual mic for the call — typically BlackHole 2ch)",
+        default=config.get("audio", {}).get("playback_device", "BlackHole 2ch")
     )
     monitor = click.prompt(
-        "  Monitor device (hear yourself)",
-        default=config.get("audio", {}).get("monitor_device", playback)
+        "  Monitor device (your headphones — so you hear what Saymo says)",
+        default=config.get("audio", {}).get("monitor_device", "")
+        or "Plantronics Blackwire 3220 Series"
     )
 
     config.setdefault("audio", {})

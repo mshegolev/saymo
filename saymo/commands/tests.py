@@ -53,9 +53,15 @@ def test_tts(ctx, text, engine):
 async def _test_tts(config, text):
     from saymo.tts.factory import get_tts_engine, UnsupportedTTSEngine
 
+    playback = config.audio.playback_device
+    monitor = config.audio.monitor_device
+    devices = [playback]
+    if monitor and monitor.lower() != playback.lower():
+        devices.append(monitor)
+
     console.print(f"[blue]TTS engine: {config.tts.engine}[/]")
     console.print(f"[blue]Text: {text}[/]")
-    console.print(f"[blue]Device: {config.audio.playback_device}[/]")
+    console.print(f"[blue]Devices: {', '.join(devices)}[/]")
 
     try:
         tts = get_tts_engine(config)
@@ -63,12 +69,13 @@ async def _test_tts(config, text):
         console.print(f"[bold red]{e}[/]")
         return
 
-    if hasattr(tts, "synthesize_to_device"):
-        await tts.synthesize_to_device(text, config.audio.playback_device)
+    audio_bytes = await tts.synthesize(text)
+    if len(devices) > 1:
+        from saymo.audio.multi_play import play_bytes_to_devices
+        await play_bytes_to_devices(audio_bytes, devices)
     else:
         from saymo.audio.playback import play_audio_bytes
-        audio_bytes = await tts.synthesize(text)
-        await play_audio_bytes(audio_bytes, config.audio.playback_device)
+        await play_audio_bytes(audio_bytes, playback)
 
     console.print("[green]Done![/]")
 
