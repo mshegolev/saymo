@@ -56,7 +56,13 @@ analysis:
     confidence_threshold: 0.8
 
 tts:
-  engine: coqui_clone         # `coqui_clone` | `piper` | `openai` | `elevenlabs` | `macos_say`
+  engine: coqui_clone         # `coqui_clone` | `piper` | `openai` | `elevenlabs` | `macos_say` | `qwen3_clone`
+  # Optional override for the live auto-mode / Q&A path. When set, _auto()
+  # uses this engine for spontaneous replies while `engine` above keeps
+  # handling slower prepare-time synthesis. Typical split: prepare with
+  # coqui_clone (quality), realtime with qwen3_clone (latency). Empty
+  # means "use `engine` for both".
+  realtime_engine: ""
   piper:
     model_path: ""
   openai:

@@ -21,13 +21,21 @@ class UnsupportedTTSEngine(RuntimeError):
     """Raised when a configured engine name is unknown or not implemented."""
 
 
-def get_tts_engine(config: SaymoConfig):
+def get_tts_engine(config: SaymoConfig, *, realtime: bool = False):
     """Instantiate the TTS engine configured in ``config.tts.engine``.
+
+    Pass ``realtime=True`` to prefer ``config.tts.realtime_engine`` when set
+    — used by the auto-mode Q&A path so users can split slow, high-quality
+    engines from fast real-time ones without editing source.
 
     Deferred imports keep optional deps (coqui-tts, piper-tts, mlx) from
     being required at import time — callers only pay for what they use.
     """
     engine = config.tts.engine
+    if realtime:
+        override = getattr(config.tts, "realtime_engine", "") or ""
+        if override:
+            engine = override
 
     if engine == "coqui_clone":
         from saymo.tts.coqui_clone import CoquiCloneTTS

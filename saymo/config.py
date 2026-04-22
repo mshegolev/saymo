@@ -150,6 +150,12 @@ class VoiceTrainingConfig:
 @dataclass
 class TTSConfig:
     engine: str = "piper"
+    # Optional override for the live auto-mode / Q&A path. When set, _auto()
+    # synthesises realtime replies with this engine while `engine` keeps
+    # handling slower prepare-time synthesis. Typical split: prepare with
+    # coqui_clone (quality), realtime with qwen3_clone (latency). Defaults
+    # to `engine` when empty.
+    realtime_engine: str = ""
     piper: PiperConfig = field(default_factory=PiperConfig)
     openai: OpenAITTSConfig = field(default_factory=OpenAITTSConfig)
     elevenlabs: ElevenLabsTTSConfig = field(default_factory=ElevenLabsTTSConfig)

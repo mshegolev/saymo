@@ -177,7 +177,7 @@ async def _resolve_auto_response(
                 )
                 if answer:
                     console.print(f"[green]Live answer:[/] {answer}")
-                    audio = await get_tts_engine(config).synthesize(answer)
+                    audio = await get_tts_engine(config, realtime=True).synthesize(answer)
                     fd, tmp_name = tempfile.mkstemp(suffix=".wav", prefix="saymo_live_")
                     os.close(fd)
                     tmp_path = Path(tmp_name)

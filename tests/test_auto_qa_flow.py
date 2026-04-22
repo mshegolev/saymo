@@ -125,7 +125,7 @@ def test_cache_miss_with_live_fallback_invokes_ollama(monkeypatch):
     mock_engine = MagicMock()
     mock_engine.synthesize = AsyncMock(return_value=b"RIFF....fake wav bytes")
     monkeypatch.setattr(
-        "saymo.tts.factory.get_tts_engine", lambda cfg: mock_engine
+        "saymo.tts.factory.get_tts_engine", lambda cfg, **kw: mock_engine
     )
 
     fallback = Path("/tmp/standup.wav")
