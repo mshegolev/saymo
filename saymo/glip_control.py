@@ -180,13 +180,10 @@ def check_glip_ready() -> dict:
         result["tab_info"] = tab
 
     # Check system default input device
-    try:
-        import sounddevice as sd
-        default_input = sd.query_devices(kind="input")
-        if default_input and "blackhole" in default_input["name"].lower():  # type: ignore[index]
-            result["mic_is_blackhole"] = True
-    except Exception:
-        pass
+    from saymo.audio.devices import default_input
+    dev = default_input()
+    if dev and "blackhole" in dev["name"].lower():
+        result["mic_is_blackhole"] = True
 
     return result
 

@@ -17,21 +17,17 @@ def _record_voice_interactive(recording_device: str, ollama_url: str = "http://l
     """Record a 5-minute voice sample with on-screen reading text."""
     import time
     import threading
-    from saymo.audio.devices import find_device
+    from saymo.audio.devices import find_device, default_input
     DURATION = 300  # 5 minutes
     SAMPLE_RATE = 22050
 
     # Resolve mic
     mic = find_device(recording_device, kind="input") if recording_device else None
     if not mic:
-        try:
-            import sounddevice as sd
-            default_dev = sd.query_devices(kind="input")
-            if default_dev:
-                recording_device = default_dev["name"]  # type: ignore[index]
-                mic = find_device(recording_device, kind="input")
-        except Exception:
-            pass
+        default_dev = default_input()
+        if default_dev:
+            recording_device = default_dev["name"]
+            mic = find_device(recording_device, kind="input")
     if not mic:
         console.print("[bold red]  Микрофон не найден! Пропускаю запись.[/]")
         return

@@ -1,6 +1,14 @@
-"""Audio device discovery and validation."""
+"""Audio device discovery and validation.
+
+This module is the single entry-point for ``sounddevice`` calls — other
+modules should prefer the helpers here (``list_devices``, ``find_device``,
+``default_input``, ``default_output``) so all ``# type: ignore[index]``
+annotations needed by the untyped ``sounddevice`` API stay local to one
+file.
+"""
 
 from dataclasses import dataclass
+from typing import Any
 
 import sounddevice as sd
 
@@ -14,19 +22,52 @@ class AudioDevice:
     default_samplerate: float
 
 
+def _as_dict(dev: Any) -> dict[str, Any]:
+    """Narrow ``sounddevice`` query result into a plain dict.
+
+    ``sd.query_devices()`` returns ``DeviceList | dict`` without proper
+    typing; this helper localizes the ``type: ignore`` so callers get a
+    well-typed ``dict[str, Any]``.
+    """
+    return dict(dev)  # type: ignore[arg-type]
+
+
 def list_devices() -> list[AudioDevice]:
     """List all available audio devices."""
     devices = sd.query_devices()
     result = []
     for i, d in enumerate(devices):
+        dd = _as_dict(d)
         result.append(AudioDevice(
             index=i,
-            name=d['name'],  # type: ignore[index]
-            max_input_channels=d['max_input_channels'],  # type: ignore[index,arg-type]
-            max_output_channels=d['max_output_channels'],  # type: ignore[index,arg-type]
-            default_samplerate=d['default_samplerate'],  # type: ignore[index,arg-type]
+            name=dd['name'],
+            max_input_channels=dd['max_input_channels'],
+            max_output_channels=dd['max_output_channels'],
+            default_samplerate=dd['default_samplerate'],
         ))
     return result
+
+
+def default_input() -> dict[str, Any] | None:
+    """Return the system default input device as a dict, or None."""
+    try:
+        dev = sd.query_devices(kind="input")
+    except Exception:
+        return None
+    if not dev:
+        return None
+    return _as_dict(dev)
+
+
+def default_output() -> dict[str, Any] | None:
+    """Return the system default output device as a dict, or None."""
+    try:
+        dev = sd.query_devices(kind="output")
+    except Exception:
+        return None
+    if not dev:
+        return None
+    return _as_dict(dev)
 
 
 def find_device(name: str, kind: str = "input") -> AudioDevice | None:
