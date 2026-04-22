@@ -145,7 +145,7 @@ def _load_cached_summary(config) -> str | None:
 @click.option("--verbose", "-v", is_flag=True, help="Enable debug logging")
 @click.pass_context
 def main(ctx, config_path, verbose):
-    """Saymo — AI-powered standup automation for Glip calls."""
+    """Saymo — AI-powered standup automation for Chrome-based calls."""
     from saymo.utils.logger import setup_logging
     setup_logging(level=logging.DEBUG if verbose else logging.INFO)
     ctx.ensure_object(dict)
@@ -174,9 +174,9 @@ def setup(ctx):
 @click.option("--mic", is_flag=True, help="Listen from microphone (for testing)")
 @click.pass_context
 def auto(ctx, profile, model, mic):
-    """Listen to Glip call, detect your name, auto-speak.
+    """Listen to a live call, detect your name, auto-speak.
 
-    Use -p to select meeting profile and trigger words.
+    Use -p to select meeting profile (which also picks the call provider).
     Use --mic to listen from your microphone (for testing).
     Requires: prepare (run beforehand to cache audio).
     """
@@ -210,10 +210,12 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
         console.print("[dim]Need BlackHole 16ch for capturing Glip audio[/]")
         return
 
-    from saymo.glip_control import check_glip_ready
-    status = check_glip_ready()
-    if not status["glip_tab_found"]:
-        console.print("[bold red]Glip tab not found in Chrome![/]")
+    from saymo.providers.factory import get_provider
+    provider_name = meeting.provider if meeting else "glip"
+    provider = get_provider(provider_name)
+    status = provider.check_ready()
+    if not status.meeting_found:
+        console.print(f"[bold red]{provider.name} tab not found in Chrome![/]")
         return
 
     # Determine trigger phrases from meeting profile or user config
@@ -293,7 +295,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
             speaking.set()
             try:
-                await _play_cached_audio(config, cached_audio, provider_name="glip")
+                await _play_cached_audio(config, cached_audio, provider_name=provider_name)
             finally:
                 speaking.clear()
                 detector.reset_cooldown()
