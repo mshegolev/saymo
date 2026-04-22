@@ -160,6 +160,11 @@ responses:
   enabled: true
   confidence_threshold: 0.6   # 0..1 — lower = more willing to match loose wording
   cache_dir: ""               # empty → ~/.saymo/audio_cache/responses/
+  # When cache misses a match, try synthesising a live answer via Ollama
+  # + TTS. Off by default because it's slow (several seconds) and can
+  # make auto-mode feel sluggish. Turn on only if you often get questions
+  # that aren't covered by cached variants.
+  live_fallback: false
   library: {}
     # Example — uncomment to override the default generic status answer:
     # status_generic:

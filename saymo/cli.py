@@ -114,6 +114,82 @@ async def _play_cached_audio(config, audio_path, provider_name: str | None = Non
     console.print("[bold green]Done![/]")
 
 
+_QUESTION_STARTERS = (
+    "как ", "что ", "где ", "когда ", "почему ", "зачем ", "кто ",
+    "сколько ", "какие ", "какой ", "какая ", "расскажи", "поделись", "опиши",
+    "what ", "how ", "why ", "when ", "where ", "who ",
+    "tell me", "can you", "could you", "do you",
+)
+
+
+def _looks_like_question(text: str) -> bool:
+    """Heuristic: does this transcript chunk look like a question?"""
+    t = text.strip()
+    if not t:
+        return False
+    if "?" in t:
+        return True
+    lower = t.lower()
+    return any(s in lower for s in _QUESTION_STARTERS)
+
+
+async def _resolve_auto_response(
+    config,
+    transcript: str,
+    response_cache,
+    standup_summary: str | None,
+    fallback_standup_path,
+):
+    """Pick which audio file to play when auto-mode triggers.
+
+    Priority:
+    1. Response cache hit (for recognizable questions)
+    2. Live Ollama + TTS fallback (when ``responses.live_fallback`` is on)
+    3. Generic standup audio (existing behaviour)
+
+    Returns a ``Path`` suitable for ``_play_cached_audio``.
+    """
+    from pathlib import Path
+
+    if response_cache and _looks_like_question(transcript):
+        cached = response_cache.lookup(transcript)
+        if cached:
+            console.print(
+                f"[green]Cache hit:[/] {cached.key} "
+                f"(conf={cached.confidence:.2f}) — {cached.text}"
+            )
+            return Path(cached.audio_path)
+
+        if config.responses.live_fallback:
+            console.print("[yellow]Cache miss — generating live answer via Ollama...[/]")
+            try:
+                from saymo.speech.ollama_composer import answer_question
+                from saymo.tts.factory import get_tts_engine
+                import tempfile
+
+                answer = await answer_question(
+                    question=transcript,
+                    standup_summary=standup_summary or "",
+                    user_name=config.user.name,
+                    user_role=config.user.role,
+                    model=config.ollama.model,
+                    ollama_url=config.ollama.url,
+                    config=config,
+                )
+                if answer:
+                    console.print(f"[green]Live answer:[/] {answer}")
+                    audio = await get_tts_engine(config).synthesize(answer)
+                    fd, tmp_name = tempfile.mkstemp(suffix=".wav", prefix="saymo_live_")
+                    os.close(fd)
+                    tmp_path = Path(tmp_name)
+                    tmp_path.write_bytes(audio)
+                    return tmp_path
+            except Exception as e:
+                console.print(f"[red]Live answer failed, falling back:[/] {e}")
+
+    return fallback_standup_path
+
+
 def _load_cached_summary(config) -> str | None:
     """Check if today's Obsidian note already has a Standup Summary section."""
     if not config.obsidian.vault_path:
@@ -246,7 +322,26 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
     detector = TurnDetector(
         name_variants=trigger_phrases,
         cooldown_seconds=45.0,
+        fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
     )
+
+    # Initialize response cache (Q&A) if enabled and a library is populated
+    response_cache = None
+    if config.responses.enabled:
+        from saymo.analysis.response_cache import ResponseCache, build_library
+        from pathlib import Path
+        cache_dir = Path(config.responses.cache_dir) if config.responses.cache_dir else None
+        response_cache = ResponseCache(
+            library=build_library(config.responses.library),
+            cache_dir=cache_dir,
+            confidence_threshold=config.responses.confidence_threshold,
+        )
+        console.print(
+            f"[dim]Q&A cache: {len(response_cache.library)} intents"
+            f"{' + live fallback' if config.responses.live_fallback else ''}[/]"
+        )
+
+    standup_summary = _load_cached_summary(config)
 
     triggered = asyncio.Event()
     speaking = asyncio.Event()
@@ -283,6 +378,9 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
             await triggered.wait()
             triggered.clear()
 
+            # Snapshot transcript window BEFORE draining — contains the question
+            transcript_window = detector.recent_transcript
+
             # Drain audio queue — don't process stale chunks after trigger
             while not capture.audio_queue.empty():
                 try:
@@ -290,15 +388,29 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                 except Exception:
                     break
 
+            audio_to_play = await _resolve_auto_response(
+                config,
+                transcript_window,
+                response_cache,
+                standup_summary,
+                cached_audio,
+            )
+
             console.print("[bold blue]Speaking in 2 seconds...[/]")
             await asyncio.sleep(2.0)
 
             speaking.set()
             try:
-                await _play_cached_audio(config, cached_audio, provider_name=provider_name)
+                await _play_cached_audio(config, audio_to_play, provider_name=provider_name)
             finally:
                 speaking.clear()
                 detector.reset_cooldown()
+                # Clean up live-fallback temp files
+                if audio_to_play != cached_audio:
+                    try:
+                        audio_to_play.unlink(missing_ok=True)
+                    except Exception:
+                        pass
 
             console.print("\n[bold yellow]Listening again...[/]\n")
 

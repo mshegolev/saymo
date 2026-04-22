@@ -223,6 +223,9 @@ class ResponsesConfig:
     confidence_threshold: float = 0.6
     cache_dir: str = ""  # defaults to ~/.saymo/audio_cache/responses/
     library: dict = field(default_factory=dict)
+    # When True, on cache miss try live Ollama+TTS instead of generic standup
+    # audio. Slow (several seconds) — off by default to keep auto-mode snappy.
+    live_fallback: bool = False
 
 
 @dataclass
