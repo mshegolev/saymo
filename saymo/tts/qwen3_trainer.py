@@ -165,10 +165,21 @@ class Qwen3VoiceTrainer:
         start_time = time.time()
         logger.info(f"Device: {mx.default_device()}")
 
-        # Load model
+        # Load model. Pass as str (not Path) so mlx_audio's load_config
+        # routes through get_model_path → snapshot_download from HF. When
+        # given a Path, it treats it as local and fails if not cached.
         from mlx_audio.tts.utils import load_model
         logger.info(f"Loading {self.model_name}...")
-        model = load_model(model_path=Path(self.model_name))
+        model_ref = self.model_name
+        if isinstance(model_ref, Path):
+            model_ref = str(model_ref)
+        # If the string looks like a local directory that exists, keep it
+        # as a Path so local checkpoints still work.
+        local_candidate = Path(model_ref)
+        if local_candidate.exists() and local_candidate.is_dir():
+            model = load_model(model_path=local_candidate)
+        else:
+            model = load_model(model_path=model_ref)  # type: ignore[arg-type]
 
         # Apply LoRA to model layers
         logger.info(f"Applying LoRA (rank={lora_rank}, scale={lora_scale})...")
