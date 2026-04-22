@@ -291,14 +291,52 @@ class Qwen3VoiceTrainer:
 
     @staticmethod
     def _compute_loss(model, text, audio_path):
-        """Compute loss for a single text-audio pair."""
+        """Compute loss for a single text-audio pair.
+
+        Tries several common return shapes from Qwen3-TTS forward:
+
+        1. ``{"loss": tensor}`` — HuggingFace-style pre-computed loss.
+        2. Object with ``.loss`` attribute — some MLX port variants.
+        3. ``{"logits": tensor, "labels": tensor}`` — compute CE ourselves
+           against the target audio tokens.
+        4. Tuple/list ``(logits, labels)`` — same but positional.
+
+        Raises ``NotImplementedError`` with the observed shape when none
+        of these patterns apply — safer than silently optimising a
+        meaningless objective like ``mx.mean(output)``.
+        """
+        import mlx.core as mx
+        import mlx.nn as nn
+
         output = model(text, audio_path)
+
+        # Pattern 1: dict with loss
         if isinstance(output, dict) and "loss" in output:
             return output["loss"]
+
+        # Pattern 2: object with .loss attribute
+        if hasattr(output, "loss"):
+            loss_attr = getattr(output, "loss", None)
+            if loss_attr is not None:
+                return loss_attr
+
+        # Pattern 3: dict with logits + labels
+        if isinstance(output, dict) and "logits" in output and "labels" in output:
+            return nn.losses.cross_entropy(
+                output["logits"], output["labels"], reduction="mean"
+            )
+
+        # Pattern 4: (logits, labels) tuple/list
+        if isinstance(output, (tuple, list)) and len(output) == 2:
+            logits, labels = output
+            if isinstance(logits, mx.array) and isinstance(labels, mx.array):
+                return nn.losses.cross_entropy(logits, labels, reduction="mean")
+
         raise NotImplementedError(
-            "Qwen3-TTS model.forward() did not return a dict with 'loss'. "
-            "Inspect model(text, audio_path) output and implement loss computation "
-            "based on its actual return type before running fine-tuning."
+            f"Qwen3-TTS model.forward() returned an unsupported shape: "
+            f"type={type(output).__name__}, "
+            f"keys={list(output.keys()) if isinstance(output, dict) else 'n/a'}. "
+            f"Extend Qwen3VoiceTrainer._compute_loss to handle it before training."
         )
 
     def _save_adapter(self, model, lora_layers, name: str) -> None:
