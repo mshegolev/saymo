@@ -209,17 +209,17 @@ Dataset size goes from 320 → roughly 360–380 training segments, ~42 min.
 
 **Owner:** 1 agent · **Est:** 0.5 day · **Blocks:** Q6
 
-**Context.** The trainer exists (`Qwen3VoiceTrainer`), but there is no CLI entry. `saymo/cli.py:1305` has `train-prepare` and a `train-voice` for XTTS v2 — follow the same pattern.
+**Context.** The trainer exists (`Qwen3VoiceTrainer`), but there is no CLI entry. `saymo/commands/voice_train.py` has `train-prepare` and a `train-voice` for XTTS v2 — follow the same pattern.
 
 ### Plan
 
-1. Locate the existing `train-voice` command in `saymo/cli.py` and copy its Click decorators and flag conventions.
+1. Locate the existing `train-voice` command in `saymo/commands/voice_train.py` and copy its Click decorators and flag conventions.
 2. Wire it to `Qwen3VoiceTrainer`, not the XTTS `VoiceTrainer`.
-3. Surface progress via the existing `console.print` / `rich` usage in `cli.py`.
+3. Surface progress via the existing `console.print` / `rich` usage.
 
 ### Do
 
-- Add `@main.command("train-qwen3")` in `saymo/cli.py`.
+- Add `@main.command("train-qwen3")` in `saymo/commands/voice_train.py`.
 - Flags: `--epochs` (int, default 5), `--rank` (int, default 8), `--scale` (float, default 0.3), `--lr` (float, default 1e-4).
 - Reuse the dataset-path detection already in `train-voice` — do not duplicate.
 - Pass a `progress_callback` that updates a `rich.progress` bar, matching the `train-voice` UX.
@@ -238,7 +238,7 @@ Dataset size goes from 320 → roughly 360–380 training segments, ~42 min.
 
 **Owner:** 1 agent · **Est:** 0.5 day · **Blocks:** Q7 · **Requires:** Q8 landed (Tier-A cache is the GPU-missing fallback)
 
-**Context.** `docs/voice-identity.md` §7 specifies `tts.realtime_engine` and `analysis.qa_mode.*`. Neither exists in `saymo/config.py` or `config.example.yaml`. `_auto()` at `saymo/cli.py:192-316` only reads `tts.engine`. The routing must include a graceful fallback chain: Tier-B (Qwen3 GPU) → Tier-A (Q8 response cache) → generic cached standup.
+**Context.** `docs/voice-identity.md` §7 specifies `tts.realtime_engine` and `analysis.qa_mode.*`. Neither exists in `saymo/config.py` or `config.example.yaml`. `_auto()` (now at `saymo/commands/core.py::_auto`) only reads `tts.engine`. The routing must include a graceful fallback chain: Tier-B (Qwen3 GPU) → Tier-A (Q8 response cache, shipped in v0.8.0) → generic cached standup.
 
 ### Plan
 
@@ -250,7 +250,7 @@ Dataset size goes from 320 → roughly 360–380 training segments, ~42 min.
 
 - Edit `saymo/config.py`: add field, keep existing defaults untouched.
 - Edit `config.example.yaml`: new commented block under `tts:`.
-- Edit `saymo/cli.py:192-316`: single-line engine selection; guard with `getattr(config.tts, 'realtime_engine', None)` if the attribute might be absent for old configs.
+- Edit `saymo/commands/core.py::_auto`: single-line engine selection; guard with `getattr(config.tts, 'realtime_engine', None)` if the attribute might be absent for old configs.
 - Update `docs/voice-identity.md` §7 — mark the key as "implemented".
 
 ### Verify

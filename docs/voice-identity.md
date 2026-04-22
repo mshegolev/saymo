@@ -23,8 +23,8 @@ What is already shipped (and must be reused, not rebuilt):
 | Short ASR window | `AudioCapture` — 4 s chunks with 2 s overlap |
 | Cached standup playback | `saymo prepare` → `saymo review` → `saymo speak` |
 | Mic mute / unmute per app | `saymo/providers/*` — 8 providers via Chrome JS |
-| Voice sample recording | `saymo/cli.py:1209` — `saymo record-voice` |
-| Guided training dataset | `saymo/cli.py:1305` — `saymo train-prepare`; 76 Russian prompts in `saymo/tts/prompts.py` across STATUS / TECH / QUESTION / PANGRAM / EXPRESSIVE categories |
+| Voice sample recording | `saymo/commands/voice_train.py:13` — `saymo record-voice` |
+| Guided training dataset | `saymo/commands/voice_train.py:120` — `saymo train-prepare`; 76 Russian prompts in `saymo/tts/prompts.py` across STATUS / TECH / QUESTION / PANGRAM / EXPRESSIVE categories |
 | Dataset builder & quality gates | `saymo/tts/dataset.py` — SNR threshold, clipping detection, 50+ segments / 10+ min minimum (lines 40, 57) |
 | XTTS v2 fine-tune loop | `saymo/tts/trainer.py:110-381` — epochs, backward pass, best-checkpoint save |
 | Fine-tune auto-load | `saymo/tts/coqui_clone.py:75-133` — picks `~/.saymo/models/xtts_finetuned/best_model.pth` (or `model.pth`); base dir at line 21 |
@@ -35,8 +35,8 @@ What is missing for the goal:
 
 | Gap | Evidence | Track |
 |---|---|---|
-| Real-time Q&A path in `auto` mode | `saymo/cli.py:192-316` — `_auto()` only routes to `_get_cached_audio_path` (line 200) and `_play_cached_audio` (line 298); returns early at lines 201–206 if no cached file exists | B |
-| Qwen3-TTS LoRA training loss is a placeholder | `saymo/tts/qwen3_trainer.py:291-301` — comment reads "This is a placeholder"; fallback `return mx.mean(output)`. LoRA scaffolding itself is real (rank 8 / scale 0.3 at lines 138–139; `_apply_lora` at 266–288 via `nn.LoRALinear.from_linear()`) | A |
+| Real-time Q&A path in `auto` mode | ~~Gap closed in v0.8.0~~ — `saymo/commands/core.py::_auto` + `saymo/commands/__init__.py::_resolve_auto_response` now consult `ResponseCache` on question-shaped triggers and optionally fall back to live Ollama + TTS when `config.responses.live_fallback=true`. | done |
+| Qwen3-TTS LoRA training loss is a placeholder | `saymo/tts/qwen3_trainer.py::_compute_loss` now raises `NotImplementedError` instead of silently computing `mx.mean(output)`. LoRA scaffolding (rank 8 / scale 0.3; `_apply_lora` via `mlx_lm.tuner.lora.LoRALinear.from_base`) is real. The training loop itself still needs a real loss impl after inspecting the model's forward signature. | A |
 | `safety.max_speech_duration` not wired into `_auto()` | no timeout around playback / mic-open | Reliability |
 | Hotkeys defined in config but not bound in `auto` | `safety.hotkey_speak/stop/toggle` unused | Reliability |
 
@@ -115,7 +115,7 @@ Output: 1–2 sentences. Truncate at `analysis.qa_mode.max_answer_length`.
 
 ### B.4 Integration point
 
-Branch inside `_auto()` at `saymo/cli.py:192-316`. Rules:
+Branch inside `_auto()` at `saymo/commands/core.py::_auto`. Rules:
 
 - If classifier returns `generic_turn` **or** classification confidence is low, keep the current cached-audio path (safe default).
 - If classifier returns `specific_question` with high confidence, go through B.2 → B.3.

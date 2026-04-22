@@ -62,15 +62,57 @@ saymo test-tts "Привет, это тест"  # Check that TTS works
 ```bash
 # Before the call: prepare text + cached audio
 saymo prepare -p personal
+saymo prepare-responses         # pre-synthesize the Q&A library for live mode
 saymo review                    # optional: check generated audio
 
 # During the call
-saymo speak --glip              # manual trigger, instant playback
+saymo speak -p personal         # manual trigger, instant playback
 saymo auto -p personal          # listen for your name, speak when called
+saymo auto -p personal --mic    # same, but from laptop mic (for testing)
 
 # Extras
 saymo dashboard                 # interactive TUI
 ```
+
+### Call providers
+
+`saymo auto` works with all Chrome-based call apps — the provider is
+picked by `meetings.<profile>.provider` in config:
+
+| `provider:` | Service |
+|---|---|
+| `glip` (default) | RingCentral Glip |
+| `zoom` | Zoom |
+| `google_meet` | Google Meet |
+| `ms_teams` | Microsoft Teams |
+| `telegram` | Telegram calls (web) |
+| `telemost` | Yandex Telemost |
+| `vk_teams` | VK Teams |
+| `mts_link` | MTS Link |
+
+Run `saymo list-plugins` to see everything available in your install.
+
+### Live Q&A mode
+
+When your name is called and the surrounding transcript looks like a
+question, `auto` consults a **pre-synthesised response library** and plays
+the best-matching cached variant — no network hop, no synthesis lag.
+Populate the library once with `saymo prepare-responses`. Built-in
+intents cover status (`как дела`), blockers, ETA, testing stage, review.
+Extend with your own wording via `config.responses.library`.
+
+On cache miss, you can opt into a **live fallback**: Ollama composes an
+answer from your standup summary + JIRA context, the TTS engine
+synthesizes it, and Saymo plays it back. This adds a few seconds of
+latency but covers any question. Enable it in config:
+
+```yaml
+responses:
+  live_fallback: true
+```
+
+Without `live_fallback` (default), a cache miss falls back to the
+generic standup audio — quiet, reliable, no LLM dependency.
 
 ## Configurable prompts
 

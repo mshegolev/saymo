@@ -84,10 +84,10 @@ Acceptance check: first audible chunk ≤ 2 s after `synthesize_stream` is calle
 
 ### 5.3 CLI + config integration (unblocks G5)
 
-- Add `saymo train-qwen3` subcommand in `saymo/cli.py`, mirroring the existing `train-voice` but wiring `Qwen3VoiceTrainer`. Flags: `--epochs`, `--rank`, `--scale`, `--lr`.
+- Add `saymo train-qwen3` subcommand in `saymo/commands/voice_train.py`, mirroring the existing `train-voice` but wiring `Qwen3VoiceTrainer`. Flags: `--epochs`, `--rank`, `--scale`, `--lr`.
 - Extend `saymo train-eval` to take `--engine qwen3` and A/B against the adapter at `~/.saymo/models/qwen3_finetuned/best_adapter/`.
 - Add `tts.realtime_engine` key to `SaymoConfig` (`saymo/config.py`) and `config.example.yaml`. Default: same as `tts.engine`.
-- In `_auto()` (`saymo/cli.py:192-316`), when the Track B intent classifier returns `specific_question`, use the engine from `tts.realtime_engine` instead of `tts.engine`.
+- In `_auto()` (`saymo/commands/core.py::_auto`), when the Track B intent classifier returns `specific_question`, use the engine from `tts.realtime_engine` instead of `tts.engine`.
 - Update `docs/voice-identity.md` §7 (Config shape) to mark these keys as implemented.
 
 ### 5.4 Validation gate (unblocks G2)
