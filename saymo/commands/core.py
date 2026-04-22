@@ -41,6 +41,7 @@ def auto(ctx, profile, model, mic):
 
 async def _auto(config, whisper_model: str, profile: str = "standup"):
     import asyncio
+    import time
 
     # Get meeting profile for trigger phrases
     meeting = config.get_meeting(profile)
@@ -117,14 +118,69 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
     standup_summary = _load_cached_summary(config)
 
+    # Warm up the realtime TTS engine so the first trigger doesn't pay
+    # cold-start cost (model load can be 5-10s for XTTS/Qwen3). Only
+    # meaningful when live_fallback is on — otherwise we never synthesise.
+    if config.responses.live_fallback:
+        try:
+            from saymo.tts.factory import get_tts_engine, UnsupportedTTSEngine
+            console.print("[dim]Warming up realtime TTS engine...[/]")
+            warmup_t = time.monotonic()
+            try:
+                await get_tts_engine(config, realtime=True).synthesize(".")
+                console.print(
+                    f"[dim]TTS ready ({(time.monotonic() - warmup_t)*1000:.0f} ms)[/]"
+                )
+            except UnsupportedTTSEngine as e:
+                console.print(f"[yellow]TTS warmup skipped: {e}[/]")
+        except Exception as e:
+            console.print(f"[dim]TTS warmup failed (non-fatal): {e}[/]")
+
     triggered = asyncio.Event()
     speaking = asyncio.Event()
+    stop_playback = asyncio.Event()
+    paused = asyncio.Event()
+
+    # Wire global hotkeys for stop/pause. Failures here (e.g., macOS
+    # accessibility permissions missing) shouldn't break auto mode — just
+    # log and continue without hotkeys.
+    hotkey_listener = None
+    try:
+        from pynput import keyboard as _keyboard
+        loop = asyncio.get_running_loop()
+
+        def _on_stop():
+            loop.call_soon_threadsafe(stop_playback.set)
+            console.print("[bold yellow]⏹  STOP hotkey — cancelling playback[/]")
+
+        def _on_toggle():
+            if paused.is_set():
+                loop.call_soon_threadsafe(paused.clear)
+                console.print("[bold green]▶  RESUMED[/]")
+            else:
+                loop.call_soon_threadsafe(paused.set)
+                console.print("[bold yellow]⏸  PAUSED (hotkey to resume)[/]")
+
+        bindings = {}
+        if config.safety.hotkey_stop:
+            bindings[config.safety.hotkey_stop] = _on_stop
+        if config.safety.hotkey_toggle:
+            bindings[config.safety.hotkey_toggle] = _on_toggle
+        if bindings:
+            hotkey_listener = _keyboard.GlobalHotKeys(bindings)
+            hotkey_listener.start()
+            console.print(
+                f"[dim]hotkeys: stop={config.safety.hotkey_stop} "
+                f"toggle={config.safety.hotkey_toggle}[/]"
+            )
+    except Exception as e:
+        console.print(f"[dim]hotkeys disabled: {e}[/]")
 
     async def _transcribe_loop():
         """Continuously transcribe audio — runs parallel to capture."""
         while True:
-            if speaking.is_set():
-                # Don't transcribe while we're speaking (would hear ourselves)
+            if speaking.is_set() or paused.is_set():
+                # Don't transcribe while we're speaking or paused
                 await asyncio.sleep(0.5)
                 continue
 
@@ -162,6 +218,9 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                 except Exception:
                     break
 
+            trigger_t = time.monotonic()
+
+            resolve_t0 = time.monotonic()
             audio_to_play = await _resolve_auto_response(
                 config,
                 transcript_window,
@@ -169,14 +228,48 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                 standup_summary,
                 cached_audio,
             )
+            resolve_ms = (time.monotonic() - resolve_t0) * 1000
 
             console.print("[bold blue]Speaking in 2 seconds...[/]")
             await asyncio.sleep(2.0)
 
             speaking.set()
+            play_t0 = time.monotonic()
+            max_dur = max(5, int(config.safety.max_speech_duration or 0))
+            stop_playback.clear()
+            play_task = asyncio.create_task(
+                _play_cached_audio(config, audio_to_play, provider_name=provider_name)
+            )
+            stop_waiter = asyncio.create_task(stop_playback.wait())
             try:
-                await _play_cached_audio(config, audio_to_play, provider_name=provider_name)
+                done, pending = await asyncio.wait(
+                    {play_task, stop_waiter},
+                    return_when=asyncio.FIRST_COMPLETED,
+                    timeout=max_dur,
+                )
+                if stop_waiter in done:
+                    play_task.cancel()
+                elif not done:
+                    play_task.cancel()
+                    console.print(
+                        f"[bold red]Playback exceeded {max_dur}s — forcibly stopped "
+                        f"(safety.max_speech_duration).[/]"
+                    )
+                for p in pending:
+                    p.cancel()
+                try:
+                    await play_task
+                except (asyncio.CancelledError, Exception):
+                    pass
             finally:
+                play_ms = (time.monotonic() - play_t0) * 1000
+                total_ms = (time.monotonic() - trigger_t) * 1000
+                is_cache_hit = (audio_to_play == cached_audio)
+                console.print(
+                    f"[dim]latency: resolve={resolve_ms:.0f}ms "
+                    f"play={play_ms:.0f}ms total={total_ms:.0f}ms "
+                    f"({'standup' if is_cache_hit else 'Q&A'})[/]"
+                )
                 speaking.clear()
                 detector.reset_cooldown()
                 # Clean up live-fallback temp files
@@ -200,6 +293,11 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
         console.print("\n[dim]Stopped.[/]")
     finally:
         capture.stop()
+        if hotkey_listener is not None:
+            try:
+                hotkey_listener.stop()
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------------
