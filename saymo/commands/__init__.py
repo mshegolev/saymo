@@ -151,6 +151,29 @@ async def _resolve_auto_response(
     from pathlib import Path
 
     if response_cache and _looks_like_question(transcript):
+        # Optional LLM-based intent classifier — catches rephrasings the
+        # keyword matcher would miss. Runs first; on miss/timeout we fall
+        # back to the fast keyword path.
+        if config.responses.intent_classifier:
+            try:
+                from saymo.speech.ollama_composer import classify_intent
+                intent_key = await classify_intent(
+                    transcript,
+                    available_keys=response_cache.library_keys(),
+                    model=config.ollama.model,
+                    ollama_url=config.ollama.url,
+                    config=config,
+                )
+                if intent_key:
+                    cached = response_cache.get_variant_by_key(intent_key)
+                    if cached:
+                        console.print(
+                            f"[green]Classifier hit:[/] {cached.key} — {cached.text}"
+                        )
+                        return Path(cached.audio_path)
+            except Exception as e:
+                console.print(f"[dim]classifier skipped: {e}[/]")
+
         cached = response_cache.lookup(transcript)
         if cached:
             console.print(

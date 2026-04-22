@@ -439,6 +439,39 @@ class ResponseCache:
     # Lookup (runtime, called from _auto())
     # ------------------------------------------------------------------
 
+    def get_variant_by_key(self, key: str) -> CachedResponse | None:
+        """Pick a random cached variant for the given intent key.
+
+        Used by the LLM-based intent classifier path: once a classifier
+        returns an intent key, we don't need keyword scoring — just pick
+        any variant whose audio file exists on disk.
+        """
+        entry = self.library.get(key)
+        if entry is None:
+            return None
+        candidates: list[tuple[int, str, Path]] = []
+        for idx, text in enumerate(entry.variants):
+            path = self._variant_path(entry.key, idx, text)
+            if path.exists():
+                candidates.append((idx, text, path))
+        if not candidates:
+            logger.info(
+                f"classifier picked '{key}' but no cached audio; run 'saymo prepare-responses'"
+            )
+            return None
+        idx, text, path = random.choice(candidates)
+        logger.info(f"cache hit (by-key): '{key}' variant {idx}")
+        return CachedResponse(
+            key=key,
+            audio_path=path,
+            text=text,
+            confidence=1.0,
+        )
+
+    def library_keys(self) -> list[str]:
+        """Sorted list of intent keys available in this cache instance."""
+        return sorted(self.library.keys())
+
     def lookup(self, transcript_window: str) -> CachedResponse | None:
         """Find the best matching cached response for a transcript window.
 

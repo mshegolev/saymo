@@ -232,6 +232,10 @@ class ResponsesConfig:
     # When True, on cache miss try live Ollama+TTS instead of generic standup
     # audio. Slow (several seconds) — off by default to keep auto-mode snappy.
     live_fallback: bool = False
+    # When True, run an Ollama intent classifier BEFORE keyword matching.
+    # Catches semantic rephrasings that keyword match misses ("когда сдашь"
+    # → eta_generic). Adds ~1s latency; turn off if CPU is constrained.
+    intent_classifier: bool = False
 
 
 @dataclass

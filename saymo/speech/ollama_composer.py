@@ -371,6 +371,83 @@ async def answer_question(
     return text
 
 
+DEFAULT_INTENT_CLASSIFIER_PROMPT = """\
+Ты — классификатор намерений. На вход приходит короткий транскрипт
+вопроса или реплики на встрече. Твоя задача — выбрать ОДИН ключ
+из списка ниже, который лучше всего описывает смысл реплики,
+ИЛИ вернуть "none" если ничего не подходит.
+
+Ключи:
+{keys}
+
+Правила:
+- Отвечай РОВНО одним словом: ключ из списка или "none".
+- Без пояснений, без кавычек, без точки в конце.
+- Если реплика не вопрос о статусе/работе (просто зовут по имени,
+  обсуждают что-то между собой), возвращай "none".
+
+Реплика:
+{transcript}
+
+Ключ:"""
+
+
+async def classify_intent(
+    transcript: str,
+    available_keys: list[str],
+    model: str = "qwen2.5-coder:7b",
+    ollama_url: str = "http://localhost:11434",
+    timeout: float = 3.0,
+    config=None,
+) -> str | None:
+    """Classify transcript into one of ``available_keys`` via Ollama.
+
+    Returns the matched key or ``None`` on "none"/error/timeout. Kept
+    short (3s default timeout) so the auto-mode loop stays responsive —
+    on timeout, caller should fall back to keyword matching.
+    """
+    if not transcript.strip() or not available_keys:
+        return None
+
+    template = _resolve_prompt(config, "intent_classifier", DEFAULT_INTENT_CLASSIFIER_PROMPT)
+    prompt = template.format(
+        keys="\n".join(f"- {k}" for k in available_keys),
+        transcript=transcript.strip(),
+    )
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout, proxy=None) as client:
+            response = await client.post(
+                f"{ollama_url}/api/generate",
+                json={
+                    "model": model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.0, "num_predict": 20},
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+    except Exception as e:
+        logger.warning(f"Intent classifier failed ({e}); falling back to keyword match")
+        return None
+
+    raw = data.get("response", "").strip().lower()
+    # Extract the first word-like token (model may add punctuation)
+    import re
+    match = re.search(r"[\w_]+", raw)
+    if not match:
+        return None
+    token = match.group(0)
+    if token in ("none", "null", "no", ""):
+        return None
+    if token not in available_keys:
+        logger.info(f"classifier returned unknown key {token!r}; falling back")
+        return None
+    logger.info(f"classifier → {token}")
+    return token
+
+
 async def check_ollama_health(ollama_url: str = "http://localhost:11434") -> bool:
     """Check if Ollama is running."""
     try:

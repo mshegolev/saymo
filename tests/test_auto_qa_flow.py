@@ -142,6 +142,63 @@ def test_cache_miss_with_live_fallback_invokes_ollama(monkeypatch):
     result.unlink()
 
 
+def test_intent_classifier_hit_returns_cached_audio(monkeypatch, tmp_path):
+    """intent_classifier=True + classifier match → cached audio."""
+    config = SaymoConfig()
+    config.responses.intent_classifier = True
+
+    cached_path = tmp_path / "eta_generic_0_abc.wav"
+    cached_path.write_bytes(b"fake")
+
+    cached = MagicMock()
+    cached.key = "eta_generic"
+    cached.text = "К пятнице"
+    cached.audio_path = cached_path
+
+    cache = MagicMock()
+    cache.library_keys.return_value = ["eta_generic", "status_done"]
+    cache.get_variant_by_key.return_value = cached
+    cache.lookup.return_value = None  # keyword-match would miss
+
+    mock_classify = AsyncMock(return_value="eta_generic")
+    monkeypatch.setattr(
+        "saymo.speech.ollama_composer.classify_intent", mock_classify
+    )
+
+    fallback = tmp_path / "standup.wav"
+    result = _run(_resolve_auto_response(
+        config, "когда же ты это сдашь?", cache, "", fallback
+    ))
+    assert result == cached_path
+    mock_classify.assert_awaited_once()
+    cache.get_variant_by_key.assert_called_once_with("eta_generic")
+    # Keyword lookup should NOT be called after classifier succeeded
+    cache.lookup.assert_not_called()
+
+
+def test_intent_classifier_miss_falls_through_to_keyword(monkeypatch, tmp_path):
+    """intent_classifier=True + classifier returns None → fall to keyword match."""
+    config = SaymoConfig()
+    config.responses.intent_classifier = True
+
+    cache = MagicMock()
+    cache.library_keys.return_value = ["status_done"]
+    cache.lookup.return_value = None  # keyword also misses
+
+    mock_classify = AsyncMock(return_value=None)
+    monkeypatch.setattr(
+        "saymo.speech.ollama_composer.classify_intent", mock_classify
+    )
+
+    fallback = tmp_path / "standup.wav"
+    result = _run(_resolve_auto_response(
+        config, "как дела по задаче?", cache, "", fallback
+    ))
+    assert result == fallback
+    mock_classify.assert_awaited_once()
+    cache.lookup.assert_called_once()
+
+
 def test_live_fallback_error_returns_standup(monkeypatch):
     """If Ollama throws, fall back to standup — never crash the loop."""
     config = SaymoConfig()

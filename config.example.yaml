@@ -171,6 +171,10 @@ responses:
   # make auto-mode feel sluggish. Turn on only if you often get questions
   # that aren't covered by cached variants.
   live_fallback: false
+  # When true, runs a small Ollama classifier BEFORE the keyword match.
+  # Catches rephrasings the keyword matcher misses (e.g. "когда сдашь"
+  # → eta_generic). Adds ~1s latency; turn off if CPU-constrained.
+  intent_classifier: false
   library: {}
     # Example — uncomment to override the default generic status answer:
     # status_generic:
