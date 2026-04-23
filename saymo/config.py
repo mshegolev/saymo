@@ -106,19 +106,6 @@ class AnalysisConfig:
 
 
 @dataclass
-class OpenAITTSConfig:
-    api_key: str = ""
-    model: str = "tts-1"
-    voice: str = "onyx"
-
-
-@dataclass
-class ElevenLabsTTSConfig:
-    api_key: str = ""
-    voice_id: str = ""
-
-
-@dataclass
 class MacOSSayConfig:
     voice: str = "Milena"
 
@@ -135,6 +122,22 @@ class Qwen3Config:
     lora_epochs: int = 10
     lora_rank: int = 8
     lora_scale: float = 0.3
+
+
+@dataclass
+class RVCConfig:
+    """Optional RVC v2 post-processor on top of XTTS for max similarity.
+
+    Enabled by setting tts.engine = "xtts_rvc_clone". Requires Applio installed
+    via scripts/install_rvc.sh and a trained model — see docs/RVC-VOICE-CLONING.md.
+    """
+    model_path: str = ""              # ~/.saymo/models/rvc/<name>.pth
+    index_path: str = ""              # ~/.saymo/models/rvc/<name>.index
+    pitch_shift: int = 0              # semitones; 0 for own voice
+    index_rate: float = 0.75          # 0.0-1.0; higher = more timbre, more artifacts
+    f0_method: str = "rmvpe"          # rmvpe | crepe | crepe-tiny | fcpe
+    embedder_model: str = "contentvec"
+    applio_dir: str = ""              # defaults to ~/Applio
 
 
 @dataclass
@@ -157,10 +160,9 @@ class TTSConfig:
     # to `engine` when empty.
     realtime_engine: str = ""
     piper: PiperConfig = field(default_factory=PiperConfig)
-    openai: OpenAITTSConfig = field(default_factory=OpenAITTSConfig)
-    elevenlabs: ElevenLabsTTSConfig = field(default_factory=ElevenLabsTTSConfig)
     macos_say: MacOSSayConfig = field(default_factory=MacOSSayConfig)
     qwen3: Qwen3Config = field(default_factory=Qwen3Config)
+    rvc: RVCConfig = field(default_factory=RVCConfig)
     voice_training: VoiceTrainingConfig = field(default_factory=VoiceTrainingConfig)
 
 
