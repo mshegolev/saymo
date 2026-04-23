@@ -4586,6 +4586,7 @@ dependencies = [
     { name = "pynput" },
     { name = "pyyaml" },
     { name = "rich" },
+    { name = "scipy" },
     { name = "sounddevice" },
     { name = "soundfile" },
 ]
@@ -4601,7 +4602,6 @@ all = [
     { name = "mlx-audio" },
     { name = "mlx-lm" },
     { name = "piper-tts" },
-    { name = "scipy" },
     { name = "torch" },
     { name = "torchaudio" },
     { name = "transformers" },
@@ -4622,7 +4622,6 @@ stt = [
 tts = [
     { name = "coqui-tts", extra = ["codec"] },
     { name = "piper-tts" },
-    { name = "scipy" },
     { name = "torch" },
     { name = "torchaudio" },
     { name = "transformers" },
@@ -4652,7 +4651,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "saymo", extras = ["tts", "stt", "cloud", "apple"], marker = "extra == 'all'" },
-    { name = "scipy", marker = "extra == 'tts'" },
+    { name = "scipy" },
     { name = "sounddevice", specifier = ">=0.5.0" },
     { name = "soundfile", specifier = ">=0.12.0" },
     { name = "torch", marker = "extra == 'tts'", specifier = ">=2.6.0" },

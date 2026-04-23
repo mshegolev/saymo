@@ -40,6 +40,7 @@ dependencies = [
     "sounddevice>=0.5.0",
     "soundfile>=0.12.0",
     "numpy",
+    "scipy",             # butter/sosfilt for highpass in saymo.audio.mic_processor
     "click>=8.1.0",
     "rich>=13.0.0",
     "pynput>=1.7.6",
@@ -55,7 +56,6 @@ tts = [
     "coqui-tts[codec]",
     "transformers>=4.46,<5",
     "piper-tts",
-    "scipy",
 ]
 apple = [
     "mlx>=0.22.0",
