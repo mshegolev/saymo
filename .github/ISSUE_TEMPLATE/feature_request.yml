@@ -1,0 +1,59 @@
+name: Feature request
+description: Suggest a new capability or improvement
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Please describe the problem first, then your proposed solution.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user need or pain point is this solving?
+      placeholder: |
+        On Russian standups, my voice clone sounds robotic for short interjections like "ага, согласен".
+        Currently no way to record / inject one-shot phrases.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What should Saymo do? CLI shape, config keys, behavior.
+      placeholder: |
+        Add `saymo phrases add "ага, согласен" --record` that records a one-shot WAV
+        and `saymo speak --phrase "..."` that picks the closest pre-recorded clip
+        instead of synthesizing.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else could solve this? Why is your proposal better?
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Core (CLI, config, audio routing)
+        - TTS / voice cloning
+        - Call provider (new app or fix to existing)
+        - Plugin (Jira / Notion / Obsidian / new source)
+        - Docs / examples
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I'm willing to open a PR for this
+        - label: I'd like to discuss the design first

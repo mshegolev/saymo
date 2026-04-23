@@ -1,5 +1,11 @@
 # Saymo — Local AI Voice Assistant
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](pyproject.toml)
+[![Platform: macOS arm64](https://img.shields.io/badge/platform-macOS%20arm64-lightgrey.svg)](#requirements)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 Fully local AI voice assistant for macOS. Speaks into any live call in **your cloned voice** — no cloud APIs required.
 
 Saymo composes short, natural speech from optional data sources (tracker, notes, text files), synthesizes it with voice cloning, and routes audio into the active call through a virtual microphone. Everything — language model, speech-to-text, text-to-speech — runs on-device.
@@ -164,11 +170,33 @@ vocabulary:
 
 Details in `docs/PRD.md` and ADRs under `docs/adr/`.
 
+## Voice cloning quality tiers
+
+Three progressively-better paths for getting your own voice on calls:
+
+| Tier | Setup | Time | Subjective similarity | Doc |
+|---|---|---|---|---|
+| Zero-shot XTTS | `saymo record-voice` | 5 min | ~5/10 | — |
+| Fine-tuned XTTS | + `saymo train-voice` | 2-3 h | ~7-8/10 | [`docs/VOICE-TRAINING.md`](docs/VOICE-TRAINING.md) |
+| Fine-tuned XTTS + RVC | + `scripts/install_rvc.sh` | +1-2 h | 9-10/10 | [`docs/RVC-VOICE-CLONING.md`](docs/RVC-VOICE-CLONING.md) |
+
+If your voice "sounds close but not quite you" after fine-tune, that's the XTTS speaker-encoder ceiling — RVC swaps the timbre on top to break through.
+
 ## Security & privacy
 
 - Everything runs on-device by default. Cloud TTS / STT providers are optional and disabled in the example config.
 - Voice samples and secrets are listed in `.gitignore` — they never leave your machine.
 - Prompts, vocabulary, trigger phrases are all in your config file — source stays generic.
+
+## Project resources
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — dev setup, conventions, PR workflow
+- [`CHANGELOG.md`](CHANGELOG.md) — version history (Keep a Changelog)
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant 2.1
+- [`SECURITY.md`](SECURITY.md) — vulnerability reporting + threat model
+- [`docs/`](docs/) — architecture, voice training, RVC integration, PRDs
+
+Bug? Idea? Use the issue templates under [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/).
 
 ## License
 

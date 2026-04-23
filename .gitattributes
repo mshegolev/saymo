@@ -1,0 +1,22 @@
+# Normalize line endings in the repo to LF, regardless of contributor OS.
+* text=auto eol=lf
+
+# Binary file types — never normalize.
+*.pth   binary
+*.bin   binary
+*.npy   binary
+*.npz   binary
+*.wav   binary
+*.mp3   binary
+*.flac  binary
+*.ogg   binary
+*.m4a   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.tar   binary

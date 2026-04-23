@@ -1,0 +1,87 @@
+name: Bug report
+description: Something isn't working as expected
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please fill in what you can — even partial info is helpful.
+
+        **For security issues, do not file here.** See [`SECURITY.md`](https://github.com/<org>/saymo/blob/main/SECURITY.md) for the private disclosure process.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: A clear description of the bug, including the actual vs expected behavior.
+      placeholder: |
+        I ran `saymo speak --glip` and heard silence in my headphones, but BlackHole received audio.
+        Expected: audio plays in both monitor and BlackHole.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps the maintainers can follow.
+      placeholder: |
+        1. Configure `tts.engine: coqui_clone`
+        2. Run `saymo prepare -p standup`
+        3. Run `saymo speak --glip`
+        4. Observe: ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Saymo version
+      description: Output of `saymo --version` or git commit hash.
+      placeholder: "0.10.3 / commit b7e1672"
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version + chip
+      placeholder: "macOS 14.4 / Apple M1 Pro 16GB"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tts-engine
+    attributes:
+      label: TTS engine in use
+      options:
+        - coqui_clone (XTTS v2)
+        - qwen3_clone (Qwen3-TTS)
+        - piper
+        - macos_say
+        - other / unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / output
+      description: |
+        Paste log lines or terminal output. Run with `--debug` if available for more detail.
+        Wrap blocks in triple-backticks.
+      render: shell
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant `config.yaml` snippet
+      description: |
+        Just the relevant section. **Redact any secrets** — replace tokens with `<REDACTED>`.
+      render: yaml
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Workarounds tried, related issues, hunches.
