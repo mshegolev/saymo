@@ -86,15 +86,17 @@ class CoquiCloneTTS:
         if cls._model is not None and cls._model_type == desired_type:
             return cls._model
 
+        # Compatibility patch: transformers >=5.x removed isin_mps_friendly
+        # which Coqui TTS still imports. Apply BEFORE either model branch
+        # so base-model load (used by train-eval) also gets it.
+        import torch
+        import transformers.pytorch_utils as _pu
+        if not hasattr(_pu, "isin_mps_friendly"):
+            _pu.isin_mps_friendly = torch.isin  # type: ignore[attr-defined]
+
         if want_finetuned:
             logger.info(f"Loading fine-tuned XTTS v2 from {finetuned_dir}")
             try:
-                # Compatibility patch: transformers >=5.x removed isin_mps_friendly
-                import torch
-                import transformers.pytorch_utils as _pu
-                if not hasattr(_pu, "isin_mps_friendly"):
-                    _pu.isin_mps_friendly = torch.isin  # type: ignore[attr-defined]
-
                 from TTS.tts.configs.xtts_config import XttsConfig
                 from TTS.tts.models.xtts import Xtts
 
