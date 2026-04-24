@@ -29,23 +29,36 @@ Saymo composes short, natural speech from optional data sources (tracker, notes,
 - Google Chrome
 - ~10 GB free disk space
 
-## Quick install
+## Quick install — one command
 
 ```bash
 git clone https://github.com/mshegolev/saymo && cd saymo
-cp config.example.yaml config.yaml   # fill in your details
-./install.sh
+./setup.sh
 ```
 
-The installer handles brew deps, Python packages (via `uv` or `pip`), an Ollama check, a Piper voice model, and Chrome permissions.
+`setup.sh` is the **master orchestrator** — it walks you through:
+1. Saymo core (uv venv, Ollama, Whisper, BlackHole)
+2. F5-TTS Russian voice cloning *(recommended)*
+3. XTTS+RVC pipeline *(optional alternative)*
+4. Interactive wizard for `~/.saymo/config.yaml`
+
+Each step asks before doing anything heavy. Re-runnable; skips what's already installed. Total time on a fresh Mac: **~30 minutes** (most spent on model downloads).
+
+For the full walkthrough see [`docs/QUICK-START.md`](docs/QUICK-START.md).
 
 ## First-time setup
 
+After `setup.sh` finishes, run:
+
 ```bash
-saymo setup                        # Interactive wizard: name, devices, profiles
-saymo record-voice -d 300          # Record a 5-minute voice sample
-saymo test-devices                 # Verify audio devices
 saymo test-tts "Привет, это тест"  # Check that TTS works
+saymo test-devices                 # Verify audio devices
+```
+
+To re-configure later:
+```bash
+saymo wizard                       # Interactive: name, devices, TTS engine
+saymo record-voice -d 12           # Record a fresh ~12s voice reference
 ```
 
 ### One-time audio routing
@@ -191,11 +204,13 @@ If your voice "sounds close but not quite you" after XTTS fine-tune, that's the 
 
 ## Project resources
 
+- [`docs/QUICK-START.md`](docs/QUICK-START.md) — **start here** if you're new
+- [`docs/OVERVIEW.md`](docs/OVERVIEW.md) — what Saymo is, how it's wired
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — dev setup, conventions, PR workflow
 - [`CHANGELOG.md`](CHANGELOG.md) — version history (Keep a Changelog)
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant 2.1
 - [`SECURITY.md`](SECURITY.md) — vulnerability reporting + threat model
-- [`docs/`](docs/) — architecture, voice training, RVC integration, PRDs
+- [`docs/`](docs/) — voice training, RVC, F5-TTS, ADRs, PRDs
 
 Bug? Idea? Use the issue templates under [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/).
 

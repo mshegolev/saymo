@@ -6,9 +6,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-04-24
+
 ### Added
-- F5-TTS Russian voice cloning engine — alternative one-stage path to XTTS+RVC, uses `Misha24-10/F5-TTS_RUSSIAN` (`docs/F5TTS-VOICE-CLONING.md`, `scripts/install_f5tts.sh`, `saymo/tts/f5tts.py`, new `tts.engine: f5tts_clone`)
-- Phase 2 voice cloning: RVC v2 on top of XTTS for 9-10/10 perceived similarity (`docs/RVC-VOICE-CLONING.md`)
+- **`setup.sh`** — single-command master orchestrator. Walks user through Saymo core install → F5-TTS install → optional RVC install → wizard. Idempotent.
+- **`docs/QUICK-START.md`** — single-page from-zero-to-working-voice walkthrough.
+- **`docs/OVERVIEW.md`** — architecture overview, stack table, file layout, threat model summary.
+- **F5-TTS Russian voice cloning engine** — alternative one-stage path to XTTS+RVC, uses `Misha24-10/F5-TTS_RUSSIAN` (`docs/F5TTS-VOICE-CLONING.md`, `scripts/install_f5tts.sh`, `saymo/tts/f5tts.py`, new `tts.engine: f5tts_clone` — now the recommended default).
+- **Phase 2 voice cloning**: RVC v2 on top of XTTS for 9-10/10 perceived similarity (`docs/RVC-VOICE-CLONING.md`, `scripts/install_rvc.sh`, `scripts/train_rvc.sh`, `saymo/tts/xtts_rvc.py`, new `tts.engine: xtts_rvc_clone`). RVC training pipeline runs headlessly (preprocess → extract → train → index → install artifacts) and can be triggered automatically after `saymo train-voice`.
+- Tunable RVC parameters via `tts.rvc.{protect,clean_audio,clean_strength}` (previously hardcoded — `protect=0.5` reduces metallic artifacts).
+- Open-source community files: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, GitHub issue/PR templates, CI workflow (ruff + pytest on macOS-14), release workflow (auto GitHub Release from tag), Dependabot config, `.editorconfig`, `.gitattributes`.
+- README badges (License/Python/Platform/CoC/PRs welcome) + voice-cloning quality tier table.
+- Maintainer email in `pyproject.toml` for `SECURITY.md` / CoC reporting routes.
+
+### Changed
+- **Wizard now offers all 4 TTS engines** (`f5tts_clone`, `xtts_rvc_clone`, `coqui_clone`, `macos_say`), detects which are installed, and points the user at the right installer script for missing ones. No longer tries to install Coqui TTS inline (was using a deprecated `.venv-tts` path).
+- README quick-install section now starts with `./setup.sh` instead of `./install.sh` directly. `install.sh` is still the base step `setup.sh` invokes.
+
+### Fixed
+- `train-eval` plays A/B audio to `monitor_device` (your headphones) instead of `playback_device` (the call-app virtual mic). Same bug class as commit `e3f9a8e` for `test-tts` and `wizard`.
+- `coqui_clone.py` `isin_mps_friendly` compatibility patch (needed for `transformers >= 5.x` with Coqui TTS) is now applied before either model load branch, so `train-eval`'s base-model load no longer crashes.
+- `scipy` moved from `[tts]` optional extra to core dependencies — used by `saymo.audio.mic_processor` highpass filter outside of TTS, was missing in CI.
+
+### Removed
+- Unused `openai` and `elevenlabs` engine config sections + dead `saymo/tts/openai_tts.py` module (factory tests already treated them as unknown).
 - `scripts/install_rvc.sh` — idempotent installer for Applio (training) + rvc-python (inference)
 - `scripts/train_rvc.sh` — headless RVC training pipeline (preprocess → extract → train → index → install artifacts)
 - `saymo train-voice` now offers to launch RVC training as a follow-up step in interactive sessions
@@ -81,7 +102,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 For commits before v0.5.0, see `git log --tags --simplify-by-decoration` — the project moved to formal versioning at v0.5.0.
 
-[Unreleased]: https://github.com/mshegolev/saymo/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/mshegolev/saymo/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/mshegolev/saymo/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/mshegolev/saymo/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/mshegolev/saymo/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/mshegolev/saymo/compare/v0.10.0...v0.10.1
