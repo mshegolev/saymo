@@ -64,15 +64,22 @@ def get_tts_engine(config: SaymoConfig, *, realtime: bool = False):
             rvc=config.tts.rvc,
         )
 
+    if engine == "f5tts_clone":
+        from saymo.tts.f5tts import F5TTSCloneTTS
+        return F5TTSCloneTTS(
+            language=config.speech.language,
+            f5tts=config.tts.f5tts,
+        )
+
     raise UnsupportedTTSEngine(
         f"Unknown TTS engine: {engine!r}. "
-        f"Supported: coqui_clone, xtts_rvc_clone, qwen3_clone (voice-cloning) "
+        f"Supported: coqui_clone, xtts_rvc_clone, f5tts_clone, qwen3_clone (voice-cloning) "
         f"or piper, macos_say (fallback)."
     )
 
 
 KNOWN_ENGINES = frozenset({
-    "coqui_clone", "xtts_rvc_clone", "qwen3_clone", "piper", "macos_say",
+    "coqui_clone", "xtts_rvc_clone", "f5tts_clone", "qwen3_clone", "piper", "macos_say",
 })
 
 

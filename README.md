@@ -172,15 +172,16 @@ Details in `docs/PRD.md` and ADRs under `docs/adr/`.
 
 ## Voice cloning quality tiers
 
-Three progressively-better paths for getting your own voice on calls:
+Multiple paths for getting your own voice on calls — pick the one that matches your patience and quality bar:
 
 | Tier | Setup | Time | Subjective similarity | Doc |
 |---|---|---|---|---|
 | Zero-shot XTTS | `saymo record-voice` | 5 min | ~5/10 | — |
 | Fine-tuned XTTS | + `saymo train-voice` | 2-3 h | ~7-8/10 | [`docs/VOICE-TRAINING.md`](docs/VOICE-TRAINING.md) |
 | Fine-tuned XTTS + RVC | + `scripts/install_rvc.sh` | +1-2 h | 9-10/10 | [`docs/RVC-VOICE-CLONING.md`](docs/RVC-VOICE-CLONING.md) |
+| **F5-TTS Russian (alt path)** | `scripts/install_f5tts.sh` | ~10 min | 9-10/10 | [`docs/F5TTS-VOICE-CLONING.md`](docs/F5TTS-VOICE-CLONING.md) |
 
-If your voice "sounds close but not quite you" after fine-tune, that's the XTTS speaker-encoder ceiling — RVC swaps the timbre on top to break through.
+If your voice "sounds close but not quite you" after XTTS fine-tune, that's the XTTS speaker-encoder ceiling. RVC swaps the timbre on top to break through. **F5-TTS** is a one-stage alternative — Russian-purpose-built model, no second pass, simpler pipeline.
 
 ## Security & privacy
 

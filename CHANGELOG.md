@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- F5-TTS Russian voice cloning engine — alternative one-stage path to XTTS+RVC, uses `Misha24-10/F5-TTS_RUSSIAN` (`docs/F5TTS-VOICE-CLONING.md`, `scripts/install_f5tts.sh`, `saymo/tts/f5tts.py`, new `tts.engine: f5tts_clone`)
 - Phase 2 voice cloning: RVC v2 on top of XTTS for 9-10/10 perceived similarity (`docs/RVC-VOICE-CLONING.md`)
 - `scripts/install_rvc.sh` — idempotent installer for Applio (training) + rvc-python (inference)
 - `scripts/train_rvc.sh` — headless RVC training pipeline (preprocess → extract → train → index → install artifacts)

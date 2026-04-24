@@ -125,6 +125,25 @@ class Qwen3Config:
 
 
 @dataclass
+class F5TTSConfig:
+    """F5-TTS engine — alternative one-stage voice cloning path.
+
+    Unlike the XTTS+RVC two-stage pipeline, F5-TTS clones the user's voice
+    directly from a reference WAV in a single pass. The Russian-finetuned
+    model (Misha24-10/F5-TTS_RUSSIAN) is purpose-built for Russian prosody
+    with proper stress mark handling. Runs in a separate venv to avoid
+    pulling F5-TTS deps (torch 2.11, transformers 5.x) into Saymo's main env.
+    """
+    venv_python: str = ""              # defaults to ~/F5TTS/.venv/bin/python
+    model_name: str = "F5TTS_v1_Base"  # which architecture preset
+    ckpt_file: str = ""                # path to .pt checkpoint (Russian fine-tune)
+    vocab_file: str = ""               # path to vocab.txt
+    nfe_step: int = 32                 # denoising steps; 16 fast, 32 default, 64 highest quality
+    speed: float = 1.0                 # 0.5-2.0; 1.0 = natural
+    device: str = "cpu"                # cpu | mps | cuda; mps may have issues, default to cpu
+
+
+@dataclass
 class RVCConfig:
     """Optional RVC v2 post-processor on top of XTTS for max similarity.
 
@@ -137,6 +156,9 @@ class RVCConfig:
     index_rate: float = 0.75          # 0.0-1.0; higher = more timbre, more artifacts
     f0_method: str = "rmvpe"          # rmvpe | crepe | crepe-tiny | fcpe
     embedder_model: str = "contentvec"
+    protect: float = 0.5              # 0.0-0.5; higher protects unvoiced segments → less metallic/buzzy
+    clean_audio: bool = True          # post-process de-noise pass
+    clean_strength: float = 0.5       # 0.0-1.0
     applio_dir: str = ""              # defaults to ~/Applio
 
 
@@ -163,6 +185,7 @@ class TTSConfig:
     macos_say: MacOSSayConfig = field(default_factory=MacOSSayConfig)
     qwen3: Qwen3Config = field(default_factory=Qwen3Config)
     rvc: RVCConfig = field(default_factory=RVCConfig)
+    f5tts: F5TTSConfig = field(default_factory=F5TTSConfig)
     voice_training: VoiceTrainingConfig = field(default_factory=VoiceTrainingConfig)
 
 

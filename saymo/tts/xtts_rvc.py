@@ -79,10 +79,11 @@ class XttsRvcCloneTTS:
             "--f0_method", self.rvc.f0_method,
             "--embedder_model", self.rvc.embedder_model,
             "--volume_envelope", "1.0",
-            "--protect", "0.33",
+            "--protect", str(self.rvc.protect),
             "--split_audio", "False",
             "--f0_autotune", "False",
-            "--clean_audio", "False",
+            "--clean_audio", str(self.rvc.clean_audio),
+            "--clean_strength", str(self.rvc.clean_strength),
             "--export_format", "WAV",
         ]
         result = subprocess.run(
