@@ -49,10 +49,6 @@ def get_tts_engine(config: SaymoConfig, *, realtime: bool = False):
         from saymo.tts.macos_say import MacOSSay
         return MacOSSay(config.tts.macos_say)
 
-    if engine == "openai":
-        from saymo.tts.openai_tts import OpenAITTS
-        return OpenAITTS(config.tts.openai)
-
     if engine == "qwen3_clone":
         from saymo.tts.qwen3_tts import Qwen3CloneTTS
         return Qwen3CloneTTS(
@@ -61,17 +57,29 @@ def get_tts_engine(config: SaymoConfig, *, realtime: bool = False):
             lora_adapter=config.tts.qwen3.lora_adapter or None,
         )
 
-    if engine == "elevenlabs":
-        raise UnsupportedTTSEngine(
-            "ElevenLabs engine is not yet implemented. "
-            "Use openai, qwen3_clone, coqui_clone, piper, or macos_say."
+    if engine == "xtts_rvc_clone":
+        from saymo.tts.xtts_rvc import XttsRvcCloneTTS
+        return XttsRvcCloneTTS(
+            language=config.speech.language,
+            rvc=config.tts.rvc,
         )
 
-    raise UnsupportedTTSEngine(f"Unknown TTS engine: {engine!r}")
+    if engine == "f5tts_clone":
+        from saymo.tts.f5tts import F5TTSCloneTTS
+        return F5TTSCloneTTS(
+            language=config.speech.language,
+            f5tts=config.tts.f5tts,
+        )
+
+    raise UnsupportedTTSEngine(
+        f"Unknown TTS engine: {engine!r}. "
+        f"Supported: coqui_clone, xtts_rvc_clone, f5tts_clone, qwen3_clone (voice-cloning) "
+        f"or piper, macos_say (fallback)."
+    )
 
 
 KNOWN_ENGINES = frozenset({
-    "coqui_clone", "piper", "macos_say", "openai", "qwen3_clone", "elevenlabs",
+    "coqui_clone", "xtts_rvc_clone", "f5tts_clone", "qwen3_clone", "piper", "macos_say",
 })
 
 

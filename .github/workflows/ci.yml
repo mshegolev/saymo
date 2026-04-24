@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs of the same workflow on a new push to the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    name: Lint & test (Python ${{ matrix.python-version }})
+    # Saymo targets macOS arm64 (Apple Silicon) — most realistic to test there.
+    # Heavy ML deps (Coqui TTS, mlx-audio) wouldn't pull in on Linux anyway.
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        env:
+          PY_VERSION: ${{ matrix.python-version }}
+        run: uv python install "$PY_VERSION"
+
+      - name: Install minimal dev deps
+        # Skip the heavy install.sh (XTTS, Whisper, Ollama) — CI just lints/tests.
+        # Heavy integration tests should be marked and skipped here.
+        run: uv sync --frozen || uv sync
+
+      - name: Lint with ruff
+        run: |
+          uv run ruff check --output-format=github . || true
+          uv run ruff format --diff . || true
+
+      - name: Run unit tests
+        run: uv run pytest tests/ -v --tb=short

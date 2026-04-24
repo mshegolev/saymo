@@ -1,5 +1,11 @@
 # Saymo — Local AI Voice Assistant
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](pyproject.toml)
+[![Platform: macOS arm64](https://img.shields.io/badge/platform-macOS%20arm64-lightgrey.svg)](#requirements)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 Fully local AI voice assistant for macOS. Speaks into any live call in **your cloned voice** — no cloud APIs required.
 
 Saymo composes short, natural speech from optional data sources (tracker, notes, text files), synthesizes it with voice cloning, and routes audio into the active call through a virtual microphone. Everything — language model, speech-to-text, text-to-speech — runs on-device.
@@ -23,23 +29,36 @@ Saymo composes short, natural speech from optional data sources (tracker, notes,
 - Google Chrome
 - ~10 GB free disk space
 
-## Quick install
+## Quick install — one command
 
 ```bash
 git clone https://github.com/mshegolev/saymo && cd saymo
-cp config.example.yaml config.yaml   # fill in your details
-./install.sh
+./setup.sh
 ```
 
-The installer handles brew deps, Python packages (via `uv` or `pip`), an Ollama check, a Piper voice model, and Chrome permissions.
+`setup.sh` is the **master orchestrator** — it walks you through:
+1. Saymo core (uv venv, Ollama, Whisper, BlackHole)
+2. F5-TTS Russian voice cloning *(recommended)*
+3. XTTS+RVC pipeline *(optional alternative)*
+4. Interactive wizard for `~/.saymo/config.yaml`
+
+Each step asks before doing anything heavy. Re-runnable; skips what's already installed. Total time on a fresh Mac: **~30 minutes** (most spent on model downloads).
+
+For the full walkthrough see [`docs/QUICK-START.md`](docs/QUICK-START.md).
 
 ## First-time setup
 
+After `setup.sh` finishes, run:
+
 ```bash
-saymo setup                        # Interactive wizard: name, devices, profiles
-saymo record-voice -d 300          # Record a 5-minute voice sample
-saymo test-devices                 # Verify audio devices
 saymo test-tts "Привет, это тест"  # Check that TTS works
+saymo test-devices                 # Verify audio devices
+```
+
+To re-configure later:
+```bash
+saymo wizard                       # Interactive: name, devices, TTS engine
+saymo record-voice -d 12           # Record a fresh ~12s voice reference
 ```
 
 ### One-time audio routing
@@ -164,11 +183,36 @@ vocabulary:
 
 Details in `docs/PRD.md` and ADRs under `docs/adr/`.
 
+## Voice cloning quality tiers
+
+Multiple paths for getting your own voice on calls — pick the one that matches your patience and quality bar:
+
+| Tier | Setup | Time | Subjective similarity | Doc |
+|---|---|---|---|---|
+| Zero-shot XTTS | `saymo record-voice` | 5 min | ~5/10 | — |
+| Fine-tuned XTTS | + `saymo train-voice` | 2-3 h | ~7-8/10 | [`docs/VOICE-TRAINING.md`](docs/VOICE-TRAINING.md) |
+| Fine-tuned XTTS + RVC | + `scripts/install_rvc.sh` | +1-2 h | 9-10/10 | [`docs/RVC-VOICE-CLONING.md`](docs/RVC-VOICE-CLONING.md) |
+| **F5-TTS Russian (alt path)** | `scripts/install_f5tts.sh` | ~10 min | 9-10/10 | [`docs/F5TTS-VOICE-CLONING.md`](docs/F5TTS-VOICE-CLONING.md) |
+
+If your voice "sounds close but not quite you" after XTTS fine-tune, that's the XTTS speaker-encoder ceiling. RVC swaps the timbre on top to break through. **F5-TTS** is a one-stage alternative — Russian-purpose-built model, no second pass, simpler pipeline.
+
 ## Security & privacy
 
 - Everything runs on-device by default. Cloud TTS / STT providers are optional and disabled in the example config.
 - Voice samples and secrets are listed in `.gitignore` — they never leave your machine.
 - Prompts, vocabulary, trigger phrases are all in your config file — source stays generic.
+
+## Project resources
+
+- [`docs/QUICK-START.md`](docs/QUICK-START.md) — **start here** if you're new
+- [`docs/OVERVIEW.md`](docs/OVERVIEW.md) — what Saymo is, how it's wired
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — dev setup, conventions, PR workflow
+- [`CHANGELOG.md`](CHANGELOG.md) — version history (Keep a Changelog)
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant 2.1
+- [`SECURITY.md`](SECURITY.md) — vulnerability reporting + threat model
+- [`docs/`](docs/) — voice training, RVC, F5-TTS, ADRs, PRDs
+
+Bug? Idea? Use the issue templates under [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/).
 
 ## License
 

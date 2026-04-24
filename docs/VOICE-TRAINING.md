@@ -180,3 +180,25 @@ saymo train-voice            # 2-3 часа — оставь на ночь
 saymo train-eval             # 10 мин — слушаешь A/B
 saymo prepare -p standup     # profit — голос теперь твой
 ```
+
+## Если голос "похож, но не я" — следующий шаг
+
+XTTS-fine-tune учит прозодию и стиль, но тембр берётся из `voice_sample.wav` через замороженный speaker encoder, обученный на английском. Для нативной русской похожести этот encoder упирается в потолок ~7-8/10.
+
+**Чтобы перепрыгнуть потолок, поставь RVC поверх XTTS:** [`docs/RVC-VOICE-CLONING.md`](RVC-VOICE-CLONING.md)
+
+Установка одной командой: `./scripts/install_rvc.sh`. Тренировка модели в Applio UI ~30-60 мин. Результат — 9-10/10 похожесть, латенси растёт на 1-2 сек на фразу.
+
+### Если voice не похож — сначала проверь voice_sample.wav
+
+XTTS speaker conditioning сильно зависит от качества `~/.saymo/voice_samples/voice_sample.wav`:
+
+- **Длительность** ~10 сек (XTTS внутри обрезает до 10s, всё что длиннее — мусор)
+- **Peak** > 0.5 (тихая запись = слабый embedding)
+
+Быстрая проверка:
+```bash
+python3 -c "import soundfile as sf, numpy as np; d, sr = sf.read('$HOME/.saymo/voice_samples/voice_sample.wav'); d = d.mean(axis=1) if d.ndim>1 else d; print(f'dur={len(d)/sr:.1f}s, peak={np.max(np.abs(d)):.3f}')"
+```
+
+Если плохо — возьми чистый громкий клип из `~/.saymo/training_dataset/wavs/`, peak-нормализуй, перезапиши `voice_sample.wav`. Это часто даёт больший прирост, чем перетренировка модели.

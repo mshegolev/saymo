@@ -37,11 +37,17 @@ class QualityEvaluator:
         return asyncio.run(tts.synthesize(normalized))
 
     def _play_audio(self, audio_bytes: bytes) -> None:
-        """Play audio bytes to configured device."""
+        """Play audio bytes to monitor device (user's headphones).
+
+        Falls back to playback_device only if monitor_device is unset.
+        train-eval is for the user's ears, not for routing into a call,
+        so monitor_device is the right target.
+        """
         data, sr = sf.read(io.BytesIO(audio_bytes))
 
         from saymo.audio.devices import find_device
-        dev = find_device(self.config.audio.playback_device, kind="output")
+        device_name = self.config.audio.monitor_device or self.config.audio.playback_device
+        dev = find_device(device_name, kind="output")
         device_idx = dev.index if dev else None
 
         sd.play(data, samplerate=sr, device=device_idx)

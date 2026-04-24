@@ -56,7 +56,13 @@ analysis:
     confidence_threshold: 0.8
 
 tts:
-  engine: coqui_clone         # `coqui_clone` | `piper` | `openai` | `elevenlabs` | `macos_say` | `qwen3_clone`
+  # Voice-cloning engines (primary — speak in the user's voice):
+  #   `coqui_clone`  — XTTS v2, zero-shot or fine-tuned
+  #   `qwen3_clone`  — Qwen3-TTS 12Hz with LoRA adapter (Apple Silicon)
+  # Fallback engines (do NOT sound like the user):
+  #   `piper`        — ~60 MB download, offline
+  #   `macos_say`    — built-in, zero install
+  engine: coqui_clone
   # Optional override for the live auto-mode / Q&A path. When set, _auto()
   # uses this engine for spontaneous replies while `engine` above keeps
   # handling slower prepare-time synthesis. Typical split: prepare with
@@ -65,13 +71,6 @@ tts:
   realtime_engine: ""
   piper:
     model_path: ""
-  openai:
-    api_key: ${OPENAI_API_KEY}
-    model: tts-1
-    voice: onyx
-  elevenlabs:
-    api_key: ${ELEVENLABS_API_KEY}
-    voice_id: ""
   macos_say:
     voice: Milena
 

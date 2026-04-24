@@ -388,24 +388,24 @@ def run_wizard(config_path: str | None = None):
     # Step 6: TTS engine
     console.print("\n[bold cyan]Шаг 6: TTS движок[/]")
 
-    import subprocess as sp
-    tts_venv = Path(__file__).parent.parent / ".venv-tts"
-    tts_python = tts_venv / "bin" / "python3"
+    f5_python = Path.home() / "F5TTS" / ".venv" / "bin" / "python"
+    f5_model_info = Path.home() / ".saymo" / "f5tts_model.txt"
+    f5_available = f5_python.exists() and f5_model_info.exists()
 
-    # Check Coqui availability via worker
-    coqui_available = False
-    if tts_python.exists():
-        try:
-            import importlib.util
-            coqui_available = importlib.util.find_spec("TTS") is not None
-        except Exception:
-            pass
+    applio_python = Path.home() / "Applio" / ".venv" / "bin" / "python"
+    rvc_pth = Path.home() / ".saymo" / "models" / "rvc" / "saymo_voice.pth"
+    rvc_available = applio_python.exists() and rvc_pth.exists()
+
+    xtts_finetuned = Path.home() / ".saymo" / "models" / "xtts_finetuned" / "model.pth"
+    coqui_available = xtts_finetuned.exists() or (Path.home() / ".saymo" / "voice_samples" / "voice_sample.wav").exists()
 
     engines = [
-        ("coqui_clone", "coqui_clone (клонирование голоса, XTTS v2)", coqui_available),
-        ("macos_say", "macos_say (встроенный macOS, без установки)", True),
+        ("f5tts_clone",     "f5tts_clone     — F5-TTS Russian (рекомендуется, one-stage clone)", f5_available),
+        ("xtts_rvc_clone",  "xtts_rvc_clone  — XTTS + RVC v2 (двухстадийный, требует Applio)",   rvc_available),
+        ("coqui_clone",     "coqui_clone     — XTTS v2 один (без RVC)",                          coqui_available),
+        ("macos_say",       "macos_say       — встроенный macOS, не клонирует голос",             True),
     ]
-    current = config.get("tts", {}).get("engine", "coqui_clone")
+    current = config.get("tts", {}).get("engine", "f5tts_clone")
 
     for i, (key, label, avail) in enumerate(engines):
         status = "[green]готов[/]" if avail else "[yellow]не установлен[/]"
@@ -416,37 +416,32 @@ def run_wizard(config_path: str | None = None):
     choice = click.prompt(f"  Выбери движок (1-{len(engines)})", default=default_idx)
     try:
         selected_engine = engines[int(choice) - 1][0]
+        selected_avail = engines[int(choice) - 1][2]
     except (ValueError, IndexError):
         selected_engine = current
+        selected_avail = True
 
-    # Install coqui_clone if needed
-    if selected_engine == "coqui_clone" and not coqui_available:
-        console.print("\n  [yellow]Coqui TTS требует отдельный Python 3.11 venv (.venv-tts)[/]")
-        if click.confirm("  Создать venv и установить TTS? (скачает ~2 GB)", default=True):
-            # Create venv if missing
-            if not tts_python.exists():
-                console.print("  [blue]Создаю .venv-tts (Python 3.11)...[/]")
-                result = sp.run(["python3.11", "-m", "venv", str(tts_venv)], capture_output=True, text=True)
-                if result.returncode != 0:
-                    console.print(f"  [red]Ошибка: python3.11 не найден. Установи: brew install python@3.11[/]")
-                    selected_engine = "macos_say"
-
-            if selected_engine == "coqui_clone":
-                console.print("  [blue]Устанавливаю TTS (может занять несколько минут)...[/]")
-                result = sp.run(
-                    [str(tts_python), "-m", "pip", "install", "TTS"],
-                    capture_output=False,
-                    timeout=600,
-                )
-                if result.returncode == 0:
-                    console.print("  [green]Coqui TTS установлен![/]")
-                else:
-                    console.print("  [red]Ошибка установки TTS[/]")
-                    console.print("  [yellow]Переключаю на macos_say[/]")
-                    selected_engine = "macos_say"
+    # Hint user to install missing engine via dedicated script — wizard does NOT install heavy deps inline
+    if not selected_avail:
+        installer_map = {
+            "f5tts_clone":    "./scripts/install_f5tts.sh",
+            "xtts_rvc_clone": "./scripts/install_rvc.sh",
+            "coqui_clone":    "saymo train-prepare && saymo train-voice  (or skip — base XTTS works without finetune)",
+        }
+        hint = installer_map.get(selected_engine, "")
+        console.print(f"\n  [yellow]Движок {selected_engine} не установлен.[/]")
+        if hint:
+            console.print(f"  [dim]Чтобы установить, выйди из визарда и запусти:  [bold]{hint}[/][/]")
+        if click.confirm("  Сохранить выбор всё равно? (можно установить потом)", default=True):
+            pass
         else:
-            console.print("  [yellow]Переключаю на macos_say[/]")
+            console.print("  [yellow]Откатываюсь на macos_say (всегда работает).[/]")
             selected_engine = "macos_say"
+
+    # Per-engine config sanity hints
+    if selected_engine == "f5tts_clone" and f5_model_info.exists():
+        console.print("\n  [dim]Подсказка: пути к F5-TTS модели в ~/.saymo/f5tts_model.txt[/]")
+        console.print("  [dim]Скопируй ckpt_file/vocab_file в config.tts.f5tts если ещё не сделал.[/]")
 
     config.setdefault("tts", {})
     config["tts"]["engine"] = selected_engine

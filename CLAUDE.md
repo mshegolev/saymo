@@ -29,11 +29,17 @@ saymo speak -p <profile> --glip
 saymo auto -p <profile>            # listen → detect name → speak
 saymo auto -p <profile> --mic      # test trigger via microphone
 
-# Voice training (fine-tune for maximum similarity)
+# Voice training — Phase 1: XTTS fine-tune (~7-8/10 similarity, see docs/VOICE-TRAINING.md)
 saymo train-prepare                # record 100 prompts with guided session
 saymo train-voice --epochs 5       # fine-tune XTTS v2 GPT decoder (~2-3h)
 saymo train-eval                   # A/B blind comparison (base vs fine-tuned)
 saymo train-status                 # dataset & model status
+
+# Voice training — Phase 2: RVC on top of XTTS (~9-10/10, see docs/RVC-VOICE-CLONING.md)
+./scripts/install_rvc.sh           # installs Applio + rvc-python (~30 min download)
+./scripts/train_rvc.sh             # headless RVC training (~30-60 min); auto-copies artifacts
+# OR: ~/.saymo/run_applio.sh       # Web UI at http://127.0.0.1:6969 if you prefer clicking
+# saymo train-voice now also offers RVC training as a follow-up prompt
 
 # Misc
 saymo dashboard                    # interactive TUI

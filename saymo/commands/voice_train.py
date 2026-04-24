@@ -709,10 +709,58 @@ def train_voice(ctx, epochs, batch_size, resume, engine, rank, scale, lr):
             )
             console.print(f"\n[bold green]{result.summary()}[/]")
             console.print(f"\n[dim]Run 'saymo train-eval' to evaluate quality.[/]")
+            _suggest_rvc_training()
 
         except Exception as e:
             console.print(f"\n[bold red]Training failed:[/] {e}")
             console.print("[dim]Try: --batch-size 1, or check memory with Activity Monitor.[/]")
+
+
+def _suggest_rvc_training() -> None:
+    """After XTTS fine-tune, offer to run RVC for the final 9-10/10 quality tier.
+
+    Only prompts if Applio is installed (scripts/install_rvc.sh has been run).
+    Otherwise just prints a one-liner pointing to the doc — keeps the happy
+    path discoverable without surprising users who don't want a 30-60 min
+    training job to start unprompted.
+    """
+    from pathlib import Path
+    import os
+    import sys
+
+    applio_dir = Path.home() / "Applio"
+    rvc_script = Path(__file__).resolve().parents[2] / "scripts" / "train_rvc.sh"
+
+    if not applio_dir.is_dir() or not rvc_script.is_file():
+        console.print(
+            "\n[dim]For 9-10/10 similarity, run RVC on top of XTTS — see "
+            "docs/RVC-VOICE-CLONING.md (one-time setup: ./scripts/install_rvc.sh).[/]"
+        )
+        return
+
+    # Don't prompt under non-interactive runs (CI, scripts).
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        console.print(
+            f"\n[dim]Tip: run [bold]{rvc_script}[/] to train an RVC layer "
+            "on top (9-10/10 similarity).[/]"
+        )
+        return
+
+    console.print(
+        "\n[bold cyan]Phase 2 available:[/] train RVC on top for 9-10/10 similarity "
+        "(~30-60 min)."
+    )
+    try:
+        answer = input("Start RVC training now? [y/N] ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        console.print()
+        return
+    if answer not in ("y", "yes"):
+        console.print(f"[dim]Skipped. Run later: [bold]{rvc_script}[/][/]")
+        return
+
+    console.print(f"[blue]→ Launching {rvc_script}[/]\n")
+    os.execv(str(rvc_script), [str(rvc_script)])
 
 
 @main.command("train-eval")

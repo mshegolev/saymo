@@ -1,12 +1,12 @@
 [project]
 name = "saymo"
-version = "0.10.3"
+version = "0.11.0"
 description = "Local AI voice assistant for macOS — speaks in your cloned voice on live calls, fully on-device"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
-    { name = "Mikhail Shchegolev" },
+    { name = "Mikhail Shchegolev", email = "mshegolev@gmail.com" },
 ]
 keywords = [
     "voice-assistant",
@@ -40,6 +40,7 @@ dependencies = [
     "sounddevice>=0.5.0",
     "soundfile>=0.12.0",
     "numpy",
+    "scipy",             # butter/sosfilt for highpass in saymo.audio.mic_processor
     "click>=8.1.0",
     "rich>=13.0.0",
     "pynput>=1.7.6",
@@ -55,7 +56,6 @@ tts = [
     "coqui-tts[codec]",
     "transformers>=4.46,<5",
     "piper-tts",
-    "scipy",
 ]
 apple = [
     "mlx>=0.22.0",
@@ -67,7 +67,6 @@ stt = [
 ]
 cloud = [
     "anthropic>=0.43.0",
-    "openai>=1.57.0",
     "deepgram-sdk>=3.0.0",
     "aiohttp>=3.9.0",
 ]

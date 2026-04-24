@@ -15,13 +15,13 @@ from saymo.tts.factory import (
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("name", [
-    "coqui_clone", "piper", "macos_say", "openai", "qwen3_clone", "elevenlabs",
+    "coqui_clone", "qwen3_clone", "piper", "macos_say",
 ])
 def test_known_engines(name):
     assert is_known_engine(name) is True
 
 
-@pytest.mark.parametrize("name", ["", "unknown", "xtts", "gtts"])
+@pytest.mark.parametrize("name", ["", "unknown", "xtts", "gtts", "openai", "elevenlabs"])
 def test_unknown_engines(name):
     assert is_known_engine(name) is False
 
@@ -45,10 +45,19 @@ def test_unknown_engine_raises():
         get_tts_engine(config)
 
 
-def test_elevenlabs_raises_not_implemented():
+def test_elevenlabs_now_unknown():
+    """elevenlabs was removed — no longer a known engine, raises Unknown."""
     config = SaymoConfig()
     config.tts.engine = "elevenlabs"
-    with pytest.raises(UnsupportedTTSEngine, match="not yet implemented"):
+    with pytest.raises(UnsupportedTTSEngine, match="Unknown TTS engine"):
+        get_tts_engine(config)
+
+
+def test_openai_now_unknown():
+    """openai was removed — no longer a known engine, raises Unknown."""
+    config = SaymoConfig()
+    config.tts.engine = "openai"
+    with pytest.raises(UnsupportedTTSEngine, match="Unknown TTS engine"):
         get_tts_engine(config)
 
 
