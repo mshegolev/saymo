@@ -25,8 +25,8 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${REF_NAME#v}"
-          awk -v tag="## [$TAG]" '
-            $0 ~ tag {flag=1; next}
+          awk -v tag="$TAG" '
+            index($0, "## [" tag "]") == 1 {flag=1; next}
             /^## \[/ {flag=0}
             flag {print}
           ' CHANGELOG.md > release_notes.md
