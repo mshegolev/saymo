@@ -3254,7 +3254,7 @@ requires-dist = [
     { name = "soundfile", specifier = ">=0.12.0" },
     { name = "torch", marker = "extra == 'tts'", specifier = ">=2.6.0" },
     { name = "torchaudio", marker = "extra == 'tts'" },
-    { name = "transformers", marker = "extra == 'tts'", specifier = ">=4.46,<5" },
+    { name = "transformers", marker = "extra == 'tts'", specifier = ">=4.46,<6" },
 ]
 provides-extras = ["tts", "apple", "stt", "cloud", "all"]
 
