@@ -122,22 +122,10 @@ def find_glip_tab() -> tuple[int, int] | None:
     return None
 
 
-def switch_rc_mic_to_blackhole() -> bool:
-    """Switch Glip's microphone to BlackHole 2ch via Chrome JS injection.
+def _open_rc_audio_menu(w: int, t: int) -> bool:
+    """Click the Audio-menu (^) dropdown next to the Mute button."""
+    import time
 
-    Clicks the audio-settings dropdown and selects BlackHole 2ch. Returns
-    ``True`` on success. When the JS path fails (UI moved, dropdown locked
-    behind a modal, etc.), logs a warning and returns ``False`` — the user
-    should switch the mic manually once per call (see README).
-    """
-    tab = find_glip_tab()
-    if not tab:
-        logger.error("Glip tab not found")
-        return False
-
-    w, t = tab
-
-    # Step 1: Click "Audio menu" button (^ dropdown arrow)
     js_open = (
         '(function() {'
         ' var btn = document.querySelector(\'[aria-label="Audio menu"]\');'
@@ -147,26 +135,80 @@ def switch_rc_mic_to_blackhole() -> bool:
     )
     result = _run_applescript_js(w, t, js_open)
     logger.info(f"Open audio menu: {result}")
-
     if not result or "not_found" in result or "missing" in result.lower():
+        return False
+    time.sleep(2)
+    return True
+
+
+def _close_rc_audio_menu(w: int, t: int) -> None:
+    import time
+
+    time.sleep(0.3)
+    _run_applescript_js(w, t, "document.body.click()")
+
+
+def get_current_rc_mic() -> str | None:
+    """Return the currently-selected microphone label in Glip, or ``None``.
+
+    Opens the audio dropdown briefly, reads the selected radio in the
+    microphone section, closes the dropdown again. Useful for stashing
+    the user's real mic so we can switch back later.
+    """
+    tab = find_glip_tab()
+    if not tab:
+        return None
+    w, t = tab
+    if not _open_rc_audio_menu(w, t):
+        return None
+    js_read = (
+        '(function() {'
+        ' var radios = document.querySelectorAll(\'li[role="radio"]\');'
+        ' if (radios.length === 0) return "";'
+        ' var micCount = Math.floor(radios.length / 2);'
+        ' for (var i = 0; i < micCount; i++) {'
+        '   if (radios[i].classList.contains("media-buttons__opt--selected"))'
+        '     return (radios[i].textContent || "").trim();'
+        ' }'
+        ' return "";'
+        '})()'
+    )
+    label = _run_applescript_js(w, t, js_read)
+    _close_rc_audio_menu(w, t)
+    if label:
+        logger.info(f"Current Glip mic: {label}")
+        return label
+    return None
+
+
+def switch_rc_mic_to(device_name: str) -> bool:
+    """Switch Glip's microphone to ``device_name`` (substring match) via Chrome JS.
+
+    Returns ``True`` on success or if the device is already selected.
+    """
+    tab = find_glip_tab()
+    if not tab:
+        logger.error("Glip tab not found")
+        return False
+    w, t = tab
+
+    if not _open_rc_audio_menu(w, t):
         logger.warning(
-            "Audio-menu button not reachable — switch BlackHole 2ch manually "
+            "Audio-menu button not reachable — switch the mic manually "
             "in the Glip call (^ arrow next to Mute → Microphone)."
         )
         return False
 
-    import time
-    time.sleep(2)
-
-    # Step 2: Click BlackHole 2ch in the Microphone section (first half of radio list)
+    safe = device_name.replace("\\", "\\\\").replace('"', '\\"')
     js_select = (
         '(function() {'
+        ' var target = "' + safe + '";'
         ' var radios = document.querySelectorAll(\'li[role="radio"]\');'
         ' if (radios.length === 0) return "no_radios";'
         ' var micCount = Math.floor(radios.length / 2);'
         ' for (var i = 0; i < micCount; i++) {'
         '   var text = (radios[i].textContent || "").trim();'
-        '   if (text.includes("BlackHole 2ch")) {'
+        '   if (text.indexOf(target) !== -1) {'
         '     if (radios[i].classList.contains("media-buttons__opt--selected"))'
         '       return "already_selected";'
         '     radios[i].click();'
@@ -176,16 +218,13 @@ def switch_rc_mic_to_blackhole() -> bool:
         ' return "not_found";'
         '})()'
     )
-    result2 = _run_applescript_js(w, t, js_select)
-    logger.info(f"Select BlackHole: {result2}")
+    result = _run_applescript_js(w, t, js_select)
+    logger.info(f"Select '{device_name}': {result}")
+    _close_rc_audio_menu(w, t)
 
-    if result2 and ("selected" in result2 or "already" in result2):
-        # Close the dropdown
-        time.sleep(0.3)
-        _run_applescript_js(w, t, "document.body.click()")
-        return True
+    return bool(result and ("selected" in result or "already" in result))
 
-    logger.warning(
-        "BlackHole 2ch not found in Glip audio menu — select it manually."
-    )
-    return False
+
+def switch_rc_mic_to_blackhole() -> bool:
+    """Backwards-compat wrapper — Glip mic to BlackHole 2ch."""
+    return switch_rc_mic_to("BlackHole 2ch")

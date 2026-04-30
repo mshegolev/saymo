@@ -4,7 +4,7 @@ Extended with JS-based mic switching specific to RingCentral Video UI.
 """
 
 from saymo.providers._chrome_base import ChromeCallProvider
-from saymo.glip_control import switch_rc_mic_to_blackhole
+from saymo.glip_control import switch_rc_mic_to
 
 
 class GlipProvider(ChromeCallProvider):
@@ -13,5 +13,10 @@ class GlipProvider(ChromeCallProvider):
     mute_key = " "
 
     def switch_mic(self, device_name: str = "BlackHole 2ch") -> bool:
-        """Override: Glip supports auto mic switch via JS injection."""
-        return switch_rc_mic_to_blackhole()
+        """Override: Glip supports auto mic switch via JS injection.
+
+        ``device_name`` is matched as a substring against the labels in
+        the Glip audio dropdown (e.g. ``"BlackHole 2ch"``,
+        ``"MacBook Pro Microphone"``, ``"AirPods"``).
+        """
+        return switch_rc_mic_to(device_name)

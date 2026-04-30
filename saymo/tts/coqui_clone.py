@@ -28,16 +28,27 @@ class _FinetunedTTSWrapper:
     def __init__(self, model):
         self._model = model
 
-    def tts_to_file(self, text: str, speaker_wav: str, language: str, file_path: str):
+    def tts_to_file(
+        self,
+        text: str,
+        speaker_wav: str,
+        language: str,
+        file_path: str,
+        **kwargs,
+    ):
         import torch
         import torchaudio
 
+        # XTTS Xtts.synthesize() accepts extra kwargs (speed, temperature,
+        # repetition_penalty, length_penalty, top_k, top_p, ...). Pass
+        # whatever the caller provided through unchanged.
         with torch.no_grad():
             outputs = self._model.synthesize(
                 text,
                 self._model.config,
                 speaker_wav=speaker_wav,
                 language=language,
+                **kwargs,
             )
         wav = torch.tensor(outputs["wav"]).unsqueeze(0)
         torchaudio.save(file_path, wav, 22050)
@@ -134,24 +145,35 @@ class CoquiCloneTTS:
         cls._model_type = "base"
         return cls._model
 
-    def _synthesize_sync(self, text: str, output_path: str) -> str:
+    def _synthesize_sync(self, text: str, output_path: str, **kwargs) -> str:
         logger.info(f"Synthesizing {len(text)} chars with cloned voice")
         model = self._get_model(self.checkpoint_dir, self.use_finetuned)
+        # Forward XTTS prosody knobs (speed, temperature, repetition_penalty,
+        # length_penalty, top_k, top_p, enable_text_splitting, ...) when
+        # supplied. The base ``TTS.api.TTS`` wrapper accepts them via
+        # ``tts_to_file``; the fine-tuned wrapper currently ignores extras.
+        kwargs = {k: v for k, v in kwargs.items() if v is not None}
         model.tts_to_file(
             text=text,
             speaker_wav=str(self.voice_sample),
             language=self.language,
             file_path=output_path,
+            **kwargs,
         )
         return output_path
 
-    async def synthesize(self, text: str) -> bytes:
-        """Clone voice and synthesize text to WAV bytes."""
+    async def synthesize(self, text: str, **kwargs) -> bytes:
+        """Clone voice and synthesize text to WAV bytes.
+
+        Extra ``kwargs`` (``speed``, ``temperature``, ``repetition_penalty``,
+        ``length_penalty``, ``top_k``, ``top_p``, ``enable_text_splitting``)
+        are forwarded to XTTS for finer prosody control.
+        """
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
             tmp_path = tmp.name
 
         try:
-            await asyncio.to_thread(self._synthesize_sync, text, tmp_path)
+            await asyncio.to_thread(self._synthesize_sync, text, tmp_path, **kwargs)
             audio_bytes = Path(tmp_path).read_bytes()
             logger.info(f"Generated {len(audio_bytes)} bytes")
             return audio_bytes

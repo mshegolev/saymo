@@ -84,6 +84,7 @@ saymo/
   - STT → faster-whisper
   - TTS → Qwen3-TTS (MLX) / Coqui XTTS v2 / Piper / macOS `say`
   - Call automation → Chrome via per-provider JS in `saymo/providers/`.
+- **TTS naturalness rules are not hardcoded per-script.** The single source of truth for XTTS prosody presets, breath splicing, and source-text rules is `docs/VOICE-NATURALNESS.md` + `saymo/tts/naturalness.py` (`NATURAL_PRESET`, `CONSERVATIVE_PRESET`, `ENERGETIC_PRESET`, `load_breath_sample`, `resolve_voice_sample`, `split_for_tts`). When writing or modifying any TTS-generation script (one-shot helpers, batch jobs, response-cache builders, …), import from that module instead of re-deriving constants. Tune presets in `naturalness.py` and update the cheat-sheet in the doc; do not redefine `speed` / `temperature` / `repetition_penalty` per-script.
 
 ## Audio routing
 

@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-04-30
+
+### Added
+- **`saymo/tts/naturalness.py`** — single source of truth for XTTS prosody presets and helpers used by every TTS-generation script in the repo. Exports `NATURAL_PRESET`, `CONSERVATIVE_PRESET`, `ENERGETIC_PRESET`, `resolve_voice_sample(language)` (per-language reference fallback), `load_breath_sample()` (extracts a real inhale from the user's voice sample to splice between paragraphs instead of digital silence), `split_for_tts(text)` (sentence/paragraph/`[pause:N]`-aware splitter), and shared inter-segment pause constants.
+- **`docs/VOICE-NATURALNESS.md`** — consolidated rulebook (reference recording specs, source-text rules, XTTS parameter cheat-sheet, fine-tuning, WER-based quality verification via Whisper). Distilled from ElevenLabs, Inworld AI, and Coqui XTTS-v2 official guides plus internal experiments.
+- **`scripts/synthesize_presentation.py`** — one-shot helper that synthesizes presentation text in the user's cloned voice. Uses the shared naturalness module, supports `--preset natural|conservative|energetic`, `--language`, and `[pause:N]` markers.
+- **`scripts/play_to_glip.py`** — standalone "press button → talk to Glip" runner: stashes the currently-selected Glip mic, switches to BlackHole 2ch, plays a WAV via the existing provider unmute → speak → mute flow, then restores the original mic. Includes a global stop hotkey (`Cmd+Shift+X` by default), `Ctrl+C` handler that re-mutes Glip and restores the mic, and `--mic-back` override.
+- **`get_current_rc_mic()`** in `saymo/glip_control.py` — reads the currently-selected microphone label from the Glip audio dropdown via Chrome JS injection; used by `play_to_glip.py` to remember the user's real mic across a playback.
+- **XTTS prosody kwargs forwarding** in `saymo/tts/coqui_clone.py` — `CoquiCloneTTS.synthesize(text, **kwargs)` now passes `speed`, `temperature`, `repetition_penalty`, `length_penalty`, `top_k`, `top_p`, `enable_text_splitting` straight through to XTTS for both base and fine-tuned checkpoints.
+
+### Changed
+- **`switch_rc_mic_to_blackhole()` generalised to `switch_rc_mic_to(device_name)`** in `saymo/glip_control.py` — accepts any substring of a Glip mic-dropdown label (e.g. `"BlackHole 2ch"`, `"MacBook Pro Microphone"`, `"AirPods"`). Old function kept as a backwards-compatible wrapper.
+- **`GlipProvider.switch_mic(device_name)`** now actually honours its `device_name` argument (previously hardcoded to BlackHole 2ch regardless).
+- **`CLAUDE.md` + `AGENTS.md`** — added architectural rule that TTS-generation code must import presets/helpers from `saymo/tts/naturalness.py` rather than re-deriving constants per-script.
+
 ## [0.11.0] — 2026-04-24
 
 ### Added

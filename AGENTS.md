@@ -39,6 +39,7 @@ uv sync                          # resync deps from uv.lock / pyproject.toml
 - Logging: `logger = logging.getLogger("saymo.<module>")`.
 - No formatter is pinned; match surrounding style. `ruff`/`black` welcome locally.
 - Architectural rules: no personal data or codenames in source — route through `config.yaml`. Prompts live as `DEFAULT_*_PROMPT_*` in `saymo/speech/ollama_composer.py` and are overridable via `config.prompts.<key>`. Local-by-default: cloud providers must remain optional.
+- TTS naturalness rules: when writing any new TTS-generation code or tweaking synthesis params, follow `docs/VOICE-NATURALNESS.md` and import presets/helpers from `saymo/tts/naturalness.py` (`NATURAL_PRESET`, `load_breath_sample`, `resolve_voice_sample`, `split_for_tts`). Don't redefine `speed`/`temperature`/`repetition_penalty` per-script — tune them in `naturalness.py` and the doc.
 
 ## Testing Guidelines
 
