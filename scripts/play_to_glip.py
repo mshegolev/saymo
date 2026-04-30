@@ -37,7 +37,8 @@ import numpy as np
 import sounddevice as sd
 import soundfile as sf
 
-from saymo.audio.devices import find_device
+from saymo.audio.devices import find_device  # noqa: F401  (kept for future pausable-stream work)
+from saymo.commands import _play_cached_audio
 from saymo.config import load_config
 
 
