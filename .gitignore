@@ -17,3 +17,7 @@ config.yaml
 
 # Claude Code per-user settings (not shared)
 .claude/settings.local.json
+
+# Local agent/tool state
+.remember/
+.serena/

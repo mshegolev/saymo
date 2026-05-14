@@ -57,7 +57,7 @@ saymo test-devices                 # Verify audio devices
 
 To re-configure later:
 ```bash
-saymo wizard                       # Interactive: name, devices, TTS engine
+saymo setup                        # Interactive: name, devices, TTS engine
 saymo record-voice -d 12           # Record a fresh ~12s voice reference
 ```
 
