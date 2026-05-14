@@ -18,6 +18,27 @@ from saymo.commands import (
 # auto — listen for name trigger and speak automatically
 # ---------------------------------------------------------------------------
 
+def _classify_trigger_window(config, transcript_window: str, trigger_phrases: list[str]):
+    from saymo.analysis.addressing import classify_addressing, expand_trigger_phrases
+
+    expanded = expand_trigger_phrases(
+        trigger_phrases,
+        (config.vocabulary or {}).get("fuzzy_expansions"),
+    )
+    return classify_addressing(transcript_window, expanded)
+
+
+def _should_answer_trigger_window(
+    config,
+    transcript_window: str,
+    trigger_phrases: list[str],
+) -> bool:
+    from saymo.analysis.addressing import should_answer_decision
+
+    decision = _classify_trigger_window(config, transcript_window, trigger_phrases)
+    return should_answer_decision(decision)
+
+
 @main.command()
 @click.option("--profile", "-p", default="standup", help="Meeting profile: standup, scrum, retro")
 @click.option("--model", "-m", default="small", help="Whisper model: tiny, small, medium")
@@ -85,6 +106,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
     from saymo.audio.capture import AudioCapture
     from saymo.stt.whisper_local import LocalWhisper
+    from saymo.analysis.addressing import should_answer_decision
     from saymo.analysis.turn_detector import TurnDetector
 
     capture = AudioCapture(
@@ -210,6 +232,15 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
             # Snapshot transcript window BEFORE draining — contains the question
             transcript_window = detector.recent_transcript
+
+            addressing = _classify_trigger_window(config, transcript_window, trigger_phrases)
+            if not should_answer_decision(addressing):
+                console.print(
+                    f"[yellow]Skipping trigger:[/] {addressing.label} — {addressing.reason}"
+                )
+                detector.reset_cooldown()
+                console.print("\n[bold yellow]Listening again...[/]\n")
+                continue
 
             # Drain audio queue — don't process stale chunks after trigger
             while not capture.audio_queue.empty():

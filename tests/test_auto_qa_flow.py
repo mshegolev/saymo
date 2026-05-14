@@ -9,6 +9,7 @@ import pytest
 
 from saymo.cli import _looks_like_question, _resolve_auto_response
 from saymo.config import SaymoConfig
+from saymo.commands.core import _should_answer_trigger_window
 
 
 def _run(coro):
@@ -41,6 +42,26 @@ def test_looks_like_question_true(text):
 ])
 def test_looks_like_question_false(text):
     assert _looks_like_question(text) is False
+
+
+def test_should_answer_trigger_window_allows_direct_question():
+    config = SaymoConfig()
+
+    assert _should_answer_trigger_window(
+        config,
+        "Миша, что по статусу?",
+        ["Миша"],
+    ) is True
+
+
+def test_should_answer_trigger_window_ignores_narrated_mention():
+    config = SaymoConfig()
+
+    assert _should_answer_trigger_window(
+        config,
+        "как Миша вчера говорил, надо проверить логи",
+        ["Миша"],
+    ) is False
 
 
 # ---------------------------------------------------------------------------

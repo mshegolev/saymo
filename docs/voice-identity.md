@@ -36,22 +36,27 @@ What is missing for the goal:
 | Gap | Evidence | Track |
 |---|---|---|
 | Real-time Q&A path in `auto` mode | ~~Gap closed in v0.8.0~~ — `saymo/commands/core.py::_auto` + `saymo/commands/__init__.py::_resolve_auto_response` now consult `ResponseCache` on question-shaped triggers and optionally fall back to live Ollama + TTS when `config.responses.live_fallback=true`. | done |
+| Trigger setup is still too manual | `saymo trigger-check` now previews trigger/addressing/question/cache routing, but `saymo setup` does not yet walk the user through microphone-based trigger calibration or automatically write fuzzy STT variants. | Setup UX |
+| Addressing false positives need ongoing tuning | `saymo/analysis/addressing.py` suppresses obvious narrated mentions like "как Миша говорил...", but more real-call transcripts are needed for edge cases. | Reliability |
 | Qwen3-TTS LoRA training loss is a placeholder | `saymo/tts/qwen3_trainer.py::_compute_loss` now raises `NotImplementedError` instead of silently computing `mx.mean(output)`. LoRA scaffolding (rank 8 / scale 0.3; `_apply_lora` via `mlx_lm.tuner.lora.LoRALinear.from_base`) is real. The training loop itself still needs a real loss impl after inspecting the model's forward signature. | A |
-| `safety.max_speech_duration` not wired into `_auto()` | no timeout around playback / mic-open | Reliability |
-| Hotkeys defined in config but not bound in `auto` | `safety.hotkey_speak/stop/toggle` unused | Reliability |
+| `safety.max_speech_duration` wired into `_auto()` | `_auto()` wraps playback with a timeout and cancels playback when it exceeds `safety.max_speech_duration`. | done |
+| Stop/toggle hotkeys bound in `auto` | `_auto()` starts a `pynput.GlobalHotKeys` listener for `safety.hotkey_stop` and `safety.hotkey_toggle`; `hotkey_speak` remains unused because auto-mode speaks on trigger. | partial |
 
 ## Architecture (voice-identity slice)
 
 ```mermaid
 flowchart LR
 A[Mic / BlackHole 16ch] --> B[TurnDetector]
-B --> C{Intent classifier}
-C -->|generic turn call| D[Cached audio]
-C -->|specific question| E[Ollama answer composer]
-E --> F[Real-time TTS<br/>Qwen3-TTS LoRA / XTTS fallback]
-D --> G[Playback → BlackHole 2ch]
-F --> G
-G --> H[Post-speech mute via provider JS]
+B --> C{Addressing classifier}
+C -->|mentioned, not addressed| X[Skip]
+C -->|addressed| D{Response routing}
+D -->|Tier-A cache hit| E[Cached Q&A audio]
+D -->|cache miss| F[Generic cached standup]
+D -->|live fallback enabled| G[Ollama answer + realtime TTS]
+E --> H[Playback → BlackHole 2ch]
+F --> H
+G --> H
+H --> I[Post-speech mute via provider JS]
 ```
 
 ## Track A — Voice Identity
@@ -94,9 +99,11 @@ Do not promote LoRA weights to `realtime_engine` until `saymo train-eval` report
 
 Goal: when the trigger fires on a question rather than a turn call, Saymo composes and speaks an answer in the cloned voice.
 
-### B.1 Intent classifier
+### B.1 Addressing and intent classifiers
 
-New module: `saymo/analysis/intent.py`. Consumes the last 3–5 chunks of `TurnDetector.recent_transcript` and returns one of `{generic_turn, specific_question}`. Start with a small Ollama prompt; a keyword/regex shortcut is acceptable as a fast path before LLM call.
+Shipped deterministic layer: `saymo/analysis/addressing.py` consumes the same transcript window as `_auto()` and returns one of `{addressed_to_me, generic_team_question, mentioned_not_addressed, no_trigger, ignore}`. `_auto()` skips obvious narrated mentions before response resolution.
+
+Optional semantic layer: `config.responses.intent_classifier=true` runs a small Ollama classifier before keyword response-cache matching. It catches rephrasings the keyword matcher misses while preserving the cache-first CPU path.
 
 ### B.2 Answer composer
 
@@ -117,9 +124,11 @@ Output: 1–2 sentences. Truncate at `analysis.qa_mode.max_answer_length`.
 
 Branch inside `_auto()` at `saymo/commands/core.py::_auto`. Rules:
 
-- If classifier returns `generic_turn` **or** classification confidence is low, keep the current cached-audio path (safe default).
-- If classifier returns `specific_question` with high confidence, go through B.2 → B.3.
-- Under any failure in the real-time path, fall back to cached audio if available, else stay silent.
+- If addressing returns `mentioned_not_addressed`, `no_trigger`, or `ignore`, skip playback and return to listening.
+- If the transcript is addressed to the user/team, route through Tier-A response cache first.
+- If cache misses and `responses.live_fallback=false`, play the generic prepared standup audio.
+- If cache misses and `responses.live_fallback=true`, go through B.2 → B.3.
+- Under any failure in the live path, fall back to cached audio if available, else generic prepared standup audio.
 
 ### B.5 Latency budget (M1 16 GB)
 
@@ -144,26 +153,27 @@ tts:
 analysis:
   turn_detection:
     keyword_trigger: true
-    require_confirmation: false    # flip on if false positives appear
-  qa_mode:
-    enabled: true
-    max_answer_length: 50          # words
-    context_chunks: 5
 
 safety:
   max_speech_duration: 120
-  timeout_force_mute: true
   hotkey_stop: "cmd+shift+x"
+
+responses:
+  enabled: true
+  confidence_threshold: 0.6
+  intent_classifier: false
+  live_fallback: false
 ```
 
-Keys that do not yet exist in `config.example.yaml` (`tts.realtime_engine`, `analysis.qa_mode.*`, `safety.timeout_force_mute`) must be added alongside the code that reads them, with defaults that preserve current behaviour.
+`tts.realtime_engine`, `responses.*`, `safety.max_speech_duration`, and stop/toggle hotkeys exist in `config.example.yaml`. A future `analysis.turn_detection.require_confirmation` key can still be added if real-call false positives persist.
 
 ## Reliability appendix
 
 Short list of hardening items adjacent to the goal — not blockers for A/B pass, but required before routine use on real calls:
 
-- **Timeout safety**: wrap playback in `_auto()` with `safety.max_speech_duration`; on exceed, call the provider mute path, and an AppleScript system-mute fallback if the provider call fails.
-- **Hotkeys**: bind `safety.hotkey_stop` / `hotkey_toggle` inside `_auto()` via a `pynput` listener so the user can kill playback immediately.
+- **Timeout safety**: shipped. `_auto()` cancels playback when it exceeds `safety.max_speech_duration`; provider mute fallback should still be hardened with an AppleScript system-mute fallback if provider control fails.
+- **Hotkeys**: shipped for `safety.hotkey_stop` and `hotkey_toggle`; `hotkey_speak` is not used in auto-mode.
+- **Trigger diagnostics**: shipped as `saymo trigger-check -p <profile> --text ...` and `saymo trigger-check -p <profile> --mic`.
 - **Confirmation step (optional)**: when `analysis.turn_detection.require_confirmation: true`, wait up to 3 s after the first trigger for a second mention before speaking. Helps when false positives appear.
 - **Local log review**: after each test session, skim trigger / transcript / answer / mute-state logs; keep them local (the project is `Local by default`).
 - **Consent**: clone your own voice only where you have the right to. Disclose automation where workplace policy requires it.
@@ -177,8 +187,8 @@ The goal is a product that works on a CPU-only machine and hits "voice indisting
 1. **Clean dataset re-record** — `saymo train-prepare` (76 prompts via USB mic in a quiet room, constant distance, ~25 min of recording). Dataset quality is the single biggest lever for voice similarity; the existing YouTube-derived set caps below the 7 / 10 gate.
 2. **XTTS v2 fine-tune on expanded dataset** — `saymo train-voice --epochs 5` → `saymo train-eval`; promote only if ≥ 7 / 10.
 3. **Prepared-playback dry run** — `saymo prepare -p <profile>` → `saymo review` → `saymo speak --provider glip` against a real call.
-4. **Tier-A response cache** (real-time Q&A on CPU) — build a small library of pre-synthesised answers for common standup questions ("status on X", "any blockers", "ETA", "need help"). Intent classifier routes the spontaneous-answer branch of `_auto()` to lookup + playback instead of live synthesis. Latency ~100 ms. Covers the majority of real follow-ups.
-5. **Reliability hardening** — timeout on `safety.max_speech_duration`, hotkey listener, optional confirmation step. See the Reliability appendix above.
+4. **Tier-A response cache** (real-time Q&A on CPU) — shipped. `saymo prepare` rebuilds a small library of pre-synthesised answers for common standup questions; `_auto()` looks up a cached answer before live synthesis. Latency is playback-only when a cache entry exists.
+5. **Reliability hardening** — timeout, stop/toggle hotkeys, trigger diagnostics, and addressing false-positive suppression are shipped. Remaining work: optional confirmation step and provider/system mute fallback hardening.
 
 At this point the product meets all four success criteria on a CPU-only machine.
 

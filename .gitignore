@@ -1,4 +1,5 @@
 __pycache__/
+.pytest_cache/
 *.py[cod]
 *.egg-info/
 dist/
@@ -16,8 +17,10 @@ build/
 config.yaml
 
 # Claude Code per-user settings (not shared)
+.claude/
 .claude/settings.local.json
 
 # Local agent/tool state
+pyrightconfig.json
 .remember/
 .serena/

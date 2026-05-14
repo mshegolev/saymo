@@ -183,6 +183,22 @@ vocabulary:
     Your Name: ["Your Name", "alternative spelling", "nickname"]
 ```
 
+Before a real call, run a deterministic dry-run:
+
+```bash
+saymo trigger-check -p personal --text "Your Name, what is the status?"
+```
+
+Or use your microphone:
+
+```bash
+saymo trigger-check -p personal --mic
+```
+
+The report shows whether the phrase triggers Saymo, whether the mention is
+addressed to you, whether it looks like a question, and whether a cached
+response is ready.
+
 ## 6. Troubleshooting
 
 ### Voice doesn't sound like me
@@ -222,7 +238,7 @@ ollama pull qwen2.5-coder:7b
 ### STT not detecting trigger (auto mode)
 
 1. Check `user.name_variants` in config — all name forms should be listed
-2. Run `saymo auto -p personal --mic` and say your name — watch the transcript output
+2. Run `saymo trigger-check -p personal --mic` and say your name — watch the transcript output
 3. If the name appears in the transcript but isn't detected, add the exact transcribed form to `name_variants`
 4. Check microphone input level — run `saymo mic-check` to calibrate
 

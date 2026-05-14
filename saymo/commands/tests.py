@@ -1,5 +1,6 @@
 """Diagnostic / info commands: test-devices, test-tts, test-jira, list-plugins,
-test-notes, test-compose, test-ollama, prepare-responses, mic-check."""
+test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
+mic-check."""
 
 import click
 from rich.table import Table
@@ -297,6 +298,112 @@ async def _prepare_responses(config, force: bool = False) -> int:
         f"(skipped {total_variants - len(written)} already cached)"
     )
     return len(written)
+
+
+# ---------------------------------------------------------------------------
+# trigger diagnostics
+# ---------------------------------------------------------------------------
+
+@main.command("trigger-check")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
+@click.option("--text", default=None, help="Transcript text to inspect without recording")
+@click.option("--mic", is_flag=True, help="Record a short microphone sample and transcribe it")
+@click.option("--seconds", default=4.0, type=float, show_default=True, help="Seconds to record with --mic")
+@click.option("--device", "-d", default=None, help="Input device name for --mic")
+@click.pass_context
+def trigger_check(ctx, profile, text, mic, seconds, device):
+    """Diagnose trigger, addressing, and response-cache routing.
+
+    Use ``--text`` for a deterministic dry-run. Use ``--mic`` to record a
+    short local sample through faster-whisper and run the same checks.
+    """
+    config = ctx.obj["config"]
+    if mic:
+        text = _trigger_check_record_text(config, device, seconds)
+    if text is None:
+        text = click.prompt("Transcript text")
+    _print_trigger_diagnostics(config, profile, text)
+
+
+def _trigger_phrases_for_profile(config, profile: str) -> list[str]:
+    meeting = config.get_meeting(profile)
+    if meeting and meeting.trigger_phrases:
+        return meeting.trigger_phrases
+    return config.user.name_variants or ([config.user.name] if config.user.name else [])
+
+
+def _print_trigger_diagnostics(config, profile: str, text: str) -> None:
+    from saymo.analysis.addressing import (
+        classify_addressing,
+        expand_trigger_phrases,
+        should_answer_decision,
+    )
+    from saymo.analysis.response_cache import ResponseCache, build_library
+    from saymo.analysis.turn_detector import TurnDetector
+
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    expanded = expand_trigger_phrases(
+        trigger_phrases,
+        (config.vocabulary or {}).get("fuzzy_expansions"),
+    )
+    detector = TurnDetector(
+        name_variants=trigger_phrases,
+        cooldown_seconds=0,
+        fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
+    )
+    triggered = detector.check(text)
+    decision = classify_addressing(text, expanded)
+    will_answer = triggered and should_answer_decision(decision)
+
+    console.print(f"transcript: {text}")
+    console.print(f"profile: {profile}")
+    console.print(f"triggers: {', '.join(trigger_phrases) if trigger_phrases else '(none)'}")
+    console.print(f"trigger: {'yes' if triggered else 'no'}")
+    console.print(f"addressing: {decision.label} ({decision.reason})")
+    console.print(f"question: {'yes' if decision.is_question else 'no'}")
+    console.print(f"will answer: {'yes' if will_answer else 'no'}")
+
+    if not will_answer:
+        console.print("response: skipped")
+        return
+
+    cache_dir = None
+    if config.responses.cache_dir:
+        from pathlib import Path
+        cache_dir = Path(config.responses.cache_dir)
+    cache = ResponseCache(
+        library=build_library(config.responses.library),
+        cache_dir=cache_dir,
+        confidence_threshold=config.responses.confidence_threshold,
+    )
+    cached = cache.lookup(text)
+    if cached:
+        console.print(
+            f"response: {cached.key} conf={cached.confidence:.2f} file={cached.audio_path}"
+        )
+    elif config.responses.live_fallback:
+        console.print("response: live fallback would run")
+    else:
+        console.print("response: cache miss; would play generic standup audio")
+
+
+def _trigger_check_record_text(config, device_name: str | None, seconds: float) -> str:
+    import sounddevice as sd
+    from saymo.stt.whisper_local import LocalWhisper
+
+    mic_name, mic = _resolve_input_device(config, device_name)
+    if not mic or not mic_name:
+        raise click.ClickException("No input device available")
+
+    console.print(f"[bold blue]Recording {seconds:.1f}s from {mic_name}...[/]")
+    audio = _record_buffer(sd, 16000, seconds, mic.index)
+    whisper = LocalWhisper(
+        model_size=config.stt.whisper.model_size,
+        language=config.user.language,
+    )
+    text = whisper.transcribe(audio)
+    console.print(f"[dim]transcribed: {text}[/]")
+    return text
 
 
 # ---------------------------------------------------------------------------

@@ -162,6 +162,16 @@ vocabulary:
     Alex: ["Alex", "Алекс", "Саша", "Саня"]
 ```
 
+To check whether a live phrase will trigger Saymo before joining a call:
+
+```bash
+saymo trigger-check -p personal --text "Миша, что по статусу?"
+saymo trigger-check -p personal --mic
+```
+
+The diagnostic shows trigger match, whether the mention is addressed to you,
+question detection, and response-cache routing.
+
 ## Architecture
 
 ```

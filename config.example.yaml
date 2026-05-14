@@ -152,6 +152,8 @@ prompts:
 # in saymo/tts/text_normalizer.py. Use this instead of editing source.
 vocabulary:
   abbreviations: {}           # e.g. { MYAPI: "май-эй-пи-ай", K8S: "кубернетес" }
+  # Run `saymo trigger-check -p personal --mic` and add exact Whisper
+  # mis-hearings here when your name is transcribed incorrectly.
   fuzzy_expansions: {}        # e.g. { Alex: ["Alex", "Алекс", "Саша", "Саня"] }
 
 # Tier-A response cache — pre-synthesised short answers for common stand-up
@@ -174,6 +176,8 @@ responses:
   # Catches rephrasings the keyword matcher misses (e.g. "когда сдашь"
   # → eta_generic). Adds ~1s latency; turn off if CPU-constrained.
   intent_classifier: false
+  # Use `saymo trigger-check -p personal --text "Your Name, what is the status?"`
+  # to preview trigger/addressing/question/cache decisions before a call.
   library: {}
     # Example — uncomment to override the default generic status answer:
     # status_generic:

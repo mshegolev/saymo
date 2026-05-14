@@ -172,14 +172,17 @@ Aliases are free — just add another key to `PROVIDERS` pointing at the same cl
 meetings:
   standup:
     provider: whereby
-    triggers: ["михаил", "саймо"]
     team: false
+    source: obsidian
+    trigger_phrases:
+      - "михаил"
+      - "саймо"
 ```
 
 Then:
 
 ```bash
-saymo speak --whereby            # one-shot speak into the call
+saymo speak -p standup --provider whereby
 saymo auto -p standup            # listen for trigger, then speak
 ```
 
@@ -236,7 +239,7 @@ class NativeExampleProvider:
 
 - [ ] Smoke test:
       - source plugin → `saymo prepare` produces text
-      - call provider → `saymo speak --<name>` plays audio into the meeting
+      - call provider → `saymo speak --provider <name>` plays audio into the meeting
 
 ---
 

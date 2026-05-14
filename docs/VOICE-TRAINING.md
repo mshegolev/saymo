@@ -131,7 +131,7 @@ saymo train-eval
 ```bash
 # Всё работает как раньше, но голос теперь твой:
 saymo prepare -p standup
-saymo speak --glip
+saymo speak -p standup --provider glip
 saymo auto -p standup
 ```
 
