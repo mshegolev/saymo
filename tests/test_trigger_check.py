@@ -83,3 +83,56 @@ def test_trigger_check_text_reports_ignored_mention(tmp_path):
     assert "trigger: yes" in result.output
     assert "addressing: mentioned_not_addressed" in result.output
     assert "will answer: no" in result.output
+
+
+def test_trigger_learn_adds_heard_variant_to_fuzzy_expansions(tmp_path):
+    import yaml
+
+    config_path = _write_config(tmp_path)
+    runner = CliRunner()
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-learn",
+            "--profile",
+            "personal",
+            "--heard",
+            "Меша",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "learned: yes" in result.output
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert data["vocabulary"]["fuzzy_expansions"]["Миша"] == ["Меша"]
+
+
+def test_trigger_learn_does_not_duplicate_existing_variant(tmp_path):
+    import yaml
+
+    config_path = _write_config(tmp_path)
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["vocabulary"] = {"fuzzy_expansions": {"Миша": ["Меша"]}}
+    config_path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    runner = CliRunner()
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-learn",
+            "--profile",
+            "personal",
+            "--heard",
+            "Меша",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "learned: no" in result.output
+    updated = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert updated["vocabulary"]["fuzzy_expansions"]["Миша"] == ["Меша"]

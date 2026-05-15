@@ -154,7 +154,7 @@ prompts:
 vocabulary:
   abbreviations: {}           # e.g. { MYAPI: "май-эй-пи-ай", K8S: "кубернетес" }
   # Run `saymo trigger-check -p personal --mic` and add exact Whisper
-  # mis-hearings here when your name is transcribed incorrectly.
+  # mis-hearings with `saymo trigger-learn -p personal --heard "..."`.
   fuzzy_expansions: {}        # e.g. { Alex: ["Alex", "Алекс", "Саша", "Саня"] }
 
 # Tier-A response cache — pre-synthesised short answers for common stand-up

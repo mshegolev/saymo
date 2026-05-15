@@ -188,10 +188,13 @@ To check whether a live phrase will trigger Saymo before joining a call:
 ```bash
 saymo trigger-check -p personal --text "Миша, что по статусу?"
 saymo trigger-check -p personal --mic
+saymo trigger-learn -p personal --heard "Меша"
 ```
 
 The diagnostic shows trigger match, whether the mention is addressed to you,
 question detection, and response-cache routing.
+Use `trigger-learn` when Whisper consistently hears your name as a different
+spelling; it updates `vocabulary.fuzzy_expansions` in your config.
 
 ## Architecture
 

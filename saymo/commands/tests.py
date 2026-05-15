@@ -1,6 +1,6 @@
 """Diagnostic / info commands: test-devices, test-tts, test-jira, list-plugins,
 test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
-takeover-check, mic-check."""
+trigger-learn, takeover-check, mic-check."""
 
 import click
 from rich.table import Table
@@ -404,6 +404,95 @@ def _trigger_check_record_text(config, device_name: str | None, seconds: float) 
     text = whisper.transcribe(audio)
     console.print(f"[dim]transcribed: {text}[/]")
     return text
+
+
+@main.command("trigger-learn")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to update")
+@click.option("--heard", default=None, help="Text Whisper heard for your trigger")
+@click.option("--trigger", default=None, help="Canonical trigger phrase to extend")
+@click.option("--mic", is_flag=True, help="Record and learn from a short microphone sample")
+@click.option("--seconds", default=4.0, type=float, show_default=True, help="Seconds to record with --mic")
+@click.option("--device", "-d", default=None, help="Input device name for --mic")
+@click.pass_context
+def trigger_learn(ctx, profile, heard, trigger, mic, seconds, device):
+    """Add a heard trigger variant to vocabulary.fuzzy_expansions."""
+    config = ctx.obj["config"]
+    if mic:
+        heard = _trigger_check_record_text(config, device, seconds)
+    if heard is None:
+        heard = click.prompt("Heard trigger text")
+    config_path = _config_path_for_update(ctx)
+    canonical = trigger or _default_trigger_for_profile(config, profile)
+    learned = _learn_trigger_variant(config_path, canonical, heard)
+
+    console.print(f"config: {config_path}")
+    console.print(f"trigger: {canonical}")
+    console.print(f"variant: {heard.strip()}")
+    console.print(f"learned: {'yes' if learned else 'no'}")
+
+
+def _default_trigger_for_profile(config, profile: str) -> str:
+    phrases = _trigger_phrases_for_profile(config, profile)
+    if not phrases:
+        raise click.ClickException(f"No trigger phrases configured for profile: {profile}")
+    return phrases[0]
+
+
+def _config_path_for_update(ctx):
+    from pathlib import Path
+
+    root = ctx.find_root()
+    config_path = root.params.get("config_path") if root else None
+    if config_path:
+        return Path(config_path).expanduser()
+    return Path.home() / ".saymo" / "config.yaml"
+
+
+def _learn_trigger_variant(config_path, trigger: str, heard: str) -> bool:
+    import yaml
+
+    variant = " ".join((heard or "").split()).strip(" ,:;—-")
+    if not variant:
+        raise click.ClickException("Heard trigger text is empty")
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    if config_path.exists():
+        data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    else:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+
+    vocabulary = data.get("vocabulary")
+    if not isinstance(vocabulary, dict):
+        vocabulary = {}
+    fuzzy = vocabulary.get("fuzzy_expansions")
+    if not isinstance(fuzzy, dict):
+        fuzzy = {}
+
+    variants = fuzzy.get(trigger)
+    if not isinstance(variants, list):
+        variants = []
+    existing = {str(v).casefold() for v in variants}
+    if variant.casefold() == trigger.casefold() or variant.casefold() in existing:
+        fuzzy[trigger] = variants
+        vocabulary["fuzzy_expansions"] = fuzzy
+        data["vocabulary"] = vocabulary
+        config_path.write_text(
+            yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+        return False
+
+    variants.append(variant)
+    fuzzy[trigger] = variants
+    vocabulary["fuzzy_expansions"] = fuzzy
+    data["vocabulary"] = vocabulary
+    config_path.write_text(
+        yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    return True
 
 
 # ---------------------------------------------------------------------------
