@@ -248,6 +248,7 @@ Run once to add the default hotkeys:
 
 ```bash
 ./scripts/add_hotkeys.py
+saymo takeover-check -p personal
 ```
 
 During `saymo auto`, press `Cmd+Shift+U` for manual takeover. Saymo stops any

@@ -97,6 +97,7 @@ saymo dashboard                 # interactive TUI
 
 ```bash
 ./scripts/add_hotkeys.py
+saymo takeover-check -p personal
 ```
 
 Default hotkeys:
@@ -110,6 +111,8 @@ Default hotkeys:
 Mic switching is automatic for providers that implement `switch_mic()`
 (`glip`, `mts_link`). For other providers, Saymo still pauses/resumes; switch
 the call microphone manually in the meeting UI.
+Use `saymo takeover-check -p personal` before a call to verify mic switching
+against the active Chrome tab.
 
 ### Call providers
 

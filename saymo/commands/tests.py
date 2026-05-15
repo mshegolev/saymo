@@ -1,6 +1,6 @@
 """Diagnostic / info commands: test-devices, test-tts, test-jira, list-plugins,
 test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
-mic-check."""
+takeover-check, mic-check."""
 
 import click
 from rich.table import Table
@@ -404,6 +404,87 @@ def _trigger_check_record_text(config, device_name: str | None, seconds: float) 
     text = whisper.transcribe(audio)
     console.print(f"[dim]transcribed: {text}[/]")
     return text
+
+
+# ---------------------------------------------------------------------------
+# manual takeover diagnostics
+# ---------------------------------------------------------------------------
+
+@main.command("takeover-check")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
+@click.option("--provider", default=None, help="Override call provider from the profile")
+@click.option("--recording-device", default=None, help="Real microphone to switch to")
+@click.option("--saymo-device", default="BlackHole 2ch", show_default=True, help="Saymo virtual mic")
+@click.pass_context
+def takeover_check(ctx, profile, provider, recording_device, saymo_device):
+    """Check whether manual takeover can switch the call microphone."""
+    config = ctx.obj["config"]
+    _print_takeover_diagnostics(
+        config,
+        profile=profile,
+        provider_name=provider,
+        recording_device=recording_device,
+        saymo_device=saymo_device,
+    )
+
+
+def _print_takeover_diagnostics(
+    config,
+    *,
+    profile: str,
+    provider_name: str | None,
+    recording_device: str | None,
+    saymo_device: str,
+) -> None:
+    from saymo.providers.factory import get_provider
+
+    meeting = config.get_meeting(profile)
+    resolved_provider = provider_name or (meeting.provider if meeting else "glip")
+    real_mic = recording_device or config.audio.recording_device
+
+    console.print(f"profile: {profile}")
+    console.print(f"provider: {resolved_provider}")
+    console.print(f"recording mic: {real_mic or '(not configured)'}")
+    console.print(f"saymo mic: {saymo_device}")
+
+    if not real_mic:
+        console.print("takeover: not ready")
+        console.print("reason: audio.recording_device is not configured")
+        return
+
+    provider = get_provider(resolved_provider)
+    status = provider.check_ready()
+    console.print(f"meeting: {'yes' if status.meeting_found else 'no'}")
+    if status.tab_info:
+        console.print(f"tab: window {status.tab_info[0]}, tab {status.tab_info[1]}")
+    if not status.meeting_found:
+        console.print("takeover: not ready")
+        console.print(f"reason: {provider.name} tab not found in Chrome")
+        return
+
+    try:
+        to_real = provider.switch_mic(real_mic)
+    except Exception as e:
+        console.print("switch to recording mic: no")
+        console.print(f"reason: {e}")
+        console.print("takeover: not ready")
+        return
+    console.print(f"switch to recording mic: {'yes' if to_real else 'no'}")
+
+    try:
+        to_saymo = provider.switch_mic(saymo_device)
+    except Exception as e:
+        console.print("switch back to Saymo mic: no")
+        console.print(f"reason: {e}")
+        console.print("takeover: not ready")
+        return
+    console.print(f"switch back to Saymo mic: {'yes' if to_saymo else 'no'}")
+
+    if to_real and to_saymo:
+        console.print("takeover: ready")
+    else:
+        console.print("takeover: not ready")
+        console.print("reason: provider could not switch one or both microphones")
 
 
 # ---------------------------------------------------------------------------
