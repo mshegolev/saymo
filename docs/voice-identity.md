@@ -175,7 +175,8 @@ responses:
 
 Short list of hardening items adjacent to the goal — not blockers for A/B pass, but required before routine use on real calls:
 
-- **Timeout safety**: shipped. `_auto()` cancels playback when it exceeds `safety.max_speech_duration`; provider mute fallback should still be hardened with an AppleScript system-mute fallback if provider control fails.
+- **Timeout safety**: shipped. `_auto()` cancels playback when it exceeds `safety.max_speech_duration`.
+- **Provider fallback**: shipped for cached playback. If Chrome provider mute automation fails before audio plays, Saymo falls back to playing through `BlackHole 2ch` and warns the user to control mute manually; if provider mute-back fails after playback, Saymo warns without replaying audio.
 - **Hotkeys**: shipped for `safety.hotkey_stop`, `hotkey_toggle`, and `hotkey_takeover`; takeover pauses auto-mode and best-effort switches the call mic between `audio.recording_device` and `BlackHole 2ch`. `hotkey_speak` is not used in auto-mode.
 - **Trigger diagnostics**: shipped as `saymo trigger-check -p <profile> --text ...` and `saymo trigger-check -p <profile> --mic`.
 - **Trigger learning**: shipped as `saymo trigger-setup -p <profile> --heard ...`; this extracts the likely name variant from a full STT phrase, appends it to `vocabulary.fuzzy_expansions`, and verifies detection against the original phrase.
@@ -193,7 +194,7 @@ The goal is a product that works on a CPU-only machine and hits "voice indisting
 2. **XTTS v2 fine-tune on expanded dataset** — `saymo train-voice --epochs 5` → `saymo train-eval`; promote only if ≥ 7 / 10.
 3. **Prepared-playback dry run** — `saymo prepare -p <profile>` → `saymo review` → `saymo speak --provider glip` against a real call.
 4. **Tier-A response cache** (real-time Q&A on CPU) — shipped. `saymo prepare` rebuilds a small library of pre-synthesised answers for common standup questions; `_auto()` looks up a cached answer before live synthesis. Latency is playback-only when a cache entry exists.
-5. **Reliability hardening** — timeout, stop/toggle/takeover hotkeys, trigger diagnostics, confirmation, and addressing false-positive suppression are shipped. Remaining work: provider/system mute fallback hardening.
+5. **Reliability hardening** — timeout, provider fallback for cached playback, stop/toggle/takeover hotkeys, trigger diagnostics, confirmation, and addressing false-positive suppression are shipped.
 
 At this point the product meets all four success criteria on a CPU-only machine.
 
