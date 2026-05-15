@@ -31,6 +31,14 @@ def _build_meeting_profile(
     }
 
 
+def _trigger_setup_tip(profile: str, trigger: str) -> str:
+    """Return the post-wizard trigger calibration commands for one profile."""
+    return (
+        f"saymo trigger-check -p {profile} --mic\n"
+        f"saymo trigger-setup -p {profile} --heard \"{trigger}\""
+    )
+
+
 def _record_voice_interactive(recording_device: str, ollama_url: str = "http://localhost:11434", ollama_model: str = "qwen2.5-coder:7b"):
     """Record a 5-minute voice sample with on-screen reading text."""
     import time
@@ -315,10 +323,10 @@ def run_wizard(config_path: str | None = None):
             )
 
             console.print(f"  [green]Meeting '{mname}' configured[/]")
+            trigger_tip = _trigger_setup_tip(mname, triggers[0] if triggers else name)
             console.print(
-                "  [dim]Tip: run "
-                f"[bold]saymo trigger-check -p {mname} --text \"{triggers[0] if triggers else name}, что по статусу?\"[/] "
-                "to preview trigger routing.[/]"
+                "  [dim]Tip: before a real call, run:[/]\n"
+                f"  [bold]{trigger_tip}[/]"
             )
 
             if not click.confirm("  Add another meeting?", default=False):
