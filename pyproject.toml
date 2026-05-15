@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
-    { name = "Mikhail Shchegolev", email = "mshegolev@gmail.com" },
+    { name = "John Doe", email = "john.doe@example.com" },
 ]
 keywords = [
     "voice-assistant",
@@ -78,10 +78,10 @@ all = [
 saymo = "saymo.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/mshegolev/saymo"
-Repository = "https://github.com/mshegolev/saymo"
-Issues = "https://github.com/mshegolev/saymo/issues"
-Documentation = "https://github.com/mshegolev/saymo#readme"
+Homepage = "https://github.com/acme/saymo"
+Repository = "https://github.com/acme/saymo"
+Issues = "https://github.com/acme/saymo/issues"
+Documentation = "https://github.com/acme/saymo#readme"
 
 [build-system]
 requires = ["setuptools>=68.0"]

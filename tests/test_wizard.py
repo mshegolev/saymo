@@ -9,7 +9,7 @@ def test_build_meeting_profile_includes_provider_and_trigger_phrases():
         team=False,
         source="obsidian",
         provider="zoom",
-        trigger_phrases=["Миша", "Михаил"],
+        trigger_phrases=["John", "John Doe"],
     )
 
     assert profile == {
@@ -17,12 +17,12 @@ def test_build_meeting_profile_includes_provider_and_trigger_phrases():
         "team": False,
         "source": "obsidian",
         "provider": "zoom",
-        "trigger_phrases": ["Миша", "Михаил"],
+        "trigger_phrases": ["John", "John Doe"],
     }
 
 
 def test_trigger_setup_tip_points_to_verified_learning_flow():
-    tip = _trigger_setup_tip("personal", "Миша")
+    tip = _trigger_setup_tip("personal", "John")
 
     assert "saymo trigger-check -p personal --mic" in tip
-    assert 'saymo trigger-setup -p personal --heard "Миша, what is the status?"' in tip
+    assert 'saymo trigger-setup -p personal --heard "John, what is the status?"' in tip

@@ -157,7 +157,7 @@ def test_answer_question_returns_content(monkeypatch):
     result = _run(answer_question(
         question="what is your status?",
         standup_summary="Fixed the auth bug",
-        user_name="Misha",
+        user_name="John",
     ))
     assert result == "working on it"
 
@@ -187,14 +187,14 @@ def test_answer_question_system_prompt_contains_user_name(monkeypatch):
     _run(answer_question(
         question="any blockers?",
         standup_summary="Summary: no blockers today",
-        user_name="Mikhail",
+        user_name="John Doe",
         user_role="QA Engineer",
     ))
 
     assert len(captured) == 1
     messages = captured[0]["messages"]
     system_content = messages[0]["content"]
-    assert "Mikhail" in system_content
+    assert "John Doe" in system_content
     assert "Summary: no blockers today" in system_content
 
 

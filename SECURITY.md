@@ -15,7 +15,7 @@ Saymo is a single-track project; the latest release on `main` is the only suppor
 
 Instead:
 
-1. Email the maintainer at **mshegolev@gmail.com**, subject prefix `[security]`.
+1. Email the maintainer at **john.doe@example.com**, subject prefix `[security]`.
 2. Include:
    - A clear description of the issue and its impact
    - Steps to reproduce (PoC if possible)

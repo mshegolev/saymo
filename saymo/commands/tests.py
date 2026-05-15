@@ -1,6 +1,6 @@
 """Diagnostic / info commands: test-devices, test-tts, test-jira, list-plugins,
 test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
-trigger-learn, trigger-setup, takeover-check, mic-check."""
+trigger-capture, trigger-learn, trigger-setup, takeover-check, mic-check."""
 
 import re
 
@@ -401,6 +401,190 @@ def _print_trigger_diagnostics(config, profile: str, text: str) -> None:
         console.print("response: live fallback would run")
     else:
         console.print("response: cache miss; would play generic standup audio")
+
+
+@main.command("trigger-capture")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
+@click.option(
+    "--window",
+    default=8.0,
+    type=float,
+    show_default=True,
+    help="Window length in seconds",
+)
+@click.option(
+    "--duration",
+    default=0.0,
+    type=float,
+    show_default=True,
+    help="Total seconds; 0 means until Ctrl+C",
+)
+@click.option(
+    "--device",
+    "-d",
+    default=None,
+    help="Input device name; defaults to audio.capture_device",
+)
+@click.option(
+    "--output-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory for captured samples",
+)
+@click.option("--save-silence", is_flag=True, help="Also save empty/silent windows")
+@click.pass_context
+def trigger_capture(ctx, profile, window, duration, device, output_dir, save_silence):
+    """Capture live call audio into classified trigger samples."""
+    config = ctx.obj["config"]
+    _run_trigger_capture(
+        config,
+        profile=profile,
+        window_seconds=window,
+        duration_seconds=duration,
+        device_name=device,
+        output_dir=output_dir,
+        save_silence=save_silence,
+    )
+
+
+def _run_trigger_capture(
+    config,
+    *,
+    profile: str,
+    window_seconds: float,
+    duration_seconds: float,
+    device_name: str | None,
+    output_dir: str | None,
+    save_silence: bool,
+) -> None:
+    from datetime import datetime
+    from pathlib import Path
+    import queue
+    import time
+
+    import numpy as np
+    import sounddevice as sd
+
+    from saymo.analysis.trigger_capture import (
+        audio_stats,
+        classify_trigger_sample,
+        save_trigger_sample,
+    )
+    from saymo.stt.whisper_local import LocalWhisper
+
+    if window_seconds <= 0:
+        raise click.ClickException("--window must be greater than zero")
+    if duration_seconds < 0:
+        raise click.ClickException("--duration cannot be negative")
+
+    mic_name, mic = _resolve_trigger_capture_device(config, device_name)
+    if not mic or not mic_name:
+        raise click.ClickException("No input device available")
+
+    sample_rate = 16000
+    target_frames = int(window_seconds * sample_rate)
+    base_dir = (
+        Path(output_dir).expanduser()
+        if output_dir
+        else Path.home() / ".saymo" / "trigger_samples"
+    )
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    fuzzy = (config.vocabulary or {}).get("fuzzy_expansions") or {}
+    whisper = LocalWhisper(
+        model_size=config.stt.whisper.model_size,
+        language=config.user.language,
+    )
+
+    audio_queue: queue.Queue[np.ndarray] = queue.Queue()
+
+    def callback(indata, frames, time_info, status):
+        if status:
+            console.print(f"[yellow]{status}[/]")
+        audio_queue.put(np.asarray(indata, dtype=np.float32).copy().flatten())
+
+    console.print(f"[bold blue]Capturing {mic_name} → {base_dir}[/]")
+    console.print(
+        "[dim]Categories: asked_to_speak, question, speech"
+        + (", silence" if save_silence else "")
+        + "[/]"
+    )
+    console.print("[dim]Stop with Ctrl+C[/]")
+
+    start = time.monotonic()
+    chunks: list[np.ndarray] = []
+    frames_seen = 0
+    sequence = 1
+
+    try:
+        with sd.InputStream(
+            samplerate=sample_rate,
+            device=mic.index,
+            channels=1,
+            dtype="float32",
+            callback=callback,
+        ):
+            while duration_seconds == 0 or time.monotonic() - start < duration_seconds:
+                try:
+                    block = audio_queue.get(timeout=0.5)
+                except queue.Empty:
+                    continue
+                chunks.append(block)
+                frames_seen += len(block)
+                if frames_seen < target_frames:
+                    continue
+
+                audio = np.concatenate(chunks).astype(np.float32)
+                chunks = []
+                frames_seen = 0
+                rms, peak = audio_stats(audio)
+                text = whisper.transcribe(audio)
+                sample = classify_trigger_sample(
+                    text,
+                    trigger_phrases,
+                    fuzzy,
+                    rms=rms,
+                    peak=peak,
+                )
+                if sample.category == "silence" and not save_silence:
+                    console.print(
+                        f"[dim]skip silence rms={rms:.4f} peak={peak:.4f}[/]"
+                    )
+                    continue
+
+                created_at = datetime.now().isoformat(timespec="seconds")
+                wav_path, _ = save_trigger_sample(
+                    audio,
+                    sample_rate=sample_rate,
+                    sample=sample,
+                    base_dir=base_dir,
+                    profile=profile,
+                    sequence=sequence,
+                    created_at=created_at,
+                )
+                console.print(
+                    f"[bold]{sample.category}[/] "
+                    f"trigger={'yes' if sample.trigger else 'no'} "
+                    f"question={'yes' if sample.question else 'no'} "
+                    f"rms={sample.rms:.4f} peak={sample.peak:.4f} "
+                    f"file={wav_path}"
+                )
+                if sample.transcript:
+                    console.print(f"[dim]  {sample.transcript}[/]")
+                sequence += 1
+    except KeyboardInterrupt:
+        console.print("[yellow]Stopped trigger capture[/]")
+
+
+def _resolve_trigger_capture_device(config, device_override: str | None):
+    from saymo.audio.devices import find_device
+
+    name = device_override or config.audio.capture_device or config.audio.recording_device
+    if name:
+        dev = find_device(name, kind="input")
+        if not dev:
+            raise click.ClickException(f"Input device not found: {name}")
+        return name, dev
+    return _resolve_input_device(config, None)
 
 
 def _trigger_check_record_text(config, device_name: str | None, seconds: float) -> str:

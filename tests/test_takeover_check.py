@@ -23,7 +23,7 @@ def _write_config(tmp_path, *, recording_device: str = "MacBook Pro Microphone")
                 team: false
                 source: obsidian
                 trigger_phrases:
-                  - "Миша"
+                  - "John"
             """
         ),
         encoding="utf-8",

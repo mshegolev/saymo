@@ -249,6 +249,25 @@ ollama pull qwen2.5-coder:7b
 3. If the name appears in the transcript but isn't detected, add the exact transcribed form to `name_variants`
 4. Check microphone input level — run `saymo mic-check` to calibrate
 
+### Collect trigger training samples
+
+Run this during a call to save short windows for later trigger tuning:
+
+```bash
+saymo trigger-capture -p personal
+```
+
+It listens on `audio.capture_device` by default, so use the same BlackHole
+input as `saymo auto`. For a local one-minute test through your real mic:
+
+```bash
+saymo trigger-capture -p personal --device "MacBook Pro Microphone" --duration 60
+```
+
+Samples are written to `~/.saymo/trigger_samples/<profile>/` and split into
+`asked_to_speak`, `question`, and `speech` folders. Each WAV has a JSON file
+with the transcript, trigger flag, question flag, addressing label, and levels.
+
 ### I need to answer myself during auto mode
 
 Run once to add the default hotkeys:

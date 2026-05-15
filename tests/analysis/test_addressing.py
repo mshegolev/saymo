@@ -9,21 +9,21 @@ from saymo.analysis.addressing import (
 
 def test_direct_question_after_name_is_addressed():
     decision = classify_addressing(
-        "Миша, что думаешь по этой задаче?",
-        trigger_phrases=["Миша"],
+        "John, что думаешь по этой задаче?",
+        trigger_phrases=["John"],
     )
 
     assert isinstance(decision, AddressingDecision)
     assert decision.label == "addressed_to_me"
     assert decision.is_question is True
-    assert decision.trigger == "Миша"
+    assert decision.trigger == "John"
     assert should_answer_decision(decision) is True
 
 
 def test_narrated_mention_is_not_addressed():
     decision = classify_addressing(
-        "как Миша вчера говорил, надо сначала проверить логи",
-        trigger_phrases=["Миша"],
+        "как John вчера говорил, надо сначала проверить логи",
+        trigger_phrases=["John"],
     )
 
     assert decision.label == "mentioned_not_addressed"
@@ -33,8 +33,8 @@ def test_narrated_mention_is_not_addressed():
 
 def test_third_person_question_about_trigger_is_not_addressed():
     decision = classify_addressing(
-        "что Миша думает по этой задаче?",
-        trigger_phrases=["Миша"],
+        "что John думает по этой задаче?",
+        trigger_phrases=["John"],
     )
 
     assert decision.label == "mentioned_not_addressed"
@@ -44,8 +44,8 @@ def test_third_person_question_about_trigger_is_not_addressed():
 
 def test_third_person_statement_about_trigger_is_not_addressed():
     decision = classify_addressing(
-        "Миша думает, что надо сначала проверить логи",
-        trigger_phrases=["Миша"],
+        "John думает, что надо сначала проверить логи",
+        trigger_phrases=["John"],
     )
 
     assert decision.label == "mentioned_not_addressed"
@@ -65,7 +65,7 @@ def test_team_trigger_question_is_allowed():
 
 
 def test_empty_transcript_is_ignored():
-    decision = classify_addressing("", trigger_phrases=["Миша"])
+    decision = classify_addressing("", trigger_phrases=["John"])
 
     assert decision.label == "ignore"
     assert decision.confidence == 0.0

@@ -53,7 +53,7 @@ SAMPLE_TRANSCRIPTS = [
     "когда же ты это сдашь",
     "движется ли работа",
     # Non-questions — should fall through to standup audio
-    "Миша, выйди на связь",
+    "John, выйди на связь",
     "привет всем",
 ]
 

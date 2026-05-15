@@ -32,7 +32,7 @@ Saymo composes short, natural speech from optional data sources (tracker, notes,
 ## Quick install — one command
 
 ```bash
-git clone https://github.com/mshegolev/saymo && cd saymo
+git clone https://github.com/acme/saymo && cd saymo
 ./setup.sh
 ```
 
@@ -88,6 +88,8 @@ saymo review                    # optional: check generated audio
 saymo speak -p personal         # manual trigger, instant playback
 saymo auto -p personal          # listen for your name, speak when called
 saymo auto -p personal --mic    # same, but from laptop mic (for testing)
+saymo trigger-capture -p personal --window 8
+                                # save call windows classified for trigger training
 
 # Extras
 saymo dashboard                 # interactive TUI
@@ -114,6 +116,22 @@ Mic switching is automatic for providers that implement `switch_mic()`
 the call microphone manually in the meeting UI.
 Use `saymo takeover-check -p personal` before a call to verify mic switching
 against the active Chrome tab.
+
+### Trigger training capture
+
+Use `trigger-capture` when you want to collect real call phrases for improving
+trigger detection:
+
+```bash
+saymo trigger-capture -p personal
+saymo trigger-capture -p personal --device "MacBook Pro Microphone" --duration 60
+```
+
+By default it listens on `audio.capture_device`, normally `BlackHole 16ch`.
+Each window is saved as WAV plus JSON metadata under
+`~/.saymo/trigger_samples/<profile>/` and separated into:
+`asked_to_speak`, `question`, and `speech`. Add `--save-silence` only when you
+also need silent windows for debugging.
 
 ### Call providers
 
@@ -187,10 +205,10 @@ vocabulary:
 To check whether a live phrase will trigger Saymo before joining a call:
 
 ```bash
-saymo trigger-check -p personal --text "Миша, что по статусу?"
+saymo trigger-check -p personal --text "John, что по статусу?"
 saymo trigger-check -p personal --mic
-saymo trigger-setup -p personal --heard "Меша, что по статусу?"
-saymo trigger-learn -p personal --heard "Меша"
+saymo trigger-setup -p personal --heard "Jon, что по статусу?"
+saymo trigger-learn -p personal --heard "Jon"
 ```
 
 The diagnostic shows trigger match, whether the mention is addressed to you,

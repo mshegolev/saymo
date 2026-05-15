@@ -43,7 +43,7 @@ def test_looks_like_question_true(text):
 @pytest.mark.parametrize("text", [
     "",
     "   ",
-    "Миша, скажи",
+    "John, скажи",
     "hello world",
 ])
 def test_looks_like_question_false(text):
@@ -55,8 +55,8 @@ def test_should_answer_trigger_window_allows_direct_question():
 
     assert _should_answer_trigger_window(
         config,
-        "Миша, что по статусу?",
-        ["Миша"],
+        "John, что по статусу?",
+        ["John"],
     ) is True
 
 
@@ -65,8 +65,8 @@ def test_should_answer_trigger_window_ignores_narrated_mention():
 
     assert _should_answer_trigger_window(
         config,
-        "как Миша вчера говорил, надо проверить логи",
-        ["Миша"],
+        "как John вчера говорил, надо проверить логи",
+        ["John"],
     ) is False
 
 
@@ -78,12 +78,12 @@ def test_trigger_confirmation_disabled_confirms_immediately():
         config,
         now=100.0,
         pending=None,
-        transcript_window="Миша, что по статусу?",
+        transcript_window="John, что по статусу?",
     )
 
     assert confirmed is True
     assert pending is None
-    assert response_window == "Миша, что по статусу?"
+    assert response_window == "John, что по статусу?"
     assert state == "disabled"
 
 
@@ -96,11 +96,11 @@ def test_trigger_confirmation_first_trigger_waits_for_second_mention():
         config,
         now=100.0,
         pending=None,
-        transcript_window="Миша, что по статусу?",
+        transcript_window="John, что по статусу?",
     )
 
     assert confirmed is False
-    assert pending == (103.0, "Миша, что по статусу?")
+    assert pending == (103.0, "John, что по статусу?")
     assert response_window == ""
     assert state == "waiting"
 
@@ -113,13 +113,13 @@ def test_trigger_confirmation_second_trigger_reuses_original_question_window():
     confirmed, pending, response_window, state = _update_trigger_confirmation(
         config,
         now=102.0,
-        pending=(103.0, "Миша, что по статусу?"),
-        transcript_window="Миша",
+        pending=(103.0, "John, что по статусу?"),
+        transcript_window="John",
     )
 
     assert confirmed is True
     assert pending is None
-    assert response_window == "Миша, что по статусу?"
+    assert response_window == "John, что по статусу?"
     assert state == "confirmed"
 
 
@@ -131,13 +131,13 @@ def test_trigger_confirmation_prefers_second_window_when_it_has_question():
     confirmed, pending, response_window, state = _update_trigger_confirmation(
         config,
         now=102.0,
-        pending=(103.0, "Миша"),
-        transcript_window="Миша, что с задачей?",
+        pending=(103.0, "John"),
+        transcript_window="John, что с задачей?",
     )
 
     assert confirmed is True
     assert pending is None
-    assert response_window == "Миша, что с задачей?"
+    assert response_window == "John, что с задачей?"
     assert state == "confirmed"
 
 
@@ -149,12 +149,12 @@ def test_trigger_confirmation_expired_window_starts_over():
     confirmed, pending, response_window, state = _update_trigger_confirmation(
         config,
         now=104.0,
-        pending=(103.0, "Миша, что по статусу?"),
-        transcript_window="Миша, что с задачей?",
+        pending=(103.0, "John, что по статусу?"),
+        transcript_window="John, что с задачей?",
     )
 
     assert confirmed is False
-    assert pending == (107.0, "Миша, что с задачей?")
+    assert pending == (107.0, "John, что с задачей?")
     assert response_window == ""
     assert state == "waiting"
 
@@ -308,7 +308,7 @@ def test_returns_fallback_when_not_a_question():
     fallback = Path("/tmp/standup.wav")
 
     result = _run(_resolve_auto_response(
-        config, "Миша, выйди на связь", cache, "", fallback
+        config, "John, выйди на связь", cache, "", fallback
     ))
     assert result == fallback
     cache.lookup.assert_not_called()
