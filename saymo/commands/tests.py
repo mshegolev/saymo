@@ -1,8 +1,12 @@
 """Diagnostic / info commands: test-devices, test-tts, test-jira, list-plugins,
 test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
-trigger-capture, trigger-learn, trigger-setup, takeover-check, mic-check."""
+trigger-capture, trigger-learn, trigger-setup, trigger-eval, trigger-samples,
+auto-preflight, takeover-check, mic-check."""
 
+import json
 import re
+from dataclasses import dataclass
+from pathlib import Path
 
 import click
 from rich.table import Table
@@ -403,6 +407,173 @@ def _print_trigger_diagnostics(config, profile: str, text: str) -> None:
         console.print("response: cache miss; would play generic standup audio")
 
 
+# ---------------------------------------------------------------------------
+# auto preflight
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class PreflightCheck:
+    name: str
+    ok: bool
+    detail: str
+    blocking: bool = True
+
+
+@main.command("auto-preflight")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
+@click.option("--provider", default=None, help="Override provider from profile")
+@click.pass_context
+def auto_preflight(ctx, profile, provider):
+    """Check live-call readiness before running auto mode."""
+    checks = _collect_auto_preflight(ctx.obj["config"], profile, provider_name=provider)
+    _print_auto_preflight(profile, checks)
+
+
+def _collect_auto_preflight(config, profile: str, provider_name: str | None = None) -> list[PreflightCheck]:
+    from saymo.audio.devices import find_device
+    from saymo.analysis.response_cache import ResponseCache, build_library
+    from saymo.commands import _get_cached_audio_path
+    from saymo.config import resolve_live_tuning
+    from saymo.providers.factory import get_provider
+
+    meeting = config.get_meeting(profile)
+    team_mode = bool(meeting.team) if meeting else False
+    resolved_provider = provider_name or (meeting.provider if meeting else "glip")
+    checks: list[PreflightCheck] = []
+
+    cached_audio = _get_cached_audio_path(team=team_mode)
+    checks.append(
+        PreflightCheck(
+            "prepared standup",
+            cached_audio.exists(),
+            str(cached_audio),
+        )
+    )
+
+    capture_name = config.audio.capture_device
+    checks.append(
+        PreflightCheck(
+            "capture input",
+            bool(find_device(capture_name, kind="input")),
+            capture_name or "(not configured)",
+        )
+    )
+
+    playback_name = config.audio.playback_device
+    checks.append(
+        PreflightCheck(
+            "playback output",
+            bool(find_device(playback_name, kind="output")),
+            playback_name or "(not configured)",
+        )
+    )
+
+    saymo_output = "BlackHole 2ch"
+    checks.append(
+        PreflightCheck(
+            "provider output",
+            bool(find_device(saymo_output, kind="output")),
+            saymo_output,
+        )
+    )
+
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    checks.append(
+        PreflightCheck(
+            "profile triggers",
+            bool(trigger_phrases),
+            ", ".join(trigger_phrases) if trigger_phrases else "(none)",
+        )
+    )
+
+    try:
+        provider = get_provider(resolved_provider)
+        status = provider.check_ready()
+        detail = provider.name
+        if status.tab_info:
+            detail += f" window={status.tab_info[0]} tab={status.tab_info[1]}"
+        checks.append(
+            PreflightCheck(
+                "provider tab",
+                bool(status.meeting_found),
+                detail,
+            )
+        )
+    except Exception as e:
+        checks.append(PreflightCheck("provider tab", False, str(e)))
+
+    if config.responses.enabled:
+        cache_dir = Path(config.responses.cache_dir) if config.responses.cache_dir else None
+        library = build_library(config.responses.library)
+        cache = ResponseCache(
+            library=library,
+            cache_dir=cache_dir,
+            confidence_threshold=config.responses.confidence_threshold,
+        )
+        total_variants = sum(len(entry.variants) for entry in library.values())
+        cached_variants = sum(
+            1
+            for entry in library.values()
+            for idx, text in enumerate(entry.variants)
+            if cache._variant_path(entry.key, idx, text).exists()
+        )
+        checks.append(
+            PreflightCheck(
+                "response cache",
+                cached_variants > 0 if total_variants else True,
+                f"{cached_variants}/{total_variants} variants in {cache.cache_dir}",
+                blocking=False,
+            )
+        )
+    else:
+        checks.append(
+            PreflightCheck(
+                "response cache",
+                True,
+                "disabled; prepared standup fallback only",
+                blocking=False,
+            )
+        )
+
+    live_tuning = resolve_live_tuning(config, meeting)
+    checks.append(
+        PreflightCheck(
+            "live tuning",
+            True,
+            (
+                f"window={live_tuning.chunk_seconds:.1f}s "
+                f"overlap={live_tuning.overlap_seconds:.1f}s "
+                f"cooldown={live_tuning.trigger_cooldown_seconds:.1f}s "
+                f"silence_rms={live_tuning.silence_rms_threshold:.4f}"
+            ),
+            blocking=False,
+        )
+    )
+    checks.append(
+        PreflightCheck(
+            "fallback",
+            True,
+            "live fallback enabled" if config.responses.live_fallback else "prepared standup on cache miss",
+            blocking=False,
+        )
+    )
+    return checks
+
+
+def _print_auto_preflight(profile: str, checks: list[PreflightCheck]) -> None:
+    ready = all(check.ok or not check.blocking for check in checks)
+    console.print(f"profile: {profile}")
+    for check in checks:
+        if check.ok:
+            label = "ok"
+        elif check.blocking:
+            label = "block"
+        else:
+            label = "warn"
+        console.print(f"{label}: {check.name}: {check.detail}")
+    console.print(f"preflight: {'ready' if ready else 'not ready'}")
+
+
 @main.command("trigger-capture")
 @click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
 @click.option(
@@ -762,6 +933,335 @@ def _trigger_matches(config, profile: str, text: str) -> bool:
         fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
     )
     return detector.check(text)
+
+
+# ---------------------------------------------------------------------------
+# trigger sample review / evaluation
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class TriggerSampleRecord:
+    path: Path
+    profile: str
+    category: str
+    created_at: str
+    transcript: str
+    trigger: bool
+    question: bool
+    will_answer: bool
+    addressing: str
+    reason: str
+    rms: float
+    peak: float
+    wav: str
+
+
+@dataclass(frozen=True)
+class TriggerEvaluationRow:
+    record: TriggerSampleRecord
+    current_category: str
+    current_trigger: bool
+    current_question: bool
+    current_will_answer: bool
+    miss: bool
+    false_positive: bool
+
+
+@main.command("trigger-eval")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to evaluate")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.option(
+    "--promote",
+    default=None,
+    type=click.Path(exists=True),
+    help="Learn trigger variant from this sample JSON before evaluation",
+)
+@click.pass_context
+def trigger_eval(ctx, profile, samples_dir, promote):
+    """Evaluate saved trigger samples against current trigger config."""
+    config = ctx.obj["config"]
+    if promote:
+        config = _promote_trigger_sample(ctx, config, profile, Path(promote))
+    records = list(_iter_trigger_sample_records(_samples_base_dir(samples_dir), profile))
+    rows = _evaluate_trigger_records(config, profile, records)
+    _print_trigger_evaluation(rows)
+
+
+@main.group("trigger-samples")
+def trigger_samples():
+    """Inspect, replay, and report saved trigger samples."""
+
+
+@trigger_samples.command("list")
+@click.option("--profile", "-p", default=None, help="Profile to list")
+@click.option("--category", default=None, help="Category to filter")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+def trigger_samples_list(profile, category, samples_dir):
+    """List captured trigger-sample metadata without opening JSON manually."""
+    records = list(
+        _iter_trigger_sample_records(
+            _samples_base_dir(samples_dir),
+            profile=profile,
+            category=category,
+        )
+    )
+    console.print(f"samples: {len(records)}")
+    for record in records:
+        console.print(
+            f"{record.path}: profile={record.profile} category={record.category} "
+            f"trigger={'yes' if record.trigger else 'no'} "
+            f"question={'yes' if record.question else 'no'} "
+            f"will_answer={'yes' if record.will_answer else 'no'} "
+            f"rms={record.rms:.4f} peak={record.peak:.4f}"
+        )
+        if record.transcript:
+            console.print(f"  transcript: {record.transcript}")
+
+
+@trigger_samples.command("replay")
+@click.argument("sample_json", type=click.Path(exists=True))
+@click.option("--profile", "-p", default=None, help="Profile to reclassify with")
+@click.option("--play/--no-play", default=True, show_default=True, help="Play adjacent WAV")
+@click.pass_context
+def trigger_samples_replay(ctx, sample_json, profile, play):
+    """Replay one sample and compare stored/current classification."""
+    config = ctx.obj["config"]
+    record = _load_trigger_sample(Path(sample_json))
+    resolved_profile = profile or record.profile
+    row = _evaluate_trigger_records(config, resolved_profile, [record])[0]
+
+    console.print(f"sample: {record.path}")
+    console.print(
+        f"stored: category={record.category} trigger={'yes' if record.trigger else 'no'} "
+        f"question={'yes' if record.question else 'no'} "
+        f"will_answer={'yes' if record.will_answer else 'no'}"
+    )
+    console.print(
+        f"current: category={row.current_category} "
+        f"trigger={'yes' if row.current_trigger else 'no'} "
+        f"question={'yes' if row.current_question else 'no'} "
+        f"will_answer={'yes' if row.current_will_answer else 'no'}"
+    )
+    console.print(f"action: {'answer' if row.current_will_answer else 'skip'}")
+    if record.transcript:
+        console.print(f"transcript: {record.transcript}")
+
+    if play:
+        _play_trigger_sample(record)
+
+
+@trigger_samples.command("report")
+@click.option("--profile", "-p", default="personal", help="Profile to report")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.option("--output", "-o", default=None, type=click.Path(), help="Markdown output path")
+@click.pass_context
+def trigger_samples_report(ctx, profile, samples_dir, output):
+    """Export a sanitized trigger-sample report without audio or private config."""
+    records = list(_iter_trigger_sample_records(_samples_base_dir(samples_dir), profile))
+    rows = _evaluate_trigger_records(ctx.obj["config"], profile, records)
+    report = _render_trigger_report(profile, rows)
+    if output:
+        out_path = Path(output).expanduser()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(report, encoding="utf-8")
+        console.print(f"report: {out_path}")
+    else:
+        console.print(report)
+
+
+def _samples_base_dir(samples_dir: str | None) -> Path:
+    return Path(samples_dir).expanduser() if samples_dir else Path.home() / ".saymo" / "trigger_samples"
+
+
+def _load_trigger_sample(path: Path) -> TriggerSampleRecord:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    p = Path(path)
+    return TriggerSampleRecord(
+        path=p,
+        profile=str(data.get("profile") or _profile_from_sample_path(p)),
+        category=str(data.get("category") or p.parent.name),
+        created_at=str(data.get("created_at") or ""),
+        transcript=str(data.get("transcript") or ""),
+        trigger=bool(data.get("trigger")),
+        question=bool(data.get("question")),
+        will_answer=bool(data.get("will_answer")),
+        addressing=str(data.get("addressing") or ""),
+        reason=str(data.get("reason") or ""),
+        rms=float(data.get("rms") or 0.0),
+        peak=float(data.get("peak") or 0.0),
+        wav=str(data.get("wav") or p.with_suffix(".wav").name),
+    )
+
+
+def _profile_from_sample_path(path: Path) -> str:
+    try:
+        return path.parents[1].name
+    except IndexError:
+        return ""
+
+
+def _iter_trigger_sample_records(
+    base_dir: Path,
+    profile: str | None = None,
+    category: str | None = None,
+) -> list[TriggerSampleRecord]:
+    root = Path(base_dir).expanduser()
+    if profile and category:
+        pattern_root = root / profile / category
+        paths = sorted(pattern_root.glob("*.json"))
+    elif profile:
+        paths = sorted((root / profile).glob("*/*.json"))
+    else:
+        paths = sorted(root.glob("*/*/*.json"))
+
+    records: list[TriggerSampleRecord] = []
+    for path in paths:
+        try:
+            records.append(_load_trigger_sample(path))
+        except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
+            console.print(f"[yellow]skip invalid sample {path}: {e}[/]")
+    return records
+
+
+def _evaluate_trigger_records(
+    config,
+    profile: str,
+    records: list[TriggerSampleRecord],
+) -> list[TriggerEvaluationRow]:
+    from saymo.analysis.trigger_capture import classify_trigger_sample
+
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    fuzzy = (config.vocabulary or {}).get("fuzzy_expansions") or {}
+    rows: list[TriggerEvaluationRow] = []
+    for record in records:
+        current = classify_trigger_sample(
+            record.transcript,
+            trigger_phrases,
+            fuzzy,
+            rms=record.rms,
+            peak=record.peak,
+        )
+        miss = record.category == "asked_to_speak" and not current.will_answer
+        false_positive = record.category != "asked_to_speak" and current.will_answer
+        rows.append(
+            TriggerEvaluationRow(
+                record=record,
+                current_category=current.category,
+                current_trigger=current.trigger,
+                current_question=current.question,
+                current_will_answer=current.will_answer,
+                miss=miss,
+                false_positive=false_positive,
+            )
+        )
+    return rows
+
+
+def _print_trigger_evaluation(rows: list[TriggerEvaluationRow]) -> None:
+    stored_counts = _count_by_category([row.record.category for row in rows])
+    current_counts = _count_by_category([row.current_category for row in rows])
+    misses = [row for row in rows if row.miss]
+    false_positives = [row for row in rows if row.false_positive]
+
+    console.print(f"records: {len(rows)}")
+    for category in ("asked_to_speak", "question", "speech", "silence"):
+        console.print(f"stored {category}: {stored_counts.get(category, 0)}")
+    for category in ("asked_to_speak", "question", "speech", "silence"):
+        console.print(f"current {category}: {current_counts.get(category, 0)}")
+    console.print(f"misses: {len(misses)}")
+    for row in misses[:10]:
+        console.print(f"  miss: {row.record.path}")
+    console.print(f"false positives: {len(false_positives)}")
+    for row in false_positives[:10]:
+        console.print(f"  false positive: {row.record.path}")
+
+
+def _count_by_category(categories: list[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for category in categories:
+        counts[category] = counts.get(category, 0) + 1
+    return counts
+
+
+def _promote_trigger_sample(ctx, config, profile: str, sample_path: Path):
+    from saymo.config import load_config
+
+    record = _load_trigger_sample(sample_path)
+    variant = _extract_trigger_variant(record.transcript)
+    if not variant:
+        raise click.ClickException(f"No transcript variant to promote in {sample_path}")
+
+    config_path = _config_path_for_update(ctx)
+    canonical = _default_trigger_for_profile(config, profile)
+    learned = _learn_trigger_variant(config_path, canonical, variant)
+    console.print(f"promote sample: {sample_path}")
+    console.print(f"trigger: {canonical}")
+    console.print(f"variant: {variant}")
+    console.print(f"learned: {'yes' if learned else 'no'}")
+    return load_config(str(config_path))
+
+
+def _play_trigger_sample(record: TriggerSampleRecord) -> None:
+    import sounddevice as sd
+    import soundfile as sf
+
+    wav_path = record.path.with_name(record.wav)
+    if not wav_path.exists():
+        raise click.ClickException(f"WAV not found: {wav_path}")
+    audio, sample_rate = sf.read(str(wav_path), dtype="float32")
+    sd.play(audio, samplerate=sample_rate)
+    sd.wait()
+    console.print("played: yes")
+
+
+def _render_trigger_report(profile: str, rows: list[TriggerEvaluationRow]) -> str:
+    stored_counts = _count_by_category([row.record.category for row in rows])
+    current_counts = _count_by_category([row.current_category for row in rows])
+    misses = [row for row in rows if row.miss]
+    false_positives = [row for row in rows if row.false_positive]
+
+    lines = [
+        "# Saymo Trigger Sample Report",
+        "",
+        f"profile: {profile}",
+        f"records: {len(rows)}",
+        f"misses: {len(misses)}",
+        f"false positives: {len(false_positives)}",
+        "",
+        "## Stored Categories",
+    ]
+    for category in ("asked_to_speak", "question", "speech", "silence"):
+        lines.append(f"- {category}: {stored_counts.get(category, 0)}")
+    lines.extend(["", "## Current Categories"])
+    for category in ("asked_to_speak", "question", "speech", "silence"):
+        lines.append(f"- {category}: {current_counts.get(category, 0)}")
+    lines.extend(["", "## Samples"])
+    for row in rows:
+        lines.append(
+            "- "
+            f"{row.record.path.name}: stored={row.record.category}, "
+            f"current={row.current_category}, "
+            f"trigger={'yes' if row.current_trigger else 'no'}, "
+            f"question={'yes' if row.current_question else 'no'}, "
+            f"will_answer={'yes' if row.current_will_answer else 'no'}, "
+            f"rms={row.record.rms:.4f}, peak={row.record.peak:.4f}"
+        )
+    return "\n".join(lines) + "\n"
 
 
 # ---------------------------------------------------------------------------

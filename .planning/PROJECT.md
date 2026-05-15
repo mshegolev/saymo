@@ -18,6 +18,8 @@ enough that the call still feels live.
 **Goal:** Make live-call detection and prepared-response playback faster,
 measurable, and easier to tune from real meeting samples.
 
+**Status:** Complete on 2026-05-15.
+
 **Target features:**
 - Speedly Catcher: lower-latency trigger/addressing detection with profile
   tuning and offline sample evaluation.
@@ -35,12 +37,9 @@ measurable, and easier to tune from real meeting samples.
 - ✓ Manual hotkeys and takeover checks exist before this milestone.
 - ✓ `saymo trigger-capture` can save classified call windows as WAV plus JSON
   metadata before this milestone.
-
-### Active
-
-- [ ] Faster catch path is measurable and tunable per profile.
-- [ ] Faster say path is preflighted and measured before calls.
-- [ ] Captured trigger samples feed a repeatable tuning/evaluation workflow.
+- ✓ Faster catch path is measurable and tunable per profile.
+- ✓ Faster say path is preflighted and measured before calls.
+- ✓ Captured trigger samples feed a repeatable tuning/evaluation workflow.
 
 ### Out of Scope
 
@@ -77,8 +76,8 @@ measurable, and easier to tune from real meeting samples.
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Keep live-call listening local-first | Avoid leaking meeting audio and preserve offline operation | ✓ Good |
-| Use classified trigger samples before deeper ML changes | Real misses/false positives are the best tuning data | — Pending |
-| Separate catch latency from say latency | Different bottlenecks require different measurements and tests | — Pending |
+| Use classified trigger samples before deeper ML changes | Real misses/false positives are the best tuning data | ✓ Implemented via `trigger-eval` |
+| Separate catch latency from say latency | Different bottlenecks require different measurements and tests | ✓ Implemented in `saymo auto` diagnostics |
 
 ---
-*Last updated: 2026-05-15 after starting milestone v1.0 Speedly Catcher + Speedly Sayer*
+*Last updated: 2026-05-15 after completing milestone v1.0 Speedly Catcher + Speedly Sayer*

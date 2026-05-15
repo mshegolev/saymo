@@ -3,6 +3,8 @@
 import asyncio
 import logging
 import os
+from dataclasses import dataclass
+from pathlib import Path
 
 # Ensure localhost requests bypass corporate proxy (tinyproxy etc.)
 os.environ.setdefault("NO_PROXY", "localhost,127.0.0.1")
@@ -15,6 +17,24 @@ from rich.console import Console
 from saymo.config import load_config
 
 console = Console()
+
+
+@dataclass(frozen=True)
+class AutoResponseDecision:
+    """Resolved audio plus routing metadata for auto-mode."""
+
+    audio_path: Path
+    source: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class PlaybackResult:
+    """Outcome from a playback attempt."""
+
+    success: bool
+    reason: str = ""
+    playback_started: bool = False
 
 
 def run_async(coro):
@@ -57,12 +77,32 @@ def _rotate_audio_cache(max_days: int = 7):
         logging.getLogger("saymo").info(f"Rotated {removed} old audio cache files")
 
 
-async def _play_cached_audio(config, audio_path, provider_name: str | None = None):
+async def _play_cached_audio(
+    config,
+    audio_path,
+    provider_name: str | None = None,
+    on_playback_start=None,
+):
     """Play pre-generated audio file directly — no TTS needed.
 
     If provider_name is given, uses that provider to unmute/mute via Chrome.
     """
+    audio_path = Path(audio_path)
+    if not audio_path.exists():
+        reason = f"audio file not found: {audio_path}"
+        console.print(f"[bold red]{reason}[/]")
+        return PlaybackResult(False, reason=reason)
+
     audio_bytes = audio_path.read_bytes()
+    playback_started = False
+
+    def _mark_playback_started():
+        nonlocal playback_started
+        if playback_started:
+            return
+        playback_started = True
+        if on_playback_start is not None:
+            on_playback_start()
 
     if provider_name:
         from saymo.providers.factory import get_provider
@@ -72,13 +112,15 @@ async def _play_cached_audio(config, audio_path, provider_name: str | None = Non
 
         bh = find_device("BlackHole 2ch", kind="output")
         if not bh:
-            console.print("[bold red]BlackHole 2ch not found![/]")
-            return
+            reason = "BlackHole 2ch output not found"
+            console.print(f"[bold red]{reason}![/]")
+            return PlaybackResult(False, reason=reason)
 
         status = provider.check_ready()
         if not status.meeting_found:
-            console.print(f"[bold red]{provider.name} tab not found in Chrome![/]")
-            return
+            reason = f"{provider.name} tab not found in Chrome"
+            console.print(f"[bold red]{reason}![/]")
+            return PlaybackResult(False, reason=reason)
 
         # Try mic auto-switch (works for Glip, no-op for others)
         provider.switch_mic("BlackHole 2ch")
@@ -90,6 +132,7 @@ async def _play_cached_audio(config, audio_path, provider_name: str | None = Non
 
         async def _do_play():
             nonlocal played
+            _mark_playback_started()
             playback = "BlackHole 2ch"
             monitor = config.audio.monitor_device
             if monitor and monitor.lower() != playback.lower():
@@ -125,12 +168,15 @@ async def _play_cached_audio(config, audio_path, provider_name: str | None = Non
                      and "blackhole" in playback.lower())
         if use_multi:
             from saymo.audio.multi_play import play_bytes_to_devices
+            _mark_playback_started()
             await play_bytes_to_devices(audio_bytes, [playback, monitor])
         else:
             from saymo.audio.playback import play_audio_bytes
+            _mark_playback_started()
             await play_audio_bytes(audio_bytes, playback)
 
     console.print("[bold green]Done![/]")
+    return PlaybackResult(True, playback_started=playback_started)
 
 
 _QUESTION_STARTERS = (
@@ -168,7 +214,27 @@ async def _resolve_auto_response(
 
     Returns a ``Path`` suitable for ``_play_cached_audio``.
     """
+    decision = await _resolve_auto_response_decision(
+        config,
+        transcript,
+        response_cache,
+        standup_summary,
+        fallback_standup_path,
+    )
+    return decision.audio_path
+
+
+async def _resolve_auto_response_decision(
+    config,
+    transcript: str,
+    response_cache,
+    standup_summary: str | None,
+    fallback_standup_path,
+) -> AutoResponseDecision:
+    """Resolve auto-mode response with a machine-readable reason."""
     from pathlib import Path
+
+    fallback = Path(fallback_standup_path)
 
     if response_cache and _looks_like_question(transcript):
         # Optional LLM-based intent classifier — catches rephrasings the
@@ -190,7 +256,11 @@ async def _resolve_auto_response(
                         console.print(
                             f"[green]Classifier hit:[/] {cached.key} — {cached.text}"
                         )
-                        return Path(cached.audio_path)
+                        return AutoResponseDecision(
+                            Path(cached.audio_path),
+                            source="classifier_cache",
+                            reason=f"intent={cached.key}",
+                        )
             except Exception as e:
                 console.print(f"[dim]classifier skipped: {e}[/]")
 
@@ -200,7 +270,11 @@ async def _resolve_auto_response(
                 f"[green]Cache hit:[/] {cached.key} "
                 f"(conf={cached.confidence:.2f}) — {cached.text}"
             )
-            return Path(cached.audio_path)
+            return AutoResponseDecision(
+                Path(cached.audio_path),
+                source="response_cache",
+                reason=f"intent={cached.key} confidence={cached.confidence:.2f}",
+            )
 
         if config.responses.live_fallback:
             console.print("[yellow]Cache miss — generating live answer via Ollama...[/]")
@@ -225,11 +299,30 @@ async def _resolve_auto_response(
                     os.close(fd)
                     tmp_path = Path(tmp_name)
                     tmp_path.write_bytes(audio)
-                    return tmp_path
+                    return AutoResponseDecision(
+                        tmp_path,
+                        source="live_fallback",
+                        reason="cache miss; generated live answer",
+                    )
             except Exception as e:
                 console.print(f"[red]Live answer failed, falling back:[/] {e}")
+                return AutoResponseDecision(
+                    fallback,
+                    source="standup_fallback",
+                    reason=f"live answer failed: {e}",
+                )
 
-    return fallback_standup_path
+        return AutoResponseDecision(
+            fallback,
+            source="standup_fallback",
+            reason="question cache miss; live fallback disabled",
+        )
+
+    if response_cache:
+        reason = "not question-shaped; using prepared standup"
+    else:
+        reason = "response cache disabled; using prepared standup"
+    return AutoResponseDecision(fallback, source="standup", reason=reason)
 
 
 def _load_cached_summary(config) -> str | None:

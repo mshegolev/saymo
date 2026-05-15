@@ -1,6 +1,7 @@
 """CLI tests for `saymo trigger-check` diagnostics."""
 
 from types import SimpleNamespace
+import json
 import textwrap
 
 from click.testing import CliRunner
@@ -370,3 +371,241 @@ def test_trigger_setup_extracts_name_variant_before_final_question_word(tmp_path
     assert "variant: Jon\n" in result.output
     data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     assert data["vocabulary"]["fuzzy_expansions"]["John"] == ["Jon"]
+
+
+def _write_sample(
+    samples_dir,
+    *,
+    profile="personal",
+    category,
+    name="sample",
+    transcript,
+    trigger=False,
+    question=False,
+    will_answer=False,
+    rms=0.01,
+    peak=0.1,
+):
+    sample_dir = samples_dir / profile / category
+    sample_dir.mkdir(parents=True, exist_ok=True)
+    path = sample_dir / f"{name}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "profile": profile,
+                "created_at": "2026-05-15T10:00:00",
+                "sample_rate": 16000,
+                "wav": f"{name}.wav",
+                "transcript": transcript,
+                "category": category,
+                "trigger": trigger,
+                "addressing": "addressed_to_me" if will_answer else "ignore",
+                "question": question,
+                "will_answer": will_answer,
+                "reason": "test",
+                "rms": rms,
+                "peak": peak,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_trigger_eval_reports_counts_misses_and_false_positives(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="miss",
+        transcript="Jon, что по статусу?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+    )
+    _write_sample(
+        samples_dir,
+        category="speech",
+        name="false_positive",
+        transcript="John, что по статусу?",
+    )
+    _write_sample(
+        samples_dir,
+        category="question",
+        name="question",
+        transcript="что по статусу?",
+        question=True,
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-eval",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "records: 3" in result.output
+    assert "stored asked_to_speak: 1" in result.output
+    assert "stored question: 1" in result.output
+    assert "stored speech: 1" in result.output
+    assert "misses: 1" in result.output
+    assert "false positives: 1" in result.output
+
+
+def test_trigger_eval_promotes_sample_variant_and_reruns(tmp_path):
+    import yaml
+
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    sample_path = _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="miss",
+        transcript="Jon, что по статусу?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-eval",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--promote",
+            str(sample_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "variant: Jon" in result.output
+    assert "learned: yes" in result.output
+    assert "misses: 0" in result.output
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert data["vocabulary"]["fuzzy_expansions"]["John"] == ["Jon"]
+
+
+def test_trigger_samples_list_replay_and_sanitized_report(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    sample_path = _write_sample(
+        samples_dir,
+        category="question",
+        name="question",
+        transcript="секретный текст вопроса",
+        question=True,
+    )
+    report_path = tmp_path / "report.md"
+    runner = CliRunner()
+
+    listed = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "list",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+    replayed = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "replay",
+            str(sample_path),
+            "--no-play",
+        ],
+    )
+    reported = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "report",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--output",
+            str(report_path),
+        ],
+    )
+
+    assert listed.exit_code == 0
+    assert "samples: 1" in listed.output
+    assert "transcript: секретный текст вопроса" in listed.output
+    assert replayed.exit_code == 0
+    assert "stored: category=question" in replayed.output
+    assert "current:" in replayed.output
+    assert reported.exit_code == 0
+    report = report_path.read_text(encoding="utf-8")
+    assert "question.json" in report
+    assert "секретный текст вопроса" not in report
+
+
+def test_auto_preflight_reports_ready_with_nonblocking_cache_warning(tmp_path, monkeypatch):
+    from datetime import date
+    import yaml
+
+    config_path = _write_config(tmp_path)
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["responses"]["cache_dir"] = str(tmp_path / "empty_responses")
+    config_path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    cache_dir = tmp_path / ".saymo" / "audio_cache"
+    cache_dir.mkdir(parents=True)
+    cached = cache_dir / f"{date.today().isoformat()}.wav"
+    cached.write_bytes(b"wav")
+
+    monkeypatch.setattr("saymo.commands._get_cached_audio_path", lambda team=False: cached)
+    monkeypatch.setattr(
+        "saymo.audio.devices.find_device",
+        lambda name, kind=None: SimpleNamespace(index=1) if name else None,
+    )
+
+    class Provider:
+        name = "Glip"
+
+        def check_ready(self):
+            return SimpleNamespace(meeting_found=True, tab_info=(1, 2))
+
+    monkeypatch.setattr("saymo.providers.factory.get_provider", lambda name: Provider())
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "auto-preflight",
+            "--profile",
+            "personal",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "ok: prepared standup:" in result.output
+    assert "ok: provider tab:" in result.output
+    assert "warn: response cache:" in result.output
+    assert "preflight: ready" in result.output

@@ -187,6 +187,7 @@ Before a real call, run a deterministic dry-run:
 
 ```bash
 saymo trigger-check -p personal --text "Your Name, what is the status?"
+saymo auto-preflight -p personal
 ```
 
 Or use your microphone:
@@ -200,11 +201,32 @@ saymo trigger-learn -p personal --heard "misheard name"
 The report shows whether the phrase triggers Saymo, whether the mention is
 addressed to you, whether it looks like a question, and whether a cached
 response is ready. It also reports whether auto-mode would answer now, wait for
-confirmation, or skip the phrase.
+confirmation, or skip the phrase. `auto-preflight` checks the prepared standup
+cache, input/output devices, provider tab, configured trigger phrases, response
+cache coverage, fallback mode, and live tuning before you join the call.
 If Whisper consistently hears your name incorrectly, use `trigger-setup` to
 paste the whole transcribed phrase. Saymo extracts the likely name variant,
 saves that spelling into `vocabulary.fuzzy_expansions`, and verifies it
 immediately.
+
+Tune live detection globally or per meeting profile:
+
+```yaml
+live:
+  chunk_seconds: 4.0
+  overlap_seconds: 2.0
+  trigger_cooldown_seconds: 45.0
+  silence_rms_threshold: 0.001
+
+meetings:
+  personal:
+    live:
+      chunk_seconds: 3.0
+      overlap_seconds: 1.0
+```
+
+During `saymo auto`, Saymo prints catch latency split by capture, STT, trigger
+match, addressing/action, and playback start time.
 
 ## 6. Troubleshooting
 
@@ -267,6 +289,21 @@ saymo trigger-capture -p personal --device "MacBook Pro Microphone" --duration 6
 Samples are written to `~/.saymo/trigger_samples/<profile>/` and split into
 `asked_to_speak`, `question`, and `speech` folders. Each WAV has a JSON file
 with the transcript, trigger flag, question flag, addressing label, and levels.
+
+Review and tune the saved windows locally:
+
+```bash
+saymo trigger-samples list -p personal
+saymo trigger-samples replay ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
+saymo trigger-eval -p personal
+saymo trigger-eval -p personal --promote ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
+saymo trigger-samples report -p personal -o ~/.saymo/trigger_samples/personal-report.md
+```
+
+`trigger-eval` reports stored/current categories, misses, and false positives.
+`--promote` extracts the heard name variant from one sample, writes it to
+`vocabulary.fuzzy_expansions`, and immediately re-runs the evaluation. The
+report intentionally omits raw audio and transcript text.
 
 ### I need to answer myself during auto mode
 

@@ -6,7 +6,7 @@ from saymo.commands import (
     _get_cached_audio_path,
     _load_cached_summary,
     _play_cached_audio,
-    _resolve_auto_response,
+    _resolve_auto_response_decision,
     _rotate_audio_cache,
     console,
     main,
@@ -171,10 +171,23 @@ def auto(ctx, profile, model, mic):
 async def _auto(config, whisper_model: str, profile: str = "standup"):
     import asyncio
     import time
+    from dataclasses import dataclass
 
     # Get meeting profile for trigger phrases
     meeting = config.get_meeting(profile)
     is_team = meeting.team if meeting else False
+    from saymo.config import resolve_live_tuning
+    live_tuning = resolve_live_tuning(config, meeting)
+
+    @dataclass
+    class CatchTiming:
+        capture_ms: float = 0.0
+        transcription_ms: float = 0.0
+        trigger_ms: float = 0.0
+
+        @property
+        def total_ms(self) -> float:
+            return self.capture_ms + self.transcription_ms + self.trigger_ms
 
     # Pre-checks
     cached_audio = _get_cached_audio_path(team=is_team)
@@ -208,6 +221,13 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
     console.print(f"  Whisper model: {whisper_model}")
     console.print(f"  Triggers: {', '.join(trigger_phrases)}")
     console.print(f"  Cached audio: {cached_audio.stat().st_size // 1024} KB")
+    console.print(
+        "  Live tuning: "
+        f"window={live_tuning.chunk_seconds:.1f}s "
+        f"overlap={live_tuning.overlap_seconds:.1f}s "
+        f"cooldown={live_tuning.trigger_cooldown_seconds:.1f}s "
+        f"silence_rms={live_tuning.silence_rms_threshold:.4f}"
+    )
     console.print()
     console.print("[dim]Press Ctrl+C to stop[/]")
     console.print("[bold yellow]Listening...[/]\n")
@@ -220,13 +240,13 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
     capture = AudioCapture(
         device_name=config.audio.capture_device,
         sample_rate=16000,
-        chunk_seconds=4.0,
-        overlap_seconds=2.0,
+        chunk_seconds=live_tuning.chunk_seconds,
+        overlap_seconds=live_tuning.overlap_seconds,
     )
     whisper = LocalWhisper(model_size=whisper_model, language=config.user.language)
     detector = TurnDetector(
         name_variants=trigger_phrases,
-        cooldown_seconds=45.0,
+        cooldown_seconds=live_tuning.trigger_cooldown_seconds,
         fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
     )
 
@@ -273,6 +293,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
     manual_takeover = asyncio.Event()
     manual_speak = asyncio.Event()
     pending_confirmation: tuple[float, str] | None = None
+    last_catch_timing = CatchTiming()
 
     # Wire global hotkeys for stop/pause. Failures here (e.g., macOS
     # accessibility permissions missing) shouldn't break auto mode — just
@@ -377,29 +398,59 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
     async def _transcribe_loop():
         """Continuously transcribe audio — runs parallel to capture."""
+        nonlocal last_catch_timing
         while True:
             if speaking.is_set() or paused.is_set():
                 # Don't transcribe while we're speaking or paused
                 await asyncio.sleep(0.5)
                 continue
 
-            chunk = await asyncio.to_thread(capture.get_chunk, 3.0)
+            capture_t0 = time.monotonic()
+            chunk = await asyncio.to_thread(
+                capture.get_chunk,
+                live_tuning.read_timeout_seconds,
+            )
+            capture_ms = (time.monotonic() - capture_t0) * 1000
             if chunk is None:
                 continue
 
             rms = float((chunk ** 2).mean() ** 0.5)
-            if rms < 0.001:
+            if rms < live_tuning.silence_rms_threshold:
                 continue
 
+            transcribe_t0 = time.monotonic()
             text = await asyncio.to_thread(whisper.transcribe, chunk)
+            transcription_ms = (time.monotonic() - transcribe_t0) * 1000
             if not text.strip():
                 continue
 
             console.print(f"[dim]{text}[/]")
 
+            trigger_t0 = time.monotonic()
             if detector.check(text):
+                trigger_ms = (time.monotonic() - trigger_t0) * 1000
+                last_catch_timing = CatchTiming(
+                    capture_ms=capture_ms,
+                    transcription_ms=transcription_ms,
+                    trigger_ms=trigger_ms,
+                )
+                console.print(
+                    "[dim]catch latency: "
+                    f"capture={capture_ms:.0f}ms "
+                    f"stt={transcription_ms:.0f}ms "
+                    f"trigger={trigger_ms:.0f}ms "
+                    f"total={last_catch_timing.total_ms:.0f}ms[/]"
+                )
                 console.print("\n[bold red]>>> NAME DETECTED![/]\n")
                 triggered.set()
+            else:
+                trigger_ms = (time.monotonic() - trigger_t0) * 1000
+                console.print(
+                    "[dim]catch latency: "
+                    f"capture={capture_ms:.0f}ms "
+                    f"stt={transcription_ms:.0f}ms "
+                    f"trigger={trigger_ms:.0f}ms action=listen[/]"
+                )
 
     async def _trigger_loop():
         """Wait for trigger, then speak."""
@@ -419,8 +470,14 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                 pending_confirmation = None
                 console.print("[dim]Manual speak hotkey: using prepared playback[/]")
             else:
+                addressing_t0 = time.monotonic()
                 addressing = _classify_trigger_window(config, transcript_window, trigger_phrases)
+                addressing_ms = (time.monotonic() - addressing_t0) * 1000
                 if not should_answer_decision(addressing):
+                    console.print(
+                        f"[dim]decision latency: addressing={addressing_ms:.0f}ms "
+                        "action=skip[/]"
+                    )
                     console.print(
                         f"[yellow]Skipping trigger:[/] {addressing.label} — {addressing.reason}"
                     )
@@ -430,6 +487,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                     console.print("\n[bold yellow]Listening again...[/]\n")
                     continue
 
+                action_t0 = time.monotonic()
                 confirmed, pending_confirmation, response_window, confirmation_state = (
                     _update_trigger_confirmation(
                         config,
@@ -438,7 +496,12 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                         transcript_window=transcript_window,
                     )
                 )
+                action_ms = (time.monotonic() - action_t0) * 1000
                 if not confirmed:
+                    console.print(
+                        f"[dim]decision latency: addressing={addressing_ms:.0f}ms "
+                        f"action={action_ms:.0f}ms final=wait_confirmation[/]"
+                    )
                     console.print(
                         "[yellow]Confirmation required:[/] mention the trigger again "
                         f"within {_trigger_confirmation_timeout(config):.1f}s"
@@ -449,6 +512,10 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                 if confirmation_state == "confirmed":
                     console.print("[dim]Trigger confirmed by second mention[/]")
                 transcript_window = response_window
+                console.print(
+                    f"[dim]decision latency: addressing={addressing_ms:.0f}ms "
+                    f"action={action_ms:.0f}ms final=answer[/]"
+                )
 
             # Drain audio queue — don't process stale chunks after trigger
             while not capture.audio_queue.empty():
@@ -460,24 +527,44 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
             trigger_t = time.monotonic()
 
             resolve_t0 = time.monotonic()
-            audio_to_play = await _resolve_auto_response(
+            response_decision = await _resolve_auto_response_decision(
                 config,
                 transcript_window,
                 response_cache,
                 standup_summary,
                 cached_audio,
             )
+            audio_to_play = response_decision.audio_path
             resolve_ms = (time.monotonic() - resolve_t0) * 1000
 
-            console.print("[bold blue]Speaking in 2 seconds...[/]")
-            await asyncio.sleep(2.0)
+            console.print(
+                f"[dim]response route: {response_decision.source} "
+                f"({response_decision.reason})[/]"
+            )
+            console.print(
+                f"[bold blue]Speaking in {live_tuning.pre_speak_delay_seconds:.1f} seconds...[/]"
+            )
+            await asyncio.sleep(live_tuning.pre_speak_delay_seconds)
 
             speaking.set()
             play_t0 = time.monotonic()
+            playback_start_ms: float | None = None
+            playback_result = None
             max_dur = max(5, int(config.safety.max_speech_duration or 0))
             stop_playback.clear()
+
+            def _mark_playback_start():
+                nonlocal playback_start_ms
+                if playback_start_ms is None:
+                    playback_start_ms = (time.monotonic() - trigger_t) * 1000
+
             play_task = asyncio.create_task(
-                _play_cached_audio(config, audio_to_play, provider_name=provider_name)
+                _play_cached_audio(
+                    config,
+                    audio_to_play,
+                    provider_name=provider_name,
+                    on_playback_start=_mark_playback_start,
+                )
             )
             stop_waiter = asyncio.create_task(stop_playback.wait())
             try:
@@ -497,17 +584,27 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                 for p in pending:
                     p.cancel()
                 try:
-                    await play_task
+                    playback_result = await play_task
                 except (asyncio.CancelledError, Exception):
-                    pass
+                    playback_result = None
             finally:
                 play_ms = (time.monotonic() - play_t0) * 1000
                 total_ms = (time.monotonic() - trigger_t) * 1000
                 is_cache_hit = (audio_to_play == cached_audio)
+                playback_label = (
+                    f"{playback_start_ms:.0f}ms"
+                    if playback_start_ms is not None
+                    else "not_started"
+                )
+                blocked_reason = ""
+                if playback_result is not None and not playback_result.success:
+                    blocked_reason = f" blocked={playback_result.reason}"
                 console.print(
                     f"[dim]latency: resolve={resolve_ms:.0f}ms "
-                    f"play={play_ms:.0f}ms total={total_ms:.0f}ms "
-                    f"({'standup' if is_cache_hit else 'Q&A'})[/]"
+                    f"play_start={playback_label} play={play_ms:.0f}ms "
+                    f"total={total_ms:.0f}ms "
+                    f"({'standup' if is_cache_hit else 'Q&A'})"
+                    f"{blocked_reason}[/]"
                 )
                 speaking.clear()
                 detector.reset_cooldown()
