@@ -20,6 +20,10 @@ _NARRATED_MENTION_PATTERNS = (
     r"\b{trigger}\s+(?:вчера\s+|раньше\s+)?(?:говорил|говорила|сказал|сказала|писал|писала)\b",
 )
 
+_THIRD_PERSON_QUESTION_PATTERNS = (
+    r"\b(?:что|как|где|когда|почему|зачем)\s+{trigger}\s+(?:думает|считает|видит|планирует|делает|делал|делала|сделал|сделала|готовит|пишет|решает|решил|решила)\b",
+)
+
 
 @dataclass(frozen=True)
 class AddressingDecision:
@@ -92,6 +96,17 @@ def classify_addressing(
         return AddressingDecision("no_trigger", 0.0, reason="no trigger phrase in transcript")
 
     trigger_re = re.escape(matched.lower())
+    for pattern in _THIRD_PERSON_QUESTION_PATTERNS:
+        if re.search(pattern.format(trigger=trigger_re), lower, re.IGNORECASE):
+            return AddressingDecision(
+                "mentioned_not_addressed",
+                0.9,
+                trigger=matched,
+                is_question=True,
+                question=text,
+                reason="third-person question pattern",
+            )
+
     for pattern in _NARRATED_MENTION_PATTERNS:
         if re.search(pattern.format(trigger=trigger_re), lower, re.IGNORECASE):
             return AddressingDecision(

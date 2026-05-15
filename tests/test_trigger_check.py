@@ -136,6 +136,30 @@ def test_trigger_check_text_reports_ignored_mention(tmp_path):
     assert "auto action: skip" in result.output
 
 
+def test_trigger_check_text_reports_third_person_question_as_skip(tmp_path):
+    config_path = _write_config(tmp_path)
+    runner = CliRunner()
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-check",
+            "--profile",
+            "personal",
+            "--text",
+            "что Миша думает по этой задаче?",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "trigger: yes" in result.output
+    assert "addressing: mentioned_not_addressed" in result.output
+    assert "question: yes" in result.output
+    assert "auto action: skip" in result.output
+
+
 def test_trigger_learn_adds_heard_variant_to_fuzzy_expansions(tmp_path):
     import yaml
 
