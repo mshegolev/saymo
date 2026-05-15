@@ -39,6 +39,19 @@ def _should_answer_trigger_window(
     return should_answer_decision(decision)
 
 
+def _toggle_manual_takeover(paused, stop_playback, manual_takeover) -> str:
+    """Toggle manual takeover mode for answering in the call yourself."""
+    if manual_takeover.is_set():
+        manual_takeover.clear()
+        paused.clear()
+        return "resumed"
+
+    manual_takeover.set()
+    paused.set()
+    stop_playback.set()
+    return "active"
+
+
 @main.command()
 @click.option("--profile", "-p", default="standup", help="Meeting profile: standup, scrum, retro")
 @click.option("--model", "-m", default="small", help="Whisper model: tiny, small, medium")
@@ -162,6 +175,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
     speaking = asyncio.Event()
     stop_playback = asyncio.Event()
     paused = asyncio.Event()
+    manual_takeover = asyncio.Event()
 
     # Wire global hotkeys for stop/pause. Failures here (e.g., macOS
     # accessibility permissions missing) shouldn't break auto mode — just
@@ -176,24 +190,44 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
             console.print("[bold yellow]⏹  STOP hotkey — cancelling playback[/]")
 
         def _on_toggle():
-            if paused.is_set():
-                loop.call_soon_threadsafe(paused.clear)
-                console.print("[bold green]▶  RESUMED[/]")
-            else:
-                loop.call_soon_threadsafe(paused.set)
-                console.print("[bold yellow]⏸  PAUSED (hotkey to resume)[/]")
+            def _apply_toggle():
+                if paused.is_set():
+                    manual_takeover.clear()
+                    paused.clear()
+                    console.print("[bold green]▶  RESUMED[/]")
+                else:
+                    paused.set()
+                    console.print("[bold yellow]⏸  PAUSED (hotkey to resume)[/]")
+
+            loop.call_soon_threadsafe(_apply_toggle)
+
+        def _on_takeover():
+            def _apply_takeover():
+                state = _toggle_manual_takeover(paused, stop_playback, manual_takeover)
+                if state == "active":
+                    console.print(
+                        "[bold yellow]Manual takeover active — Saymo paused. "
+                        "Unmute yourself in the call, answer, then press takeover again.[/]"
+                    )
+                else:
+                    console.print("[bold green]Manual takeover ended — Saymo resumed[/]")
+
+            loop.call_soon_threadsafe(_apply_takeover)
 
         bindings = {}
         if config.safety.hotkey_stop:
             bindings[config.safety.hotkey_stop] = _on_stop
         if config.safety.hotkey_toggle:
             bindings[config.safety.hotkey_toggle] = _on_toggle
+        if config.safety.hotkey_takeover:
+            bindings[config.safety.hotkey_takeover] = _on_takeover
         if bindings:
             hotkey_listener = _keyboard.GlobalHotKeys(bindings)
             hotkey_listener.start()
             console.print(
                 f"[dim]hotkeys: stop={config.safety.hotkey_stop} "
-                f"toggle={config.safety.hotkey_toggle}[/]"
+                f"toggle={config.safety.hotkey_toggle} "
+                f"takeover={config.safety.hotkey_takeover}[/]"
             )
     except Exception as e:
         console.print(f"[dim]hotkeys disabled: {e}[/]")

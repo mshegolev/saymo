@@ -103,6 +103,7 @@ safety:
   hotkey_speak: "<cmd>+<shift>+s"
   hotkey_stop: "<cmd>+<shift>+x"
   hotkey_toggle: "<cmd>+<shift>+m"
+  hotkey_takeover: "<cmd>+<shift>+u"   # manual answer mode: stop Saymo, pause auto
   max_speech_duration: 120
 
 # Meeting profiles — each one picks a source plugin, a call provider, and the

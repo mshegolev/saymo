@@ -93,6 +93,20 @@ saymo auto -p personal --mic    # same, but from laptop mic (for testing)
 saymo dashboard                 # interactive TUI
 ```
 
+### Auto-mode hotkeys
+
+```bash
+./scripts/add_hotkeys.py
+```
+
+Default hotkeys:
+
+| Hotkey | Action |
+|---|---|
+| `Cmd+Shift+U` | Manual takeover: stop Saymo playback, pause auto-mode so you can answer yourself; press again to resume |
+| `Cmd+Shift+X` | Stop current Saymo playback |
+| `Cmd+Shift+M` | Pause / resume auto-mode |
+
 ### Call providers
 
 `saymo auto` works with all Chrome-based call apps — the provider is

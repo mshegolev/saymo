@@ -9,7 +9,7 @@ import pytest
 
 from saymo.cli import _looks_like_question, _resolve_auto_response
 from saymo.config import SaymoConfig
-from saymo.commands.core import _should_answer_trigger_window
+from saymo.commands.core import _should_answer_trigger_window, _toggle_manual_takeover
 
 
 def _run(coro):
@@ -62,6 +62,32 @@ def test_should_answer_trigger_window_ignores_narrated_mention():
         "как Миша вчера говорил, надо проверить логи",
         ["Миша"],
     ) is False
+
+
+def test_manual_takeover_stops_playback_and_pauses_auto_mode():
+    paused = asyncio.Event()
+    stop_playback = asyncio.Event()
+    manual_takeover = asyncio.Event()
+
+    state = _toggle_manual_takeover(paused, stop_playback, manual_takeover)
+
+    assert state == "active"
+    assert paused.is_set()
+    assert stop_playback.is_set()
+    assert manual_takeover.is_set()
+
+
+def test_manual_takeover_second_press_resumes_auto_mode():
+    paused = asyncio.Event()
+    stop_playback = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    _toggle_manual_takeover(paused, stop_playback, manual_takeover)
+
+    state = _toggle_manual_takeover(paused, stop_playback, manual_takeover)
+
+    assert state == "resumed"
+    assert not paused.is_set()
+    assert manual_takeover.is_set() is False
 
 
 # ---------------------------------------------------------------------------

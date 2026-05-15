@@ -242,6 +242,18 @@ ollama pull qwen2.5-coder:7b
 3. If the name appears in the transcript but isn't detected, add the exact transcribed form to `name_variants`
 4. Check microphone input level — run `saymo mic-check` to calibrate
 
+### I need to answer myself during auto mode
+
+Run once to add the default hotkeys:
+
+```bash
+./scripts/add_hotkeys.py
+```
+
+During `saymo auto`, press `Cmd+Shift+U` for manual takeover. Saymo stops any
+current playback and pauses auto-mode. Unmute yourself in the call, answer,
+then press `Cmd+Shift+U` again to resume Saymo.
+
 ## What's Next
 
 - [VOICE-TRAINING.md](VOICE-TRAINING.md) — fine-tune XTTS on 10+ minutes of your recordings for higher similarity
