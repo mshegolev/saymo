@@ -261,6 +261,8 @@ During `saymo auto`, press `Cmd+Shift+U` for manual takeover. Saymo stops any
 current playback, pauses auto-mode, and tries to switch the call microphone to
 `audio.recording_device`. Unmute yourself in the call, answer, then press
 `Cmd+Shift+U` again to switch back to `BlackHole 2ch` and resume Saymo.
+Press `Cmd+Shift+S` when you want Saymo to speak the prepared cached standup
+immediately without waiting for trigger detection.
 
 Automatic mic switching depends on the provider. It is implemented for `glip`
 and `mts_link`; for Zoom/Meet/Teams, switch the microphone manually in the

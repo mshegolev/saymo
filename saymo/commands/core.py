@@ -134,6 +134,19 @@ def _toggle_auto_pause(paused, manual_takeover) -> str:
     return "paused"
 
 
+def _request_manual_speak(triggered, manual_speak, speaking, manual_takeover) -> str:
+    """Queue an explicit hotkey-triggered prepared playback in auto-mode."""
+    if manual_takeover.is_set():
+        return "manual_takeover_active"
+    if speaking.is_set():
+        return "already_speaking"
+    if manual_speak.is_set():
+        return "already_queued"
+    manual_speak.set()
+    triggered.set()
+    return "queued"
+
+
 @main.command()
 @click.option("--profile", "-p", default="standup", help="Meeting profile: standup, scrum, retro")
 @click.option("--model", "-m", default="small", help="Whisper model: tiny, small, medium")
@@ -258,6 +271,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
     stop_playback = asyncio.Event()
     paused = asyncio.Event()
     manual_takeover = asyncio.Event()
+    manual_speak = asyncio.Event()
     pending_confirmation: tuple[float, str] | None = None
 
     # Wire global hotkeys for stop/pause. Failures here (e.g., macOS
@@ -286,6 +300,27 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                     )
 
             loop.call_soon_threadsafe(_apply_toggle)
+
+        def _on_speak():
+            def _apply_speak():
+                state = _request_manual_speak(
+                    triggered,
+                    manual_speak,
+                    speaking,
+                    manual_takeover,
+                )
+                if state == "queued":
+                    console.print("[bold green]SPEAK hotkey — queued prepared playback[/]")
+                elif state == "manual_takeover_active":
+                    console.print(
+                        "[bold yellow]Manual takeover active — speak hotkey ignored.[/]"
+                    )
+                elif state == "already_queued":
+                    console.print("[dim]Speak hotkey already queued[/]")
+                else:
+                    console.print("[dim]Already speaking — speak hotkey ignored[/]")
+
+            loop.call_soon_threadsafe(_apply_speak)
 
         def _on_takeover():
             def _apply_takeover():
@@ -320,6 +355,8 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
             loop.call_soon_threadsafe(_apply_takeover)
 
         bindings = {}
+        if config.safety.hotkey_speak:
+            bindings[config.safety.hotkey_speak] = _on_speak
         if config.safety.hotkey_stop:
             bindings[config.safety.hotkey_stop] = _on_stop
         if config.safety.hotkey_toggle:
@@ -330,7 +367,8 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
             hotkey_listener = _keyboard.GlobalHotKeys(bindings)
             hotkey_listener.start()
             console.print(
-                f"[dim]hotkeys: stop={config.safety.hotkey_stop} "
+                f"[dim]hotkeys: speak={config.safety.hotkey_speak} "
+                f"stop={config.safety.hotkey_stop} "
                 f"toggle={config.safety.hotkey_toggle} "
                 f"takeover={config.safety.hotkey_takeover}[/]"
             )
@@ -372,37 +410,45 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
             # Snapshot transcript window BEFORE draining — contains the question
             transcript_window = detector.recent_transcript
+            force_speak = manual_speak.is_set()
+            if force_speak:
+                manual_speak.clear()
 
-            addressing = _classify_trigger_window(config, transcript_window, trigger_phrases)
-            if not should_answer_decision(addressing):
-                console.print(
-                    f"[yellow]Skipping trigger:[/] {addressing.label} — {addressing.reason}"
-                )
-                if pending_confirmation and time.monotonic() > pending_confirmation[0]:
-                    pending_confirmation = None
-                detector.reset_cooldown()
-                console.print("\n[bold yellow]Listening again...[/]\n")
-                continue
+            if force_speak:
+                transcript_window = ""
+                pending_confirmation = None
+                console.print("[dim]Manual speak hotkey: using prepared playback[/]")
+            else:
+                addressing = _classify_trigger_window(config, transcript_window, trigger_phrases)
+                if not should_answer_decision(addressing):
+                    console.print(
+                        f"[yellow]Skipping trigger:[/] {addressing.label} — {addressing.reason}"
+                    )
+                    if pending_confirmation and time.monotonic() > pending_confirmation[0]:
+                        pending_confirmation = None
+                    detector.reset_cooldown()
+                    console.print("\n[bold yellow]Listening again...[/]\n")
+                    continue
 
-            confirmed, pending_confirmation, response_window, confirmation_state = (
-                _update_trigger_confirmation(
-                    config,
-                    now=time.monotonic(),
-                    pending=pending_confirmation,
-                    transcript_window=transcript_window,
+                confirmed, pending_confirmation, response_window, confirmation_state = (
+                    _update_trigger_confirmation(
+                        config,
+                        now=time.monotonic(),
+                        pending=pending_confirmation,
+                        transcript_window=transcript_window,
+                    )
                 )
-            )
-            if not confirmed:
-                console.print(
-                    "[yellow]Confirmation required:[/] mention the trigger again "
-                    f"within {_trigger_confirmation_timeout(config):.1f}s"
-                )
-                detector.reset_cooldown()
-                console.print("\n[bold yellow]Listening again...[/]\n")
-                continue
-            if confirmation_state == "confirmed":
-                console.print("[dim]Trigger confirmed by second mention[/]")
-            transcript_window = response_window
+                if not confirmed:
+                    console.print(
+                        "[yellow]Confirmation required:[/] mention the trigger again "
+                        f"within {_trigger_confirmation_timeout(config):.1f}s"
+                    )
+                    detector.reset_cooldown()
+                    console.print("\n[bold yellow]Listening again...[/]\n")
+                    continue
+                if confirmation_state == "confirmed":
+                    console.print("[dim]Trigger confirmed by second mention[/]")
+                transcript_window = response_window
 
             # Drain audio queue — don't process stale chunks after trigger
             while not capture.audio_queue.empty():

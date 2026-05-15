@@ -104,6 +104,7 @@ Default hotkeys:
 
 | Hotkey | Action |
 |---|---|
+| `Cmd+Shift+S` | Speak the prepared cached standup immediately in `saymo auto` |
 | `Cmd+Shift+U` | Manual takeover: stop Saymo playback, pause auto-mode, switch the call mic to your real mic when the provider supports it; press again to return to BlackHole 2ch and resume |
 | `Cmd+Shift+X` | Stop current Saymo playback |
 | `Cmd+Shift+M` | Pause / resume auto-mode |

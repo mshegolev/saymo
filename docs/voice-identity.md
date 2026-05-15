@@ -40,7 +40,7 @@ What is missing for the goal:
 | Addressing false positives need ongoing tuning | `saymo/analysis/addressing.py` suppresses obvious narrated mentions like "как Миша говорил...", but more real-call transcripts are needed for edge cases. | Reliability |
 | Qwen3-TTS LoRA training loss is a placeholder | `saymo/tts/qwen3_trainer.py::_compute_loss` now raises `NotImplementedError` instead of silently computing `mx.mean(output)`. LoRA scaffolding (rank 8 / scale 0.3; `_apply_lora` via `mlx_lm.tuner.lora.LoRALinear.from_base`) is real. The training loop itself still needs a real loss impl after inspecting the model's forward signature. | A |
 | `safety.max_speech_duration` wired into `_auto()` | `_auto()` wraps playback with a timeout and cancels playback when it exceeds `safety.max_speech_duration`. | done |
-| Stop/toggle hotkeys bound in `auto` | `_auto()` starts a `pynput.GlobalHotKeys` listener for `safety.hotkey_stop` and `safety.hotkey_toggle`; `hotkey_speak` remains unused because auto-mode speaks on trigger. | partial |
+| Auto-mode hotkeys | `_auto()` starts a `pynput.GlobalHotKeys` listener for `safety.hotkey_speak`, `hotkey_stop`, `hotkey_toggle`, and `hotkey_takeover`; speak forces prepared playback, stop cancels playback, toggle pauses listening, and takeover lets the user answer manually. | done |
 
 ## Architecture (voice-identity slice)
 
@@ -177,7 +177,7 @@ Short list of hardening items adjacent to the goal — not blockers for A/B pass
 
 - **Timeout safety**: shipped. `_auto()` cancels playback when it exceeds `safety.max_speech_duration`.
 - **Provider fallback**: shipped for cached playback. If Chrome provider mute automation fails before audio plays, Saymo falls back to playing through `BlackHole 2ch` and warns the user to control mute manually; if provider mute-back fails after playback, Saymo warns without replaying audio.
-- **Hotkeys**: shipped for `safety.hotkey_stop`, `hotkey_toggle`, and `hotkey_takeover`; takeover pauses auto-mode and best-effort switches the call mic between `audio.recording_device` and `BlackHole 2ch`. `hotkey_speak` is not used in auto-mode.
+- **Hotkeys**: shipped for `safety.hotkey_speak`, `hotkey_stop`, `hotkey_toggle`, and `hotkey_takeover`; speak forces prepared playback, takeover pauses auto-mode and best-effort switches the call mic between `audio.recording_device` and `BlackHole 2ch`.
 - **Trigger diagnostics**: shipped as `saymo trigger-check -p <profile> --text ...` and `saymo trigger-check -p <profile> --mic`.
 - **Trigger learning**: shipped as `saymo trigger-setup -p <profile> --heard ...`; this extracts the likely name variant from a full STT phrase, appends it to `vocabulary.fuzzy_expansions`, and verifies detection against the original phrase.
 - **Confirmation step (optional)**: when `safety.require_confirmation: true`, wait up to `safety.confirmation_timeout_seconds` after the first trigger for a second mention before speaking. The original question window is preserved, so a second short "Миша" can confirm "Миша, что по статусу?".

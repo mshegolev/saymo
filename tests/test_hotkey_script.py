@@ -28,4 +28,5 @@ def test_update_hotkeys_creates_safety_block_without_clobbering_config(tmp_path)
 
 
 def test_default_hotkeys_include_takeover():
+    assert DEFAULT_HOTKEYS["hotkey_speak"] == "<cmd>+<shift>+s"
     assert DEFAULT_HOTKEYS["hotkey_takeover"] == "<cmd>+<shift>+u"

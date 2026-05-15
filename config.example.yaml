@@ -101,7 +101,7 @@ speech:
 safety:
   require_confirmation: true          # require a second trigger mention before auto-speaking
   confirmation_timeout_seconds: 6.0   # seconds to wait for that second mention
-  hotkey_speak: "<cmd>+<shift>+s"
+  hotkey_speak: "<cmd>+<shift>+s"      # force prepared playback in auto-mode
   hotkey_stop: "<cmd>+<shift>+x"
   hotkey_toggle: "<cmd>+<shift>+m"
   hotkey_takeover: "<cmd>+<shift>+u"   # manual answer mode: pause auto + best-effort mic switch

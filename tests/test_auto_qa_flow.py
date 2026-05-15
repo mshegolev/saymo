@@ -10,6 +10,7 @@ import pytest
 from saymo.cli import _looks_like_question, _resolve_auto_response
 from saymo.config import SaymoConfig
 from saymo.commands.core import (
+    _request_manual_speak,
     _should_answer_trigger_window,
     _update_trigger_confirmation,
     _toggle_auto_pause,
@@ -242,6 +243,47 @@ def test_pause_toggle_does_not_resume_during_manual_takeover():
     assert state == "manual_takeover_active"
     assert paused.is_set()
     assert manual_takeover.is_set()
+
+
+def test_manual_speak_hotkey_queues_forced_playback():
+    triggered = asyncio.Event()
+    manual_speak = asyncio.Event()
+    speaking = asyncio.Event()
+    manual_takeover = asyncio.Event()
+
+    state = _request_manual_speak(triggered, manual_speak, speaking, manual_takeover)
+
+    assert state == "queued"
+    assert triggered.is_set()
+    assert manual_speak.is_set()
+
+
+def test_manual_speak_hotkey_ignored_during_takeover():
+    triggered = asyncio.Event()
+    manual_speak = asyncio.Event()
+    speaking = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    manual_takeover.set()
+
+    state = _request_manual_speak(triggered, manual_speak, speaking, manual_takeover)
+
+    assert state == "manual_takeover_active"
+    assert not triggered.is_set()
+    assert not manual_speak.is_set()
+
+
+def test_manual_speak_hotkey_ignored_while_already_speaking():
+    triggered = asyncio.Event()
+    manual_speak = asyncio.Event()
+    speaking = asyncio.Event()
+    speaking.set()
+    manual_takeover = asyncio.Event()
+
+    state = _request_manual_speak(triggered, manual_speak, speaking, manual_takeover)
+
+    assert state == "already_speaking"
+    assert not triggered.is_set()
+    assert not manual_speak.is_set()
 
 
 # ---------------------------------------------------------------------------
