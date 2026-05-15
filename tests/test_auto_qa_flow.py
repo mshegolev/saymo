@@ -7,7 +7,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from saymo.cli import _looks_like_question, _resolve_auto_response
+from saymo.cli import (
+    _looks_like_question,
+    _resolve_auto_response,
+    _resolve_auto_response_decision,
+)
 from saymo.config import SaymoConfig
 from saymo.commands.core import (
     _request_manual_speak,
@@ -334,6 +338,29 @@ def test_returns_cached_audio_on_hit():
     ))
     assert result == cached_path
     cache.lookup.assert_called_once()
+
+
+def test_response_decision_reports_cache_reason():
+    config = SaymoConfig()
+    cached_path = Path("/tmp/status_done_0_abc.wav")
+
+    cached = MagicMock()
+    cached.key = "status_done"
+    cached.confidence = 0.85
+    cached.text = "Всё готово"
+    cached.audio_path = cached_path
+
+    cache = MagicMock()
+    cache.lookup.return_value = cached
+
+    fallback = Path("/tmp/standup.wav")
+    decision = _run(_resolve_auto_response_decision(
+        config, "как у тебя дела?", cache, "", fallback
+    ))
+
+    assert decision.audio_path == cached_path
+    assert decision.source == "response_cache"
+    assert "status_done" in decision.reason
 
 
 def test_cache_miss_without_live_fallback_returns_standup():

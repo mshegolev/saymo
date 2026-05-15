@@ -9,7 +9,7 @@ wraps the sample workflow in operator-facing commands and docs.
 
 ## Milestones
 
-- 📋 **v1.0 Speedly Catcher + Speedly Sayer** - Phases 1-4 (planned)
+- ✅ **v1.0 Speedly Catcher + Speedly Sayer** - Phases 1-4 (complete)
 
 ## Phases
 
@@ -17,13 +17,13 @@ wraps the sample workflow in operator-facing commands and docs.
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions
 
-- [ ] **Phase 1: Latency Baseline** - Measure catch and say latency without
+- [x] **Phase 1: Latency Baseline** - Measure catch and say latency without
   changing behavior.
-- [ ] **Phase 2: Catcher Tuning Loop** - Add profile tuning and offline sample
+- [x] **Phase 2: Catcher Tuning Loop** - Add profile tuning and offline sample
   evaluation.
-- [ ] **Phase 3: Sayer Preflight Path** - Verify readiness and speed up
+- [x] **Phase 3: Sayer Preflight Path** - Verify readiness and speed up
   prepared playback decisions.
-- [ ] **Phase 4: Sample Review Workflow** - Make captured samples inspectable,
+- [x] **Phase 4: Sample Review Workflow** - Make captured samples inspectable,
   replayable, and reportable.
 
 ## Phase Details
@@ -41,8 +41,8 @@ future speed work is measured, not guessed.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Instrument catch-path timings
-- [ ] 01-02: Instrument say-path playback timings
+- [x] 01-01: Instrument catch-path timings
+- [x] 01-02: Instrument say-path playback timings
 
 ### Phase 2: Catcher Tuning Loop
 **Goal**: Let the user tune live detection from config and validate changes
@@ -59,9 +59,9 @@ against saved call samples.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Add profile-level catcher tuning config
-- [ ] 02-02: Build offline trigger-sample evaluator
-- [ ] 02-03: Add promote-and-rerun workflow for fuzzy variants
+- [x] 02-01: Add profile-level catcher tuning config
+- [x] 02-02: Build offline trigger-sample evaluator
+- [x] 02-03: Add promote-and-rerun workflow for fuzzy variants
 
 ### Phase 3: Sayer Preflight Path
 **Goal**: Make prepared-response playback readiness explicit before calls and
@@ -77,9 +77,9 @@ keep auto-mode responsive when playback cannot start.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Add live-call preflight command
-- [ ] 03-02: Normalize forced-playback blocked reasons
-- [ ] 03-03: Harden cache-miss fallback behavior
+- [x] 03-01: Add live-call preflight command
+- [x] 03-02: Normalize forced-playback blocked reasons
+- [x] 03-03: Harden cache-miss fallback behavior
 
 ### Phase 4: Sample Review Workflow
 **Goal**: Turn captured call windows into a practical local review loop for
@@ -96,9 +96,9 @@ training and debugging trigger behavior.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Add sample listing command
-- [ ] 04-02: Add sample replay and reclassify command
-- [ ] 04-03: Add sanitized evaluation report and docs
+- [x] 04-01: Add sample listing command
+- [x] 04-02: Add sample replay and reclassify command
+- [x] 04-03: Add sanitized evaluation report and docs
 
 ## Progress
 
@@ -107,7 +107,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Latency Baseline | v1.0 | 0/2 | Not started | - |
-| 2. Catcher Tuning Loop | v1.0 | 0/3 | Not started | - |
-| 3. Sayer Preflight Path | v1.0 | 0/3 | Not started | - |
-| 4. Sample Review Workflow | v1.0 | 0/3 | Not started | - |
+| 1. Latency Baseline | v1.0 | 2/2 | Complete | 2026-05-15 |
+| 2. Catcher Tuning Loop | v1.0 | 3/3 | Complete | 2026-05-15 |
+| 3. Sayer Preflight Path | v1.0 | 3/3 | Complete | 2026-05-15 |
+| 4. Sample Review Workflow | v1.0 | 3/3 | Complete | 2026-05-15 |

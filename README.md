@@ -82,6 +82,7 @@ saymo record-voice -d 12           # Record a fresh ~12s voice reference
 # Before the call: prepare text + cached audio
 saymo prepare -p personal
 saymo prepare-responses         # pre-synthesize the Q&A library for live mode
+saymo auto-preflight -p personal
 saymo review                    # optional: check generated audio
 
 # During the call
@@ -125,6 +126,7 @@ trigger detection:
 ```bash
 saymo trigger-capture -p personal
 saymo trigger-capture -p personal --device "MacBook Pro Microphone" --duration 60
+saymo trigger-eval -p personal
 ```
 
 By default it listens on `audio.capture_device`, normally `BlackHole 16ch`.
@@ -132,6 +134,20 @@ Each window is saved as WAV plus JSON metadata under
 `~/.saymo/trigger_samples/<profile>/` and separated into:
 `asked_to_speak`, `question`, and `speech`. Add `--save-silence` only when you
 also need silent windows for debugging.
+
+Review the saved windows without opening JSON by hand:
+
+```bash
+saymo trigger-samples list -p personal
+saymo trigger-samples replay ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
+saymo trigger-eval -p personal --promote ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
+saymo trigger-samples report -p personal -o ~/.saymo/trigger_samples/personal-report.md
+```
+
+`trigger-eval` compares stored and current classification, reports misses and
+false positives, and can promote a heard name variant into
+`vocabulary.fuzzy_expansions` before re-running the evaluation. Reports omit raw
+audio and transcript text.
 
 ### Call providers
 
@@ -207,13 +223,15 @@ To check whether a live phrase will trigger Saymo before joining a call:
 ```bash
 saymo trigger-check -p personal --text "John, что по статусу?"
 saymo trigger-check -p personal --mic
+saymo auto-preflight -p personal
 saymo trigger-setup -p personal --heard "Jon, что по статусу?"
 saymo trigger-learn -p personal --heard "Jon"
 ```
 
 The diagnostic shows trigger match, whether the mention is addressed to you,
 question detection, confirmation behavior, auto-mode action, and response-cache
-routing.
+routing. `auto-preflight` checks prepared audio, devices, provider readiness,
+profile triggers, response-cache coverage, fallback mode, and live tuning.
 Use `trigger-setup` when Whisper consistently hears your name as a different
 spelling; it updates `vocabulary.fuzzy_expansions` and verifies the learned
 variant immediately. You can paste the whole transcribed phrase; Saymo extracts

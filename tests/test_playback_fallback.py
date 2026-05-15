@@ -56,6 +56,16 @@ def test_play_cached_audio_falls_back_to_blackhole_when_provider_flow_fails(
     assert played == [(b"wav-bytes", "BlackHole 2ch")]
 
 
+def test_play_cached_audio_returns_blocked_reason_for_missing_file(tmp_path):
+    config = SaymoConfig()
+
+    result = _run(_play_cached_audio(config, tmp_path / "missing.wav"))
+
+    assert result.success is False
+    assert "audio file not found" in result.reason
+    assert result.playback_started is False
+
+
 def test_play_cached_audio_does_not_replay_when_provider_fails_after_playback(
     tmp_path,
     monkeypatch,

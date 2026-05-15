@@ -228,6 +228,21 @@ class MeetingProfile:
     team: bool = False
     source: str = "confluence"
     trigger_phrases: list[str] = field(default_factory=list)
+    # Optional per-profile overrides for the live call loop. Supported keys
+    # mirror LiveConfig below.
+    live: dict = field(default_factory=dict)
+
+
+@dataclass
+class LiveConfig:
+    """Runtime tuning for the live call catcher/sayer path."""
+
+    chunk_seconds: float = 4.0
+    overlap_seconds: float = 2.0
+    read_timeout_seconds: float = 3.0
+    trigger_cooldown_seconds: float = 45.0
+    silence_rms_threshold: float = 0.001
+    pre_speak_delay_seconds: float = 2.0
 
 
 @dataclass
@@ -278,6 +293,7 @@ class SaymoConfig:
     speech: SpeechConfig = field(default_factory=SpeechConfig)
     safety: SafetyConfig = field(default_factory=SafetyConfig)
     responses: ResponsesConfig = field(default_factory=ResponsesConfig)
+    live: LiveConfig = field(default_factory=LiveConfig)
     meetings: dict = field(default_factory=dict)
     prompts: dict = field(default_factory=dict)
     vocabulary: dict = field(default_factory=dict)
@@ -293,6 +309,55 @@ class SaymoConfig:
     def list_meetings(self) -> list[str]:
         """List available meeting profile names."""
         return list(self.meetings.keys()) if isinstance(self.meetings, dict) else []
+
+
+def _safe_float(value, fallback: float, *, minimum: float | None = None) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return fallback
+    if minimum is not None:
+        return max(minimum, parsed)
+    return parsed
+
+
+def resolve_live_tuning(config: SaymoConfig, meeting: MeetingProfile | None = None) -> LiveConfig:
+    """Return live-loop tuning with optional meeting-level overrides applied."""
+    base = config.live if isinstance(config.live, LiveConfig) else LiveConfig()
+    overrides = meeting.live if meeting and isinstance(meeting.live, dict) else {}
+
+    return LiveConfig(
+        chunk_seconds=_safe_float(
+            overrides.get("chunk_seconds", base.chunk_seconds),
+            base.chunk_seconds,
+            minimum=0.25,
+        ),
+        overlap_seconds=_safe_float(
+            overrides.get("overlap_seconds", base.overlap_seconds),
+            base.overlap_seconds,
+            minimum=0.0,
+        ),
+        read_timeout_seconds=_safe_float(
+            overrides.get("read_timeout_seconds", base.read_timeout_seconds),
+            base.read_timeout_seconds,
+            minimum=0.1,
+        ),
+        trigger_cooldown_seconds=_safe_float(
+            overrides.get("trigger_cooldown_seconds", base.trigger_cooldown_seconds),
+            base.trigger_cooldown_seconds,
+            minimum=0.0,
+        ),
+        silence_rms_threshold=_safe_float(
+            overrides.get("silence_rms_threshold", base.silence_rms_threshold),
+            base.silence_rms_threshold,
+            minimum=0.0,
+        ),
+        pre_speak_delay_seconds=_safe_float(
+            overrides.get("pre_speak_delay_seconds", base.pre_speak_delay_seconds),
+            base.pre_speak_delay_seconds,
+            minimum=0.0,
+        ),
+    )
 
 
 def _dict_to_dataclass(cls, data: dict):

@@ -9,6 +9,7 @@ from saymo.commands import (
     _looks_like_question,
     _play_cached_audio,
     _resolve_auto_response,
+    _resolve_auto_response_decision,
     _rotate_audio_cache,
 )
 
@@ -16,6 +17,7 @@ __all__ = [
     "main",
     "_looks_like_question",
     "_resolve_auto_response",
+    "_resolve_auto_response_decision",
 ]
 
 

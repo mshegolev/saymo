@@ -107,6 +107,16 @@ safety:
   hotkey_takeover: "<cmd>+<shift>+u"   # manual answer mode: pause auto + best-effort mic switch
   max_speech_duration: 120
 
+live:
+  # Runtime tuning for `saymo auto`. Meeting profiles can override these under
+  # `meetings.<name>.live` without editing source.
+  chunk_seconds: 4.0                 # audio window sent to Whisper
+  overlap_seconds: 2.0               # overlap between adjacent windows
+  read_timeout_seconds: 3.0          # wait for the next captured chunk
+  trigger_cooldown_seconds: 45.0     # suppress duplicate name hits after answer
+  silence_rms_threshold: 0.001       # skip quiet windows before Whisper
+  pre_speak_delay_seconds: 2.0       # pause after trigger before playback
+
 # Meeting profiles — each one picks a source plugin, a call provider, and the
 # trigger phrases used by `saymo auto`. Add as many as you need.
 meetings:
@@ -117,6 +127,11 @@ meetings:
     source: obsidian
     trigger_phrases:
       - "Your Name"
+    # Optional live tuning just for this profile:
+    # live:
+    #   chunk_seconds: 3.0
+    #   overlap_seconds: 1.0
+    #   trigger_cooldown_seconds: 25.0
   team:
     description: "Team update — you + teammates"
     provider: glip
