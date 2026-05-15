@@ -2,6 +2,8 @@
 test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
 trigger-learn, trigger-setup, takeover-check, mic-check."""
 
+import re
+
 import click
 from rich.table import Table
 
@@ -451,13 +453,15 @@ def trigger_setup(ctx, profile, heard, trigger, mic, seconds, device):
 
     config_path = _config_path_for_update(ctx)
     canonical = trigger or _default_trigger_for_profile(config, profile)
-    learned = _learn_trigger_variant(config_path, canonical, heard)
+    variant = _extract_trigger_variant(heard)
+    learned = _learn_trigger_variant(config_path, canonical, variant)
     updated = load_config(str(config_path))
     matches = _trigger_matches(updated, profile, heard)
 
     console.print(f"config: {config_path}")
     console.print(f"trigger: {canonical}")
     console.print(f"heard: {heard.strip()}")
+    console.print(f"variant: {variant}")
     console.print(f"learned: {'yes' if learned else 'no'}")
     console.print(f"trigger after learning: {'yes' if matches else 'no'}")
     if not matches:
@@ -526,6 +530,28 @@ def _learn_trigger_variant(config_path, trigger: str, heard: str) -> bool:
         encoding="utf-8",
     )
     return True
+
+
+def _extract_trigger_variant(heard: str) -> str:
+    """Extract the likely name variant from a transcribed setup phrase."""
+    variant = " ".join((heard or "").split()).strip(" ,:;—-")
+    if not variant:
+        return ""
+    for sep in (",", "?", "!", ":", ";", "—", " - "):
+        if sep in variant:
+            variant = variant.split(sep, 1)[0].strip(" ,:;—-")
+            break
+    markers = (
+        "что", "как", "где", "когда", "почему", "зачем", "кто",
+        "сколько", "какие", "какой", "какая", "расскажи", "поделись",
+        "опиши", "what", "how", "why", "when", "where", "who",
+        "tell me", "can you", "could you", "do you",
+    )
+    marker_pattern = "|".join(re.escape(marker) for marker in markers)
+    match = re.search(rf"\s+(?:{marker_pattern})(?:\s|$)", variant, re.IGNORECASE)
+    if match and match.start() > 0:
+        variant = variant[:match.start()].strip(" ,:;—-")
+    return variant
 
 
 def _trigger_matches(config, profile: str, text: str) -> bool:

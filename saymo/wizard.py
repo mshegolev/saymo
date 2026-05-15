@@ -35,7 +35,7 @@ def _trigger_setup_tip(profile: str, trigger: str) -> str:
     """Return the post-wizard trigger calibration commands for one profile."""
     return (
         f"saymo trigger-check -p {profile} --mic\n"
-        f"saymo trigger-setup -p {profile} --heard \"{trigger}\""
+        f"saymo trigger-setup -p {profile} --heard \"{trigger}, what is the status?\""
     )
 
 

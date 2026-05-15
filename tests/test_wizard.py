@@ -25,4 +25,4 @@ def test_trigger_setup_tip_points_to_verified_learning_flow():
     tip = _trigger_setup_tip("personal", "Миша")
 
     assert "saymo trigger-check -p personal --mic" in tip
-    assert 'saymo trigger-setup -p personal --heard "Миша"' in tip
+    assert 'saymo trigger-setup -p personal --heard "Миша, what is the status?"' in tip

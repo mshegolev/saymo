@@ -36,7 +36,7 @@ What is missing for the goal:
 | Gap | Evidence | Track |
 |---|---|---|
 | Real-time Q&A path in `auto` mode | ~~Gap closed in v0.8.0~~ — `saymo/commands/core.py::_auto` + `saymo/commands/__init__.py::_resolve_auto_response` now consult `ResponseCache` on question-shaped triggers and optionally fall back to live Ollama + TTS when `config.responses.live_fallback=true`. | done |
-| Trigger setup is still too manual | `saymo trigger-check` previews trigger/addressing/question/cache routing, `saymo trigger-setup` writes heard variants into `vocabulary.fuzzy_expansions` with immediate verification, and `saymo setup` now points users to that verified flow; the wizard still does not run microphone calibration inline. | Setup UX |
+| Trigger setup is still too manual | `saymo trigger-check` previews trigger/addressing/question/cache routing, `saymo trigger-setup` extracts the likely name variant from a pasted transcript and verifies it immediately, and `saymo setup` now points users to that verified flow; the wizard still does not run microphone calibration inline. | Setup UX |
 | Addressing false positives need ongoing tuning | `saymo/analysis/addressing.py` suppresses obvious narrated mentions like "как Миша говорил...", but more real-call transcripts are needed for edge cases. | Reliability |
 | Qwen3-TTS LoRA training loss is a placeholder | `saymo/tts/qwen3_trainer.py::_compute_loss` now raises `NotImplementedError` instead of silently computing `mx.mean(output)`. LoRA scaffolding (rank 8 / scale 0.3; `_apply_lora` via `mlx_lm.tuner.lora.LoRALinear.from_base`) is real. The training loop itself still needs a real loss impl after inspecting the model's forward signature. | A |
 | `safety.max_speech_duration` wired into `_auto()` | `_auto()` wraps playback with a timeout and cancels playback when it exceeds `safety.max_speech_duration`. | done |
@@ -176,7 +176,7 @@ Short list of hardening items adjacent to the goal — not blockers for A/B pass
 - **Timeout safety**: shipped. `_auto()` cancels playback when it exceeds `safety.max_speech_duration`; provider mute fallback should still be hardened with an AppleScript system-mute fallback if provider control fails.
 - **Hotkeys**: shipped for `safety.hotkey_stop`, `hotkey_toggle`, and `hotkey_takeover`; takeover pauses auto-mode and best-effort switches the call mic between `audio.recording_device` and `BlackHole 2ch`. `hotkey_speak` is not used in auto-mode.
 - **Trigger diagnostics**: shipped as `saymo trigger-check -p <profile> --text ...` and `saymo trigger-check -p <profile> --mic`.
-- **Trigger learning**: shipped as `saymo trigger-setup -p <profile> --heard ...`; this appends STT variants to `vocabulary.fuzzy_expansions` and verifies detection.
+- **Trigger learning**: shipped as `saymo trigger-setup -p <profile> --heard ...`; this extracts the likely name variant from a full STT phrase, appends it to `vocabulary.fuzzy_expansions`, and verifies detection against the original phrase.
 - **Confirmation step (optional)**: when `analysis.turn_detection.require_confirmation: true`, wait up to 3 s after the first trigger for a second mention before speaking. Helps when false positives appear.
 - **Local log review**: after each test session, skim trigger / transcript / answer / mute-state logs; keep them local (the project is `Local by default`).
 - **Consent**: clone your own voice only where you have the right to. Disclose automation where workplace policy requires it.
