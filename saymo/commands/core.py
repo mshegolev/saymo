@@ -39,17 +39,53 @@ def _should_answer_trigger_window(
     return should_answer_decision(decision)
 
 
-def _toggle_manual_takeover(paused, stop_playback, manual_takeover) -> str:
+def _toggle_manual_takeover(
+    paused,
+    stop_playback,
+    manual_takeover,
+    *,
+    provider=None,
+    recording_device: str = "",
+    saymo_device: str = "BlackHole 2ch",
+) -> str:
     """Toggle manual takeover mode for answering in the call yourself."""
     if manual_takeover.is_set():
+        mic_failed = False
+        if provider is not None:
+            try:
+                if not provider.switch_mic(saymo_device):
+                    mic_failed = True
+            except Exception:
+                mic_failed = True
         manual_takeover.clear()
         paused.clear()
+        if mic_failed:
+            return "resumed_mic_failed"
         return "resumed"
 
     manual_takeover.set()
     paused.set()
     stop_playback.set()
+    if provider is not None and recording_device:
+        try:
+            if not provider.switch_mic(recording_device):
+                return "active_mic_failed"
+        except Exception:
+            return "active_mic_failed"
+    if provider is not None and not recording_device:
+        return "active_no_recording_device"
     return "active"
+
+
+def _toggle_auto_pause(paused, manual_takeover) -> str:
+    """Toggle ordinary auto-mode pause unless manual takeover owns the pause."""
+    if manual_takeover.is_set():
+        return "manual_takeover_active"
+    if paused.is_set():
+        paused.clear()
+        return "resumed"
+    paused.set()
+    return "paused"
 
 
 @main.command()
@@ -191,23 +227,45 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
         def _on_toggle():
             def _apply_toggle():
-                if paused.is_set():
-                    manual_takeover.clear()
-                    paused.clear()
+                state = _toggle_auto_pause(paused, manual_takeover)
+                if state == "resumed":
                     console.print("[bold green]▶  RESUMED[/]")
-                else:
-                    paused.set()
+                elif state == "paused":
                     console.print("[bold yellow]⏸  PAUSED (hotkey to resume)[/]")
+                else:
+                    console.print(
+                        "[bold yellow]Manual takeover active — press takeover "
+                        "hotkey to switch mic back and resume.[/]"
+                    )
 
             loop.call_soon_threadsafe(_apply_toggle)
 
         def _on_takeover():
             def _apply_takeover():
-                state = _toggle_manual_takeover(paused, stop_playback, manual_takeover)
+                state = _toggle_manual_takeover(
+                    paused,
+                    stop_playback,
+                    manual_takeover,
+                    provider=provider,
+                    recording_device=config.audio.recording_device,
+                )
                 if state == "active":
                     console.print(
                         "[bold yellow]Manual takeover active — Saymo paused. "
-                        "Unmute yourself in the call, answer, then press takeover again.[/]"
+                        f"Call mic switched to {config.audio.recording_device}. "
+                        "Unmute yourself, answer, then press takeover again.[/]"
+                    )
+                elif state in {"active_mic_failed", "active_no_recording_device"}:
+                    console.print(
+                        "[bold yellow]Manual takeover active — Saymo paused. "
+                        "Switch the call mic to your real microphone manually, "
+                        "answer, then press takeover again.[/]"
+                    )
+                elif state == "resumed_mic_failed":
+                    console.print(
+                        "[bold yellow]Manual takeover ended — Saymo resumed, but "
+                        "could not switch the call mic back to BlackHole 2ch. "
+                        "Switch it manually before relying on Saymo playback.[/]"
                     )
                 else:
                     console.print("[bold green]Manual takeover ended — Saymo resumed[/]")

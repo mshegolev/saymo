@@ -9,7 +9,11 @@ import pytest
 
 from saymo.cli import _looks_like_question, _resolve_auto_response
 from saymo.config import SaymoConfig
-from saymo.commands.core import _should_answer_trigger_window, _toggle_manual_takeover
+from saymo.commands.core import (
+    _should_answer_trigger_window,
+    _toggle_auto_pause,
+    _toggle_manual_takeover,
+)
 
 
 def _run(coro):
@@ -77,17 +81,77 @@ def test_manual_takeover_stops_playback_and_pauses_auto_mode():
     assert manual_takeover.is_set()
 
 
+def test_manual_takeover_switches_call_mic_to_recording_device():
+    paused = asyncio.Event()
+    stop_playback = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    provider = MagicMock()
+    provider.switch_mic.return_value = True
+
+    state = _toggle_manual_takeover(
+        paused,
+        stop_playback,
+        manual_takeover,
+        provider=provider,
+        recording_device="MacBook Pro Microphone",
+    )
+
+    assert state == "active"
+    provider.switch_mic.assert_called_once_with("MacBook Pro Microphone")
+
+
 def test_manual_takeover_second_press_resumes_auto_mode():
     paused = asyncio.Event()
     stop_playback = asyncio.Event()
     manual_takeover = asyncio.Event()
+    provider = MagicMock()
+    provider.switch_mic.return_value = True
     _toggle_manual_takeover(paused, stop_playback, manual_takeover)
 
-    state = _toggle_manual_takeover(paused, stop_playback, manual_takeover)
+    state = _toggle_manual_takeover(
+        paused,
+        stop_playback,
+        manual_takeover,
+        provider=provider,
+    )
 
     assert state == "resumed"
     assert not paused.is_set()
     assert manual_takeover.is_set() is False
+    provider.switch_mic.assert_called_once_with("BlackHole 2ch")
+
+
+def test_manual_takeover_resumes_with_warning_when_blackhole_restore_fails():
+    paused = asyncio.Event()
+    stop_playback = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    provider = MagicMock()
+    provider.switch_mic.return_value = False
+    _toggle_manual_takeover(paused, stop_playback, manual_takeover)
+
+    state = _toggle_manual_takeover(
+        paused,
+        stop_playback,
+        manual_takeover,
+        provider=provider,
+    )
+
+    assert state == "resumed_mic_failed"
+    assert not paused.is_set()
+    assert not manual_takeover.is_set()
+
+
+def test_pause_toggle_does_not_resume_during_manual_takeover():
+    paused = asyncio.Event()
+    paused.set()
+    manual_takeover = asyncio.Event()
+    manual_takeover.set()
+
+    state = _toggle_auto_pause(paused, manual_takeover)
+
+    assert state == "manual_takeover_active"
+    assert paused.is_set()
+    assert manual_takeover.is_set()
 
 
 # ---------------------------------------------------------------------------

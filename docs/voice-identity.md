@@ -174,7 +174,7 @@ responses:
 Short list of hardening items adjacent to the goal — not blockers for A/B pass, but required before routine use on real calls:
 
 - **Timeout safety**: shipped. `_auto()` cancels playback when it exceeds `safety.max_speech_duration`; provider mute fallback should still be hardened with an AppleScript system-mute fallback if provider control fails.
-- **Hotkeys**: shipped for `safety.hotkey_stop`, `hotkey_toggle`, and `hotkey_takeover`; `hotkey_speak` is not used in auto-mode.
+- **Hotkeys**: shipped for `safety.hotkey_stop`, `hotkey_toggle`, and `hotkey_takeover`; takeover pauses auto-mode and best-effort switches the call mic between `audio.recording_device` and `BlackHole 2ch`. `hotkey_speak` is not used in auto-mode.
 - **Trigger diagnostics**: shipped as `saymo trigger-check -p <profile> --text ...` and `saymo trigger-check -p <profile> --mic`.
 - **Confirmation step (optional)**: when `analysis.turn_detection.require_confirmation: true`, wait up to 3 s after the first trigger for a second mention before speaking. Helps when false positives appear.
 - **Local log review**: after each test session, skim trigger / transcript / answer / mute-state logs; keep them local (the project is `Local by default`).

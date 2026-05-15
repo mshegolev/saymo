@@ -103,9 +103,13 @@ Default hotkeys:
 
 | Hotkey | Action |
 |---|---|
-| `Cmd+Shift+U` | Manual takeover: stop Saymo playback, pause auto-mode so you can answer yourself; press again to resume |
+| `Cmd+Shift+U` | Manual takeover: stop Saymo playback, pause auto-mode, switch the call mic to your real mic when the provider supports it; press again to return to BlackHole 2ch and resume |
 | `Cmd+Shift+X` | Stop current Saymo playback |
 | `Cmd+Shift+M` | Pause / resume auto-mode |
+
+Mic switching is automatic for providers that implement `switch_mic()`
+(`glip`, `mts_link`). For other providers, Saymo still pauses/resumes; switch
+the call microphone manually in the meeting UI.
 
 ### Call providers
 
