@@ -99,7 +99,8 @@ speech:
   composer: ollama            # `ollama` | `anthropic`
 
 safety:
-  require_confirmation: true
+  require_confirmation: true          # require a second trigger mention before auto-speaking
+  confirmation_timeout_seconds: 6.0   # seconds to wait for that second mention
   hotkey_speak: "<cmd>+<shift>+s"
   hotkey_stop: "<cmd>+<shift>+x"
   hotkey_toggle: "<cmd>+<shift>+m"

@@ -11,6 +11,7 @@ from saymo.cli import _looks_like_question, _resolve_auto_response
 from saymo.config import SaymoConfig
 from saymo.commands.core import (
     _should_answer_trigger_window,
+    _update_trigger_confirmation,
     _toggle_auto_pause,
     _toggle_manual_takeover,
 )
@@ -66,6 +67,95 @@ def test_should_answer_trigger_window_ignores_narrated_mention():
         "как Миша вчера говорил, надо проверить логи",
         ["Миша"],
     ) is False
+
+
+def test_trigger_confirmation_disabled_confirms_immediately():
+    config = SaymoConfig()
+    config.safety.require_confirmation = False
+
+    confirmed, pending, response_window, state = _update_trigger_confirmation(
+        config,
+        now=100.0,
+        pending=None,
+        transcript_window="Миша, что по статусу?",
+    )
+
+    assert confirmed is True
+    assert pending is None
+    assert response_window == "Миша, что по статусу?"
+    assert state == "disabled"
+
+
+def test_trigger_confirmation_first_trigger_waits_for_second_mention():
+    config = SaymoConfig()
+    config.safety.require_confirmation = True
+    config.safety.confirmation_timeout_seconds = 3.0
+
+    confirmed, pending, response_window, state = _update_trigger_confirmation(
+        config,
+        now=100.0,
+        pending=None,
+        transcript_window="Миша, что по статусу?",
+    )
+
+    assert confirmed is False
+    assert pending == (103.0, "Миша, что по статусу?")
+    assert response_window == ""
+    assert state == "waiting"
+
+
+def test_trigger_confirmation_second_trigger_reuses_original_question_window():
+    config = SaymoConfig()
+    config.safety.require_confirmation = True
+    config.safety.confirmation_timeout_seconds = 3.0
+
+    confirmed, pending, response_window, state = _update_trigger_confirmation(
+        config,
+        now=102.0,
+        pending=(103.0, "Миша, что по статусу?"),
+        transcript_window="Миша",
+    )
+
+    assert confirmed is True
+    assert pending is None
+    assert response_window == "Миша, что по статусу?"
+    assert state == "confirmed"
+
+
+def test_trigger_confirmation_prefers_second_window_when_it_has_question():
+    config = SaymoConfig()
+    config.safety.require_confirmation = True
+    config.safety.confirmation_timeout_seconds = 3.0
+
+    confirmed, pending, response_window, state = _update_trigger_confirmation(
+        config,
+        now=102.0,
+        pending=(103.0, "Миша"),
+        transcript_window="Миша, что с задачей?",
+    )
+
+    assert confirmed is True
+    assert pending is None
+    assert response_window == "Миша, что с задачей?"
+    assert state == "confirmed"
+
+
+def test_trigger_confirmation_expired_window_starts_over():
+    config = SaymoConfig()
+    config.safety.require_confirmation = True
+    config.safety.confirmation_timeout_seconds = 3.0
+
+    confirmed, pending, response_window, state = _update_trigger_confirmation(
+        config,
+        now=104.0,
+        pending=(103.0, "Миша, что по статусу?"),
+        transcript_window="Миша, что с задачей?",
+    )
+
+    assert confirmed is False
+    assert pending == (107.0, "Миша, что с задачей?")
+    assert response_window == ""
+    assert state == "waiting"
 
 
 def test_manual_takeover_stops_playback_and_pauses_auto_mode():

@@ -155,6 +155,8 @@ analysis:
     keyword_trigger: true
 
 safety:
+  require_confirmation: true
+  confirmation_timeout_seconds: 6.0
   max_speech_duration: 120
   hotkey_stop: "cmd+shift+x"
   hotkey_toggle: "cmd+shift+m"
@@ -167,7 +169,7 @@ responses:
   live_fallback: false
 ```
 
-`tts.realtime_engine`, `responses.*`, `safety.max_speech_duration`, stop/toggle/takeover hotkeys, and `scripts/add_hotkeys.py` exist in the repo. A future `analysis.turn_detection.require_confirmation` key can still be added if real-call false positives persist.
+`tts.realtime_engine`, `responses.*`, `safety.max_speech_duration`, `safety.require_confirmation`, stop/toggle/takeover hotkeys, and `scripts/add_hotkeys.py` exist in the repo.
 
 ## Reliability appendix
 
@@ -177,7 +179,7 @@ Short list of hardening items adjacent to the goal — not blockers for A/B pass
 - **Hotkeys**: shipped for `safety.hotkey_stop`, `hotkey_toggle`, and `hotkey_takeover`; takeover pauses auto-mode and best-effort switches the call mic between `audio.recording_device` and `BlackHole 2ch`. `hotkey_speak` is not used in auto-mode.
 - **Trigger diagnostics**: shipped as `saymo trigger-check -p <profile> --text ...` and `saymo trigger-check -p <profile> --mic`.
 - **Trigger learning**: shipped as `saymo trigger-setup -p <profile> --heard ...`; this extracts the likely name variant from a full STT phrase, appends it to `vocabulary.fuzzy_expansions`, and verifies detection against the original phrase.
-- **Confirmation step (optional)**: when `analysis.turn_detection.require_confirmation: true`, wait up to 3 s after the first trigger for a second mention before speaking. Helps when false positives appear.
+- **Confirmation step (optional)**: when `safety.require_confirmation: true`, wait up to `safety.confirmation_timeout_seconds` after the first trigger for a second mention before speaking. The original question window is preserved, so a second short "Миша" can confirm "Миша, что по статусу?".
 - **Local log review**: after each test session, skim trigger / transcript / answer / mute-state logs; keep them local (the project is `Local by default`).
 - **Consent**: clone your own voice only where you have the right to. Disclose automation where workplace policy requires it.
 
@@ -191,7 +193,7 @@ The goal is a product that works on a CPU-only machine and hits "voice indisting
 2. **XTTS v2 fine-tune on expanded dataset** — `saymo train-voice --epochs 5` → `saymo train-eval`; promote only if ≥ 7 / 10.
 3. **Prepared-playback dry run** — `saymo prepare -p <profile>` → `saymo review` → `saymo speak --provider glip` against a real call.
 4. **Tier-A response cache** (real-time Q&A on CPU) — shipped. `saymo prepare` rebuilds a small library of pre-synthesised answers for common standup questions; `_auto()` looks up a cached answer before live synthesis. Latency is playback-only when a cache entry exists.
-5. **Reliability hardening** — timeout, stop/toggle hotkeys, trigger diagnostics, and addressing false-positive suppression are shipped. Remaining work: optional confirmation step and provider/system mute fallback hardening.
+5. **Reliability hardening** — timeout, stop/toggle/takeover hotkeys, trigger diagnostics, confirmation, and addressing false-positive suppression are shipped. Remaining work: provider/system mute fallback hardening.
 
 At this point the product meets all four success criteria on a CPU-only machine.
 

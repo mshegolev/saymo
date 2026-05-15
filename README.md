@@ -198,6 +198,9 @@ Use `trigger-setup` when Whisper consistently hears your name as a different
 spelling; it updates `vocabulary.fuzzy_expansions` and verifies the learned
 variant immediately. You can paste the whole transcribed phrase; Saymo extracts
 the likely name variant before saving it.
+When `safety.require_confirmation` is enabled, auto-mode waits for a second
+trigger mention within `safety.confirmation_timeout_seconds` before speaking;
+this helps suppress accidental mentions in live calls.
 
 ## Architecture
 

@@ -39,6 +39,52 @@ def _should_answer_trigger_window(
     return should_answer_decision(decision)
 
 
+def _trigger_confirmation_timeout(config) -> float:
+    try:
+        timeout = float(getattr(config.safety, "confirmation_timeout_seconds", 6.0))
+    except (TypeError, ValueError):
+        timeout = 6.0
+    return max(0.1, timeout)
+
+
+def _prefer_question_window(first_window: str, second_window: str) -> str:
+    from saymo.analysis.addressing import looks_like_question
+
+    if looks_like_question(second_window) and not looks_like_question(first_window):
+        return second_window
+    return first_window or second_window
+
+
+def _update_trigger_confirmation(
+    config,
+    *,
+    now: float,
+    pending: tuple[float, str] | None,
+    transcript_window: str,
+) -> tuple[bool, tuple[float, str] | None, str, str]:
+    """Update optional double-trigger confirmation state.
+
+    Returns ``(confirmed, pending, response_window, state)``. When the first
+    trigger is a full question and the second is only the repeated name, the
+    stored first transcript remains the response window.
+    """
+    if not getattr(config.safety, "require_confirmation", False):
+        return True, None, transcript_window, "disabled"
+
+    if pending is not None:
+        expires_at, first_window = pending
+        if now <= expires_at:
+            return (
+                True,
+                None,
+                _prefer_question_window(first_window, transcript_window),
+                "confirmed",
+            )
+
+    timeout = _trigger_confirmation_timeout(config)
+    return False, (now + timeout, transcript_window), "", "waiting"
+
+
 def _toggle_manual_takeover(
     paused,
     stop_playback,
@@ -212,6 +258,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
     stop_playback = asyncio.Event()
     paused = asyncio.Event()
     manual_takeover = asyncio.Event()
+    pending_confirmation: tuple[float, str] | None = None
 
     # Wire global hotkeys for stop/pause. Failures here (e.g., macOS
     # accessibility permissions missing) shouldn't break auto mode — just
@@ -318,6 +365,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
     async def _trigger_loop():
         """Wait for trigger, then speak."""
+        nonlocal pending_confirmation
         while True:
             await triggered.wait()
             triggered.clear()
@@ -330,9 +378,31 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                 console.print(
                     f"[yellow]Skipping trigger:[/] {addressing.label} — {addressing.reason}"
                 )
+                if pending_confirmation and time.monotonic() > pending_confirmation[0]:
+                    pending_confirmation = None
                 detector.reset_cooldown()
                 console.print("\n[bold yellow]Listening again...[/]\n")
                 continue
+
+            confirmed, pending_confirmation, response_window, confirmation_state = (
+                _update_trigger_confirmation(
+                    config,
+                    now=time.monotonic(),
+                    pending=pending_confirmation,
+                    transcript_window=transcript_window,
+                )
+            )
+            if not confirmed:
+                console.print(
+                    "[yellow]Confirmation required:[/] mention the trigger again "
+                    f"within {_trigger_confirmation_timeout(config):.1f}s"
+                )
+                detector.reset_cooldown()
+                console.print("\n[bold yellow]Listening again...[/]\n")
+                continue
+            if confirmation_state == "confirmed":
+                console.print("[dim]Trigger confirmed by second mention[/]")
+            transcript_window = response_window
 
             # Drain audio queue — don't process stale chunks after trigger
             while not capture.audio_queue.empty():
