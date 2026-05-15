@@ -62,6 +62,56 @@ def test_trigger_check_text_reports_addressed_question(tmp_path):
     assert "response:" in result.output
 
 
+def test_trigger_check_reports_confirmation_wait_for_first_trigger(tmp_path):
+    config_path = _write_config(tmp_path)
+    runner = CliRunner()
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-check",
+            "--profile",
+            "personal",
+            "--text",
+            "Миша, что по статусу?",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "will answer: yes" in result.output
+    assert "confirmation: required within 6.0s" in result.output
+    assert "auto action: wait_for_confirmation" in result.output
+
+
+def test_trigger_check_reports_answer_now_when_confirmation_disabled(tmp_path):
+    import yaml
+
+    config_path = _write_config(tmp_path)
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    data["safety"] = {"require_confirmation": False}
+    config_path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+    runner = CliRunner()
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-check",
+            "--profile",
+            "personal",
+            "--text",
+            "Миша, что по статусу?",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "confirmation: disabled" in result.output
+    assert "auto action: answer_now" in result.output
+
+
 def test_trigger_check_text_reports_ignored_mention(tmp_path):
     config_path = _write_config(tmp_path)
     runner = CliRunner()
@@ -83,6 +133,7 @@ def test_trigger_check_text_reports_ignored_mention(tmp_path):
     assert "trigger: yes" in result.output
     assert "addressing: mentioned_not_addressed" in result.output
     assert "will answer: no" in result.output
+    assert "auto action: skip" in result.output
 
 
 def test_trigger_learn_adds_heard_variant_to_fuzzy_expansions(tmp_path):

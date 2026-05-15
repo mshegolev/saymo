@@ -342,6 +342,7 @@ def _print_trigger_diagnostics(config, profile: str, text: str) -> None:
     )
     from saymo.analysis.response_cache import ResponseCache, build_library
     from saymo.analysis.turn_detector import TurnDetector
+    from saymo.commands.core import _trigger_confirmation_timeout
 
     trigger_phrases = _trigger_phrases_for_profile(config, profile)
     expanded = expand_trigger_phrases(
@@ -356,6 +357,17 @@ def _print_trigger_diagnostics(config, profile: str, text: str) -> None:
     triggered = detector.check(text)
     decision = classify_addressing(text, expanded)
     will_answer = triggered and should_answer_decision(decision)
+    confirmation_required = bool(getattr(config.safety, "require_confirmation", False))
+    confirmation_timeout = _trigger_confirmation_timeout(config)
+    if not will_answer:
+        confirmation = "not_applicable"
+        auto_action = "skip"
+    elif confirmation_required:
+        confirmation = f"required within {confirmation_timeout:.1f}s"
+        auto_action = "wait_for_confirmation"
+    else:
+        confirmation = "disabled"
+        auto_action = "answer_now"
 
     console.print(f"transcript: {text}")
     console.print(f"profile: {profile}")
@@ -364,6 +376,8 @@ def _print_trigger_diagnostics(config, profile: str, text: str) -> None:
     console.print(f"addressing: {decision.label} ({decision.reason})")
     console.print(f"question: {'yes' if decision.is_question else 'no'}")
     console.print(f"will answer: {'yes' if will_answer else 'no'}")
+    console.print(f"confirmation: {confirmation}")
+    console.print(f"auto action: {auto_action}")
 
     if not will_answer:
         console.print("response: skipped")

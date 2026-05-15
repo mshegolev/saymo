@@ -199,7 +199,8 @@ saymo trigger-learn -p personal --heard "misheard name"
 
 The report shows whether the phrase triggers Saymo, whether the mention is
 addressed to you, whether it looks like a question, and whether a cached
-response is ready.
+response is ready. It also reports whether auto-mode would answer now, wait for
+confirmation, or skip the phrase.
 If Whisper consistently hears your name incorrectly, use `trigger-setup` to
 paste the whole transcribed phrase. Saymo extracts the likely name variant,
 saves that spelling into `vocabulary.fuzzy_expansions`, and verifies it

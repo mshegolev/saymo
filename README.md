@@ -194,7 +194,8 @@ saymo trigger-learn -p personal --heard "Меша"
 ```
 
 The diagnostic shows trigger match, whether the mention is addressed to you,
-question detection, and response-cache routing.
+question detection, confirmation behavior, auto-mode action, and response-cache
+routing.
 Use `trigger-setup` when Whisper consistently hears your name as a different
 spelling; it updates `vocabulary.fuzzy_expansions` and verifies the learned
 variant immediately. You can paste the whole transcribed phrase; Saymo extracts
