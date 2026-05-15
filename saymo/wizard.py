@@ -13,6 +13,32 @@ from rich.panel import Panel
 console = Console()
 
 
+def _build_meeting_profile(
+    *,
+    description: str,
+    team: bool,
+    source: str,
+    provider: str,
+    trigger_phrases: list[str],
+) -> dict:
+    """Build the config block for one meeting profile."""
+    return {
+        "description": description,
+        "team": team,
+        "source": source,
+        "provider": provider,
+        "trigger_phrases": trigger_phrases,
+    }
+
+
+def _trigger_setup_tip(profile: str, trigger: str) -> str:
+    """Return the post-wizard trigger calibration commands for one profile."""
+    return (
+        f"saymo trigger-check -p {profile} --mic\n"
+        f"saymo trigger-setup -p {profile} --heard \"{trigger}, what is the status?\""
+    )
+
+
 def _record_voice_interactive(recording_device: str, ollama_url: str = "http://localhost:11434", ollama_model: str = "qwen2.5-coder:7b"):
     """Record a 5-minute voice sample with on-screen reading text."""
     import time
@@ -277,6 +303,10 @@ def run_wizard(config_path: str | None = None):
             desc = click.prompt("  Description", default=existing.get("description", ""))
             is_team = click.confirm("  Team report? (includes all members)", default=existing.get("team", False))
             source = click.prompt("  Task source (confluence/obsidian/jira)", default=existing.get("source", "confluence"))
+            provider = click.prompt(
+                "  Call provider (glip/zoom/google_meet/ms_teams/telegram/telemost/vk_teams/mts_link)",
+                default=existing.get("provider", "glip"),
+            )
 
             triggers_str = click.prompt(
                 "  Trigger phrases (comma-separated)",
@@ -284,15 +314,20 @@ def run_wizard(config_path: str | None = None):
             )
             triggers = [t.strip() for t in triggers_str.split(",") if t.strip()]
 
-            meetings[mname] = {
-                "description": desc,
-                "team": is_team,
-                "source": source,
-                "trigger_phrases": triggers,
-                "glip_url_pattern": "v.ringcentral.com/conf",
-            }
+            meetings[mname] = _build_meeting_profile(
+                description=desc,
+                team=is_team,
+                source=source,
+                provider=provider,
+                trigger_phrases=triggers,
+            )
 
             console.print(f"  [green]Meeting '{mname}' configured[/]")
+            trigger_tip = _trigger_setup_tip(mname, triggers[0] if triggers else name)
+            console.print(
+                "  [dim]Tip: before a real call, run:[/]\n"
+                f"  [bold]{trigger_tip}[/]"
+            )
 
             if not click.confirm("  Add another meeting?", default=False):
                 break

@@ -262,10 +262,10 @@ meetings:
 ```
 
 ### Trigger phrases
-Used by `saymo auto` mode. When faster-whisper transcription contains any of these phrases, Saymo auto-speaks. Supports:
+Used by `saymo auto` mode. When faster-whisper transcription contains any of these phrases, Saymo runs an addressing check and only speaks when the mention appears directed at the user/team. Supports:
 - Exact match: `"Alex"`
-- Regex patterns: `"Alex.*очередь"`
 - Fuzzy variants (supplied via `config.vocabulary.fuzzy_expansions`)
+- Dry-run diagnostics: `saymo trigger-check -p PROFILE --text "Alex, what is the status?"`
 
 ---
 
@@ -319,8 +319,9 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 |---------|-------------|
 | `saymo setup` | Interactive wizard (name, devices, meetings) |
 | `saymo prepare -p PROFILE` | Fetch tasks, compose, pre-generate audio |
-| `saymo speak --glip` | Play cached audio into call |
+| `saymo speak -p PROFILE --provider glip` | Play cached audio into call |
 | `saymo auto -p PROFILE` | Listen for trigger, auto-speak |
+| `saymo trigger-check -p PROFILE --text TEXT` | Preview trigger/addressing/Q&A routing |
 | `saymo review` | Review audio sentence-by-sentence |
 | `saymo record-voice -d 300` | Record 5-min voice sample |
 | `saymo dashboard` | Interactive TUI |

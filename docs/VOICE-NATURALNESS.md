@@ -104,7 +104,7 @@ energy. These rules apply to *any* text you feed the engine.
 * **Avoid all-caps and unknown abbreviations.** `ETL` is read
   letter-by-letter unless `vocabulary.abbreviations` says otherwise.
 * **One language per sentence.** Mid-sentence code-switches
-  mispronounce. For mixed text, write phonetic spelling: `"NS2"` →
+  mispronounce. For mixed text, write phonetic spelling: `"ACME2"` →
   `"N-S-two"` for English output.
 * **`[pause:N]` markers** are honoured by
   `synthesize_presentation.py`'s splitter — drop `[pause:1.5]`

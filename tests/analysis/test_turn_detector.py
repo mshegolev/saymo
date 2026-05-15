@@ -12,17 +12,17 @@ from saymo.analysis.turn_detector import TurnDetector
 # ---------------------------------------------------------------------------
 
 def test_check_triggers_on_name_variant():
-    td = TurnDetector(name_variants=["Misha"], cooldown_seconds=0)
-    assert td.check("Hey Misha, how are you?") is True
+    td = TurnDetector(name_variants=["John"], cooldown_seconds=0)
+    assert td.check("Hey John, how are you?") is True
 
 
 def test_check_triggers_case_insensitive():
-    td = TurnDetector(name_variants=["Misha"], cooldown_seconds=0)
-    assert td.check("MISHA please reply") is True
+    td = TurnDetector(name_variants=["John"], cooldown_seconds=0)
+    assert td.check("JOHN please reply") is True
 
 
 def test_check_no_match_returns_false():
-    td = TurnDetector(name_variants=["Misha"], cooldown_seconds=0)
+    td = TurnDetector(name_variants=["John"], cooldown_seconds=0)
     assert td.check("hello everyone") is False
 
 
@@ -31,18 +31,18 @@ def test_check_no_match_returns_false():
 # ---------------------------------------------------------------------------
 
 def test_multiple_variants_first_matches():
-    td = TurnDetector(name_variants=["Misha", "Михаил", "Mike"], cooldown_seconds=0)
-    assert td.check("Михаил, ты здесь?") is True
+    td = TurnDetector(name_variants=["John", "John Doe", "Johnny"], cooldown_seconds=0)
+    assert td.check("John Doe, ты здесь?") is True
 
 
 def test_multiple_variants_second_matches():
-    td = TurnDetector(name_variants=["Misha", "Михаил", "Mike"], cooldown_seconds=0)
-    assert td.check("Mike, you there?") is True
+    td = TurnDetector(name_variants=["John", "John Doe", "Johnny"], cooldown_seconds=0)
+    assert td.check("Johnny, you there?") is True
 
 
 def test_multiple_variants_third_matches():
-    td = TurnDetector(name_variants=["Misha", "Михаил", "Mike"], cooldown_seconds=0)
-    assert td.check("Can Misha respond?") is True
+    td = TurnDetector(name_variants=["John", "John Doe", "Johnny"], cooldown_seconds=0)
+    assert td.check("Can John respond?") is True
 
 
 # ---------------------------------------------------------------------------
@@ -50,22 +50,22 @@ def test_multiple_variants_third_matches():
 # ---------------------------------------------------------------------------
 
 def test_cooldown_suppresses_subsequent_triggers():
-    td = TurnDetector(name_variants=["Misha"], cooldown_seconds=10.0)
-    assert td.check("Hi Misha") is True
+    td = TurnDetector(name_variants=["John"], cooldown_seconds=10.0)
+    assert td.check("Hi John") is True
     # Still within cooldown
-    assert td.check("Misha again") is False
+    assert td.check("John again") is False
 
 
 def test_cooldown_expires_and_triggers_again(monkeypatch):
-    td = TurnDetector(name_variants=["Misha"], cooldown_seconds=0.1)
-    assert td.check("Hi Misha") is True
+    td = TurnDetector(name_variants=["John"], cooldown_seconds=0.1)
+    assert td.check("Hi John") is True
 
     # Advance time past the cooldown
     original_time = time.time
     monkeypatch.setattr("saymo.analysis.turn_detector.time.time",
                         lambda: original_time() + 1.0)
 
-    assert td.check("Misha again") is True
+    assert td.check("John again") is True
 
 
 # ---------------------------------------------------------------------------
@@ -109,29 +109,29 @@ def test_sliding_window_name_split_across_chunks():
 
 def test_fuzzy_expansion_triggers():
     td = TurnDetector(
-        name_variants=["Миша"],
+        name_variants=["John"],
         cooldown_seconds=0,
-        fuzzy_expansions={"миша": ["мища", "миса"]},
+        fuzzy_expansions={"john": ["jon", "jon doe"]},
     )
-    assert td.check("мища, ответь") is True
+    assert td.check("jon, ответь") is True
 
 
 def test_fuzzy_expansion_second_variant_triggers():
     td = TurnDetector(
-        name_variants=["Миша"],
+        name_variants=["John"],
         cooldown_seconds=0,
-        fuzzy_expansions={"миша": ["мища", "миса"]},
+        fuzzy_expansions={"john": ["jon", "jon doe"]},
     )
-    assert td.check("миса, ты слышишь?") is True
+    assert td.check("jon doe, ты слышишь?") is True
 
 
 def test_fuzzy_expansion_unrelated_word_no_trigger():
     td = TurnDetector(
-        name_variants=["Миша"],
+        name_variants=["John"],
         cooldown_seconds=0,
-        fuzzy_expansions={"миша": ["мища", "миса"]},
+        fuzzy_expansions={"john": ["jon", "jon doe"]},
     )
-    assert td.check("мишура на ёлке") is False
+    assert td.check("joanna на созвоне") is False
 
 
 # ---------------------------------------------------------------------------
@@ -139,12 +139,12 @@ def test_fuzzy_expansion_unrelated_word_no_trigger():
 # ---------------------------------------------------------------------------
 
 def test_empty_string_returns_false():
-    td = TurnDetector(name_variants=["Misha"], cooldown_seconds=0)
+    td = TurnDetector(name_variants=["John"], cooldown_seconds=0)
     assert td.check("") is False
 
 
 def test_whitespace_only_returns_false():
-    td = TurnDetector(name_variants=["Misha"], cooldown_seconds=0)
+    td = TurnDetector(name_variants=["John"], cooldown_seconds=0)
     assert td.check("   \t\n  ") is False
 
 
@@ -153,13 +153,13 @@ def test_whitespace_only_returns_false():
 # ---------------------------------------------------------------------------
 
 def test_reset_cooldown_allows_immediate_retrigger():
-    td = TurnDetector(name_variants=["Misha"], cooldown_seconds=60.0)
-    assert td.check("Hi Misha") is True
+    td = TurnDetector(name_variants=["John"], cooldown_seconds=60.0)
+    assert td.check("Hi John") is True
     # Cooldown active — next call would be suppressed
-    assert td.check("Misha again") is False
+    assert td.check("John again") is False
     # After reset, should trigger again
     td.reset_cooldown()
-    assert td.check("Misha once more") is True
+    assert td.check("John once more") is True
 
 
 # ---------------------------------------------------------------------------

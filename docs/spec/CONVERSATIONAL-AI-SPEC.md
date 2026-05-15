@@ -9,7 +9,7 @@
 
 New mode: `saymo auto --interactive`
 
-After delivering the standup report, Saymo continues listening. When someone asks a question directed at "Миша", Saymo:
+After delivering the standup report, Saymo continues listening. When someone asks a question directed at "John", Saymo:
 1. Transcribes the question (STT)
 2. Generates an answer (LLM)
 3. Speaks the answer in cloned voice (TTS)

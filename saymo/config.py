@@ -233,9 +233,11 @@ class MeetingProfile:
 @dataclass
 class SafetyConfig:
     require_confirmation: bool = True
+    confirmation_timeout_seconds: float = 6.0
     hotkey_speak: str = "<cmd>+<shift>+s"
     hotkey_stop: str = "<cmd>+<shift>+x"
     hotkey_toggle: str = "<cmd>+<shift>+m"
+    hotkey_takeover: str = "<cmd>+<shift>+u"
     max_speech_duration: int = 120
 
 

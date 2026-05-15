@@ -116,8 +116,8 @@ def test_expands_two_digit_number():
 # ---------------------------------------------------------------------------
 
 def test_strips_ticket_with_colon():
-    result = normalize_for_tts("DATA-12345: исправление бага")
-    assert "DATA-12345" not in result
+    result = normalize_for_tts("ACME-12345: исправление бага")
+    assert "ACME-12345" not in result
     assert "исправление бага" in result
 
 
@@ -137,9 +137,9 @@ def test_strips_ticket_prefix_only():
 # ---------------------------------------------------------------------------
 
 def test_extra_abbrevs_are_applied():
-    result = normalize_for_tts("Запуск NS2 пайплайна", extra_abbrevs={"NS2": "эн-эс-два"})
-    assert "эн-эс-два" in result
-    assert "NS2" not in result
+    result = normalize_for_tts("Запуск ACME2 пайплайна", extra_abbrevs={"ACME2": "акме-два"})
+    assert "акме-два" in result
+    assert "ACME2" not in result
 
 
 def test_extra_abbrevs_override_default():

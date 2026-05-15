@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- `saymo trigger-capture` captures live call-audio windows into
+  `~/.saymo/trigger_samples/<profile>/` as WAV plus JSON metadata, classified
+  into `asked_to_speak`, `question`, `speech`, and optional `silence` samples
+  for trigger-training review.
+
+### Changed
+- Public examples and docs now use generic ACME / John-style placeholders
+  instead of project-, company-, or person-specific names.
+
 ## [0.12.0] — 2026-04-30
 
 ### Added
@@ -117,14 +127,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 For commits before v0.5.0, see `git log --tags --simplify-by-decoration` — the project moved to formal versioning at v0.5.0.
 
-[Unreleased]: https://github.com/mshegolev/saymo/compare/v0.11.0...HEAD
-[0.11.0]: https://github.com/mshegolev/saymo/compare/v0.10.3...v0.11.0
-[0.10.3]: https://github.com/mshegolev/saymo/compare/v0.10.2...v0.10.3
-[0.10.2]: https://github.com/mshegolev/saymo/compare/v0.10.1...v0.10.2
-[0.10.1]: https://github.com/mshegolev/saymo/compare/v0.10.0...v0.10.1
-[0.10.0]: https://github.com/mshegolev/saymo/compare/v0.9.0...v0.10.0
-[0.9.0]: https://github.com/mshegolev/saymo/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/mshegolev/saymo/compare/v0.7.1...v0.8.0
-[0.7.0]: https://github.com/mshegolev/saymo/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/mshegolev/saymo/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/mshegolev/saymo/releases/tag/v0.5.0
+[Unreleased]: https://github.com/acme/saymo/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/acme/saymo/compare/v0.10.3...v0.11.0
+[0.10.3]: https://github.com/acme/saymo/compare/v0.10.2...v0.10.3
+[0.10.2]: https://github.com/acme/saymo/compare/v0.10.1...v0.10.2
+[0.10.1]: https://github.com/acme/saymo/compare/v0.10.0...v0.10.1
+[0.10.0]: https://github.com/acme/saymo/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/acme/saymo/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/acme/saymo/compare/v0.7.1...v0.8.0
+[0.7.0]: https://github.com/acme/saymo/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/acme/saymo/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/acme/saymo/releases/tag/v0.5.0

@@ -86,7 +86,10 @@ async def _play_cached_audio(config, audio_path, provider_name: str | None = Non
         import asyncio as _aio
         await _aio.sleep(0.5)
 
+        played = False
+
         async def _do_play():
+            nonlocal played
             playback = "BlackHole 2ch"
             monitor = config.audio.monitor_device
             if monitor and monitor.lower() != playback.lower():
@@ -95,9 +98,26 @@ async def _play_cached_audio(config, audio_path, provider_name: str | None = Non
             else:
                 from saymo.audio.playback import play_audio_bytes
                 await play_audio_bytes(audio_bytes, playback)
+            played = True
 
         console.print(f"[bold blue]{provider.name}: Unmute → Play → Mute[/]")
-        await provider.unmute_speak_mute(_do_play)
+        try:
+            await provider.unmute_speak_mute(_do_play)
+        except Exception as e:
+            logging.getLogger("saymo").warning(
+                "provider mute flow failed for %s: %s", provider.name, e
+            )
+            if played:
+                console.print(
+                    f"[yellow]{provider.name} mute automation failed after playback. "
+                    "Check the call mute state manually.[/]"
+                )
+            else:
+                console.print(
+                    f"[yellow]{provider.name} mute automation failed; playing to "
+                    "BlackHole 2ch without automatic mute control.[/]"
+                )
+                await _do_play()
     else:
         playback = config.audio.playback_device
         monitor = config.audio.monitor_device

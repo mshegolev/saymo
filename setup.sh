@@ -123,11 +123,11 @@ echo ""
 if [ -f "$HOME/.saymo/config.yaml" ]; then
     ok "config.yaml exists at ~/.saymo/"
     if prompt "Re-run wizard to update settings?"; then
-        saymo wizard
+        saymo setup
     fi
 else
     if prompt "Run wizard now?"; then
-        saymo wizard
+        saymo setup
     fi
 fi
 
@@ -141,11 +141,11 @@ cat <<EOF
     ${BOLD}saymo test-tts "Доброе утро коллеги."${NC}
 
   Before a call:
-    ${BOLD}saymo prepare -p standup${NC}
-    ${BOLD}saymo speak --glip${NC}    # or --zoom, --meet, etc.
+    ${BOLD}saymo prepare -p personal${NC}              # or your meeting profile
+    ${BOLD}saymo speak -p personal --provider glip${NC} # or --provider zoom, --provider google_meet, etc.
 
   Listen mode (auto-respond when your name is mentioned):
-    ${BOLD}saymo auto -p standup${NC}
+    ${BOLD}saymo auto -p personal${NC}
 
   Docs:
     ${BOLD}docs/QUICK-START.md${NC}            ← start here

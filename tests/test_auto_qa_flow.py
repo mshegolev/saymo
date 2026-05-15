@@ -9,6 +9,13 @@ import pytest
 
 from saymo.cli import _looks_like_question, _resolve_auto_response
 from saymo.config import SaymoConfig
+from saymo.commands.core import (
+    _request_manual_speak,
+    _should_answer_trigger_window,
+    _update_trigger_confirmation,
+    _toggle_auto_pause,
+    _toggle_manual_takeover,
+)
 
 
 def _run(coro):
@@ -36,11 +43,247 @@ def test_looks_like_question_true(text):
 @pytest.mark.parametrize("text", [
     "",
     "   ",
-    "Миша, скажи",
+    "John, скажи",
     "hello world",
 ])
 def test_looks_like_question_false(text):
     assert _looks_like_question(text) is False
+
+
+def test_should_answer_trigger_window_allows_direct_question():
+    config = SaymoConfig()
+
+    assert _should_answer_trigger_window(
+        config,
+        "John, что по статусу?",
+        ["John"],
+    ) is True
+
+
+def test_should_answer_trigger_window_ignores_narrated_mention():
+    config = SaymoConfig()
+
+    assert _should_answer_trigger_window(
+        config,
+        "как John вчера говорил, надо проверить логи",
+        ["John"],
+    ) is False
+
+
+def test_trigger_confirmation_disabled_confirms_immediately():
+    config = SaymoConfig()
+    config.safety.require_confirmation = False
+
+    confirmed, pending, response_window, state = _update_trigger_confirmation(
+        config,
+        now=100.0,
+        pending=None,
+        transcript_window="John, что по статусу?",
+    )
+
+    assert confirmed is True
+    assert pending is None
+    assert response_window == "John, что по статусу?"
+    assert state == "disabled"
+
+
+def test_trigger_confirmation_first_trigger_waits_for_second_mention():
+    config = SaymoConfig()
+    config.safety.require_confirmation = True
+    config.safety.confirmation_timeout_seconds = 3.0
+
+    confirmed, pending, response_window, state = _update_trigger_confirmation(
+        config,
+        now=100.0,
+        pending=None,
+        transcript_window="John, что по статусу?",
+    )
+
+    assert confirmed is False
+    assert pending == (103.0, "John, что по статусу?")
+    assert response_window == ""
+    assert state == "waiting"
+
+
+def test_trigger_confirmation_second_trigger_reuses_original_question_window():
+    config = SaymoConfig()
+    config.safety.require_confirmation = True
+    config.safety.confirmation_timeout_seconds = 3.0
+
+    confirmed, pending, response_window, state = _update_trigger_confirmation(
+        config,
+        now=102.0,
+        pending=(103.0, "John, что по статусу?"),
+        transcript_window="John",
+    )
+
+    assert confirmed is True
+    assert pending is None
+    assert response_window == "John, что по статусу?"
+    assert state == "confirmed"
+
+
+def test_trigger_confirmation_prefers_second_window_when_it_has_question():
+    config = SaymoConfig()
+    config.safety.require_confirmation = True
+    config.safety.confirmation_timeout_seconds = 3.0
+
+    confirmed, pending, response_window, state = _update_trigger_confirmation(
+        config,
+        now=102.0,
+        pending=(103.0, "John"),
+        transcript_window="John, что с задачей?",
+    )
+
+    assert confirmed is True
+    assert pending is None
+    assert response_window == "John, что с задачей?"
+    assert state == "confirmed"
+
+
+def test_trigger_confirmation_expired_window_starts_over():
+    config = SaymoConfig()
+    config.safety.require_confirmation = True
+    config.safety.confirmation_timeout_seconds = 3.0
+
+    confirmed, pending, response_window, state = _update_trigger_confirmation(
+        config,
+        now=104.0,
+        pending=(103.0, "John, что по статусу?"),
+        transcript_window="John, что с задачей?",
+    )
+
+    assert confirmed is False
+    assert pending == (107.0, "John, что с задачей?")
+    assert response_window == ""
+    assert state == "waiting"
+
+
+def test_manual_takeover_stops_playback_and_pauses_auto_mode():
+    paused = asyncio.Event()
+    stop_playback = asyncio.Event()
+    manual_takeover = asyncio.Event()
+
+    state = _toggle_manual_takeover(paused, stop_playback, manual_takeover)
+
+    assert state == "active"
+    assert paused.is_set()
+    assert stop_playback.is_set()
+    assert manual_takeover.is_set()
+
+
+def test_manual_takeover_switches_call_mic_to_recording_device():
+    paused = asyncio.Event()
+    stop_playback = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    provider = MagicMock()
+    provider.switch_mic.return_value = True
+
+    state = _toggle_manual_takeover(
+        paused,
+        stop_playback,
+        manual_takeover,
+        provider=provider,
+        recording_device="MacBook Pro Microphone",
+    )
+
+    assert state == "active"
+    provider.switch_mic.assert_called_once_with("MacBook Pro Microphone")
+
+
+def test_manual_takeover_second_press_resumes_auto_mode():
+    paused = asyncio.Event()
+    stop_playback = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    provider = MagicMock()
+    provider.switch_mic.return_value = True
+    _toggle_manual_takeover(paused, stop_playback, manual_takeover)
+
+    state = _toggle_manual_takeover(
+        paused,
+        stop_playback,
+        manual_takeover,
+        provider=provider,
+    )
+
+    assert state == "resumed"
+    assert not paused.is_set()
+    assert manual_takeover.is_set() is False
+    provider.switch_mic.assert_called_once_with("BlackHole 2ch")
+
+
+def test_manual_takeover_resumes_with_warning_when_blackhole_restore_fails():
+    paused = asyncio.Event()
+    stop_playback = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    provider = MagicMock()
+    provider.switch_mic.return_value = False
+    _toggle_manual_takeover(paused, stop_playback, manual_takeover)
+
+    state = _toggle_manual_takeover(
+        paused,
+        stop_playback,
+        manual_takeover,
+        provider=provider,
+    )
+
+    assert state == "resumed_mic_failed"
+    assert not paused.is_set()
+    assert not manual_takeover.is_set()
+
+
+def test_pause_toggle_does_not_resume_during_manual_takeover():
+    paused = asyncio.Event()
+    paused.set()
+    manual_takeover = asyncio.Event()
+    manual_takeover.set()
+
+    state = _toggle_auto_pause(paused, manual_takeover)
+
+    assert state == "manual_takeover_active"
+    assert paused.is_set()
+    assert manual_takeover.is_set()
+
+
+def test_manual_speak_hotkey_queues_forced_playback():
+    triggered = asyncio.Event()
+    manual_speak = asyncio.Event()
+    speaking = asyncio.Event()
+    manual_takeover = asyncio.Event()
+
+    state = _request_manual_speak(triggered, manual_speak, speaking, manual_takeover)
+
+    assert state == "queued"
+    assert triggered.is_set()
+    assert manual_speak.is_set()
+
+
+def test_manual_speak_hotkey_ignored_during_takeover():
+    triggered = asyncio.Event()
+    manual_speak = asyncio.Event()
+    speaking = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    manual_takeover.set()
+
+    state = _request_manual_speak(triggered, manual_speak, speaking, manual_takeover)
+
+    assert state == "manual_takeover_active"
+    assert not triggered.is_set()
+    assert not manual_speak.is_set()
+
+
+def test_manual_speak_hotkey_ignored_while_already_speaking():
+    triggered = asyncio.Event()
+    manual_speak = asyncio.Event()
+    speaking = asyncio.Event()
+    speaking.set()
+    manual_takeover = asyncio.Event()
+
+    state = _request_manual_speak(triggered, manual_speak, speaking, manual_takeover)
+
+    assert state == "already_speaking"
+    assert not triggered.is_set()
+    assert not manual_speak.is_set()
 
 
 # ---------------------------------------------------------------------------
@@ -65,7 +308,7 @@ def test_returns_fallback_when_not_a_question():
     fallback = Path("/tmp/standup.wav")
 
     result = _run(_resolve_auto_response(
-        config, "Миша, выйди на связь", cache, "", fallback
+        config, "John, выйди на связь", cache, "", fallback
     ))
     assert result == fallback
     cache.lookup.assert_not_called()

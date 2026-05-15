@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-04-16
-**Author:** Mikhail Shchegolev
+**Author:** John Doe
 
 ## Context
 

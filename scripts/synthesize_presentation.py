@@ -41,30 +41,30 @@ from saymo.tts.naturalness import (
 )
 
 
-PRESENTATION = """Hello today im introduce QA team benefits.
-This slide shows our QA results for Q1.
+PRESENTATION = """Hello today im introduce ACME QA team benefits.
+This slide shows our ACME QA results for Q1.
 We resolved 50 bugs, and only 12 went to production.
 We caught 76% of bugs before release — 38 out of 50.
-We verified 35 new ETLs, 33 are already closed.
-We had 11 critical and high bugs in NS2, ERR, MTA and Customer360.
+We verified 35 new data pipelines, 33 are already closed.
+We had 11 critical and high bugs across ACME Search, ACME Billing, ACME Messaging and ACME Customer Portal.
 Compared to Q4: releases grew from 15 to 28 — that is plus 87%.
 But production incidents went down from 13 to 12 — minus 8%.
 So, almost two times more releases, and fewer incidents.
-Also: zero rollbacks across 35 ETL deployments, and we met the SLA for all critical releases.
+Also: zero rollbacks across 35 pipeline deployments, and we met the SLA for all critical releases.
 
 Next slide please.
 In Q1 we focused on AI tools for QA.
-First — AI E2E Test Generator. It reads JIRA, wiki and the merge request, and makes a 3-phase test: populate, trigger, verify. Result — about 80% less manual scripting.
-Second — AI Assistant for QA. We shipped more than 40 Claude Code skills for BDC vars, HDFS, Oozie, Jenkins, Snowflake and Impala.
-Third — Auto Bug Triage. AI reads Airflow and Oozie logs and creates a JIRA bug with reproduction steps. Time to bug report is 60% shorter.
-Also we improved the framework: local Docker runner with auto git-sync, unified fixtures, BDC variables via etcd and GitLab MR with auto-merge, and one-step slash q a release skill — build, comment, status, Glip notification.
+First — AI E2E Test Generator. It reads ACME tracker tickets, wiki pages and merge requests, and makes a 3-phase test: populate, trigger, verify. Result — about 80% less manual scripting.
+Second — AI Assistant for QA. We shipped more than 40 assistant skills for ACME config variables, storage checks, workflow debugging, CI, warehouse validation and query analysis.
+Third — Auto Bug Triage. AI reads workflow and application logs and creates an ACME tracker bug with reproduction steps. Time to bug report is 60% shorter.
+Also we improved the framework: local container runner with auto git-sync, unified fixtures, ACME variables via a generic config store and merge request auto-merge, and one-step release skill — build, comment, status, chat notification.
 
 Next slide please.
-Quick recap of Q1: 35 ETLs verified end-to-end, 50 bugs fixed, 76% pre-prod detection, AI tools used by the whole QA team.
+Quick recap of Q1: 35 data pipelines verified end-to-end, 50 bugs fixed, 76% pre-prod detection, AI tools used by the whole QA team.
 Now plans for Q2.
-First — AI Regression Guard. LLM checks ETL output: row counts, distributions, SLA drift. Pilot on ERR and NS2.
+First — AI Regression Guard. LLM checks pipeline output: row counts, distributions, SLA drift. Pilot on ACME Billing and ACME Search.
 Second — Self-healing tests. AI fixes fixtures when schema changes. Goal — 50% less maintenance.
-Third — Synthetic LLM data for NS2, ERR and FDM edge cases. Plus 30% edge-case coverage.
+Third — Synthetic LLM data for ACME Search, ACME Billing and ACME Reports edge cases. Plus 30% edge-case coverage.
 Fourth — Real-time validation. 24/7 monitoring with AI alerts before users see a problem.
 Strategic goals: shift-left quality with PR-level checks, less than 20% of QA time on manual scripting and triage, and production incidents below 10 per quarter.
 

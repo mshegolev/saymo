@@ -1,5 +1,8 @@
 """Diagnostic / info commands: test-devices, test-tts, test-jira, list-plugins,
-test-notes, test-compose, test-ollama, prepare-responses, mic-check."""
+test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
+trigger-capture, trigger-learn, trigger-setup, takeover-check, mic-check."""
+
+import re
 
 import click
 from rich.table import Table
@@ -297,6 +300,549 @@ async def _prepare_responses(config, force: bool = False) -> int:
         f"(skipped {total_variants - len(written)} already cached)"
     )
     return len(written)
+
+
+# ---------------------------------------------------------------------------
+# trigger diagnostics
+# ---------------------------------------------------------------------------
+
+@main.command("trigger-check")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
+@click.option("--text", default=None, help="Transcript text to inspect without recording")
+@click.option("--mic", is_flag=True, help="Record a short microphone sample and transcribe it")
+@click.option("--seconds", default=4.0, type=float, show_default=True, help="Seconds to record with --mic")
+@click.option("--device", "-d", default=None, help="Input device name for --mic")
+@click.pass_context
+def trigger_check(ctx, profile, text, mic, seconds, device):
+    """Diagnose trigger, addressing, and response-cache routing.
+
+    Use ``--text`` for a deterministic dry-run. Use ``--mic`` to record a
+    short local sample through faster-whisper and run the same checks.
+    """
+    config = ctx.obj["config"]
+    if mic:
+        text = _trigger_check_record_text(config, device, seconds)
+    if text is None:
+        text = click.prompt("Transcript text")
+    _print_trigger_diagnostics(config, profile, text)
+
+
+def _trigger_phrases_for_profile(config, profile: str) -> list[str]:
+    meeting = config.get_meeting(profile)
+    if meeting and meeting.trigger_phrases:
+        return meeting.trigger_phrases
+    return config.user.name_variants or ([config.user.name] if config.user.name else [])
+
+
+def _print_trigger_diagnostics(config, profile: str, text: str) -> None:
+    from saymo.analysis.addressing import (
+        classify_addressing,
+        expand_trigger_phrases,
+        should_answer_decision,
+    )
+    from saymo.analysis.response_cache import ResponseCache, build_library
+    from saymo.analysis.turn_detector import TurnDetector
+    from saymo.commands.core import _trigger_confirmation_timeout
+
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    expanded = expand_trigger_phrases(
+        trigger_phrases,
+        (config.vocabulary or {}).get("fuzzy_expansions"),
+    )
+    detector = TurnDetector(
+        name_variants=trigger_phrases,
+        cooldown_seconds=0,
+        fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
+    )
+    triggered = detector.check(text)
+    decision = classify_addressing(text, expanded)
+    will_answer = triggered and should_answer_decision(decision)
+    confirmation_required = bool(getattr(config.safety, "require_confirmation", False))
+    confirmation_timeout = _trigger_confirmation_timeout(config)
+    if not will_answer:
+        confirmation = "not_applicable"
+        auto_action = "skip"
+    elif confirmation_required:
+        confirmation = f"required within {confirmation_timeout:.1f}s"
+        auto_action = "wait_for_confirmation"
+    else:
+        confirmation = "disabled"
+        auto_action = "answer_now"
+
+    console.print(f"transcript: {text}")
+    console.print(f"profile: {profile}")
+    console.print(f"triggers: {', '.join(trigger_phrases) if trigger_phrases else '(none)'}")
+    console.print(f"trigger: {'yes' if triggered else 'no'}")
+    console.print(f"addressing: {decision.label} ({decision.reason})")
+    console.print(f"question: {'yes' if decision.is_question else 'no'}")
+    console.print(f"will answer: {'yes' if will_answer else 'no'}")
+    console.print(f"confirmation: {confirmation}")
+    console.print(f"auto action: {auto_action}")
+
+    if not will_answer:
+        console.print("response: skipped")
+        return
+
+    cache_dir = None
+    if config.responses.cache_dir:
+        from pathlib import Path
+        cache_dir = Path(config.responses.cache_dir)
+    cache = ResponseCache(
+        library=build_library(config.responses.library),
+        cache_dir=cache_dir,
+        confidence_threshold=config.responses.confidence_threshold,
+    )
+    cached = cache.lookup(text)
+    if cached:
+        console.print(
+            f"response: {cached.key} conf={cached.confidence:.2f} file={cached.audio_path}"
+        )
+    elif config.responses.live_fallback:
+        console.print("response: live fallback would run")
+    else:
+        console.print("response: cache miss; would play generic standup audio")
+
+
+@main.command("trigger-capture")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
+@click.option(
+    "--window",
+    default=8.0,
+    type=float,
+    show_default=True,
+    help="Window length in seconds",
+)
+@click.option(
+    "--duration",
+    default=0.0,
+    type=float,
+    show_default=True,
+    help="Total seconds; 0 means until Ctrl+C",
+)
+@click.option(
+    "--device",
+    "-d",
+    default=None,
+    help="Input device name; defaults to audio.capture_device",
+)
+@click.option(
+    "--output-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory for captured samples",
+)
+@click.option("--save-silence", is_flag=True, help="Also save empty/silent windows")
+@click.pass_context
+def trigger_capture(ctx, profile, window, duration, device, output_dir, save_silence):
+    """Capture live call audio into classified trigger samples."""
+    config = ctx.obj["config"]
+    _run_trigger_capture(
+        config,
+        profile=profile,
+        window_seconds=window,
+        duration_seconds=duration,
+        device_name=device,
+        output_dir=output_dir,
+        save_silence=save_silence,
+    )
+
+
+def _run_trigger_capture(
+    config,
+    *,
+    profile: str,
+    window_seconds: float,
+    duration_seconds: float,
+    device_name: str | None,
+    output_dir: str | None,
+    save_silence: bool,
+) -> None:
+    from datetime import datetime
+    from pathlib import Path
+    import queue
+    import time
+
+    import numpy as np
+    import sounddevice as sd
+
+    from saymo.analysis.trigger_capture import (
+        audio_stats,
+        classify_trigger_sample,
+        save_trigger_sample,
+    )
+    from saymo.stt.whisper_local import LocalWhisper
+
+    if window_seconds <= 0:
+        raise click.ClickException("--window must be greater than zero")
+    if duration_seconds < 0:
+        raise click.ClickException("--duration cannot be negative")
+
+    mic_name, mic = _resolve_trigger_capture_device(config, device_name)
+    if not mic or not mic_name:
+        raise click.ClickException("No input device available")
+
+    sample_rate = 16000
+    target_frames = int(window_seconds * sample_rate)
+    base_dir = (
+        Path(output_dir).expanduser()
+        if output_dir
+        else Path.home() / ".saymo" / "trigger_samples"
+    )
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    fuzzy = (config.vocabulary or {}).get("fuzzy_expansions") or {}
+    whisper = LocalWhisper(
+        model_size=config.stt.whisper.model_size,
+        language=config.user.language,
+    )
+
+    audio_queue: queue.Queue[np.ndarray] = queue.Queue()
+
+    def callback(indata, frames, time_info, status):
+        if status:
+            console.print(f"[yellow]{status}[/]")
+        audio_queue.put(np.asarray(indata, dtype=np.float32).copy().flatten())
+
+    console.print(f"[bold blue]Capturing {mic_name} → {base_dir}[/]")
+    console.print(
+        "[dim]Categories: asked_to_speak, question, speech"
+        + (", silence" if save_silence else "")
+        + "[/]"
+    )
+    console.print("[dim]Stop with Ctrl+C[/]")
+
+    start = time.monotonic()
+    chunks: list[np.ndarray] = []
+    frames_seen = 0
+    sequence = 1
+
+    try:
+        with sd.InputStream(
+            samplerate=sample_rate,
+            device=mic.index,
+            channels=1,
+            dtype="float32",
+            callback=callback,
+        ):
+            while duration_seconds == 0 or time.monotonic() - start < duration_seconds:
+                try:
+                    block = audio_queue.get(timeout=0.5)
+                except queue.Empty:
+                    continue
+                chunks.append(block)
+                frames_seen += len(block)
+                if frames_seen < target_frames:
+                    continue
+
+                audio = np.concatenate(chunks).astype(np.float32)
+                chunks = []
+                frames_seen = 0
+                rms, peak = audio_stats(audio)
+                text = whisper.transcribe(audio)
+                sample = classify_trigger_sample(
+                    text,
+                    trigger_phrases,
+                    fuzzy,
+                    rms=rms,
+                    peak=peak,
+                )
+                if sample.category == "silence" and not save_silence:
+                    console.print(
+                        f"[dim]skip silence rms={rms:.4f} peak={peak:.4f}[/]"
+                    )
+                    continue
+
+                created_at = datetime.now().isoformat(timespec="seconds")
+                wav_path, _ = save_trigger_sample(
+                    audio,
+                    sample_rate=sample_rate,
+                    sample=sample,
+                    base_dir=base_dir,
+                    profile=profile,
+                    sequence=sequence,
+                    created_at=created_at,
+                )
+                console.print(
+                    f"[bold]{sample.category}[/] "
+                    f"trigger={'yes' if sample.trigger else 'no'} "
+                    f"question={'yes' if sample.question else 'no'} "
+                    f"rms={sample.rms:.4f} peak={sample.peak:.4f} "
+                    f"file={wav_path}"
+                )
+                if sample.transcript:
+                    console.print(f"[dim]  {sample.transcript}[/]")
+                sequence += 1
+    except KeyboardInterrupt:
+        console.print("[yellow]Stopped trigger capture[/]")
+
+
+def _resolve_trigger_capture_device(config, device_override: str | None):
+    from saymo.audio.devices import find_device
+
+    name = device_override or config.audio.capture_device or config.audio.recording_device
+    if name:
+        dev = find_device(name, kind="input")
+        if not dev:
+            raise click.ClickException(f"Input device not found: {name}")
+        return name, dev
+    return _resolve_input_device(config, None)
+
+
+def _trigger_check_record_text(config, device_name: str | None, seconds: float) -> str:
+    import sounddevice as sd
+    from saymo.stt.whisper_local import LocalWhisper
+
+    mic_name, mic = _resolve_input_device(config, device_name)
+    if not mic or not mic_name:
+        raise click.ClickException("No input device available")
+
+    console.print(f"[bold blue]Recording {seconds:.1f}s from {mic_name}...[/]")
+    audio = _record_buffer(sd, 16000, seconds, mic.index)
+    whisper = LocalWhisper(
+        model_size=config.stt.whisper.model_size,
+        language=config.user.language,
+    )
+    text = whisper.transcribe(audio)
+    console.print(f"[dim]transcribed: {text}[/]")
+    return text
+
+
+@main.command("trigger-learn")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to update")
+@click.option("--heard", default=None, help="Text Whisper heard for your trigger")
+@click.option("--trigger", default=None, help="Canonical trigger phrase to extend")
+@click.option("--mic", is_flag=True, help="Record and learn from a short microphone sample")
+@click.option("--seconds", default=4.0, type=float, show_default=True, help="Seconds to record with --mic")
+@click.option("--device", "-d", default=None, help="Input device name for --mic")
+@click.pass_context
+def trigger_learn(ctx, profile, heard, trigger, mic, seconds, device):
+    """Add a heard trigger variant to vocabulary.fuzzy_expansions."""
+    config = ctx.obj["config"]
+    if mic:
+        heard = _trigger_check_record_text(config, device, seconds)
+    if heard is None:
+        heard = click.prompt("Heard trigger text")
+    config_path = _config_path_for_update(ctx)
+    canonical = trigger or _default_trigger_for_profile(config, profile)
+    learned = _learn_trigger_variant(config_path, canonical, heard)
+
+    console.print(f"config: {config_path}")
+    console.print(f"trigger: {canonical}")
+    console.print(f"variant: {heard.strip()}")
+    console.print(f"learned: {'yes' if learned else 'no'}")
+
+
+@main.command("trigger-setup")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to update")
+@click.option("--heard", default=None, help="Text Whisper heard for your trigger")
+@click.option("--trigger", default=None, help="Canonical trigger phrase to extend")
+@click.option("--mic", is_flag=True, help="Record and learn from a short microphone sample")
+@click.option("--seconds", default=4.0, type=float, show_default=True, help="Seconds to record with --mic")
+@click.option("--device", "-d", default=None, help="Input device name for --mic")
+@click.pass_context
+def trigger_setup(ctx, profile, heard, trigger, mic, seconds, device):
+    """Learn a trigger variant and verify that auto-mode will catch it."""
+    from saymo.config import load_config
+
+    config = ctx.obj["config"]
+    if mic:
+        heard = _trigger_check_record_text(config, device, seconds)
+    if heard is None:
+        heard = click.prompt("Heard trigger text")
+
+    config_path = _config_path_for_update(ctx)
+    canonical = trigger or _default_trigger_for_profile(config, profile)
+    variant = _extract_trigger_variant(heard)
+    learned = _learn_trigger_variant(config_path, canonical, variant)
+    updated = load_config(str(config_path))
+    matches = _trigger_matches(updated, profile, heard)
+
+    console.print(f"config: {config_path}")
+    console.print(f"trigger: {canonical}")
+    console.print(f"heard: {heard.strip()}")
+    console.print(f"variant: {variant}")
+    console.print(f"learned: {'yes' if learned else 'no'}")
+    console.print(f"trigger after learning: {'yes' if matches else 'no'}")
+    if not matches:
+        console.print("reason: learned text still does not match trigger detector")
+
+
+def _default_trigger_for_profile(config, profile: str) -> str:
+    phrases = _trigger_phrases_for_profile(config, profile)
+    if not phrases:
+        raise click.ClickException(f"No trigger phrases configured for profile: {profile}")
+    return phrases[0]
+
+
+def _config_path_for_update(ctx):
+    from pathlib import Path
+
+    root = ctx.find_root()
+    config_path = root.params.get("config_path") if root else None
+    if config_path:
+        return Path(config_path).expanduser()
+    return Path.home() / ".saymo" / "config.yaml"
+
+
+def _learn_trigger_variant(config_path, trigger: str, heard: str) -> bool:
+    import yaml
+
+    variant = " ".join((heard or "").split()).strip(" ,:;—-")
+    if not variant:
+        raise click.ClickException("Heard trigger text is empty")
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    if config_path.exists():
+        data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    else:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+
+    vocabulary = data.get("vocabulary")
+    if not isinstance(vocabulary, dict):
+        vocabulary = {}
+    fuzzy = vocabulary.get("fuzzy_expansions")
+    if not isinstance(fuzzy, dict):
+        fuzzy = {}
+
+    variants = fuzzy.get(trigger)
+    if not isinstance(variants, list):
+        variants = []
+    existing = {str(v).casefold() for v in variants}
+    if variant.casefold() == trigger.casefold() or variant.casefold() in existing:
+        fuzzy[trigger] = variants
+        vocabulary["fuzzy_expansions"] = fuzzy
+        data["vocabulary"] = vocabulary
+        config_path.write_text(
+            yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+        return False
+
+    variants.append(variant)
+    fuzzy[trigger] = variants
+    vocabulary["fuzzy_expansions"] = fuzzy
+    data["vocabulary"] = vocabulary
+    config_path.write_text(
+        yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    return True
+
+
+def _extract_trigger_variant(heard: str) -> str:
+    """Extract the likely name variant from a transcribed setup phrase."""
+    variant = " ".join((heard or "").split()).strip(" ,:;—-")
+    if not variant:
+        return ""
+    for sep in (",", "?", "!", ":", ";", "—", " - "):
+        if sep in variant:
+            variant = variant.split(sep, 1)[0].strip(" ,:;—-")
+            break
+    markers = (
+        "что", "как", "где", "когда", "почему", "зачем", "кто",
+        "сколько", "какие", "какой", "какая", "расскажи", "поделись",
+        "опиши", "what", "how", "why", "when", "where", "who",
+        "tell me", "can you", "could you", "do you",
+    )
+    marker_pattern = "|".join(re.escape(marker) for marker in markers)
+    match = re.search(rf"\s+(?:{marker_pattern})(?:\s|$)", variant, re.IGNORECASE)
+    if match and match.start() > 0:
+        variant = variant[:match.start()].strip(" ,:;—-")
+    return variant
+
+
+def _trigger_matches(config, profile: str, text: str) -> bool:
+    from saymo.analysis.turn_detector import TurnDetector
+
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    detector = TurnDetector(
+        name_variants=trigger_phrases,
+        cooldown_seconds=0,
+        fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
+    )
+    return detector.check(text)
+
+
+# ---------------------------------------------------------------------------
+# manual takeover diagnostics
+# ---------------------------------------------------------------------------
+
+@main.command("takeover-check")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
+@click.option("--provider", default=None, help="Override call provider from the profile")
+@click.option("--recording-device", default=None, help="Real microphone to switch to")
+@click.option("--saymo-device", default="BlackHole 2ch", show_default=True, help="Saymo virtual mic")
+@click.pass_context
+def takeover_check(ctx, profile, provider, recording_device, saymo_device):
+    """Check whether manual takeover can switch the call microphone."""
+    config = ctx.obj["config"]
+    _print_takeover_diagnostics(
+        config,
+        profile=profile,
+        provider_name=provider,
+        recording_device=recording_device,
+        saymo_device=saymo_device,
+    )
+
+
+def _print_takeover_diagnostics(
+    config,
+    *,
+    profile: str,
+    provider_name: str | None,
+    recording_device: str | None,
+    saymo_device: str,
+) -> None:
+    from saymo.providers.factory import get_provider
+
+    meeting = config.get_meeting(profile)
+    resolved_provider = provider_name or (meeting.provider if meeting else "glip")
+    real_mic = recording_device or config.audio.recording_device
+
+    console.print(f"profile: {profile}")
+    console.print(f"provider: {resolved_provider}")
+    console.print(f"recording mic: {real_mic or '(not configured)'}")
+    console.print(f"saymo mic: {saymo_device}")
+
+    if not real_mic:
+        console.print("takeover: not ready")
+        console.print("reason: audio.recording_device is not configured")
+        return
+
+    provider = get_provider(resolved_provider)
+    status = provider.check_ready()
+    console.print(f"meeting: {'yes' if status.meeting_found else 'no'}")
+    if status.tab_info:
+        console.print(f"tab: window {status.tab_info[0]}, tab {status.tab_info[1]}")
+    if not status.meeting_found:
+        console.print("takeover: not ready")
+        console.print(f"reason: {provider.name} tab not found in Chrome")
+        return
+
+    try:
+        to_real = provider.switch_mic(real_mic)
+    except Exception as e:
+        console.print("switch to recording mic: no")
+        console.print(f"reason: {e}")
+        console.print("takeover: not ready")
+        return
+    console.print(f"switch to recording mic: {'yes' if to_real else 'no'}")
+
+    try:
+        to_saymo = provider.switch_mic(saymo_device)
+    except Exception as e:
+        console.print("switch back to Saymo mic: no")
+        console.print(f"reason: {e}")
+        console.print("takeover: not ready")
+        return
+    console.print(f"switch back to Saymo mic: {'yes' if to_saymo else 'no'}")
+
+    if to_real and to_saymo:
+        console.print("takeover: ready")
+    else:
+        console.print("takeover: not ready")
+        console.print("reason: provider could not switch one or both microphones")
 
 
 # ---------------------------------------------------------------------------

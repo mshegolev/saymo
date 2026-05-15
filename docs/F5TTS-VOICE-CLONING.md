@@ -88,7 +88,7 @@ saymo test-tts "Любая фраза которую хочешь услышат
 
 ```bash
 saymo prepare -p standup
-saymo speak --glip
+saymo speak -p standup --provider glip
 ```
 
 В точности как с любым другим engine — Saymo сам подхватит F5-TTS из `tts.engine: f5tts_clone`.

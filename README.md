@@ -32,7 +32,7 @@ Saymo composes short, natural speech from optional data sources (tracker, notes,
 ## Quick install — one command
 
 ```bash
-git clone https://github.com/mshegolev/saymo && cd saymo
+git clone https://github.com/acme/saymo && cd saymo
 ./setup.sh
 ```
 
@@ -57,7 +57,7 @@ saymo test-devices                 # Verify audio devices
 
 To re-configure later:
 ```bash
-saymo wizard                       # Interactive: name, devices, TTS engine
+saymo setup                        # Interactive: name, devices, TTS engine
 saymo record-voice -d 12           # Record a fresh ~12s voice reference
 ```
 
@@ -88,10 +88,50 @@ saymo review                    # optional: check generated audio
 saymo speak -p personal         # manual trigger, instant playback
 saymo auto -p personal          # listen for your name, speak when called
 saymo auto -p personal --mic    # same, but from laptop mic (for testing)
+saymo trigger-capture -p personal --window 8
+                                # save call windows classified for trigger training
 
 # Extras
 saymo dashboard                 # interactive TUI
 ```
+
+### Auto-mode hotkeys
+
+```bash
+./scripts/add_hotkeys.py
+saymo takeover-check -p personal
+```
+
+Default hotkeys:
+
+| Hotkey | Action |
+|---|---|
+| `Cmd+Shift+S` | Speak the prepared cached standup immediately in `saymo auto` |
+| `Cmd+Shift+U` | Manual takeover: stop Saymo playback, pause auto-mode, switch the call mic to your real mic when the provider supports it; press again to return to BlackHole 2ch and resume |
+| `Cmd+Shift+X` | Stop current Saymo playback |
+| `Cmd+Shift+M` | Pause / resume auto-mode |
+
+Mic switching is automatic for providers that implement `switch_mic()`
+(`glip`, `mts_link`). For other providers, Saymo still pauses/resumes; switch
+the call microphone manually in the meeting UI.
+Use `saymo takeover-check -p personal` before a call to verify mic switching
+against the active Chrome tab.
+
+### Trigger training capture
+
+Use `trigger-capture` when you want to collect real call phrases for improving
+trigger detection:
+
+```bash
+saymo trigger-capture -p personal
+saymo trigger-capture -p personal --device "MacBook Pro Microphone" --duration 60
+```
+
+By default it listens on `audio.capture_device`, normally `BlackHole 16ch`.
+Each window is saved as WAV plus JSON metadata under
+`~/.saymo/trigger_samples/<profile>/` and separated into:
+`asked_to_speak`, `question`, and `speech`. Add `--save-silence` only when you
+also need silent windows for debugging.
 
 ### Call providers
 
@@ -161,6 +201,26 @@ vocabulary:
   fuzzy_expansions:
     Alex: ["Alex", "Алекс", "Саша", "Саня"]
 ```
+
+To check whether a live phrase will trigger Saymo before joining a call:
+
+```bash
+saymo trigger-check -p personal --text "John, что по статусу?"
+saymo trigger-check -p personal --mic
+saymo trigger-setup -p personal --heard "Jon, что по статусу?"
+saymo trigger-learn -p personal --heard "Jon"
+```
+
+The diagnostic shows trigger match, whether the mention is addressed to you,
+question detection, confirmation behavior, auto-mode action, and response-cache
+routing.
+Use `trigger-setup` when Whisper consistently hears your name as a different
+spelling; it updates `vocabulary.fuzzy_expansions` and verifies the learned
+variant immediately. You can paste the whole transcribed phrase; Saymo extracts
+the likely name variant before saving it.
+When `safety.require_confirmation` is enabled, auto-mode waits for a second
+trigger mention within `safety.confirmation_timeout_seconds` before speaking;
+this helps suppress accidental mentions in live calls.
 
 ## Architecture
 

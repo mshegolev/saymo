@@ -99,10 +99,12 @@ speech:
   composer: ollama            # `ollama` | `anthropic`
 
 safety:
-  require_confirmation: true
-  hotkey_speak: "<cmd>+<shift>+s"
+  require_confirmation: true          # require a second trigger mention before auto-speaking
+  confirmation_timeout_seconds: 6.0   # seconds to wait for that second mention
+  hotkey_speak: "<cmd>+<shift>+s"      # force prepared playback in auto-mode
   hotkey_stop: "<cmd>+<shift>+x"
   hotkey_toggle: "<cmd>+<shift>+m"
+  hotkey_takeover: "<cmd>+<shift>+u"   # manual answer mode: pause auto + best-effort mic switch
   max_speech_duration: 120
 
 # Meeting profiles — each one picks a source plugin, a call provider, and the
@@ -152,6 +154,9 @@ prompts:
 # in saymo/tts/text_normalizer.py. Use this instead of editing source.
 vocabulary:
   abbreviations: {}           # e.g. { MYAPI: "май-эй-пи-ай", K8S: "кубернетес" }
+  # Run `saymo trigger-check -p personal --mic` and add exact Whisper
+  # mis-hearings with `saymo trigger-setup -p personal --heard "..."`.
+  # It is safe to paste a whole transcript; Saymo saves only the name variant.
   fuzzy_expansions: {}        # e.g. { Alex: ["Alex", "Алекс", "Саша", "Саня"] }
 
 # Tier-A response cache — pre-synthesised short answers for common stand-up
@@ -174,6 +179,8 @@ responses:
   # Catches rephrasings the keyword matcher misses (e.g. "когда сдашь"
   # → eta_generic). Adds ~1s latency; turn off if CPU-constrained.
   intent_classifier: false
+  # Use `saymo trigger-check -p personal --text "Your Name, what is the status?"`
+  # to preview trigger/addressing/question/cache decisions before a call.
   library: {}
     # Example — uncomment to override the default generic status answer:
     # status_generic:

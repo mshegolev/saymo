@@ -134,6 +134,32 @@ def test_load_config_populates_audio_section(tmp_path):
     assert cfg.audio.capture_device == "BlackHole 2ch"
 
 
+def test_load_config_populates_takeover_hotkey(tmp_path):
+    yaml_content = textwrap.dedent("""\
+        safety:
+          hotkey_takeover: "<cmd>+<shift>+u"
+    """)
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(yaml_content)
+
+    cfg = load_config(config_path=str(cfg_file))
+    assert cfg.safety.hotkey_takeover == "<cmd>+<shift>+u"
+
+
+def test_load_config_populates_confirmation_timeout(tmp_path):
+    yaml_content = textwrap.dedent("""\
+        safety:
+          require_confirmation: true
+          confirmation_timeout_seconds: 2.5
+    """)
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(yaml_content)
+
+    cfg = load_config(config_path=str(cfg_file))
+    assert cfg.safety.require_confirmation is True
+    assert cfg.safety.confirmation_timeout_seconds == 2.5
+
+
 def test_load_config_resolves_env_vars_in_yaml(tmp_path, monkeypatch):
     monkeypatch.setenv("SAYMO_JIRA_TOKEN", "tok-abc")
     yaml_content = textwrap.dedent("""\

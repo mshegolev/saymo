@@ -18,6 +18,135 @@ from saymo.commands import (
 # auto — listen for name trigger and speak automatically
 # ---------------------------------------------------------------------------
 
+def _classify_trigger_window(config, transcript_window: str, trigger_phrases: list[str]):
+    from saymo.analysis.addressing import classify_addressing, expand_trigger_phrases
+
+    expanded = expand_trigger_phrases(
+        trigger_phrases,
+        (config.vocabulary or {}).get("fuzzy_expansions"),
+    )
+    return classify_addressing(transcript_window, expanded)
+
+
+def _should_answer_trigger_window(
+    config,
+    transcript_window: str,
+    trigger_phrases: list[str],
+) -> bool:
+    from saymo.analysis.addressing import should_answer_decision
+
+    decision = _classify_trigger_window(config, transcript_window, trigger_phrases)
+    return should_answer_decision(decision)
+
+
+def _trigger_confirmation_timeout(config) -> float:
+    try:
+        timeout = float(getattr(config.safety, "confirmation_timeout_seconds", 6.0))
+    except (TypeError, ValueError):
+        timeout = 6.0
+    return max(0.1, timeout)
+
+
+def _prefer_question_window(first_window: str, second_window: str) -> str:
+    from saymo.analysis.addressing import looks_like_question
+
+    if looks_like_question(second_window) and not looks_like_question(first_window):
+        return second_window
+    return first_window or second_window
+
+
+def _update_trigger_confirmation(
+    config,
+    *,
+    now: float,
+    pending: tuple[float, str] | None,
+    transcript_window: str,
+) -> tuple[bool, tuple[float, str] | None, str, str]:
+    """Update optional double-trigger confirmation state.
+
+    Returns ``(confirmed, pending, response_window, state)``. When the first
+    trigger is a full question and the second is only the repeated name, the
+    stored first transcript remains the response window.
+    """
+    if not getattr(config.safety, "require_confirmation", False):
+        return True, None, transcript_window, "disabled"
+
+    if pending is not None:
+        expires_at, first_window = pending
+        if now <= expires_at:
+            return (
+                True,
+                None,
+                _prefer_question_window(first_window, transcript_window),
+                "confirmed",
+            )
+
+    timeout = _trigger_confirmation_timeout(config)
+    return False, (now + timeout, transcript_window), "", "waiting"
+
+
+def _toggle_manual_takeover(
+    paused,
+    stop_playback,
+    manual_takeover,
+    *,
+    provider=None,
+    recording_device: str = "",
+    saymo_device: str = "BlackHole 2ch",
+) -> str:
+    """Toggle manual takeover mode for answering in the call yourself."""
+    if manual_takeover.is_set():
+        mic_failed = False
+        if provider is not None:
+            try:
+                if not provider.switch_mic(saymo_device):
+                    mic_failed = True
+            except Exception:
+                mic_failed = True
+        manual_takeover.clear()
+        paused.clear()
+        if mic_failed:
+            return "resumed_mic_failed"
+        return "resumed"
+
+    manual_takeover.set()
+    paused.set()
+    stop_playback.set()
+    if provider is not None and recording_device:
+        try:
+            if not provider.switch_mic(recording_device):
+                return "active_mic_failed"
+        except Exception:
+            return "active_mic_failed"
+    if provider is not None and not recording_device:
+        return "active_no_recording_device"
+    return "active"
+
+
+def _toggle_auto_pause(paused, manual_takeover) -> str:
+    """Toggle ordinary auto-mode pause unless manual takeover owns the pause."""
+    if manual_takeover.is_set():
+        return "manual_takeover_active"
+    if paused.is_set():
+        paused.clear()
+        return "resumed"
+    paused.set()
+    return "paused"
+
+
+def _request_manual_speak(triggered, manual_speak, speaking, manual_takeover) -> str:
+    """Queue an explicit hotkey-triggered prepared playback in auto-mode."""
+    if manual_takeover.is_set():
+        return "manual_takeover_active"
+    if speaking.is_set():
+        return "already_speaking"
+    if manual_speak.is_set():
+        return "already_queued"
+    manual_speak.set()
+    triggered.set()
+    return "queued"
+
+
 @main.command()
 @click.option("--profile", "-p", default="standup", help="Meeting profile: standup, scrum, retro")
 @click.option("--model", "-m", default="small", help="Whisper model: tiny, small, medium")
@@ -85,6 +214,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
     from saymo.audio.capture import AudioCapture
     from saymo.stt.whisper_local import LocalWhisper
+    from saymo.analysis.addressing import should_answer_decision
     from saymo.analysis.turn_detector import TurnDetector
 
     capture = AudioCapture(
@@ -140,6 +270,9 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
     speaking = asyncio.Event()
     stop_playback = asyncio.Event()
     paused = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    manual_speak = asyncio.Event()
+    pending_confirmation: tuple[float, str] | None = None
 
     # Wire global hotkeys for stop/pause. Failures here (e.g., macOS
     # accessibility permissions missing) shouldn't break auto mode — just
@@ -154,24 +287,90 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
             console.print("[bold yellow]⏹  STOP hotkey — cancelling playback[/]")
 
         def _on_toggle():
-            if paused.is_set():
-                loop.call_soon_threadsafe(paused.clear)
-                console.print("[bold green]▶  RESUMED[/]")
-            else:
-                loop.call_soon_threadsafe(paused.set)
-                console.print("[bold yellow]⏸  PAUSED (hotkey to resume)[/]")
+            def _apply_toggle():
+                state = _toggle_auto_pause(paused, manual_takeover)
+                if state == "resumed":
+                    console.print("[bold green]▶  RESUMED[/]")
+                elif state == "paused":
+                    console.print("[bold yellow]⏸  PAUSED (hotkey to resume)[/]")
+                else:
+                    console.print(
+                        "[bold yellow]Manual takeover active — press takeover "
+                        "hotkey to switch mic back and resume.[/]"
+                    )
+
+            loop.call_soon_threadsafe(_apply_toggle)
+
+        def _on_speak():
+            def _apply_speak():
+                state = _request_manual_speak(
+                    triggered,
+                    manual_speak,
+                    speaking,
+                    manual_takeover,
+                )
+                if state == "queued":
+                    console.print("[bold green]SPEAK hotkey — queued prepared playback[/]")
+                elif state == "manual_takeover_active":
+                    console.print(
+                        "[bold yellow]Manual takeover active — speak hotkey ignored.[/]"
+                    )
+                elif state == "already_queued":
+                    console.print("[dim]Speak hotkey already queued[/]")
+                else:
+                    console.print("[dim]Already speaking — speak hotkey ignored[/]")
+
+            loop.call_soon_threadsafe(_apply_speak)
+
+        def _on_takeover():
+            def _apply_takeover():
+                state = _toggle_manual_takeover(
+                    paused,
+                    stop_playback,
+                    manual_takeover,
+                    provider=provider,
+                    recording_device=config.audio.recording_device,
+                )
+                if state == "active":
+                    console.print(
+                        "[bold yellow]Manual takeover active — Saymo paused. "
+                        f"Call mic switched to {config.audio.recording_device}. "
+                        "Unmute yourself, answer, then press takeover again.[/]"
+                    )
+                elif state in {"active_mic_failed", "active_no_recording_device"}:
+                    console.print(
+                        "[bold yellow]Manual takeover active — Saymo paused. "
+                        "Switch the call mic to your real microphone manually, "
+                        "answer, then press takeover again.[/]"
+                    )
+                elif state == "resumed_mic_failed":
+                    console.print(
+                        "[bold yellow]Manual takeover ended — Saymo resumed, but "
+                        "could not switch the call mic back to BlackHole 2ch. "
+                        "Switch it manually before relying on Saymo playback.[/]"
+                    )
+                else:
+                    console.print("[bold green]Manual takeover ended — Saymo resumed[/]")
+
+            loop.call_soon_threadsafe(_apply_takeover)
 
         bindings = {}
+        if config.safety.hotkey_speak:
+            bindings[config.safety.hotkey_speak] = _on_speak
         if config.safety.hotkey_stop:
             bindings[config.safety.hotkey_stop] = _on_stop
         if config.safety.hotkey_toggle:
             bindings[config.safety.hotkey_toggle] = _on_toggle
+        if config.safety.hotkey_takeover:
+            bindings[config.safety.hotkey_takeover] = _on_takeover
         if bindings:
             hotkey_listener = _keyboard.GlobalHotKeys(bindings)
             hotkey_listener.start()
             console.print(
-                f"[dim]hotkeys: stop={config.safety.hotkey_stop} "
-                f"toggle={config.safety.hotkey_toggle}[/]"
+                f"[dim]hotkeys: speak={config.safety.hotkey_speak} "
+                f"stop={config.safety.hotkey_stop} "
+                f"toggle={config.safety.hotkey_toggle} "
+                f"takeover={config.safety.hotkey_takeover}[/]"
             )
     except Exception as e:
         console.print(f"[dim]hotkeys disabled: {e}[/]")
@@ -204,12 +403,52 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
     async def _trigger_loop():
         """Wait for trigger, then speak."""
+        nonlocal pending_confirmation
         while True:
             await triggered.wait()
             triggered.clear()
 
             # Snapshot transcript window BEFORE draining — contains the question
             transcript_window = detector.recent_transcript
+            force_speak = manual_speak.is_set()
+            if force_speak:
+                manual_speak.clear()
+
+            if force_speak:
+                transcript_window = ""
+                pending_confirmation = None
+                console.print("[dim]Manual speak hotkey: using prepared playback[/]")
+            else:
+                addressing = _classify_trigger_window(config, transcript_window, trigger_phrases)
+                if not should_answer_decision(addressing):
+                    console.print(
+                        f"[yellow]Skipping trigger:[/] {addressing.label} — {addressing.reason}"
+                    )
+                    if pending_confirmation and time.monotonic() > pending_confirmation[0]:
+                        pending_confirmation = None
+                    detector.reset_cooldown()
+                    console.print("\n[bold yellow]Listening again...[/]\n")
+                    continue
+
+                confirmed, pending_confirmation, response_window, confirmation_state = (
+                    _update_trigger_confirmation(
+                        config,
+                        now=time.monotonic(),
+                        pending=pending_confirmation,
+                        transcript_window=transcript_window,
+                    )
+                )
+                if not confirmed:
+                    console.print(
+                        "[yellow]Confirmation required:[/] mention the trigger again "
+                        f"within {_trigger_confirmation_timeout(config):.1f}s"
+                    )
+                    detector.reset_cooldown()
+                    console.print("\n[bold yellow]Listening again...[/]\n")
+                    continue
+                if confirmation_state == "confirmed":
+                    console.print("[dim]Trigger confirmed by second mention[/]")
+                transcript_window = response_window
 
             # Drain audio queue — don't process stale chunks after trigger
             while not capture.audio_queue.empty():
