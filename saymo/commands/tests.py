@@ -1,6 +1,6 @@
 """Diagnostic / info commands: test-devices, test-tts, test-jira, list-plugins,
 test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
-trigger-learn, takeover-check, mic-check."""
+trigger-learn, trigger-setup, takeover-check, mic-check."""
 
 import click
 from rich.table import Table
@@ -431,6 +431,39 @@ def trigger_learn(ctx, profile, heard, trigger, mic, seconds, device):
     console.print(f"learned: {'yes' if learned else 'no'}")
 
 
+@main.command("trigger-setup")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to update")
+@click.option("--heard", default=None, help="Text Whisper heard for your trigger")
+@click.option("--trigger", default=None, help="Canonical trigger phrase to extend")
+@click.option("--mic", is_flag=True, help="Record and learn from a short microphone sample")
+@click.option("--seconds", default=4.0, type=float, show_default=True, help="Seconds to record with --mic")
+@click.option("--device", "-d", default=None, help="Input device name for --mic")
+@click.pass_context
+def trigger_setup(ctx, profile, heard, trigger, mic, seconds, device):
+    """Learn a trigger variant and verify that auto-mode will catch it."""
+    from saymo.config import load_config
+
+    config = ctx.obj["config"]
+    if mic:
+        heard = _trigger_check_record_text(config, device, seconds)
+    if heard is None:
+        heard = click.prompt("Heard trigger text")
+
+    config_path = _config_path_for_update(ctx)
+    canonical = trigger or _default_trigger_for_profile(config, profile)
+    learned = _learn_trigger_variant(config_path, canonical, heard)
+    updated = load_config(str(config_path))
+    matches = _trigger_matches(updated, profile, heard)
+
+    console.print(f"config: {config_path}")
+    console.print(f"trigger: {canonical}")
+    console.print(f"heard: {heard.strip()}")
+    console.print(f"learned: {'yes' if learned else 'no'}")
+    console.print(f"trigger after learning: {'yes' if matches else 'no'}")
+    if not matches:
+        console.print("reason: learned text still does not match trigger detector")
+
+
 def _default_trigger_for_profile(config, profile: str) -> str:
     phrases = _trigger_phrases_for_profile(config, profile)
     if not phrases:
@@ -493,6 +526,18 @@ def _learn_trigger_variant(config_path, trigger: str, heard: str) -> bool:
         encoding="utf-8",
     )
     return True
+
+
+def _trigger_matches(config, profile: str, text: str) -> bool:
+    from saymo.analysis.turn_detector import TurnDetector
+
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    detector = TurnDetector(
+        name_variants=trigger_phrases,
+        cooldown_seconds=0,
+        fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
+    )
+    return detector.check(text)
 
 
 # ---------------------------------------------------------------------------

@@ -193,14 +193,15 @@ Or use your microphone:
 
 ```bash
 saymo trigger-check -p personal --mic
+saymo trigger-setup -p personal --heard "misheard name"
 saymo trigger-learn -p personal --heard "misheard name"
 ```
 
 The report shows whether the phrase triggers Saymo, whether the mention is
 addressed to you, whether it looks like a question, and whether a cached
 response is ready.
-If Whisper consistently hears your name incorrectly, use `trigger-learn` to
-save that spelling into `vocabulary.fuzzy_expansions`.
+If Whisper consistently hears your name incorrectly, use `trigger-setup` to
+save that spelling into `vocabulary.fuzzy_expansions` and verify it immediately.
 
 ## 6. Troubleshooting
 

@@ -136,3 +136,29 @@ def test_trigger_learn_does_not_duplicate_existing_variant(tmp_path):
     assert "learned: no" in result.output
     updated = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     assert updated["vocabulary"]["fuzzy_expansions"]["Миша"] == ["Меша"]
+
+
+def test_trigger_setup_learns_and_verifies_heard_variant(tmp_path):
+    import yaml
+
+    config_path = _write_config(tmp_path)
+    runner = CliRunner()
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-setup",
+            "--profile",
+            "personal",
+            "--heard",
+            "Меша",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "learned: yes" in result.output
+    assert "trigger after learning: yes" in result.output
+    data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert data["vocabulary"]["fuzzy_expansions"]["Миша"] == ["Меша"]
