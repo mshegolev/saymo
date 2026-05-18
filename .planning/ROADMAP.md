@@ -2,112 +2,92 @@
 
 ## Overview
 
-Milestone v1.0 makes Saymo's live-call path faster and easier to tune. The
-roadmap first adds timing visibility, then turns captured samples into an
-offline catch-evaluation loop, then hardens the say/preflight path, and finally
-wraps the sample workflow in operator-facing commands and docs.
+Milestone v1.1 builds on the completed Speedly Catcher/Sayer work. The next
+focus is Advanced Call Intelligence: captured samples should explain speaker
+context, learned trigger confidence, and provider-specific latency without
+requiring cloud services or risky live-call behavior changes.
 
 ## Milestones
 
 - ✅ **v1.0 Speedly Catcher + Speedly Sayer** - Phases 1-4 (complete)
+- 📋 **v1.1 Call Intelligence Loop** - Phases 5-7 (planned)
 
 ## Phases
 
 **Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions
+- Integer phases (5, 6, 7): Planned milestone work
+- Decimal phases (6.1, 6.2): Urgent insertions
 
-- [x] **Phase 1: Latency Baseline** - Measure catch and say latency without
-  changing behavior.
-- [x] **Phase 2: Catcher Tuning Loop** - Add profile tuning and offline sample
-  evaluation.
-- [x] **Phase 3: Sayer Preflight Path** - Verify readiness and speed up
-  prepared playback decisions.
-- [x] **Phase 4: Sample Review Workflow** - Make captured samples inspectable,
-  replayable, and reportable.
+- [ ] **Phase 5: Speaker-Aware Sample Loop** - Add local speaker labels to
+  captured samples and make trigger evaluation speaker-aware.
+- [ ] **Phase 6: Local Trigger Classifier** - Let accepted/rejected samples
+  train and shadow-test a lightweight local classifier.
+- [ ] **Phase 7: Provider Latency Probe** - Measure provider-specific
+  end-to-end latency inside active Chrome calls.
 
 ## Phase Details
 
-### Phase 1: Latency Baseline
-**Goal**: Add trustworthy timing around live windows and playback start so
-future speed work is measured, not guessed.
-**Depends on**: Nothing
-**Requirements**: CATCH-01, SAY-02
+### Phase 5: Speaker-Aware Sample Loop
+**Goal**: Let the user label who spoke in captured windows and evaluate trigger
+behavior separately for `me`, `other`, and `unknown` speakers.
+**Depends on**: v1.0 sample review workflow
+**Requirements**: SPK-01, SPK-02, SPK-03
 **Success Criteria** (what must be TRUE):
-  1. User can run auto/diagnostic paths and see catch timing split by capture,
-     transcription, trigger match, addressing, and action.
-  2. User can trigger cached playback and see time-to-playback-start.
-  3. Existing trigger gating behavior remains unchanged under the new metrics.
-**Plans**: 2 plans
-
-Plans:
-- [x] 01-01: Instrument catch-path timings
-- [x] 01-02: Instrument say-path playback timings
-
-### Phase 2: Catcher Tuning Loop
-**Goal**: Let the user tune live detection from config and validate changes
-against saved call samples.
-**Depends on**: Phase 1
-**Requirements**: CATCH-02, CATCH-03, CATCH-04
-**Success Criteria** (what must be TRUE):
-  1. User can configure per-profile window, overlap, cooldown, and silence
-     behavior without source edits.
-  2. User can run offline evaluation over `~/.saymo/trigger_samples/<profile>/`
-     and see categorized results plus suspected misses/false positives.
-  3. User can promote a heard variant from an evaluated sample and re-run the
-     same evaluation with changed results.
+  1. User can set or correct a speaker label on a saved sample from CLI.
+  2. Trigger evaluation groups counts, misses, and false positives by speaker.
+  3. Existing samples without labels remain valid as `unknown`.
+  4. No cloud diarization dependency is required.
 **Plans**: 3 plans
 
 Plans:
-- [x] 02-01: Add profile-level catcher tuning config
-- [x] 02-02: Build offline trigger-sample evaluator
-- [x] 02-03: Add promote-and-rerun workflow for fuzzy variants
+- [ ] 05-01: Add speaker label metadata support
+- [ ] 05-02: Make trigger evaluation speaker-aware
+- [ ] 05-03: Add sample label review commands and docs
 
-### Phase 3: Sayer Preflight Path
-**Goal**: Make prepared-response playback readiness explicit before calls and
-keep auto-mode responsive when playback cannot start.
-**Depends on**: Phase 2
-**Requirements**: SAY-01, SAY-03, SAY-04
+### Phase 6: Local Trigger Classifier
+**Goal**: Train a local sample-based classifier from accepted/rejected trigger
+decisions and compare it against deterministic gating before it affects calls.
+**Depends on**: Phase 5
+**Requirements**: CLF-01, CLF-02, CLF-03
 **Success Criteria** (what must be TRUE):
-  1. User can run one preflight command that checks cache, devices, provider,
-     triggers, and response fallback status.
-  2. User can force prepared playback and get a precise blocked reason when it
-     cannot play.
-  3. Auto-mode remains listening after a cache miss or blocked playback path.
+  1. User can mark a sample answer decision accepted or rejected from CLI.
+  2. Training refuses to run until minimum labeled-data thresholds are met.
+  3. Classifier artifacts are stored locally and can be inspected or deleted.
+  4. `trigger-eval` and `trigger-check` can show classifier shadow confidence
+     without changing answer decisions.
 **Plans**: 3 plans
 
 Plans:
-- [x] 03-01: Add live-call preflight command
-- [x] 03-02: Normalize forced-playback blocked reasons
-- [x] 03-03: Harden cache-miss fallback behavior
+- [ ] 06-01: Add accepted/rejected sample labels
+- [ ] 06-02: Train lightweight local trigger classifier
+- [ ] 06-03: Add shadow-mode classifier diagnostics
 
-### Phase 4: Sample Review Workflow
-**Goal**: Turn captured call windows into a practical local review loop for
-training and debugging trigger behavior.
-**Depends on**: Phase 3
-**Requirements**: TRAIN-01, TRAIN-02, TRAIN-03
+### Phase 7: Provider Latency Probe
+**Goal**: Measure end-to-end latency for active Chrome call providers so the
+user can distinguish audio/STT delays from provider mute/playback delays.
+**Depends on**: Phase 6
+**Requirements**: LAT-01, LAT-02, LAT-03
 **Success Criteria** (what must be TRUE):
-  1. User can list captured samples by profile/category with transcript,
-     trigger, question, and level metadata.
-  2. User can replay a selected sample locally and compare transcript,
-     classification, and detector action.
-  3. User can export a sanitized report without raw audio or private config
-     values.
+  1. User can run one provider-latency probe for the configured profile.
+  2. The probe reports capture, transcription, trigger, unmute, playback-start,
+     playback duration, and mute-recovery segments.
+  3. Results can be exported as local JSON/Markdown history by profile/provider.
+  4. A failed provider step reports a blocked reason without leaving auto-mode
+     state ambiguous.
 **Plans**: 3 plans
 
 Plans:
-- [x] 04-01: Add sample listing command
-- [x] 04-02: Add sample replay and reclassify command
-- [x] 04-03: Add sanitized evaluation report and docs
+- [ ] 07-01: Add provider latency probe command
+- [ ] 07-02: Capture segmented provider/playback timings
+- [ ] 07-03: Add latency history export and docs
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 5 → 6 → 7
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 1. Latency Baseline | v1.0 | 2/2 | Complete | 2026-05-15 |
-| 2. Catcher Tuning Loop | v1.0 | 3/3 | Complete | 2026-05-15 |
-| 3. Sayer Preflight Path | v1.0 | 3/3 | Complete | 2026-05-15 |
-| 4. Sample Review Workflow | v1.0 | 3/3 | Complete | 2026-05-15 |
+| 5. Speaker-Aware Sample Loop | v1.1 | 0/3 | Not started | - |
+| 6. Local Trigger Classifier | v1.1 | 0/3 | Not started | - |
+| 7. Provider Latency Probe | v1.1 | 0/3 | Not started | - |
