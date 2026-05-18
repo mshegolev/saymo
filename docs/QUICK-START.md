@@ -295,9 +295,14 @@ Review and tune the saved windows locally:
 ```bash
 saymo trigger-samples list -p personal
 saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
+saymo trigger-samples decision ~/.saymo/trigger_samples/personal/question/<sample>.json --decision rejected
 saymo trigger-samples replay ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
 saymo trigger-eval -p personal
 saymo trigger-eval -p personal --promote ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
+saymo trigger-classifier train -p personal
+saymo trigger-classifier inspect -p personal
+saymo trigger-eval -p personal --classifier-shadow
+saymo trigger-classifier delete -p personal --yes
 saymo trigger-samples report -p personal -o ~/.saymo/trigger_samples/personal-report.md
 ```
 
@@ -306,8 +311,14 @@ It also groups results by speaker label: `me`, `other`, or `unknown`. Use
 `trigger-samples label` to correct who spoke in a saved window; old samples
 without a label are treated as `unknown`. `--promote` extracts the heard name
 variant from one sample, writes it to `vocabulary.fuzzy_expansions`, and
-immediately re-runs the evaluation. The report intentionally omits raw audio and
-transcript text.
+immediately re-runs the evaluation. Use `trigger-samples decision` to mark an
+answer decision as `accepted` or `rejected`, then run `trigger-classifier train`
+after you have enough labels. Classifier artifacts stay local under
+`~/.saymo/models/trigger_classifier/`, and `--classifier-shadow` on
+`trigger-eval` or `trigger-check` compares learned confidence without changing
+what Saymo would do live. Use `trigger-classifier inspect` or `delete` to audit
+or remove the artifact. The report intentionally omits raw audio and transcript
+text.
 
 ### I need to answer myself during auto mode
 

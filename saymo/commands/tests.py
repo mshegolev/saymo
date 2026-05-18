@@ -316,8 +316,10 @@ async def _prepare_responses(config, force: bool = False) -> int:
 @click.option("--mic", is_flag=True, help="Record a short microphone sample and transcribe it")
 @click.option("--seconds", default=4.0, type=float, show_default=True, help="Seconds to record with --mic")
 @click.option("--device", "-d", default=None, help="Input device name for --mic")
+@click.option("--classifier-shadow", is_flag=True, help="Show local classifier confidence without changing the decision")
+@click.option("--model-dir", default=None, type=click.Path(), help="Directory with trigger-classifier artifacts")
 @click.pass_context
-def trigger_check(ctx, profile, text, mic, seconds, device):
+def trigger_check(ctx, profile, text, mic, seconds, device, classifier_shadow, model_dir):
     """Diagnose trigger, addressing, and response-cache routing.
 
     Use ``--text`` for a deterministic dry-run. Use ``--mic`` to record a
@@ -328,7 +330,13 @@ def trigger_check(ctx, profile, text, mic, seconds, device):
         text = _trigger_check_record_text(config, device, seconds)
     if text is None:
         text = click.prompt("Transcript text")
-    _print_trigger_diagnostics(config, profile, text)
+    _print_trigger_diagnostics(
+        config,
+        profile,
+        text,
+        classifier_shadow=classifier_shadow,
+        model_dir=model_dir,
+    )
 
 
 def _trigger_phrases_for_profile(config, profile: str) -> list[str]:
@@ -338,7 +346,14 @@ def _trigger_phrases_for_profile(config, profile: str) -> list[str]:
     return config.user.name_variants or ([config.user.name] if config.user.name else [])
 
 
-def _print_trigger_diagnostics(config, profile: str, text: str) -> None:
+def _print_trigger_diagnostics(
+    config,
+    profile: str,
+    text: str,
+    *,
+    classifier_shadow: bool = False,
+    model_dir: str | None = None,
+) -> None:
     from saymo.analysis.addressing import (
         classify_addressing,
         expand_trigger_phrases,
@@ -382,6 +397,18 @@ def _print_trigger_diagnostics(config, profile: str, text: str) -> None:
     console.print(f"will answer: {'yes' if will_answer else 'no'}")
     console.print(f"confirmation: {confirmation}")
     console.print(f"auto action: {auto_action}")
+    if classifier_shadow:
+        _print_trigger_check_classifier_shadow(
+            profile=profile,
+            text=text,
+            speaker="unknown",
+            category=_current_trigger_category(text, will_answer, decision.is_question),
+            trigger=triggered,
+            question=decision.is_question,
+            will_answer=will_answer,
+            addressing=decision.label,
+            model_dir=model_dir,
+        )
 
     if not will_answer:
         console.print("response: skipped")
@@ -945,6 +972,7 @@ class TriggerSampleRecord:
     profile: str
     category: str
     speaker: str
+    answer_decision: str
     created_at: str
     transcript: str
     trigger: bool
@@ -964,11 +992,13 @@ class TriggerEvaluationRow:
     current_trigger: bool
     current_question: bool
     current_will_answer: bool
+    current_addressing: str
     miss: bool
     false_positive: bool
 
 
 _SPEAKER_LABELS = ("me", "other", "unknown")
+_ANSWER_DECISION_LABELS = ("accepted", "rejected", "unlabeled")
 
 
 def _normalize_speaker_label(value) -> str:
@@ -976,6 +1006,12 @@ def _normalize_speaker_label(value) -> str:
     if label in _SPEAKER_LABELS:
         return label
     return "unknown"
+
+
+def _normalize_answer_decision(value) -> str:
+    from saymo.analysis.trigger_classifier import normalize_decision_label
+
+    return normalize_decision_label(value)
 
 
 @main.command("trigger-eval")
@@ -992,8 +1028,10 @@ def _normalize_speaker_label(value) -> str:
     type=click.Path(exists=True),
     help="Learn trigger variant from this sample JSON before evaluation",
 )
+@click.option("--classifier-shadow", is_flag=True, help="Show local classifier confidence without changing decisions")
+@click.option("--model-dir", default=None, type=click.Path(), help="Directory with trigger-classifier artifacts")
 @click.pass_context
-def trigger_eval(ctx, profile, samples_dir, promote):
+def trigger_eval(ctx, profile, samples_dir, promote, classifier_shadow, model_dir):
     """Evaluate saved trigger samples against current trigger config."""
     config = ctx.obj["config"]
     if promote:
@@ -1001,6 +1039,8 @@ def trigger_eval(ctx, profile, samples_dir, promote):
     records = list(_iter_trigger_sample_records(_samples_base_dir(samples_dir), profile))
     rows = _evaluate_trigger_records(config, profile, records)
     _print_trigger_evaluation(rows)
+    if classifier_shadow:
+        _print_classifier_shadow_evaluation(rows, profile=profile, model_dir=model_dir)
 
 
 @main.group("trigger-samples")
@@ -1031,6 +1071,7 @@ def trigger_samples_list(profile, category, samples_dir):
         console.print(
             f"{record.path}: profile={record.profile} category={record.category} "
             f"speaker={record.speaker} "
+            f"decision={record.answer_decision} "
             f"trigger={'yes' if record.trigger else 'no'} "
             f"question={'yes' if record.question else 'no'} "
             f"will_answer={'yes' if record.will_answer else 'no'} "
@@ -1055,6 +1096,7 @@ def trigger_samples_replay(ctx, sample_json, profile, play):
     console.print(f"sample: {record.path}")
     console.print(
         f"stored: category={record.category} speaker={record.speaker} "
+        f"decision={record.answer_decision} "
         f"trigger={'yes' if record.trigger else 'no'} "
         f"question={'yes' if record.question else 'no'} "
         f"will_answer={'yes' if record.will_answer else 'no'}"
@@ -1088,6 +1130,21 @@ def trigger_samples_label(sample_json, speaker):
     console.print(f"speaker: {previous} -> {speaker}")
 
 
+@trigger_samples.command("decision")
+@click.argument("sample_json", type=click.Path(exists=True))
+@click.option(
+    "--decision",
+    required=True,
+    type=click.Choice(_ANSWER_DECISION_LABELS),
+    help="Answer decision label to write into sample metadata",
+)
+def trigger_samples_decision(sample_json, decision):
+    """Set accepted/rejected/unlabeled answer decision for one sample."""
+    previous = _write_trigger_sample_decision(Path(sample_json), decision)
+    console.print(f"sample: {sample_json}")
+    console.print(f"decision: {previous} -> {decision}")
+
+
 @trigger_samples.command("report")
 @click.option("--profile", "-p", default="personal", help="Profile to report")
 @click.option(
@@ -1112,6 +1169,108 @@ def trigger_samples_report(ctx, profile, samples_dir, output):
         console.print(report)
 
 
+@main.group("trigger-classifier")
+def trigger_classifier():
+    """Train, inspect, and delete the local trigger classifier."""
+
+
+@trigger_classifier.command("train")
+@click.option("--profile", "-p", default="personal", help="Profile to train")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.option("--model-dir", default=None, type=click.Path(), help="Directory for classifier artifacts")
+@click.option(
+    "--min-total",
+    default=4,
+    type=click.IntRange(min=1),
+    show_default=True,
+    help="Minimum accepted/rejected labels",
+)
+@click.option(
+    "--min-per-class",
+    default=1,
+    type=click.IntRange(min=1),
+    show_default=True,
+    help="Minimum labels for each class",
+)
+def trigger_classifier_train(profile, samples_dir, model_dir, min_total, min_per_class):
+    """Train a local accepted/rejected classifier from labeled samples."""
+    from saymo.analysis.trigger_classifier import (
+        InsufficientTrainingData,
+        classifier_model_path,
+        save_model,
+        train_classifier,
+    )
+
+    records = list(_iter_trigger_sample_records(_samples_base_dir(samples_dir), profile))
+    samples = [_classifier_sample_from_record(record) for record in records]
+    try:
+        model = train_classifier(
+            samples,
+            profile=profile,
+            min_total=min_total,
+            min_per_class=min_per_class,
+        )
+    except InsufficientTrainingData as e:
+        raise click.ClickException(str(e)) from e
+
+    model_path = save_model(model, classifier_model_path(profile, model_dir))
+    console.print(f"samples: {len(records)}")
+    console.print(
+        "labeled: "
+        f"accepted={model.label_counts.get('accepted', 0)} "
+        f"rejected={model.label_counts.get('rejected', 0)}"
+    )
+    console.print("trained: yes")
+    console.print(f"model: {model_path}")
+
+
+@trigger_classifier.command("inspect")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option("--model-dir", default=None, type=click.Path(), help="Directory with classifier artifacts")
+def trigger_classifier_inspect(profile, model_dir):
+    """Inspect the local classifier artifact for a profile."""
+    from saymo.analysis.trigger_classifier import classifier_model_path, load_model
+
+    model_path = classifier_model_path(profile, model_dir)
+    if not model_path.exists():
+        raise click.ClickException(f"Classifier artifact not found: {model_path}")
+    model = load_model(model_path)
+    console.print(f"profile: {model.profile}")
+    console.print(f"model: {model_path}")
+    console.print(f"trained_at: {model.trained_at}")
+    console.print(f"version: {model.version}")
+    console.print(f"accepted: {model.label_counts.get('accepted', 0)}")
+    console.print(f"rejected: {model.label_counts.get('rejected', 0)}")
+    console.print(f"vocabulary: {len(model.vocabulary)}")
+    console.print(f"thresholds: min_total={model.min_total} min_per_class={model.min_per_class}")
+
+
+@trigger_classifier.command("delete")
+@click.option("--profile", "-p", default="personal", help="Profile artifact to delete")
+@click.option("--model-dir", default=None, type=click.Path(), help="Directory with classifier artifacts")
+@click.option("--yes", is_flag=True, help="Delete without confirmation")
+def trigger_classifier_delete(profile, model_dir, yes):
+    """Delete the local classifier artifact for a profile."""
+    from saymo.analysis.trigger_classifier import classifier_model_path
+
+    model_path = classifier_model_path(profile, model_dir)
+    if not model_path.exists():
+        console.print(f"model: {model_path}")
+        console.print("deleted: no")
+        return
+    if not yes and not click.confirm(f"Delete {model_path}?"):
+        console.print("deleted: no")
+        return
+    model_path.unlink()
+    console.print(f"model: {model_path}")
+    console.print("deleted: yes")
+
+
 def _samples_base_dir(samples_dir: str | None) -> Path:
     return Path(samples_dir).expanduser() if samples_dir else Path.home() / ".saymo" / "trigger_samples"
 
@@ -1124,6 +1283,7 @@ def _load_trigger_sample(path: Path) -> TriggerSampleRecord:
         profile=str(data.get("profile") or _profile_from_sample_path(p)),
         category=str(data.get("category") or p.parent.name),
         speaker=_normalize_speaker_label(data.get("speaker")),
+        answer_decision=_normalize_answer_decision(data.get("answer_decision")),
         created_at=str(data.get("created_at") or ""),
         transcript=str(data.get("transcript") or ""),
         trigger=bool(data.get("trigger")),
@@ -1184,6 +1344,143 @@ def _write_trigger_sample_speaker(path: Path, speaker: str) -> str:
     return previous
 
 
+def _write_trigger_sample_decision(path: Path, decision: str) -> str:
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        raise click.ClickException(f"Cannot read sample metadata: {e}") from e
+    if not isinstance(data, dict):
+        raise click.ClickException(f"Sample metadata is not an object: {path}")
+
+    previous = _normalize_answer_decision(data.get("answer_decision"))
+    data["answer_decision"] = decision
+    Path(path).write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return previous
+
+
+def _current_trigger_category(text: str, will_answer: bool, is_question: bool) -> str:
+    if will_answer:
+        return "asked_to_speak"
+    if is_question:
+        return "question"
+    if " ".join((text or "").split()):
+        return "speech"
+    return "silence"
+
+
+def _classifier_sample_from_record(record: TriggerSampleRecord):
+    from saymo.analysis.trigger_classifier import TriggerClassifierSample
+
+    return TriggerClassifierSample(
+        transcript=record.transcript,
+        speaker=record.speaker,
+        category=record.category,
+        trigger=record.trigger,
+        question=record.question,
+        will_answer=record.will_answer,
+        addressing=record.addressing,
+        decision=record.answer_decision,
+    )
+
+
+def _classifier_sample_from_row(row: TriggerEvaluationRow):
+    from saymo.analysis.trigger_classifier import TriggerClassifierSample
+
+    return TriggerClassifierSample(
+        transcript=row.record.transcript,
+        speaker=row.record.speaker,
+        category=row.current_category,
+        trigger=row.current_trigger,
+        question=row.current_question,
+        will_answer=row.current_will_answer,
+        addressing=row.current_addressing,
+        decision=row.record.answer_decision,
+    )
+
+
+def _print_trigger_check_classifier_shadow(
+    *,
+    profile: str,
+    text: str,
+    speaker: str,
+    category: str,
+    trigger: bool,
+    question: bool,
+    will_answer: bool,
+    addressing: str,
+    model_dir: str | None,
+) -> None:
+    from saymo.analysis.trigger_classifier import (
+        TriggerClassifierSample,
+        classifier_model_path,
+        load_model,
+        predict,
+    )
+
+    model_path = classifier_model_path(profile, model_dir)
+    if not model_path.exists():
+        console.print(f"classifier: not trained ({model_path})")
+        return
+    model = load_model(model_path)
+    prediction = predict(
+        model,
+        TriggerClassifierSample(
+            transcript=text,
+            speaker=speaker,
+            category=category,
+            trigger=trigger,
+            question=question,
+            will_answer=will_answer,
+            addressing=addressing,
+            decision="unlabeled",
+        ),
+    )
+    console.print(
+        f"classifier: {prediction.label} "
+        f"confidence={prediction.confidence:.2f} "
+        f"model={model_path}"
+    )
+
+
+def _print_classifier_shadow_evaluation(
+    rows: list[TriggerEvaluationRow],
+    *,
+    profile: str,
+    model_dir: str | None,
+) -> None:
+    from saymo.analysis.trigger_classifier import classifier_model_path, load_model, predict
+
+    model_path = classifier_model_path(profile, model_dir)
+    if not model_path.exists():
+        console.print(f"classifier shadow: not trained ({model_path})")
+        return
+    model = load_model(model_path)
+    counts = {"accepted": 0, "rejected": 0}
+    disagreements: list[tuple[TriggerEvaluationRow, str, object]] = []
+    for row in rows:
+        prediction = predict(model, _classifier_sample_from_row(row))
+        counts[prediction.label] = counts.get(prediction.label, 0) + 1
+        deterministic = "accepted" if row.current_will_answer else "rejected"
+        if prediction.label != deterministic:
+            disagreements.append((row, deterministic, prediction))
+
+    console.print("classifier shadow: model=loaded")
+    console.print(f"classifier model: {model_path}")
+    console.print(f"classifier accepted: {counts.get('accepted', 0)}")
+    console.print(f"classifier rejected: {counts.get('rejected', 0)}")
+    console.print(f"classifier disagreements: {len(disagreements)}")
+    for row, deterministic, prediction in disagreements[:10]:
+        console.print(
+            f"  classifier disagreement: {row.record.path} "
+            f"deterministic={deterministic} "
+            f"classifier={prediction.label} "
+            f"conf={prediction.confidence:.2f}"
+        )
+
+
 def _evaluate_trigger_records(
     config,
     profile: str,
@@ -1211,6 +1508,7 @@ def _evaluate_trigger_records(
                 current_trigger=current.trigger,
                 current_question=current.question,
                 current_will_answer=current.will_answer,
+                current_addressing=current.addressing,
                 miss=miss,
                 false_positive=false_positive,
             )
@@ -1311,6 +1609,10 @@ def _render_trigger_report(profile: str, rows: list[TriggerEvaluationRow]) -> st
     for speaker in _SPEAKER_LABELS:
         speaker_rows = [row for row in rows if row.record.speaker == speaker]
         lines.append(f"- {speaker}: {len(speaker_rows)}")
+    lines.extend(["", "## Answer Decisions"])
+    decision_counts = _count_by_category([row.record.answer_decision for row in rows])
+    for decision in _ANSWER_DECISION_LABELS:
+        lines.append(f"- {decision}: {decision_counts.get(decision, 0)}")
     lines.extend(["", "## Samples"])
     for row in rows:
         lines.append(
@@ -1318,6 +1620,7 @@ def _render_trigger_report(profile: str, rows: list[TriggerEvaluationRow]) -> st
             f"{row.record.path.name}: stored={row.record.category}, "
             f"current={row.current_category}, "
             f"speaker={row.record.speaker}, "
+            f"decision={row.record.answer_decision}, "
             f"trigger={'yes' if row.current_trigger else 'no'}, "
             f"question={'yes' if row.current_question else 'no'}, "
             f"will_answer={'yes' if row.current_will_answer else 'no'}, "

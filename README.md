@@ -140,8 +140,13 @@ Review the saved windows without opening JSON by hand:
 ```bash
 saymo trigger-samples list -p personal
 saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
+saymo trigger-samples decision ~/.saymo/trigger_samples/personal/question/<sample>.json --decision rejected
 saymo trigger-samples replay ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
 saymo trigger-eval -p personal --promote ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
+saymo trigger-classifier train -p personal
+saymo trigger-classifier inspect -p personal
+saymo trigger-eval -p personal --classifier-shadow
+saymo trigger-classifier delete -p personal --yes
 saymo trigger-samples report -p personal -o ~/.saymo/trigger_samples/personal-report.md
 ```
 
@@ -149,8 +154,14 @@ saymo trigger-samples report -p personal -o ~/.saymo/trigger_samples/personal-re
 false positives, groups results by speaker label (`me`, `other`, `unknown`),
 and can promote a heard name variant into `vocabulary.fuzzy_expansions` before
 re-running the evaluation. Use `trigger-samples label` to correct who spoke in a
-saved window; old samples without a label are treated as `unknown`. Reports
-omit raw audio and transcript text.
+saved window; old samples without a label are treated as `unknown`. Use
+`trigger-samples decision` to mark whether Saymo's answer decision was
+`accepted` or `rejected`; then `trigger-classifier train` writes a local JSON
+artifact under `~/.saymo/models/trigger_classifier/`. The classifier stays in
+shadow mode: `trigger-eval --classifier-shadow` and
+`trigger-check --classifier-shadow` show learned confidence without changing
+live-call decisions. Use `trigger-classifier inspect` or `delete` to audit or
+remove the local artifact. Reports omit raw audio and transcript text.
 
 ### Call providers
 
@@ -225,6 +236,7 @@ To check whether a live phrase will trigger Saymo before joining a call:
 
 ```bash
 saymo trigger-check -p personal --text "John, что по статусу?"
+saymo trigger-check -p personal --text "John, что по статусу?" --classifier-shadow
 saymo trigger-check -p personal --mic
 saymo auto-preflight -p personal
 saymo trigger-setup -p personal --heard "Jon, что по статусу?"

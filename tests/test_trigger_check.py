@@ -386,6 +386,7 @@ def _write_sample(
     rms=0.01,
     peak=0.1,
     speaker=None,
+    decision=None,
 ):
     metadata = {
         "profile": profile,
@@ -404,6 +405,8 @@ def _write_sample(
     }
     if speaker is not None:
         metadata["speaker"] = speaker
+    if decision is not None:
+        metadata["answer_decision"] = decision
     sample_dir = samples_dir / profile / category
     sample_dir.mkdir(parents=True, exist_ok=True)
     path = sample_dir / f"{name}.json"
@@ -645,6 +648,332 @@ def test_trigger_samples_label_updates_speaker_metadata(tmp_path):
     assert "speaker: unknown -> other" in result.output
     metadata = json.loads(sample_path.read_text(encoding="utf-8"))
     assert metadata["speaker"] == "other"
+
+
+def test_trigger_samples_decision_updates_answer_metadata(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    sample_path = _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="accepted",
+        transcript="John, что по статусу?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+    )
+    runner = CliRunner()
+
+    updated = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "decision",
+            str(sample_path),
+            "--decision",
+            "accepted",
+        ],
+    )
+    listed = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "list",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+    replayed = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "replay",
+            str(sample_path),
+            "--no-play",
+        ],
+    )
+
+    assert updated.exit_code == 0
+    assert "decision: unlabeled -> accepted" in updated.output
+    metadata = json.loads(sample_path.read_text(encoding="utf-8"))
+    assert metadata["answer_decision"] == "accepted"
+    assert listed.exit_code == 0
+    assert "decision=accepted" in listed.output
+    assert replayed.exit_code == 0
+    assert "decision=accepted" in replayed.output
+
+
+def test_trigger_classifier_train_refuses_insufficient_labels(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="accepted",
+        transcript="John, что по статусу?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        decision="accepted",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-classifier",
+            "train",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--model-dir",
+            str(tmp_path / "models"),
+            "--min-total",
+            "2",
+            "--min-per-class",
+            "1",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Need at least 2 labeled samples" in result.output
+
+
+def test_trigger_classifier_train_inspect_and_delete(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    model_dir = tmp_path / "models"
+    _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="accepted",
+        transcript="John, что по статусу?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        decision="accepted",
+        speaker="other",
+    )
+    _write_sample(
+        samples_dir,
+        category="speech",
+        name="rejected",
+        transcript="как John вчера говорил, надо проверить логи",
+        trigger=True,
+        question=False,
+        will_answer=False,
+        decision="rejected",
+        speaker="other",
+    )
+    runner = CliRunner()
+
+    trained = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-classifier",
+            "train",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--model-dir",
+            str(model_dir),
+            "--min-total",
+            "2",
+            "--min-per-class",
+            "1",
+        ],
+    )
+    inspected = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-classifier",
+            "inspect",
+            "--profile",
+            "personal",
+            "--model-dir",
+            str(model_dir),
+        ],
+    )
+    model_path = model_dir / "personal.json"
+    assert trained.exit_code == 0
+    assert "trained: yes" in trained.output
+    assert "accepted=1 rejected=1" in trained.output
+    assert model_path.exists()
+    assert inspected.exit_code == 0
+    assert "profile: personal" in inspected.output
+    assert "accepted: 1" in inspected.output
+    assert "rejected: 1" in inspected.output
+
+    deleted = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-classifier",
+            "delete",
+            "--profile",
+            "personal",
+            "--model-dir",
+            str(model_dir),
+            "--yes",
+        ],
+    )
+
+    assert deleted.exit_code == 0
+    assert "deleted: yes" in deleted.output
+    assert not model_path.exists()
+
+
+def test_trigger_eval_shows_classifier_shadow_diagnostics(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    model_dir = tmp_path / "models"
+    _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="accepted",
+        transcript="John, что по статусу?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        decision="accepted",
+    )
+    _write_sample(
+        samples_dir,
+        category="speech",
+        name="rejected",
+        transcript="как John вчера говорил, надо проверить логи",
+        trigger=True,
+        question=False,
+        will_answer=False,
+        decision="rejected",
+    )
+    runner = CliRunner()
+    trained = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-classifier",
+            "train",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--model-dir",
+            str(model_dir),
+            "--min-total",
+            "2",
+            "--min-per-class",
+            "1",
+        ],
+    )
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-eval",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--classifier-shadow",
+            "--model-dir",
+            str(model_dir),
+        ],
+    )
+
+    assert trained.exit_code == 0
+    assert result.exit_code == 0
+    assert "classifier shadow: model=" in result.output
+    assert "classifier accepted:" in result.output
+    assert "classifier rejected:" in result.output
+    assert "classifier disagreements:" in result.output
+    assert "records: 2" in result.output
+
+
+def test_trigger_check_shows_classifier_shadow_diagnostics(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    model_dir = tmp_path / "models"
+    _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="accepted",
+        transcript="John, что по статусу?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        decision="accepted",
+    )
+    _write_sample(
+        samples_dir,
+        category="speech",
+        name="rejected",
+        transcript="как John вчера говорил, надо проверить логи",
+        trigger=True,
+        question=False,
+        will_answer=False,
+        decision="rejected",
+    )
+    runner = CliRunner()
+    trained = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-classifier",
+            "train",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--model-dir",
+            str(model_dir),
+            "--min-total",
+            "2",
+            "--min-per-class",
+            "1",
+        ],
+    )
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-check",
+            "--profile",
+            "personal",
+            "--text",
+            "John, что по статусу?",
+            "--classifier-shadow",
+            "--model-dir",
+            str(model_dir),
+        ],
+    )
+
+    assert trained.exit_code == 0
+    assert result.exit_code == 0
+    assert "classifier: " in result.output
+    assert "model=" in result.output
 
 
 def test_auto_preflight_reports_ready_with_nonblocking_cache_warning(tmp_path, monkeypatch):

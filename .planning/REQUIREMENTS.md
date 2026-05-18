@@ -56,11 +56,11 @@ Requirements for milestone v1.1 Call Intelligence Loop.
 
 ### Local Trigger Classifier
 
-- [ ] **CLF-01**: User can mark a sample's answer decision as accepted or
+- [x] **CLF-01**: User can mark a sample's answer decision as accepted or
   rejected from the CLI without editing JSON manually.
-- [ ] **CLF-02**: User can train a lightweight local trigger classifier from
+- [x] **CLF-02**: User can train a lightweight local trigger classifier from
   accepted/rejected samples after seeing a data-sufficiency check.
-- [ ] **CLF-03**: User can run the classifier in shadow mode during
+- [x] **CLF-03**: User can run the classifier in shadow mode during
   `trigger-eval` and `trigger-check`, comparing learned confidence against the
   deterministic trigger/addressing gate before enabling it.
 
@@ -115,9 +115,9 @@ Deferred beyond v1.1.
 | SPK-01 | Phase 5 | Complete |
 | SPK-02 | Phase 5 | Complete |
 | SPK-03 | Phase 5 | Complete |
-| CLF-01 | Phase 6 | Pending |
-| CLF-02 | Phase 6 | Pending |
-| CLF-03 | Phase 6 | Pending |
+| CLF-01 | Phase 6 | Complete |
+| CLF-02 | Phase 6 | Complete |
+| CLF-03 | Phase 6 | Complete |
 | LAT-01 | Phase 7 | Pending |
 | LAT-02 | Phase 7 | Pending |
 | LAT-03 | Phase 7 | Pending |
@@ -130,4 +130,4 @@ Deferred beyond v1.1.
 
 ---
 *Requirements defined: 2026-05-15*
-*Last updated: 2026-05-18 after completing Phase 5*
+*Last updated: 2026-05-18 after completing Phase 6*
