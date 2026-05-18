@@ -6,23 +6,23 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Phase 5: Speaker-Aware Sample Loop
+**Current focus:** Phase 6: Local Trigger Classifier
 
 ## Current Position
 
-Phase: 5 of 7 (Speaker-Aware Sample Loop)
+Phase: 6 of 7 (Local Trigger Classifier)
 Plan: —
 Status: Ready to plan
-Last activity: 2026-05-18 — Milestone v1.1 Call Intelligence Loop initialized
+Last activity: 2026-05-18 — Completed Phase 5 Speaker-Aware Sample Loop
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: 0.0 hours
+- Total plans completed: 3
+- Average duration: autonomous batch
+- Total execution time: one autonomous session
 
 **Historical Velocity:**
 - v1.0 completed 11 plans across 4 phases in one autonomous batch.
@@ -31,11 +31,11 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 5. Speaker-Aware Sample Loop | 3 | 3/3 | autonomous |
 
 **Recent Trend:**
-- Last 5 plans: v1.0 03-02, 03-03, 04-01, 04-02, 04-03
-- Trend: new milestone started
+- Last 5 plans: v1.0 04-02, v1.0 04-03, 05-01, 05-02, 05-03
+- Trend: phase complete
 
 ## Accumulated Context
 
@@ -58,6 +58,8 @@ Recent decisions affecting current work:
   enough accepted/rejected sample evidence.
 - v1.1: Measure provider latency through existing provider abstractions instead
   of redesigning provider UI automation.
+- v1.1 Phase 5: Speaker labels are stored in sample JSON metadata and restricted
+  to `me`, `other`, and `unknown`.
 
 ### Pending Todos
 
@@ -72,5 +74,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-18
-Stopped at: Milestone v1.1 initialized; next step is `$gsd-plan-phase 5`.
+Stopped at: Phase 5 complete; next step is `$gsd-plan-phase 6`.
 Resume file: None

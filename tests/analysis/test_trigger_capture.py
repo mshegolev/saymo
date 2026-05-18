@@ -20,6 +20,7 @@ def test_classifies_addressed_trigger_as_asked_to_speak():
     )
 
     assert sample.category == "asked_to_speak"
+    assert sample.speaker == "unknown"
     assert sample.trigger is True
     assert sample.question is True
     assert sample.will_answer is True
@@ -108,5 +109,6 @@ def test_save_trigger_sample_writes_wav_and_metadata_under_category(tmp_path):
     metadata = json.loads(meta_path.read_text(encoding="utf-8"))
     assert metadata["profile"] == "daily"
     assert metadata["category"] == "question"
+    assert metadata["speaker"] == "unknown"
     assert metadata["transcript"] == "Does anyone have questions?"
     assert metadata["wav"] == wav_path.name

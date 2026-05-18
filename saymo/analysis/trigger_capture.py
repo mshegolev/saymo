@@ -25,6 +25,7 @@ class TriggerCaptureSample:
 
     transcript: str
     category: str
+    speaker: str
     trigger: bool
     addressing: str
     question: bool
@@ -69,6 +70,7 @@ def classify_trigger_sample(
         return TriggerCaptureSample(
             transcript="",
             category="silence",
+            speaker="unknown",
             trigger=False,
             addressing="ignore",
             question=False,
@@ -100,6 +102,7 @@ def classify_trigger_sample(
     return TriggerCaptureSample(
         transcript=text,
         category=category,
+        speaker="unknown",
         trigger=triggered,
         addressing=decision.label,
         question=question,

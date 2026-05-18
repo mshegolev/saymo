@@ -41,6 +41,8 @@ who spoke, why Saymo would answer, and where provider-specific latency is spent.
 - ✓ Faster say path is preflighted and measured before calls.
 - ✓ Captured trigger samples feed a repeatable tuning/evaluation workflow.
 - ✓ v1.0 Speedly Catcher + Speedly Sayer completed and merged on 2026-05-15.
+- ✓ Captured trigger samples can carry local speaker labels and evaluation
+  groups results by `me`, `other`, and `unknown`.
 
 ### Out of Scope
 
@@ -81,7 +83,7 @@ who spoke, why Saymo would answer, and where provider-specific latency is spent.
 | Keep live-call listening local-first | Avoid leaking meeting audio and preserve offline operation | ✓ Good |
 | Use classified trigger samples before deeper ML changes | Real misses/false positives are the best tuning data | ✓ Implemented via `trigger-eval` |
 | Separate catch latency from say latency | Different bottlenecks require different measurements and tests | ✓ Implemented in `saymo auto` diagnostics |
-| Use speaker labels as sidecars first | Avoid forcing a diarization dependency while still enabling speaker-aware evaluation | v1.1 planned |
+| Use speaker labels as sidecars first | Avoid forcing a diarization dependency while still enabling speaker-aware evaluation | ✓ Implemented in Phase 5 |
 | Run classifier in shadow mode before enabling it | Protect live calls from unproven learned behavior | v1.1 planned |
 | Measure providers through the existing abstraction | Keep provider latency work scoped to Chrome call automation, not UI redesign | v1.1 planned |
 

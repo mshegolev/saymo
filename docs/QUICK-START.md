@@ -294,6 +294,7 @@ Review and tune the saved windows locally:
 
 ```bash
 saymo trigger-samples list -p personal
+saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
 saymo trigger-samples replay ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
 saymo trigger-eval -p personal
 saymo trigger-eval -p personal --promote ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
@@ -301,9 +302,12 @@ saymo trigger-samples report -p personal -o ~/.saymo/trigger_samples/personal-re
 ```
 
 `trigger-eval` reports stored/current categories, misses, and false positives.
-`--promote` extracts the heard name variant from one sample, writes it to
-`vocabulary.fuzzy_expansions`, and immediately re-runs the evaluation. The
-report intentionally omits raw audio and transcript text.
+It also groups results by speaker label: `me`, `other`, or `unknown`. Use
+`trigger-samples label` to correct who spoke in a saved window; old samples
+without a label are treated as `unknown`. `--promote` extracts the heard name
+variant from one sample, writes it to `vocabulary.fuzzy_expansions`, and
+immediately re-runs the evaluation. The report intentionally omits raw audio and
+transcript text.
 
 ### I need to answer myself during auto mode
 
