@@ -322,6 +322,8 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 | `saymo speak -p PROFILE --provider glip` | Play cached audio into call |
 | `saymo auto -p PROFILE` | Listen for trigger, auto-speak |
 | `saymo trigger-check -p PROFILE --text TEXT` | Preview trigger/addressing/Q&A routing |
+| `saymo trigger-samples decision SAMPLE.json --decision accepted` | Label a saved answer decision for local training |
+| `saymo trigger-classifier train -p PROFILE` | Train the local shadow classifier from accepted/rejected samples |
 | `saymo review` | Review audio sentence-by-sentence |
 | `saymo record-voice -d 300` | Record 5-min voice sample |
 | `saymo dashboard` | Interactive TUI |

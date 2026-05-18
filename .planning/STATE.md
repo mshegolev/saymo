@@ -6,21 +6,21 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Phase 6: Local Trigger Classifier
+**Current focus:** Phase 7: Provider Latency Probe
 
 ## Current Position
 
-Phase: 6 of 7 (Local Trigger Classifier)
+Phase: 7 of 7 (Provider Latency Probe)
 Plan: —
 Status: Ready to plan
-Last activity: 2026-05-18 — Completed Phase 5 Speaker-Aware Sample Loop
+Last activity: 2026-05-18 — Completed Phase 6 Local Trigger Classifier
 
-Progress: [███░░░░░░░] 33%
+Progress: [██████░░░░] 66%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans completed: 3
+- Total plans completed: 6
 - Average duration: autonomous batch
 - Total execution time: one autonomous session
 
@@ -32,9 +32,10 @@ Progress: [███░░░░░░░] 33%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 5. Speaker-Aware Sample Loop | 3 | 3/3 | autonomous |
+| 6. Local Trigger Classifier | 3 | 3/3 | autonomous |
 
 **Recent Trend:**
-- Last 5 plans: v1.0 04-02, v1.0 04-03, 05-01, 05-02, 05-03
+- Last 5 plans: 05-02, 05-03, 06-01, 06-02, 06-03
 - Trend: phase complete
 
 ## Accumulated Context
@@ -60,6 +61,9 @@ Recent decisions affecting current work:
   of redesigning provider UI automation.
 - v1.1 Phase 5: Speaker labels are stored in sample JSON metadata and restricted
   to `me`, `other`, and `unknown`.
+- v1.1 Phase 6: Answer-decision labels are stored as `answer_decision`, and the
+  local classifier remains shadow-only until enough evidence supports enabling
+  it in live auto-mode.
 
 ### Pending Todos
 
@@ -70,9 +74,11 @@ None yet.
 - Need enough real captured samples in `~/.saymo/trigger_samples/` to make
   speaker-aware evaluation and classifier training meaningful.
 - Local diarization remains optional; v1.1 must work without it.
+- Classifier quality depends on accepted/rejected labels; low-label training is
+  intentionally refused.
 
 ## Session Continuity
 
 Last session: 2026-05-18
-Stopped at: Phase 5 complete; next step is `$gsd-plan-phase 6`.
+Stopped at: Phase 6 complete; next step is `$gsd-plan-phase 7`.
 Resume file: None

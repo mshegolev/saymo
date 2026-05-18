@@ -20,7 +20,7 @@ requiring cloud services or risky live-call behavior changes.
 
 - [x] **Phase 5: Speaker-Aware Sample Loop** - Add local speaker labels to
   captured samples and make trigger evaluation speaker-aware.
-- [ ] **Phase 6: Local Trigger Classifier** - Let accepted/rejected samples
+- [x] **Phase 6: Local Trigger Classifier** - Let accepted/rejected samples
   train and shadow-test a lightweight local classifier.
 - [ ] **Phase 7: Provider Latency Probe** - Measure provider-specific
   end-to-end latency inside active Chrome calls.
@@ -58,9 +58,9 @@ decisions and compare it against deterministic gating before it affects calls.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: Add accepted/rejected sample labels
-- [ ] 06-02: Train lightweight local trigger classifier
-- [ ] 06-03: Add shadow-mode classifier diagnostics
+- [x] 06-01: Add accepted/rejected sample labels
+- [x] 06-02: Train lightweight local trigger classifier
+- [x] 06-03: Add shadow-mode classifier diagnostics
 
 ### Phase 7: Provider Latency Probe
 **Goal**: Measure end-to-end latency for active Chrome call providers so the
@@ -89,5 +89,5 @@ Phases execute in numeric order: 5 → 6 → 7
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 5. Speaker-Aware Sample Loop | v1.1 | 3/3 | Complete | 2026-05-18 |
-| 6. Local Trigger Classifier | v1.1 | 0/3 | Not started | - |
+| 6. Local Trigger Classifier | v1.1 | 3/3 | Complete | 2026-05-18 |
 | 7. Provider Latency Probe | v1.1 | 0/3 | Not started | - |
