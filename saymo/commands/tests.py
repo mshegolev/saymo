@@ -1,7 +1,7 @@
 """Diagnostic / info commands: test-devices, test-tts, test-jira, list-plugins,
 test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
 trigger-capture, trigger-learn, trigger-setup, trigger-eval, trigger-samples,
-auto-preflight, takeover-check, mic-check."""
+auto-preflight, takeover-check, provider-latency, mic-check."""
 
 import json
 import re
@@ -599,6 +599,457 @@ def _print_auto_preflight(profile: str, checks: list[PreflightCheck]) -> None:
             label = "warn"
         console.print(f"{label}: {check.name}: {check.detail}")
     console.print(f"preflight: {'ready' if ready else 'not ready'}")
+
+
+@main.command("provider-latency")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to probe")
+@click.option("--provider", default=None, help="Override provider from profile")
+@click.option(
+    "--text",
+    default=None,
+    help="Transcript text to use instead of recording call audio",
+)
+@click.option(
+    "--seconds",
+    default=4.0,
+    type=click.FloatRange(min=0.1),
+    show_default=True,
+    help="Seconds to record when --text is omitted",
+)
+@click.option(
+    "--device",
+    "-d",
+    default=None,
+    help="Input device for call capture; defaults to audio.capture_device",
+)
+@click.option(
+    "--audio",
+    default=None,
+    type=click.Path(),
+    help="Audio file to play; defaults to today's prepared cache",
+)
+@click.option("--output-dir", default=None, type=click.Path(), help="Directory for JSON/Markdown history")
+@click.option(
+    "--settle-seconds",
+    default=0.3,
+    type=click.FloatRange(min=0.0),
+    show_default=True,
+    help="Provider settle delay around mute toggles",
+)
+@click.pass_context
+def provider_latency(
+    ctx,
+    profile,
+    provider,
+    text,
+    seconds,
+    device,
+    audio,
+    output_dir,
+    settle_seconds,
+):
+    """Measure provider call-control and playback latency for one probe."""
+    config = ctx.obj["config"]
+    if text is None:
+        text = ""
+    run_async(
+        _run_provider_latency_probe(
+            config,
+            profile=profile,
+            provider_name=provider,
+            text=text,
+            seconds=seconds,
+            device_name=device,
+            audio=audio,
+            output_dir=output_dir,
+            settle_seconds=settle_seconds,
+        )
+    )
+
+
+async def _run_provider_latency_probe(
+    config,
+    *,
+    profile: str,
+    provider_name: str | None,
+    text: str,
+    seconds: float,
+    device_name: str | None,
+    audio: str | None,
+    output_dir: str | None,
+    settle_seconds: float,
+) -> None:
+    import asyncio
+    import time
+    from datetime import datetime, timezone
+
+    from saymo.analysis.provider_latency import ProviderLatencySegment
+    from saymo.analysis.trigger_capture import classify_trigger_sample
+    from saymo.commands import _get_cached_audio_path
+    from saymo.providers.factory import get_provider
+
+    segments: list[ProviderLatencySegment] = []
+    created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    meeting = config.get_meeting(profile)
+    resolved_provider = provider_name or (meeting.provider if meeting else "glip")
+    team_mode = bool(meeting.team) if meeting else False
+    audio_path = Path(audio).expanduser() if audio else _get_cached_audio_path(team=team_mode)
+
+    console.print(f"provider latency: profile={profile} provider={resolved_provider}")
+
+    if text:
+        segments.append(ProviderLatencySegment("capture", 0.0, detail="source=text"))
+        segments.append(ProviderLatencySegment("transcription", 0.0, detail="source=text"))
+        transcript = " ".join(text.split())
+    else:
+        transcript, capture_ms, transcription_ms = _provider_latency_record_text(
+            config,
+            device_name,
+            seconds,
+        )
+        segments.append(ProviderLatencySegment("capture", capture_ms, detail="source=call"))
+        segments.append(ProviderLatencySegment("transcription", transcription_ms, detail="local_whisper"))
+
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    trigger_t0 = time.monotonic()
+    sample = classify_trigger_sample(
+        transcript,
+        trigger_phrases,
+        (config.vocabulary or {}).get("fuzzy_expansions") or {},
+    )
+    trigger_ms = (time.monotonic() - trigger_t0) * 1000
+    action = "answer" if sample.will_answer else "skip"
+    segments.append(
+        ProviderLatencySegment(
+            "trigger",
+            trigger_ms,
+            detail=(
+                f"trigger={'yes' if sample.trigger else 'no'} "
+                f"question={'yes' if sample.question else 'no'} "
+                f"action={action}"
+            ),
+        )
+    )
+    decision_done_t = time.monotonic()
+
+    if not sample.will_answer:
+        await _finalize_provider_latency_report(
+            profile=profile,
+            provider=resolved_provider,
+            created_at=created_at,
+            status="blocked",
+            transcript=transcript,
+            action=action,
+            audio_path=audio_path,
+            blocked_step="trigger",
+            blocked_reason="deterministic trigger/addressing gate would skip",
+            segments=segments,
+            output_dir=output_dir,
+        )
+        return
+
+    if not audio_path.exists():
+        await _finalize_provider_latency_report(
+            profile=profile,
+            provider=resolved_provider,
+            created_at=created_at,
+            status="blocked",
+            transcript=transcript,
+            action=action,
+            audio_path=audio_path,
+            blocked_step="audio",
+            blocked_reason=f"audio file not found: {audio_path}",
+            segments=segments,
+            output_dir=output_dir,
+        )
+        return
+
+    provider = get_provider(resolved_provider)
+    check_t0 = time.monotonic()
+    status = provider.check_ready()
+    check_ms = (time.monotonic() - check_t0) * 1000
+    segments.append(
+        ProviderLatencySegment(
+            "provider_check",
+            check_ms,
+            status="ok" if status.meeting_found else "blocked",
+            detail=f"tab={status.tab_info}" if status.tab_info else "tab=not_found",
+        )
+    )
+    if not status.meeting_found:
+        await _finalize_provider_latency_report(
+            profile=profile,
+            provider=resolved_provider,
+            created_at=created_at,
+            status="blocked",
+            transcript=transcript,
+            action=action,
+            audio_path=audio_path,
+            blocked_step="provider_tab",
+            blocked_reason=(
+                f"{getattr(provider, 'name', resolved_provider)} "
+                "tab not found in Chrome"
+            ),
+            segments=segments,
+            output_dir=output_dir,
+        )
+        return
+
+    from saymo.audio.devices import find_device
+
+    if not find_device("BlackHole 2ch", kind="output"):
+        await _finalize_provider_latency_report(
+            profile=profile,
+            provider=resolved_provider,
+            created_at=created_at,
+            status="blocked",
+            transcript=transcript,
+            action=action,
+            audio_path=audio_path,
+            blocked_step="playback_output",
+            blocked_reason="BlackHole 2ch output not found",
+            segments=segments,
+            output_dir=output_dir,
+        )
+        return
+
+    switch_t0 = time.monotonic()
+    mic_switched = provider.switch_mic("BlackHole 2ch")
+    segments.append(
+        ProviderLatencySegment(
+            "mic_switch",
+            (time.monotonic() - switch_t0) * 1000,
+            detail="ok" if mic_switched else "not_supported_or_unchanged",
+        )
+    )
+
+    previous_app = ""
+    try:
+        previous_app = provider.get_previous_app()
+    except Exception:
+        previous_app = ""
+
+    try:
+        unmute_t0 = time.monotonic()
+        if not provider.activate_meeting():
+            raise RuntimeError(
+                f"Cannot activate {getattr(provider, 'name', resolved_provider)} tab"
+            )
+        await asyncio.sleep(settle_seconds)
+        provider.toggle_mute()
+        await asyncio.sleep(settle_seconds)
+        segments.append(
+            ProviderLatencySegment(
+                "provider_unmute",
+                (time.monotonic() - unmute_t0) * 1000,
+            )
+        )
+    except Exception as e:
+        await _finalize_provider_latency_report(
+            profile=profile,
+            provider=resolved_provider,
+            created_at=created_at,
+            status="blocked",
+            transcript=transcript,
+            action=action,
+            audio_path=audio_path,
+            blocked_step="provider_unmute",
+            blocked_reason=str(e),
+            segments=segments,
+            output_dir=output_dir,
+        )
+        return
+
+    audio_bytes = audio_path.read_bytes()
+    playback_start_ms: float | None = None
+    playback_started_t: float | None = None
+
+    def mark_playback_started() -> None:
+        nonlocal playback_start_ms, playback_started_t
+        if playback_start_ms is not None:
+            return
+        playback_started_t = time.monotonic()
+        playback_start_ms = (playback_started_t - decision_done_t) * 1000
+
+    try:
+        play_t0 = time.monotonic()
+        await _provider_latency_play_audio(config, audio_bytes, mark_playback_started)
+        playback_end_t = time.monotonic()
+        segments.append(
+            ProviderLatencySegment(
+                "playback_start",
+                playback_start_ms if playback_start_ms is not None else 0.0,
+                status="ok" if playback_start_ms is not None else "blocked",
+                detail="from_trigger_decision",
+            )
+        )
+        duration_base = playback_started_t or play_t0
+        segments.append(
+            ProviderLatencySegment(
+                "playback_duration",
+                (playback_end_t - duration_base) * 1000,
+            )
+        )
+    except Exception as e:
+        await _finalize_provider_latency_report(
+            profile=profile,
+            provider=resolved_provider,
+            created_at=created_at,
+            status="blocked",
+            transcript=transcript,
+            action=action,
+            audio_path=audio_path,
+            blocked_step="playback",
+            blocked_reason=str(e),
+            segments=segments,
+            output_dir=output_dir,
+        )
+        return
+
+    try:
+        mute_t0 = time.monotonic()
+        provider.activate_meeting()
+        await asyncio.sleep(settle_seconds)
+        provider.toggle_mute()
+        await asyncio.sleep(settle_seconds)
+        if previous_app and previous_app != "Google Chrome":
+            provider.activate_app(previous_app)
+        segments.append(
+            ProviderLatencySegment(
+                "mute_recovery",
+                (time.monotonic() - mute_t0) * 1000,
+                detail=f"restored={previous_app}" if previous_app else "",
+            )
+        )
+    except Exception as e:
+        await _finalize_provider_latency_report(
+            profile=profile,
+            provider=resolved_provider,
+            created_at=created_at,
+            status="blocked",
+            transcript=transcript,
+            action=action,
+            audio_path=audio_path,
+            blocked_step="mute_recovery",
+            blocked_reason=str(e),
+            segments=segments,
+            output_dir=output_dir,
+        )
+        return
+
+    await _finalize_provider_latency_report(
+        profile=profile,
+        provider=resolved_provider,
+        created_at=created_at,
+        status="ok",
+        transcript=transcript,
+        action=action,
+        audio_path=audio_path,
+        blocked_step="",
+        blocked_reason="",
+        segments=segments,
+        output_dir=output_dir,
+    )
+
+
+def _provider_latency_record_text(config, device_name: str | None, seconds: float) -> tuple[str, float, float]:
+    import time
+    import sounddevice as sd
+    from saymo.stt.whisper_local import LocalWhisper
+
+    mic_name, mic = _resolve_provider_latency_capture_device(config, device_name)
+    if not mic or not mic_name:
+        raise click.ClickException("No input device available")
+
+    capture_t0 = time.monotonic()
+    audio = _record_buffer(sd, 16000, seconds, mic.index)
+    capture_ms = (time.monotonic() - capture_t0) * 1000
+    transcribe_t0 = time.monotonic()
+    whisper = LocalWhisper(
+        model_size=config.stt.whisper.model_size,
+        language=config.user.language,
+    )
+    text = whisper.transcribe(audio)
+    transcription_ms = (time.monotonic() - transcribe_t0) * 1000
+    return text, capture_ms, transcription_ms
+
+
+def _resolve_provider_latency_capture_device(config, device_override: str | None):
+    from saymo.audio.devices import find_device
+
+    name = device_override or config.audio.capture_device or config.audio.recording_device
+    if name:
+        dev = find_device(name, kind="input")
+        if not dev:
+            raise click.ClickException(f"Input device not found: {name}")
+        return name, dev
+    return _resolve_input_device(config, None)
+
+
+async def _provider_latency_play_audio(config, audio_bytes: bytes, mark_playback_started) -> None:
+    playback = "BlackHole 2ch"
+    monitor = config.audio.monitor_device
+    if monitor and monitor.lower() != playback.lower():
+        from saymo.audio.multi_play import play_bytes_to_devices
+
+        mark_playback_started()
+        await play_bytes_to_devices(audio_bytes, [playback, monitor])
+        return
+
+    from saymo.audio.playback import play_audio_bytes
+
+    mark_playback_started()
+    await play_audio_bytes(audio_bytes, playback)
+
+
+async def _finalize_provider_latency_report(
+    *,
+    profile: str,
+    provider: str,
+    created_at: str,
+    status: str,
+    transcript: str,
+    action: str,
+    audio_path: Path,
+    blocked_step: str,
+    blocked_reason: str,
+    segments: list,
+    output_dir: str | None,
+) -> None:
+    from saymo.analysis.provider_latency import ProviderLatencyReport, write_latency_history
+
+    report = ProviderLatencyReport(
+        profile=profile,
+        provider=provider,
+        created_at=created_at,
+        status=status,
+        transcript=transcript,
+        action=action,
+        audio_path=str(audio_path),
+        blocked_step=blocked_step,
+        blocked_reason=blocked_reason,
+        segments=segments,
+    )
+    _print_provider_latency_report(report)
+    json_path, md_path = write_latency_history(report, output_dir)
+    console.print(f"history json: {json_path}")
+    console.print(f"history markdown: {md_path}")
+
+
+def _print_provider_latency_report(report) -> None:
+    labels = {
+        "provider_unmute": "provider unmute",
+        "playback_start": "playback start",
+        "playback_duration": "playback duration",
+        "mute_recovery": "mute recovery",
+    }
+    for segment in report.segments:
+        label = labels.get(segment.name, segment.name.replace("_", " "))
+        detail = f" {segment.detail}" if segment.detail else ""
+        console.print(f"{label}: {segment.duration_ms:.0f}ms{detail}")
+    console.print(f"probe: {report.status}")
+    if report.blocked_step:
+        console.print(f"blocked: {report.blocked_step}: {report.blocked_reason}")
 
 
 @main.command("trigger-capture")

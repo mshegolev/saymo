@@ -10,7 +10,7 @@ requiring cloud services or risky live-call behavior changes.
 ## Milestones
 
 - ✅ **v1.0 Speedly Catcher + Speedly Sayer** - Phases 1-4 (complete)
-- 📋 **v1.1 Call Intelligence Loop** - Phases 5-7 (planned)
+- ✅ **v1.1 Call Intelligence Loop** - Phases 5-7 (complete)
 
 ## Phases
 
@@ -22,7 +22,7 @@ requiring cloud services or risky live-call behavior changes.
   captured samples and make trigger evaluation speaker-aware.
 - [x] **Phase 6: Local Trigger Classifier** - Let accepted/rejected samples
   train and shadow-test a lightweight local classifier.
-- [ ] **Phase 7: Provider Latency Probe** - Measure provider-specific
+- [x] **Phase 7: Provider Latency Probe** - Measure provider-specific
   end-to-end latency inside active Chrome calls.
 
 ## Phase Details
@@ -77,9 +77,9 @@ user can distinguish audio/STT delays from provider mute/playback delays.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: Add provider latency probe command
-- [ ] 07-02: Capture segmented provider/playback timings
-- [ ] 07-03: Add latency history export and docs
+- [x] 07-01: Add provider latency probe command
+- [x] 07-02: Capture segmented provider/playback timings
+- [x] 07-03: Add latency history export and docs
 
 ## Progress
 
@@ -90,4 +90,4 @@ Phases execute in numeric order: 5 → 6 → 7
 |-------|-----------|----------------|--------|-----------|
 | 5. Speaker-Aware Sample Loop | v1.1 | 3/3 | Complete | 2026-05-18 |
 | 6. Local Trigger Classifier | v1.1 | 3/3 | Complete | 2026-05-18 |
-| 7. Provider Latency Probe | v1.1 | 0/3 | Not started | - |
+| 7. Provider Latency Probe | v1.1 | 3/3 | Complete | 2026-05-18 |

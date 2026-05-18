@@ -320,6 +320,21 @@ what Saymo would do live. Use `trigger-classifier inspect` or `delete` to audit
 or remove the artifact. The report intentionally omits raw audio and transcript
 text.
 
+### Measure call provider latency
+
+Run this inside an active Chrome call when you need to separate call-provider
+delay from capture/STT/trigger delay:
+
+```bash
+saymo provider-latency -p personal --text "Your Name, what is the status?"
+```
+
+Without `--text`, the command records a short window from `audio.capture_device`
+and transcribes it locally before probing the provider. The report includes
+capture, transcription, trigger decision, provider unmute, playback start,
+playback duration, and mute recovery. JSON and Markdown history are written to
+`~/.saymo/provider_latency/<profile>/<provider>/`.
+
 ### I need to answer myself during auto mode
 
 Run once to add the default hotkeys:
