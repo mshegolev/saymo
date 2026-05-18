@@ -324,6 +324,7 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 | `saymo trigger-check -p PROFILE --text TEXT` | Preview trigger/addressing/Q&A routing |
 | `saymo trigger-samples decision SAMPLE.json --decision accepted` | Label a saved answer decision for local training |
 | `saymo trigger-classifier train -p PROFILE` | Train the local shadow classifier from accepted/rejected samples |
+| `saymo provider-latency -p PROFILE` | Measure provider mute/playback latency and export local history |
 | `saymo review` | Review audio sentence-by-sentence |
 | `saymo record-voice -d 300` | Record 5-min voice sample |
 | `saymo dashboard` | Interactive TUI |

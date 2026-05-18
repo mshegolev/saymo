@@ -179,6 +179,18 @@ picked by `meetings.<profile>.provider` in config:
 | `vk_teams` | VK Teams |
 | `mts_link` | MTS Link |
 
+Measure provider latency against an active Chrome call:
+
+```bash
+saymo provider-latency -p personal --text "John, что по статусу?"
+saymo provider-latency -p personal --audio ~/.saymo/audio_cache/$(date +%F).wav
+```
+
+The probe reports capture, transcription, trigger decision, provider unmute,
+playback start, playback duration, and mute recovery. It writes JSON and
+Markdown history under `~/.saymo/provider_latency/<profile>/<provider>/` so you
+can compare recurring provider bottlenecks.
+
 Run `saymo list-plugins` to see everything available in your install.
 
 ### Live Q&A mode

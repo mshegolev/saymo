@@ -18,7 +18,7 @@ enough that the call still feels live.
 **Goal:** Make saved call samples and live-call probes smart enough to explain
 who spoke, why Saymo would answer, and where provider-specific latency is spent.
 
-**Status:** Planned on 2026-05-18.
+**Status:** Completed on 2026-05-18.
 
 **Target features:**
 - Speaker-aware samples: captured windows can carry local speaker labels and
@@ -45,6 +45,8 @@ who spoke, why Saymo would answer, and where provider-specific latency is spent.
   groups results by `me`, `other`, and `unknown`.
 - ✓ Accepted/rejected sample labels can train a local classifier that runs in
   shadow mode for `trigger-eval` and `trigger-check`.
+- ✓ Active-call provider probes can report segmented latency and export local
+  JSON/Markdown history by profile/provider.
 
 ### Out of Scope
 
@@ -87,7 +89,7 @@ who spoke, why Saymo would answer, and where provider-specific latency is spent.
 | Separate catch latency from say latency | Different bottlenecks require different measurements and tests | ✓ Implemented in `saymo auto` diagnostics |
 | Use speaker labels as sidecars first | Avoid forcing a diarization dependency while still enabling speaker-aware evaluation | ✓ Implemented in Phase 5 |
 | Run classifier in shadow mode before enabling it | Protect live calls from unproven learned behavior | ✓ Implemented in Phase 6 |
-| Measure providers through the existing abstraction | Keep provider latency work scoped to Chrome call automation, not UI redesign | v1.1 planned |
+| Measure providers through the existing abstraction | Keep provider latency work scoped to Chrome call automation, not UI redesign | ✓ Implemented in Phase 7 |
 
 ---
-*Last updated: 2026-05-18 after completing Phase 6 Local Trigger Classifier*
+*Last updated: 2026-05-18 after completing milestone v1.1 Call Intelligence Loop*

@@ -66,12 +66,12 @@ Requirements for milestone v1.1 Call Intelligence Loop.
 
 ### Provider Latency
 
-- [ ] **LAT-01**: User can run a provider-specific latency probe against an
+- [x] **LAT-01**: User can run a provider-specific latency probe against an
   active Chrome call using the existing provider abstraction.
-- [ ] **LAT-02**: User can see end-to-end latency segments for capture,
+- [x] **LAT-02**: User can see end-to-end latency segments for capture,
   transcription, trigger decision, provider unmute, playback start, and mute
   recovery.
-- [ ] **LAT-03**: User can export latency run history by profile and provider
+- [x] **LAT-03**: User can export latency run history by profile and provider
   to identify recurring bottlenecks.
 
 ## Future Requirements
@@ -118,9 +118,9 @@ Deferred beyond v1.1.
 | CLF-01 | Phase 6 | Complete |
 | CLF-02 | Phase 6 | Complete |
 | CLF-03 | Phase 6 | Complete |
-| LAT-01 | Phase 7 | Pending |
-| LAT-02 | Phase 7 | Pending |
-| LAT-03 | Phase 7 | Pending |
+| LAT-01 | Phase 7 | Complete |
+| LAT-02 | Phase 7 | Complete |
+| LAT-03 | Phase 7 | Complete |
 
 **Coverage:**
 - v1 requirements: 11 total
@@ -130,4 +130,4 @@ Deferred beyond v1.1.
 
 ---
 *Requirements defined: 2026-05-15*
-*Last updated: 2026-05-18 after completing Phase 6*
+*Last updated: 2026-05-18 after completing Phase 7*
