@@ -2,6 +2,16 @@
 
 ## Current
 
+### v1.1 Call Intelligence Loop
+
+**Started:** 2026-05-18
+**Status:** Planned
+
+Focus: make captured samples and provider probes explain speaker context,
+learned trigger confidence, and provider-specific latency bottlenecks.
+
+## Completed
+
 ### v1.0 Speedly Catcher + Speedly Sayer
 
 **Started:** 2026-05-15
