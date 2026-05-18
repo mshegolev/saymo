@@ -385,29 +385,30 @@ def _write_sample(
     will_answer=False,
     rms=0.01,
     peak=0.1,
+    speaker=None,
 ):
+    metadata = {
+        "profile": profile,
+        "created_at": "2026-05-15T10:00:00",
+        "sample_rate": 16000,
+        "wav": f"{name}.wav",
+        "transcript": transcript,
+        "category": category,
+        "trigger": trigger,
+        "addressing": "addressed_to_me" if will_answer else "ignore",
+        "question": question,
+        "will_answer": will_answer,
+        "reason": "test",
+        "rms": rms,
+        "peak": peak,
+    }
+    if speaker is not None:
+        metadata["speaker"] = speaker
     sample_dir = samples_dir / profile / category
     sample_dir.mkdir(parents=True, exist_ok=True)
     path = sample_dir / f"{name}.json"
     path.write_text(
-        json.dumps(
-            {
-                "profile": profile,
-                "created_at": "2026-05-15T10:00:00",
-                "sample_rate": 16000,
-                "wav": f"{name}.wav",
-                "transcript": transcript,
-                "category": category,
-                "trigger": trigger,
-                "addressing": "addressed_to_me" if will_answer else "ignore",
-                "question": question,
-                "will_answer": will_answer,
-                "reason": "test",
-                "rms": rms,
-                "peak": peak,
-            },
-            ensure_ascii=False,
-        ),
+        json.dumps(metadata, ensure_ascii=False),
         encoding="utf-8",
     )
     return path
@@ -460,6 +461,54 @@ def test_trigger_eval_reports_counts_misses_and_false_positives(tmp_path):
     assert "stored speech: 1" in result.output
     assert "misses: 1" in result.output
     assert "false positives: 1" in result.output
+    assert "speaker unknown: records=3" in result.output
+
+
+def test_trigger_eval_groups_counts_by_speaker(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="me_ok",
+        transcript="John, что по статусу?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        speaker="me",
+    )
+    _write_sample(
+        samples_dir,
+        category="speech",
+        name="other_false_positive",
+        transcript="John, что по статусу?",
+        speaker="other",
+    )
+    _write_sample(
+        samples_dir,
+        category="question",
+        name="legacy_unknown",
+        transcript="что по статусу?",
+        question=True,
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-eval",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "speaker me: records=1 misses=0 false positives=0 answers=1" in result.output
+    assert "speaker other: records=1 misses=0 false positives=1 answers=1" in result.output
+    assert "speaker unknown: records=1 misses=0 false positives=0 answers=0" in result.output
 
 
 def test_trigger_eval_promotes_sample_variant_and_reruns(tmp_path):
@@ -556,14 +605,46 @@ def test_trigger_samples_list_replay_and_sanitized_report(tmp_path):
 
     assert listed.exit_code == 0
     assert "samples: 1" in listed.output
+    assert "speaker=unknown" in listed.output
     assert "transcript: секретный текст вопроса" in listed.output
     assert replayed.exit_code == 0
-    assert "stored: category=question" in replayed.output
+    assert "stored: category=question speaker=unknown" in replayed.output
     assert "current:" in replayed.output
     assert reported.exit_code == 0
     report = report_path.read_text(encoding="utf-8")
     assert "question.json" in report
+    assert "speaker=unknown" in report
     assert "секретный текст вопроса" not in report
+
+
+def test_trigger_samples_label_updates_speaker_metadata(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    sample_path = _write_sample(
+        samples_dir,
+        category="question",
+        name="question",
+        transcript="что по статусу?",
+        question=True,
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "label",
+            str(sample_path),
+            "--speaker",
+            "other",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "speaker: unknown -> other" in result.output
+    metadata = json.loads(sample_path.read_text(encoding="utf-8"))
+    assert metadata["speaker"] == "other"
 
 
 def test_auto_preflight_reports_ready_with_nonblocking_cache_warning(tmp_path, monkeypatch):

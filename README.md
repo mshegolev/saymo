@@ -139,15 +139,18 @@ Review the saved windows without opening JSON by hand:
 
 ```bash
 saymo trigger-samples list -p personal
+saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
 saymo trigger-samples replay ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
 saymo trigger-eval -p personal --promote ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
 saymo trigger-samples report -p personal -o ~/.saymo/trigger_samples/personal-report.md
 ```
 
 `trigger-eval` compares stored and current classification, reports misses and
-false positives, and can promote a heard name variant into
-`vocabulary.fuzzy_expansions` before re-running the evaluation. Reports omit raw
-audio and transcript text.
+false positives, groups results by speaker label (`me`, `other`, `unknown`),
+and can promote a heard name variant into `vocabulary.fuzzy_expansions` before
+re-running the evaluation. Use `trigger-samples label` to correct who spoke in a
+saved window; old samples without a label are treated as `unknown`. Reports
+omit raw audio and transcript text.
 
 ### Call providers
 

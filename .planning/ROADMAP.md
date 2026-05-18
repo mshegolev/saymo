@@ -18,7 +18,7 @@ requiring cloud services or risky live-call behavior changes.
 - Integer phases (5, 6, 7): Planned milestone work
 - Decimal phases (6.1, 6.2): Urgent insertions
 
-- [ ] **Phase 5: Speaker-Aware Sample Loop** - Add local speaker labels to
+- [x] **Phase 5: Speaker-Aware Sample Loop** - Add local speaker labels to
   captured samples and make trigger evaluation speaker-aware.
 - [ ] **Phase 6: Local Trigger Classifier** - Let accepted/rejected samples
   train and shadow-test a lightweight local classifier.
@@ -40,9 +40,9 @@ behavior separately for `me`, `other`, and `unknown` speakers.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: Add speaker label metadata support
-- [ ] 05-02: Make trigger evaluation speaker-aware
-- [ ] 05-03: Add sample label review commands and docs
+- [x] 05-01: Add speaker label metadata support
+- [x] 05-02: Make trigger evaluation speaker-aware
+- [x] 05-03: Add sample label review commands and docs
 
 ### Phase 6: Local Trigger Classifier
 **Goal**: Train a local sample-based classifier from accepted/rejected trigger
@@ -88,6 +88,6 @@ Phases execute in numeric order: 5 → 6 → 7
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 5. Speaker-Aware Sample Loop | v1.1 | 0/3 | Not started | - |
+| 5. Speaker-Aware Sample Loop | v1.1 | 3/3 | Complete | 2026-05-18 |
 | 6. Local Trigger Classifier | v1.1 | 0/3 | Not started | - |
 | 7. Provider Latency Probe | v1.1 | 0/3 | Not started | - |

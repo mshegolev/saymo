@@ -47,11 +47,11 @@ Requirements for milestone v1.1 Call Intelligence Loop.
 
 ### Speaker-Aware Samples
 
-- [ ] **SPK-01**: User can attach and read local speaker labels for captured
+- [x] **SPK-01**: User can attach and read local speaker labels for captured
   trigger samples from sidecar metadata without requiring cloud diarization.
-- [ ] **SPK-02**: User can run trigger evaluation grouped by speaker label and
+- [x] **SPK-02**: User can run trigger evaluation grouped by speaker label and
   see answer decisions for `me`, `other`, and `unknown` speakers separately.
-- [ ] **SPK-03**: User can set or correct a sample's speaker label from the CLI
+- [x] **SPK-03**: User can set or correct a sample's speaker label from the CLI
   and keep the update local to the sample metadata.
 
 ### Local Trigger Classifier
@@ -112,9 +112,9 @@ Deferred beyond v1.1.
 | TRAIN-01 | Phase 4 | Complete |
 | TRAIN-02 | Phase 4 | Complete |
 | TRAIN-03 | Phase 4 | Complete |
-| SPK-01 | Phase 5 | Pending |
-| SPK-02 | Phase 5 | Pending |
-| SPK-03 | Phase 5 | Pending |
+| SPK-01 | Phase 5 | Complete |
+| SPK-02 | Phase 5 | Complete |
+| SPK-03 | Phase 5 | Complete |
 | CLF-01 | Phase 6 | Pending |
 | CLF-02 | Phase 6 | Pending |
 | CLF-03 | Phase 6 | Pending |
@@ -130,4 +130,4 @@ Deferred beyond v1.1.
 
 ---
 *Requirements defined: 2026-05-15*
-*Last updated: 2026-05-18 after defining milestone v1.1*
+*Last updated: 2026-05-18 after completing Phase 5*

@@ -944,6 +944,7 @@ class TriggerSampleRecord:
     path: Path
     profile: str
     category: str
+    speaker: str
     created_at: str
     transcript: str
     trigger: bool
@@ -965,6 +966,16 @@ class TriggerEvaluationRow:
     current_will_answer: bool
     miss: bool
     false_positive: bool
+
+
+_SPEAKER_LABELS = ("me", "other", "unknown")
+
+
+def _normalize_speaker_label(value) -> str:
+    label = str(value or "").strip().lower()
+    if label in _SPEAKER_LABELS:
+        return label
+    return "unknown"
 
 
 @main.command("trigger-eval")
@@ -1019,6 +1030,7 @@ def trigger_samples_list(profile, category, samples_dir):
     for record in records:
         console.print(
             f"{record.path}: profile={record.profile} category={record.category} "
+            f"speaker={record.speaker} "
             f"trigger={'yes' if record.trigger else 'no'} "
             f"question={'yes' if record.question else 'no'} "
             f"will_answer={'yes' if record.will_answer else 'no'} "
@@ -1042,7 +1054,8 @@ def trigger_samples_replay(ctx, sample_json, profile, play):
 
     console.print(f"sample: {record.path}")
     console.print(
-        f"stored: category={record.category} trigger={'yes' if record.trigger else 'no'} "
+        f"stored: category={record.category} speaker={record.speaker} "
+        f"trigger={'yes' if record.trigger else 'no'} "
         f"question={'yes' if record.question else 'no'} "
         f"will_answer={'yes' if record.will_answer else 'no'}"
     )
@@ -1058,6 +1071,21 @@ def trigger_samples_replay(ctx, sample_json, profile, play):
 
     if play:
         _play_trigger_sample(record)
+
+
+@trigger_samples.command("label")
+@click.argument("sample_json", type=click.Path(exists=True))
+@click.option(
+    "--speaker",
+    required=True,
+    type=click.Choice(_SPEAKER_LABELS),
+    help="Speaker label to write into sample metadata",
+)
+def trigger_samples_label(sample_json, speaker):
+    """Set or correct the speaker label for one captured sample."""
+    previous = _write_trigger_sample_speaker(Path(sample_json), speaker)
+    console.print(f"sample: {sample_json}")
+    console.print(f"speaker: {previous} -> {speaker}")
 
 
 @trigger_samples.command("report")
@@ -1095,6 +1123,7 @@ def _load_trigger_sample(path: Path) -> TriggerSampleRecord:
         path=p,
         profile=str(data.get("profile") or _profile_from_sample_path(p)),
         category=str(data.get("category") or p.parent.name),
+        speaker=_normalize_speaker_label(data.get("speaker")),
         created_at=str(data.get("created_at") or ""),
         transcript=str(data.get("transcript") or ""),
         trigger=bool(data.get("trigger")),
@@ -1136,6 +1165,23 @@ def _iter_trigger_sample_records(
         except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
             console.print(f"[yellow]skip invalid sample {path}: {e}[/]")
     return records
+
+
+def _write_trigger_sample_speaker(path: Path, speaker: str) -> str:
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        raise click.ClickException(f"Cannot read sample metadata: {e}") from e
+    if not isinstance(data, dict):
+        raise click.ClickException(f"Sample metadata is not an object: {path}")
+
+    previous = _normalize_speaker_label(data.get("speaker"))
+    data["speaker"] = speaker
+    Path(path).write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return previous
 
 
 def _evaluate_trigger_records(
@@ -1189,6 +1235,17 @@ def _print_trigger_evaluation(rows: list[TriggerEvaluationRow]) -> None:
     console.print(f"false positives: {len(false_positives)}")
     for row in false_positives[:10]:
         console.print(f"  false positive: {row.record.path}")
+    for speaker in _SPEAKER_LABELS:
+        speaker_rows = [row for row in rows if row.record.speaker == speaker]
+        speaker_misses = sum(1 for row in speaker_rows if row.miss)
+        speaker_false_positives = sum(1 for row in speaker_rows if row.false_positive)
+        speaker_answers = sum(1 for row in speaker_rows if row.current_will_answer)
+        console.print(
+            f"speaker {speaker}: records={len(speaker_rows)} "
+            f"misses={speaker_misses} "
+            f"false positives={speaker_false_positives} "
+            f"answers={speaker_answers}"
+        )
 
 
 def _count_by_category(categories: list[str]) -> dict[str, int]:
@@ -1250,12 +1307,17 @@ def _render_trigger_report(profile: str, rows: list[TriggerEvaluationRow]) -> st
     lines.extend(["", "## Current Categories"])
     for category in ("asked_to_speak", "question", "speech", "silence"):
         lines.append(f"- {category}: {current_counts.get(category, 0)}")
+    lines.extend(["", "## Speakers"])
+    for speaker in _SPEAKER_LABELS:
+        speaker_rows = [row for row in rows if row.record.speaker == speaker]
+        lines.append(f"- {speaker}: {len(speaker_rows)}")
     lines.extend(["", "## Samples"])
     for row in rows:
         lines.append(
             "- "
             f"{row.record.path.name}: stored={row.record.category}, "
             f"current={row.current_category}, "
+            f"speaker={row.record.speaker}, "
             f"trigger={'yes' if row.current_trigger else 'no'}, "
             f"question={'yes' if row.current_question else 'no'}, "
             f"will_answer={'yes' if row.current_will_answer else 'no'}, "
