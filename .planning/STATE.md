@@ -6,14 +6,14 @@ See: .planning/PROJECT.md (updated 2026-05-18)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Milestone v1.1 complete
+**Current focus:** No active milestone
 
 ## Current Position
 
-Phase: 7 of 7 (Provider Latency Probe)
+Phase: —
 Plan: —
-Status: Complete
-Last activity: 2026-05-18 — Completed Phase 7 Provider Latency Probe
+Status: Archived
+Last activity: 2026-05-19 — Archived milestone v1.1 Call Intelligence Loop
 
 Progress: [██████████] 100%
 
@@ -65,12 +65,14 @@ Recent decisions affecting current work:
 - v1.1 Phase 6: Answer-decision labels are stored as `answer_decision`, and the
   local classifier remains shadow-only until enough evidence supports enabling
   it in live auto-mode.
+- v1.1 refinement: plain name mentions are classified as `mentioned_me`, while
+  direct questions and floor handoffs remain `asked_to_speak`.
 - v1.1 Phase 7: Provider latency probes use existing Chrome provider
   abstractions and write JSON/Markdown history by profile/provider.
 
 ### Pending Todos
 
-None yet.
+Start the next milestone with `$gsd-new-milestone`.
 
 ### Blockers/Concerns
 
@@ -79,10 +81,12 @@ None yet.
 - Local diarization remains optional; v1.1 must work without it.
 - Classifier quality depends on accepted/rejected labels; low-label training is
   intentionally refused.
+- Mention-vs-handoff heuristics need continued review against real saved
+  samples before they should become learned live behavior.
 - Provider latency history is only meaningful after probing real active calls.
 
 ## Session Continuity
 
 Last session: 2026-05-18
-Stopped at: v1.1 complete; next step is milestone audit or next milestone.
+Stopped at: v1.1 archived; next step is `$gsd-new-milestone`.
 Resume file: None
