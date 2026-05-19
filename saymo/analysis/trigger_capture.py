@@ -58,6 +58,7 @@ def classify_trigger_sample(
 
     Categories:
     - ``asked_to_speak``: the window looks addressed to the configured user.
+    - ``mentioned_me``: the configured user is mentioned but not called to speak.
     - ``question``: a question was asked, but not specifically to the user.
     - ``speech``: ordinary speech with no question/trigger.
     - ``silence``: no transcript and negligible signal.
@@ -92,6 +93,8 @@ def classify_trigger_sample(
 
     if will_answer:
         category = "asked_to_speak"
+    elif triggered and decision.label == "mentioned_not_addressed":
+        category = "mentioned_me"
     elif question:
         category = "question"
     elif text:

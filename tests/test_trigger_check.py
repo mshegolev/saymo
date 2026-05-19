@@ -442,6 +442,15 @@ def test_trigger_eval_reports_counts_misses_and_false_positives(tmp_path):
         transcript="что по статусу?",
         question=True,
     )
+    _write_sample(
+        samples_dir,
+        category="mentioned_me",
+        name="mentioned",
+        transcript="По этим вопросам взаимодействуем с John.",
+        trigger=True,
+        question=False,
+        will_answer=False,
+    )
     runner = CliRunner()
 
     result = runner.invoke(
@@ -458,13 +467,15 @@ def test_trigger_eval_reports_counts_misses_and_false_positives(tmp_path):
     )
 
     assert result.exit_code == 0
-    assert "records: 3" in result.output
+    assert "records: 4" in result.output
     assert "stored asked_to_speak: 1" in result.output
+    assert "stored mentioned_me: 1" in result.output
     assert "stored question: 1" in result.output
     assert "stored speech: 1" in result.output
+    assert "current mentioned_me: 1" in result.output
     assert "misses: 1" in result.output
     assert "false positives: 1" in result.output
-    assert "speaker unknown: records=3" in result.output
+    assert "speaker unknown: records=4" in result.output
 
 
 def test_trigger_eval_groups_counts_by_speaker(tmp_path):

@@ -14,6 +14,15 @@ from rich.table import Table
 from saymo.commands import console, main, run_async
 
 
+_TRIGGER_SAMPLE_CATEGORIES = (
+    "asked_to_speak",
+    "mentioned_me",
+    "question",
+    "speech",
+    "silence",
+)
+
+
 @main.command("test-devices")
 def test_devices():
     """List all audio devices and check BlackHole availability."""
@@ -1153,7 +1162,7 @@ def _run_trigger_capture(
 
     console.print(f"[bold blue]Capturing {mic_name} → {base_dir}[/]")
     console.print(
-        "[dim]Categories: asked_to_speak, question, speech"
+        "[dim]Categories: asked_to_speak, mentioned_me, question, speech"
         + (", silence" if save_silence else "")
         + "[/]"
     )
@@ -1974,9 +1983,9 @@ def _print_trigger_evaluation(rows: list[TriggerEvaluationRow]) -> None:
     false_positives = [row for row in rows if row.false_positive]
 
     console.print(f"records: {len(rows)}")
-    for category in ("asked_to_speak", "question", "speech", "silence"):
+    for category in _TRIGGER_SAMPLE_CATEGORIES:
         console.print(f"stored {category}: {stored_counts.get(category, 0)}")
-    for category in ("asked_to_speak", "question", "speech", "silence"):
+    for category in _TRIGGER_SAMPLE_CATEGORIES:
         console.print(f"current {category}: {current_counts.get(category, 0)}")
     console.print(f"misses: {len(misses)}")
     for row in misses[:10]:
@@ -2051,10 +2060,10 @@ def _render_trigger_report(profile: str, rows: list[TriggerEvaluationRow]) -> st
         "",
         "## Stored Categories",
     ]
-    for category in ("asked_to_speak", "question", "speech", "silence"):
+    for category in _TRIGGER_SAMPLE_CATEGORIES:
         lines.append(f"- {category}: {stored_counts.get(category, 0)}")
     lines.extend(["", "## Current Categories"])
-    for category in ("asked_to_speak", "question", "speech", "silence"):
+    for category in _TRIGGER_SAMPLE_CATEGORIES:
         lines.append(f"- {category}: {current_counts.get(category, 0)}")
     lines.extend(["", "## Speakers"])
     for speaker in _SPEAKER_LABELS:

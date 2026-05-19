@@ -40,6 +40,35 @@ def test_classifies_direct_request_to_speak_as_asked_to_speak():
     assert sample.will_answer is True
 
 
+def test_classifies_name_mention_without_handoff_as_mentioned_me():
+    sample = classify_trigger_sample(
+        "Что еще с валидационными рулами, там есть вопросы, взаимодействуем с Мишей.",
+        trigger_phrases=["Миша", "Мише"],
+        rms=0.04,
+        peak=0.4,
+    )
+
+    assert sample.category == "mentioned_me"
+    assert sample.trigger is True
+    assert sample.question is True
+    assert sample.will_answer is False
+    assert sample.addressing == "mentioned_not_addressed"
+
+
+def test_classifies_floor_handoff_as_asked_to_speak():
+    sample = classify_trigger_sample(
+        "Спасибо. Словом, Миша.",
+        trigger_phrases=["Миша", "Мише"],
+        rms=0.04,
+        peak=0.4,
+    )
+
+    assert sample.category == "asked_to_speak"
+    assert sample.trigger is True
+    assert sample.will_answer is True
+    assert sample.addressing == "addressed_to_me"
+
+
 def test_classifies_general_question_without_trigger_as_question():
     sample = classify_trigger_sample(
         "Does anyone have questions?",

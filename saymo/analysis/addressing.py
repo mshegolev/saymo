@@ -25,6 +25,16 @@ _THIRD_PERSON_QUESTION_PATTERNS = (
     r"\b(?:что|как|где|когда|почему|зачем)\s+{trigger}\s+(?:думает|считает|видит|планирует|делает|делал|делала|сделал|сделала|готовит|пишет|решает|решил|решила)\b",
 )
 
+_FLOOR_HANDOFF_PATTERNS = (
+    r"\b(?:слово|словом)\s*,?\s*{trigger}\b",
+    r"\b(?:передаю|передаем|даю|даем)\s+слово\s+{trigger}\b",
+    r"\b{trigger}\s*,?\s+(?:тебе|вам)\s+слово\b",
+)
+
+_COLLABORATION_MENTION_PATTERNS = (
+    r"\b(?:взаимодействуем|взаимодействовали|синхронизируемся|синхронизировались|обсуждаем|обсуждали|работаем|работали)\s+с\s+{trigger}\b",
+)
+
 
 @dataclass(frozen=True)
 class AddressingDecision:
@@ -96,7 +106,18 @@ def classify_addressing(
     if not matched:
         return AddressingDecision("no_trigger", 0.0, reason="no trigger phrase in transcript")
 
-    trigger_re = re.escape(matched.lower())
+    trigger_re = _trigger_pattern(matched.lower())
+
+    for pattern in _FLOOR_HANDOFF_PATTERNS:
+        if re.search(pattern.format(trigger=trigger_re), lower, re.IGNORECASE):
+            return AddressingDecision(
+                "addressed_to_me",
+                0.9,
+                trigger=matched,
+                is_question=False,
+                reason="floor handoff phrase",
+            )
+
     for pattern in _THIRD_PERSON_QUESTION_PATTERNS:
         if re.search(pattern.format(trigger=trigger_re), lower, re.IGNORECASE):
             return AddressingDecision(
@@ -106,6 +127,17 @@ def classify_addressing(
                 is_question=True,
                 question=text,
                 reason="third-person question pattern",
+            )
+
+    for pattern in _COLLABORATION_MENTION_PATTERNS:
+        if re.search(pattern.format(trigger=trigger_re), lower, re.IGNORECASE):
+            return AddressingDecision(
+                "mentioned_not_addressed",
+                0.9,
+                trigger=matched,
+                is_question=looks_like_question(text),
+                question=text if looks_like_question(text) else "",
+                reason="collaboration mention pattern",
             )
 
     for pattern in _NARRATED_MENTION_PATTERNS:
@@ -154,3 +186,11 @@ def _extract_question_text(text: str, trigger: str) -> str:
         if tail:
             return tail
     return text
+
+
+def _trigger_pattern(trigger: str) -> str:
+    """Return a trigger regex that tolerates simple inflected suffixes."""
+    escaped = re.escape(trigger)
+    if re.search(r"[а-яё]", trigger, re.IGNORECASE):
+        return rf"{escaped}\w*"
+    return escaped
