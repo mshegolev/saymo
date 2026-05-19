@@ -287,8 +287,11 @@ saymo trigger-capture -p personal --device "MacBook Pro Microphone" --duration 6
 ```
 
 Samples are written to `~/.saymo/trigger_samples/<profile>/` and split into
-`asked_to_speak`, `question`, and `speech` folders. Each WAV has a JSON file
-with the transcript, trigger flag, question flag, addressing label, and levels.
+`asked_to_speak`, `mentioned_me`, `question`, and `speech` folders.
+`asked_to_speak` means the speaker handed the floor to you or asked you
+directly; `mentioned_me` means your name was mentioned without asking you to
+speak. Each WAV has a JSON file with the transcript, trigger flag, question
+flag, addressing label, and levels.
 
 Review and tune the saved windows locally:
 

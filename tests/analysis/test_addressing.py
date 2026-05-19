@@ -31,6 +31,30 @@ def test_narrated_mention_is_not_addressed():
     assert should_answer_decision(decision) is False
 
 
+def test_name_mention_in_collaboration_phrase_is_not_handoff():
+    decision = classify_addressing(
+        "Что еще с валидационными рулами, там есть вопросы, взаимодействуем с Мишей.",
+        trigger_phrases=["Миша", "Мише"],
+    )
+
+    assert decision.label == "mentioned_not_addressed"
+    assert decision.is_question is True
+    assert decision.reason == "collaboration mention pattern"
+    assert should_answer_decision(decision) is False
+
+
+def test_floor_handoff_phrase_is_addressed():
+    decision = classify_addressing(
+        "Спасибо. Словом, Миша.",
+        trigger_phrases=["Миша", "Мише"],
+    )
+
+    assert decision.label == "addressed_to_me"
+    assert decision.is_question is False
+    assert decision.reason == "floor handoff phrase"
+    assert should_answer_decision(decision) is True
+
+
 def test_third_person_question_about_trigger_is_not_addressed():
     decision = classify_addressing(
         "что John думает по этой задаче?",
