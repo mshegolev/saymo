@@ -13,20 +13,24 @@ cloud voice APIs.
 Saymo must reliably catch when the user is expected to answer and respond fast
 enough that the call still feels live.
 
-## Current Milestone: v1.1 Call Intelligence Loop
+## Current State
 
-**Goal:** Make saved call samples and live-call probes smart enough to explain
-who spoke, why Saymo would answer, and where provider-specific latency is spent.
+**Shipped milestones:**
 
-**Status:** Completed on 2026-05-18.
+- v1.0 Speedly Catcher + Speedly Sayer — shipped 2026-05-15.
+- v1.1 Call Intelligence Loop — shipped 2026-05-18, archived 2026-05-19.
 
-**Target features:**
-- Speaker-aware samples: captured windows can carry local speaker labels and
-  evaluations can separate "me", "other", and "unknown" speakers.
-- Local trigger classifier: accepted/rejected samples can train a lightweight
-  local classifier that runs in shadow mode before it affects auto-mode.
-- Provider latency probe: active Chrome call providers can report segmented
-  end-to-end latency for unmute, playback start, and mute recovery.
+Saymo now has local trigger diagnostics, sample capture/review, speaker-aware
+sample evaluation, mention-vs-handoff sample categories, local classifier
+shadow diagnostics, and provider latency history. No active milestone is
+currently defined.
+
+## Next Milestone Goals
+
+The next milestone is not defined yet. Candidate directions from deferred scope:
+- make local diarization a first-class optional component;
+- enable the trained classifier in live auto-mode after enough shadow evidence;
+- add provider-specific UI regression checks for call-provider web app changes.
 
 ## Requirements
 
@@ -45,6 +49,8 @@ who spoke, why Saymo would answer, and where provider-specific latency is spent.
   groups results by `me`, `other`, and `unknown`.
 - ✓ Accepted/rejected sample labels can train a local classifier that runs in
   shadow mode for `trigger-eval` and `trigger-check`.
+- ✓ Plain name mentions are separated from true handoffs via `mentioned_me` and
+  `asked_to_speak` sample categories.
 - ✓ Active-call provider probes can report segmented latency and export local
   JSON/Markdown history by profile/provider.
 
@@ -89,7 +95,8 @@ who spoke, why Saymo would answer, and where provider-specific latency is spent.
 | Separate catch latency from say latency | Different bottlenecks require different measurements and tests | ✓ Implemented in `saymo auto` diagnostics |
 | Use speaker labels as sidecars first | Avoid forcing a diarization dependency while still enabling speaker-aware evaluation | ✓ Implemented in Phase 5 |
 | Run classifier in shadow mode before enabling it | Protect live calls from unproven learned behavior | ✓ Implemented in Phase 6 |
+| Separate name mentions from handoffs deterministically | Plain mentions should train/tune differently from moments where Saymo should answer | ✓ Implemented after real sample review |
 | Measure providers through the existing abstraction | Keep provider latency work scoped to Chrome call automation, not UI redesign | ✓ Implemented in Phase 7 |
 
 ---
-*Last updated: 2026-05-18 after completing milestone v1.1 Call Intelligence Loop*
+*Last updated: 2026-05-19 after archiving milestone v1.1*

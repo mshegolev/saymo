@@ -2,15 +2,29 @@
 
 ## Current
 
+No active milestone.
+
+Next step: run `$gsd-new-milestone` to define the next milestone.
+
+## Completed
+
 ### v1.1 Call Intelligence Loop
 
 **Started:** 2026-05-18
-**Status:** Planned
+**Completed:** 2026-05-18
+**Archived:** 2026-05-19
+**Status:** Complete
 
 Focus: make captured samples and provider probes explain speaker context,
 learned trigger confidence, and provider-specific latency bottlenecks.
 
-## Completed
+Delivered:
+- Speaker-aware trigger samples and speaker-grouped evaluation.
+- Accepted/rejected sample labels plus local classifier training.
+- Separate `mentioned_me` vs `asked_to_speak` sample categories for plain name
+  mentions and true floor handoffs.
+- Classifier shadow diagnostics for `trigger-eval` and `trigger-check`.
+- Provider latency probe with JSON/Markdown history by profile/provider.
 
 ### v1.0 Speedly Catcher + Speedly Sayer
 
