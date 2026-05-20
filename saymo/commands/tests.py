@@ -2436,6 +2436,176 @@ def meeting_ask(ctx, question, profile, session_id, speaker, category, date_from
     console.print(render_meeting_ask_answer(answer))
 
 
+@main.command("answer-draft")
+@click.argument("question")
+@click.option("--profile", "-p", default="personal", help="Meeting profile")
+@click.option("--session", "session_id", default=None, help="Session id/prefix to ground from")
+@click.option("--source", "sources", multiple=True, help="Source plugin name; repeat for multiple")
+@click.option("--compose", is_flag=True, help="Use local Ollama composer instead of deterministic draft text")
+@click.option("--strict-compose", is_flag=True, help="Fail if --compose cannot use Ollama")
+@click.option("--output", "-o", default=None, type=click.Path(), help="Write draft JSON to this path")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to meeting_memory.base_dir or ~/.saymo/trigger_samples",
+)
+@click.pass_context
+def answer_draft(ctx, question, profile, session_id, sources, compose, strict_compose, output, samples_dir):
+    """Generate a reviewable source-grounded answer draft."""
+    run_async(
+        _answer_draft_async(
+            ctx,
+            question=question,
+            profile=profile,
+            session_id=session_id,
+            sources=sources,
+            compose=compose,
+            strict_compose=strict_compose,
+            output=output,
+            samples_dir=samples_dir,
+        )
+    )
+
+
+async def _answer_draft_async(
+    ctx,
+    *,
+    question: str,
+    profile: str,
+    session_id: str | None,
+    sources: tuple[str, ...],
+    compose: bool,
+    strict_compose: bool,
+    output: str | None,
+    samples_dir: str | None,
+) -> None:
+    from saymo.analysis.addressing import (
+        classify_addressing,
+        expand_trigger_phrases,
+        should_answer_decision,
+    )
+    from saymo.analysis.answer_cockpit import (
+        build_answer_draft,
+        build_trigger_evidence,
+        render_answer_draft,
+        source_evidence_error,
+        write_answer_draft,
+    )
+    from saymo.analysis.meeting_memory import (
+        MeetingSearchFilters,
+        answer_meeting_question,
+        meeting_memory_base_dir,
+    )
+    from saymo.analysis.turn_detector import TurnDetector
+
+    config = ctx.obj["config"]
+    base_dir = meeting_memory_base_dir(config, samples_dir)
+    meeting_answer = answer_meeting_question(
+        question,
+        base_dir=base_dir,
+        filters=MeetingSearchFilters(profile=profile, session_id=session_id),
+    )
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    fuzzy = (config.vocabulary or {}).get("fuzzy_expansions") or {}
+    detector = TurnDetector(
+        name_variants=trigger_phrases,
+        cooldown_seconds=0,
+        fuzzy_expansions=fuzzy,
+    )
+    expanded = expand_trigger_phrases(trigger_phrases, fuzzy)
+    decision = classify_addressing(question, expanded)
+    triggered = detector.check(question) if question else False
+    will_answer = bool(triggered and should_answer_decision(decision))
+    trigger_evidence = build_trigger_evidence(
+        transcript=question,
+        profile=profile,
+        session_id=session_id or "",
+        trigger=triggered,
+        question=True,
+        will_answer=will_answer,
+        addressing=decision.label,
+        reason=decision.reason,
+    )
+    source_evidence = await _fetch_answer_source_evidence(
+        config,
+        _answer_source_names(config, profile, sources),
+    )
+    composer_text = None
+    composer = "deterministic"
+    if compose:
+        try:
+            from saymo.speech.ollama_composer import answer_question as compose_answer
+
+            standup_summary = meeting_answer.answer
+            jira_context = "\n".join(
+                source.summary for source in source_evidence if source.status == "available"
+            )
+            composer_text = await compose_answer(
+                question,
+                standup_summary=standup_summary,
+                jira_context=jira_context,
+                user_name=config.user.name,
+                user_role=config.user.role,
+                model=config.ollama.model,
+                ollama_url=config.ollama.url,
+                config=config,
+            )
+            composer = "ollama"
+        except Exception as e:
+            if strict_compose:
+                raise click.ClickException(f"composer failed: {e}") from e
+            source_evidence = (
+                *source_evidence,
+                source_evidence_error("ollama", e),
+            )
+            composer = "deterministic"
+    draft = build_answer_draft(
+        profile=profile,
+        session_id=session_id or "",
+        question=question,
+        trigger_evidence=trigger_evidence,
+        meeting_answer=meeting_answer,
+        sources=source_evidence,
+        composer_text=composer_text,
+        composer=composer,
+    )
+    if output:
+        path = write_answer_draft(Path(output), draft)
+        console.print(f"draft json: {path}")
+    console.print(render_answer_draft(draft))
+
+
+def _answer_source_names(config, profile: str, sources: tuple[str, ...]) -> tuple[str, ...]:
+    cleaned = tuple(name.strip() for name in sources if name and name.strip())
+    if cleaned:
+        return tuple(name for name in cleaned if name.lower() != "none")
+    meeting = config.get_meeting(profile)
+    if meeting and meeting.source:
+        return (meeting.source,)
+    source = getattr(config.speech, "source", "")
+    return (source,) if source else ()
+
+
+async def _fetch_answer_source_evidence(config, source_names: tuple[str, ...]):
+    from saymo.analysis.answer_cockpit import (
+        source_evidence_error,
+        source_evidence_from_payload,
+    )
+    from saymo.plugins.base import get_plugin
+
+    evidence = []
+    for source_name in source_names:
+        try:
+            plugin = get_plugin(source_name)
+            payload = await plugin.fetch(config)
+        except Exception as e:
+            evidence.append(source_evidence_error(source_name, e))
+            continue
+        evidence.append(source_evidence_from_payload(source_name, payload))
+    return tuple(evidence)
+
+
 def _build_meeting_memory_ledger(
     ctx,
     *,

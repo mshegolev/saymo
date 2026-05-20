@@ -30,12 +30,12 @@ Requirements for milestone v1.4 Live Conversation Memory + Answer Cockpit.
 
 ### Grounded Answer Drafts
 
-- [ ] **ANS-01**: User can generate an answer draft for an addressed-question
+- [x] **ANS-01**: User can generate an answer draft for an addressed-question
   event using current meeting memory as cited context.
-- [ ] **ANS-02**: User can include configured Jira, Confluence, Obsidian, and
+- [x] **ANS-02**: User can include configured Jira, Confluence, Obsidian, and
   file source context in an answer draft without hardcoded private names or
   committed secrets.
-- [ ] **ANS-03**: User can see source freshness, missing-source diagnostics,
+- [x] **ANS-03**: User can see source freshness, missing-source diagnostics,
   trigger evidence, and draft confidence before choosing an action.
 
 ### Live Answer Cockpit
@@ -102,9 +102,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ASK-01 | Phase 15 | Complete |
 | ASK-02 | Phase 15 | Complete |
 | ASK-03 | Phase 15 | Complete |
-| ANS-01 | Phase 16 | Pending |
-| ANS-02 | Phase 16 | Pending |
-| ANS-03 | Phase 16 | Pending |
+| ANS-01 | Phase 16 | Complete |
+| ANS-02 | Phase 16 | Complete |
+| ANS-03 | Phase 16 | Complete |
 | COCK-01 | Phase 17 | Pending |
 | COCK-02 | Phase 17 | Pending |
 | AUD-01 | Phase 17 | Pending |
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after completing Phase 15*
+*Last updated: 2026-05-20 after completing Phase 16*

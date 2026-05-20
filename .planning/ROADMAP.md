@@ -34,7 +34,7 @@ cockpit action gate before live speech.
   ledgers and summaries for recorded call sessions.
 - [x] **Phase 15: Meeting Ask And Search** - Search local sessions and answer
   questions with transcript citations.
-- [ ] **Phase 16: Grounded Answer Drafts** - Generate source-backed drafts from
+- [x] **Phase 16: Grounded Answer Drafts** - Generate source-backed drafts from
   meeting memory and configured context sources.
 - [ ] **Phase 17: Answer Cockpit And Audit Trail** - Show live handoff
   evidence, approve/edit/skip/takeover actions, and audit what happened.
@@ -98,10 +98,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 16-01: Add answer draft contracts with evidence and citations
-- [ ] 16-02: Assemble meeting-memory context for draft generation
-- [ ] 16-03: Add configured source-plugin context and freshness diagnostics
-- [ ] 16-04: Wire local composer drafting and fallback behavior
+- [x] 16-01: Add answer draft contracts with evidence and citations
+- [x] 16-02: Assemble meeting-memory context for draft generation
+- [x] 16-03: Add configured source-plugin context and freshness diagnostics
+- [x] 16-04: Wire local composer drafting and fallback behavior
 
 ### Phase 17: Answer Cockpit And Audit Trail
 **Goal**: Provide a live control surface that shows trigger evidence and a draft, requires explicit user action, and records an audit trail.
@@ -132,7 +132,7 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 |-------|-----------|----------------|--------|-----------|
 | 14. Meeting Memory Ledger | v1.4 | 4/4 | Complete | 2026-05-20 |
 | 15. Meeting Ask And Search | v1.4 | 3/3 | Complete | 2026-05-20 |
-| 16. Grounded Answer Drafts | v1.4 | 0/4 | Not Started | — |
+| 16. Grounded Answer Drafts | v1.4 | 4/4 | Complete | 2026-05-20 |
 | 17. Answer Cockpit And Audit Trail | v1.4 | 0/4 | Not Started | — |
 
 ## Requirement Coverage

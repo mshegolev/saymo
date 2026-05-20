@@ -245,3 +245,51 @@ def test_meeting_summary_sanitized_export_omits_audio_names(tmp_path):
     assert "raw audio: omitted" in rendered
     assert "sample-1.wav" not in rendered
     assert "sample-1.json" not in rendered
+
+
+def test_answer_draft_command_outputs_pending_draft_with_citations(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir, session = _session_with_sample(tmp_path)
+    output_path = tmp_path / "draft.json"
+    runner = CliRunner()
+    runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "meeting-memory",
+            "build",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "answer-draft",
+            "John, can you share the status?",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--samples-dir",
+            str(samples_dir),
+            "--source",
+            "none",
+            "-o",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "state: pending" in result.output
+    assert "confidence:" in result.output
+    assert f"{session.session_id}#1@0.0-8.0s" in result.output
+    assert output_path.exists()
