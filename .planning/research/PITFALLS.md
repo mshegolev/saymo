@@ -1,26 +1,37 @@
-# v1.3 Research: Pitfalls
+# v1.4 Research: Pitfalls
 
-## Dependency And Model Risk
+## Privacy And Storage Risk
 
-- Diarization packages may be large, slow to install, or require model access
-  steps. Prevent this by optional imports and clear diagnostics.
-- Model/token configuration can leak secrets if copied into docs or reports.
-  Prevent this by env interpolation and sanitized output.
+- Full transcripts are more sensitive than trigger samples. Keep storage local,
+  configurable, and easy to purge/export in sanitized form.
+- Source snippets from Jira, Confluence, Obsidian, or files may include private
+  project names. Reports and committed docs must use sanitized examples only.
+- A meeting ask command should cite local evidence without copying large raw
+  transcripts into logs by default.
 
-## Product Risk
+## Live-Call Safety Risk
 
-- Diarization does not identify "me" by itself; it usually produces anonymous
-  speaker clusters. Prevent bad labels by requiring explicit mapping/review.
-- Automatic overwrites would corrupt training data. Prevent this by sidecar
-  suggestions and manual promotion.
-- Live diarization can add latency and false confidence. Keep v1.3 offline and
-  session-based.
+- A confident-looking draft can still be wrong or stale. Keep explicit
+  approval before playback and show source evidence beside the draft.
+- Trigger evidence and answer confidence are different signals. Do not collapse
+  them into a single "safe to speak" boolean.
+- Hotkeys and cockpit commands must preserve manual takeover as a normal path.
+
+## Product Scope Risk
+
+- Meeting-bot direction can distract from Saymo's core value. Bot join,
+  screen-share, and cloud streaming are future integrations, not the main v1.4
+  milestone.
+- A GUI can become expensive before the core workflow is proven. Start with
+  commands/TUI-compatible output and stable data contracts.
+- Native macOS capture would be valuable but may require OS-version checks,
+  permissions, and entitlements. Treat it as future optional capture work.
 
 ## Integration Risk
 
-- Existing trigger samples may have no session id or no adjacent audio. Keep
-  legacy paths valid and report skipped samples.
-- Session windows are short and may split speakers. Store confidence/conflict
-  diagnostics instead of treating every segment as authoritative.
-- Classifier readiness should not silently consume unreviewed suggestions.
-  Manual labels must remain the source of truth.
+- Existing trigger sessions may have partial transcript data. Commands should
+  report incomplete ledgers instead of failing.
+- Transcript search can become slow as sessions grow. Keep indexes incremental
+  and profile/session-scoped first.
+- Answer drafts must compose from stale or missing source plugins gracefully and
+  show diagnostics when sources were unavailable.

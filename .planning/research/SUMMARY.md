@@ -1,31 +1,40 @@
-# v1.3 Research Summary: Local Diarization Assist
+# v1.4 Research Summary: Live Conversation Memory + Answer Cockpit
 
 ## Stack Additions
 
-- Add a backend-neutral diarization layer under `saymo.analysis`.
-- Use optional backend imports; start with a disabled-by-default pyannote-style
-  adapter.
-- Store session sidecars locally under the existing trigger-sample/session
-  hierarchy.
+- Extend local trigger-session storage into a full-session transcript ledger.
+- Add deterministic local meeting-memory retrieval before heavier vector or
+  database dependencies.
+- Add answer-draft and cockpit contracts that separate trigger evidence,
+  citations, generated text, user action, and playback.
+- Add a local audit ledger for trigger/draft/action/spoken-response events.
 
 ## Feature Table Stakes
 
-- Backend availability diagnostics.
-- Configurable local backend/model/device/token.
-- Session diarization command.
-- Speaker cluster summary and mapping.
-- Review-first suggestion promotion.
-- Speaker quality and conflict reports.
+- Full-session transcript ledger with speaker, time, confidence, category, and
+  source-window metadata.
+- Per-session summaries and local search across current/past meetings.
+- `meeting-ask` style command that answers with citations to transcript
+  evidence.
+- Source-grounded answer drafts using meeting memory plus configured Jira,
+  Confluence, Obsidian, and file sources.
+- Live answer cockpit with speak/edit/skip/takeover approval.
+- Audit trail for why Saymo triggered, what it drafted, what sources it used,
+  and what the user chose.
 
 ## Watch Outs
 
-- Diarization clusters are not identity labels until mapped or reviewed.
-- Optional model access and tokens must stay out of committed files and
-  sanitized reports.
-- Do not put real-time diarization into `saymo auto` until offline quality is
-  proven.
+- Full transcripts are sensitive; keep storage local, configurable, and
+  sanitizable.
+- Do not let generated drafts bypass explicit user approval before live speech.
+- Keep bot-join, cloud streaming, GUI-first, and native macOS capture work out
+  of the critical path for this milestone.
+- Preserve deterministic trigger gating and manual takeover while adding
+  retrieval and answer drafting.
 
 ## Roadmap Implication
 
-Phase 11 should establish optional backend contracts. Phase 12 should write
-session suggestions. Phase 13 should add review, promotion, and quality gates.
+Phase 14 should establish full-session memory ledgers. Phase 15 should add
+search and question answering over local sessions. Phase 16 should add
+source-grounded answer drafts. Phase 17 should provide the live cockpit action
+gate and audit trail.
