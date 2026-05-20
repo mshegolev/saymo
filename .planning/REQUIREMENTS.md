@@ -1,0 +1,120 @@
+# Requirements: Saymo v1.4 Live Conversation Memory + Answer Cockpit
+
+**Defined:** 2026-05-20
+**Core Value:** Saymo must reliably catch when the user is expected to answer
+and respond fast enough that the call still feels live.
+
+## v1.4 Requirements
+
+Requirements for milestone v1.4 Live Conversation Memory + Answer Cockpit.
+
+### Meeting Memory
+
+- [ ] **MEM-01**: User can save a full-session transcript ledger for a
+  recorded call session with chronological segments, timestamps, confidence,
+  source window, category, and speaker metadata.
+- [ ] **MEM-02**: User can configure whether session transcripts are retained
+  locally per profile/session and can see where the local ledger files are
+  stored.
+- [ ] **MEM-03**: User can view a concise summary for one session, including
+  questions, handoffs, action items, and incomplete transcript coverage.
+
+### Meeting Ask And Search
+
+- [ ] **ASK-01**: User can search local meeting sessions by profile, session id,
+  date range, speaker label, trigger category, and keyword.
+- [ ] **ASK-02**: User can ask a question about the current or selected past
+  session and get an answer with citations to transcript segments.
+- [ ] **ASK-03**: User can export a sanitized session summary that omits raw
+  audio, secrets, and private configuration values.
+
+### Grounded Answer Drafts
+
+- [ ] **ANS-01**: User can generate an answer draft for an addressed-question
+  event using current meeting memory as cited context.
+- [ ] **ANS-02**: User can include configured Jira, Confluence, Obsidian, and
+  file source context in an answer draft without hardcoded private names or
+  committed secrets.
+- [ ] **ANS-03**: User can see source freshness, missing-source diagnostics,
+  trigger evidence, and draft confidence before choosing an action.
+
+### Live Answer Cockpit
+
+- [ ] **COCK-01**: User can open a live cockpit view that shows the current
+  handoff candidate, trigger evidence, answer draft, citations, confidence,
+  and available actions.
+- [ ] **COCK-02**: User can choose speak, edit, skip, or takeover from the
+  cockpit or hotkey-compatible CLI action without Saymo auto-speaking an
+  unapproved generated draft.
+
+### Audit And Debugging
+
+- [ ] **AUD-01**: User can inspect a local audit trail for each trigger
+  decision, generated draft, source set, user action, and spoken response.
+- [ ] **AUD-02**: User can replay or report captured evidence for missed or
+  incorrect triggers without exposing raw audio payloads, secrets, or private
+  config values.
+
+## Future Requirements
+
+Deferred beyond v1.4.
+
+### Native Capture
+
+- User can use optional native macOS system-audio capture without BlackHole
+  when OS permissions and entitlements are available.
+
+### Speaker Identity
+
+- User can map recurring speakers across meetings through reviewed local
+  speaker fingerprints.
+
+### Cockpit UI
+
+- User can use a richer desktop/browser cockpit after the CLI/TUI data
+  contracts are proven.
+
+### Meeting Bot Integrations
+
+- User can optionally connect a meeting bot or provider API for organizations
+  that prefer bot-based capture.
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Cloud meeting transcription or cloud LLMs as the required path | Saymo must remain local-by-default and usable without remote audio/text processing. |
+| Auto-speaking generated drafts without explicit approval | Live-call safety requires the user to inspect and approve generated answers first. |
+| Native macOS capture as required setup | BlackHole routing is the current supported path; native capture needs separate permission and OS-version work. |
+| Cross-meeting speaker fingerprinting | Useful after meeting memory exists, but it is not required to build the cockpit loop. |
+| GUI-first cockpit | The CLI/TUI-compatible control path should prove the workflow before a larger UI surface. |
+| Meeting bot that joins calls | Useful for some systems, but it is not Saymo's main "local assistant through my mic" direction. |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| MEM-01 | Pending roadmap | Pending |
+| MEM-02 | Pending roadmap | Pending |
+| MEM-03 | Pending roadmap | Pending |
+| ASK-01 | Pending roadmap | Pending |
+| ASK-02 | Pending roadmap | Pending |
+| ASK-03 | Pending roadmap | Pending |
+| ANS-01 | Pending roadmap | Pending |
+| ANS-02 | Pending roadmap | Pending |
+| ANS-03 | Pending roadmap | Pending |
+| COCK-01 | Pending roadmap | Pending |
+| COCK-02 | Pending roadmap | Pending |
+| AUD-01 | Pending roadmap | Pending |
+| AUD-02 | Pending roadmap | Pending |
+
+**Coverage:**
+- v1.4 requirements: 13 total
+- Mapped to phases: 0
+- Unmapped: 13
+
+---
+*Requirements defined: 2026-05-20*
+*Last updated: 2026-05-20 after initial definition*
