@@ -2,8 +2,20 @@
 
 ## Current
 
-No active milestone. Start the next milestone with `$gsd-new-milestone` after
-choosing the next product direction.
+### v1.3 Local Diarization Assist
+
+**Started:** 2026-05-20
+**Status:** Planned
+
+Focus: make local speaker identity useful during trigger training by adding
+optional diarization, speaker-cluster review, and safe promotion into existing
+`me`/`other`/`unknown` labels.
+
+Target:
+- Optional local diarization backend detection and configuration.
+- Session-level speaker suggestions stored as local sidecars.
+- Review and promotion flow for diarization suggestions.
+- Speaker-label quality reports before training/readiness uses suggestions.
 
 ## Completed
 

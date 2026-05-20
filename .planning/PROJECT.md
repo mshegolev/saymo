@@ -13,26 +13,22 @@ cloud voice APIs.
 Saymo must reliably catch when the user is expected to answer and respond fast
 enough that the call still feels live.
 
-## Current State
+## Current Milestone: v1.3 Local Diarization Assist
 
-Saymo has shipped v1.2 Trigger Training Console. The project currently has no
-active milestone; the next cycle should start by defining fresh requirements.
+**Goal:** Make local speaker identity useful during trigger training by adding
+optional diarization, speaker-cluster review, and safe promotion into existing
+`me`/`other`/`unknown` labels.
 
-**Latest shipped milestone:** v1.2 Trigger Training Console, archived on
-2026-05-20.
+**Status:** Requirements and roadmap defined on 2026-05-20.
 
-**Shipped capabilities:**
-- Capture sessions: named recording runs with summaries of what was captured.
-- Review and relabel workflow: bulk list/filter/replay/correct sample category,
-  speaker, and answer-decision labels without editing JSON manually.
-- Classifier readiness gate: local quality checks and per-profile guardrails
-  before any learned classifier can assist live auto-mode.
-
-## Next Milestone Goals
-
-Deferred candidate directions remain:
-- make local diarization a first-class optional component;
-- add provider-specific UI regression checks for call-provider web app changes.
+**Target features:**
+- Optional local diarization backend checks and per-profile configuration.
+- Session-level diarization that writes local sidecar suggestions without
+  overwriting manual speaker labels.
+- Speaker-cluster review, mapping, and promotion into the existing trigger
+  sample workflow.
+- Speaker quality reports that show unknown coverage, suggestion confidence,
+  and manual-vs-suggested conflicts.
 
 ## Requirements
 
@@ -63,6 +59,17 @@ Deferred candidate directions remain:
   be trusted as a live-call assist, while deterministic gating remains the
   safety boundary.
 
+### Active
+
+- [ ] User can run optional local diarization on a completed trigger-capture
+  session without making cloud services or heavy ML packages mandatory.
+- [ ] User can inspect diarization speaker clusters and map them to
+  `me`/`other`/`unknown` labels for the current profile/session.
+- [ ] User can review and promote speaker suggestions into existing trigger
+  sample metadata while preserving manual overrides.
+- [ ] User can evaluate speaker-label quality before using suggested labels in
+  classifier readiness or training.
+
 ### Out of Scope
 
 - Cloud STT/TTS as a required path — the product remains local-by-default.
@@ -70,8 +77,10 @@ Deferred candidate directions remain:
   and addressed questions, but manual takeover remains supported.
 - Training a new voice model from call recordings in this milestone — captured
   call audio is for trigger and routing behavior, not voice-clone training.
-- Required automatic diarization model installation — v1.1 accepts local
-  speaker-label sidecars and keeps diarization engines optional.
+- Required automatic diarization model installation — v1.3 must keep
+  diarization engines optional and disabled until configured.
+- Real-time live-call diarization in `saymo auto` — this milestone focuses on
+  offline captured sessions so latency and false-positive risk stay bounded.
 
 ## Context
 
@@ -107,6 +116,7 @@ Deferred candidate directions remain:
 | Separate name mentions from handoffs deterministically | Plain mentions should train/tune differently from moments where Saymo should answer | ✓ Implemented after real sample review |
 | Measure providers through the existing abstraction | Keep provider latency work scoped to Chrome call automation, not UI redesign | ✓ Implemented in Phase 7 |
 | Require a readiness gate before live classifier assist | Learned behavior should be opt-in and evidence-backed per profile | ✓ Implemented in Phase 10 |
+| Keep diarization optional and review-first | Speaker suggestions are useful only after the user can inspect and correct them locally | — Pending |
 
 ---
-*Last updated: 2026-05-20 after archiving milestone v1.2 Trigger Training Console*
+*Last updated: 2026-05-20 after starting milestone v1.3 Local Diarization Assist*
