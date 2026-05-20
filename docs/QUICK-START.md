@@ -276,14 +276,14 @@ ollama pull qwen2.5-coder:7b
 Run this during a call to save short windows for later trigger tuning:
 
 ```bash
-saymo trigger-capture -p personal
+saymo trigger-capture -p personal --session daily-2026-05-20
 ```
 
 It listens on `audio.capture_device` by default, so use the same BlackHole
 input as `saymo auto`. For a local one-minute test through your real mic:
 
 ```bash
-saymo trigger-capture -p personal --device "MacBook Pro Microphone" --duration 60
+saymo trigger-capture -p personal --session mic-test --device "MacBook Pro Microphone" --duration 60
 ```
 
 Samples are written to `~/.saymo/trigger_samples/<profile>/` and split into
@@ -291,11 +291,15 @@ Samples are written to `~/.saymo/trigger_samples/<profile>/` and split into
 `asked_to_speak` means the speaker handed the floor to you or asked you
 directly; `mentioned_me` means your name was mentioned without asking you to
 speak. Each WAV has a JSON file with the transcript, trigger flag, question
-flag, addressing label, and levels.
+flag, addressing label, levels, and capture `session_id`. Session ledgers are
+written to `~/.saymo/trigger_samples/<profile>/_sessions/`, and capture prints
+a final summary when it stops.
 
 Review and tune the saved windows locally:
 
 ```bash
+saymo trigger-sessions list -p personal
+saymo trigger-sessions summary -p personal --session daily-2026-05-20
 saymo trigger-samples list -p personal
 saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
 saymo trigger-samples decision ~/.saymo/trigger_samples/personal/question/<sample>.json --decision rejected
@@ -322,6 +326,10 @@ after you have enough labels. Classifier artifacts stay local under
 what Saymo would do live. Use `trigger-classifier inspect` or `delete` to audit
 or remove the artifact. The report intentionally omits raw audio and transcript
 text.
+
+`trigger-sessions list` shows one row per capture run with saved-sample counts,
+skipped silence windows, and a basic readiness hint. `trigger-sessions summary`
+prints category, speaker, and answer-decision counts for one meeting session.
 
 ### Measure call provider latency
 

@@ -10,12 +10,12 @@ Requirements for milestone v1.2 Trigger Training Console.
 
 ### Capture Sessions
 
-- [ ] **SES-01**: User can start a named trigger-capture session and have every
+- [x] **SES-01**: User can start a named trigger-capture session and have every
   saved sample record the session id in its JSON metadata.
-- [ ] **SES-02**: User can stop or finish a session and see a local summary of
+- [x] **SES-02**: User can stop or finish a session and see a local summary of
   sample counts by category, speaker, answer decision, and silence/skipped
   windows.
-- [ ] **SES-03**: User can list prior capture sessions for a profile and inspect
+- [x] **SES-03**: User can list prior capture sessions for a profile and inspect
   their time range, sample counts, and training-readiness status.
 
 ### Review And Relabel
@@ -76,9 +76,9 @@ Deferred beyond v1.2.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SES-01 | Phase 8 | Pending |
-| SES-02 | Phase 8 | Pending |
-| SES-03 | Phase 8 | Pending |
+| SES-01 | Phase 8 | Complete |
+| SES-02 | Phase 8 | Complete |
+| SES-03 | Phase 8 | Complete |
 | REV-01 | Phase 9 | Pending |
 | REV-02 | Phase 9 | Pending |
 | REV-03 | Phase 9 | Pending |

@@ -1,7 +1,7 @@
 """Diagnostic / info commands: test-devices, test-tts, test-jira, list-plugins,
 test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
 trigger-capture, trigger-learn, trigger-setup, trigger-eval, trigger-samples,
-auto-preflight, takeover-check, provider-latency, mic-check."""
+trigger-sessions, auto-preflight, takeover-check, provider-latency, mic-check."""
 
 import json
 import re
@@ -11,6 +11,7 @@ from pathlib import Path
 import click
 from rich.table import Table
 
+from saymo.analysis.trigger_sessions import SESSION_LEDGER_DIR
 from saymo.commands import console, main, run_async
 
 
@@ -1090,8 +1091,23 @@ def _print_provider_latency_report(report) -> None:
     help="Directory for captured samples",
 )
 @click.option("--save-silence", is_flag=True, help="Also save empty/silent windows")
+@click.option(
+    "--session",
+    "session_name",
+    default=None,
+    help="Name for this capture session; defaults to the profile name",
+)
 @click.pass_context
-def trigger_capture(ctx, profile, window, duration, device, output_dir, save_silence):
+def trigger_capture(
+    ctx,
+    profile,
+    window,
+    duration,
+    device,
+    output_dir,
+    save_silence,
+    session_name,
+):
     """Capture live call audio into classified trigger samples."""
     config = ctx.obj["config"]
     _run_trigger_capture(
@@ -1102,6 +1118,7 @@ def trigger_capture(ctx, profile, window, duration, device, output_dir, save_sil
         device_name=device,
         output_dir=output_dir,
         save_silence=save_silence,
+        session_name=session_name,
     )
 
 
@@ -1114,6 +1131,7 @@ def _run_trigger_capture(
     device_name: str | None,
     output_dir: str | None,
     save_silence: bool,
+    session_name: str | None = None,
 ) -> None:
     from datetime import datetime
     from pathlib import Path
@@ -1127,6 +1145,10 @@ def _run_trigger_capture(
         audio_stats,
         classify_trigger_sample,
         save_trigger_sample,
+    )
+    from saymo.analysis.trigger_sessions import (
+        finish_trigger_session,
+        start_trigger_session,
     )
     from saymo.stt.whisper_local import LocalWhisper
 
@@ -1152,6 +1174,12 @@ def _run_trigger_capture(
         model_size=config.stt.whisper.model_size,
         language=config.user.language,
     )
+    session = start_trigger_session(
+        base_dir=base_dir,
+        profile=profile,
+        session_name=session_name,
+        started_at=datetime.now().isoformat(timespec="seconds"),
+    )
 
     audio_queue: queue.Queue[np.ndarray] = queue.Queue()
 
@@ -1161,6 +1189,7 @@ def _run_trigger_capture(
         audio_queue.put(np.asarray(indata, dtype=np.float32).copy().flatten())
 
     console.print(f"[bold blue]Capturing {mic_name} → {base_dir}[/]")
+    console.print(f"[blue]Session: {session.session_id} ({session.session_name})[/]")
     console.print(
         "[dim]Categories: asked_to_speak, mentioned_me, question, speech"
         + (", silence" if save_silence else "")
@@ -1172,6 +1201,8 @@ def _run_trigger_capture(
     chunks: list[np.ndarray] = []
     frames_seen = 0
     sequence = 1
+    skipped_silence = 0
+    status = "completed"
 
     try:
         with sd.InputStream(
@@ -1204,6 +1235,7 @@ def _run_trigger_capture(
                     peak=peak,
                 )
                 if sample.category == "silence" and not save_silence:
+                    skipped_silence += 1
                     console.print(
                         f"[dim]skip silence rms={rms:.4f} peak={peak:.4f}[/]"
                     )
@@ -1218,6 +1250,8 @@ def _run_trigger_capture(
                     profile=profile,
                     sequence=sequence,
                     created_at=created_at,
+                    session_id=session.session_id,
+                    session_name=session.session_name,
                 )
                 console.print(
                     f"[bold]{sample.category}[/] "
@@ -1230,7 +1264,20 @@ def _run_trigger_capture(
                     console.print(f"[dim]  {sample.transcript}[/]")
                 sequence += 1
     except KeyboardInterrupt:
+        status = "stopped"
         console.print("[yellow]Stopped trigger capture[/]")
+    except Exception:
+        status = "failed"
+        raise
+    finally:
+        finished = finish_trigger_session(
+            base_dir=base_dir,
+            session=session,
+            ended_at=datetime.now().isoformat(timespec="seconds"),
+            status=status,
+            skipped_silence=skipped_silence,
+        )
+        _print_trigger_session_summary(finished)
 
 
 def _resolve_trigger_capture_device(config, device_override: str | None):
@@ -1431,6 +1478,9 @@ class TriggerSampleRecord:
     path: Path
     profile: str
     category: str
+    session_id: str
+    session_name: str
+    session_sequence: int
     speaker: str
     answer_decision: str
     created_at: str
@@ -1528,8 +1578,10 @@ def trigger_samples_list(profile, category, samples_dir):
     )
     console.print(f"samples: {len(records)}")
     for record in records:
+        session = f" session={record.session_id}" if record.session_id else ""
         console.print(
             f"{record.path}: profile={record.profile} category={record.category} "
+            f"{session} "
             f"speaker={record.speaker} "
             f"decision={record.answer_decision} "
             f"trigger={'yes' if record.trigger else 'no'} "
@@ -1627,6 +1679,68 @@ def trigger_samples_report(ctx, profile, samples_dir, output):
         console.print(f"report: {out_path}")
     else:
         console.print(report)
+
+
+@main.group("trigger-sessions")
+def trigger_sessions():
+    """List and summarize trigger-capture sessions."""
+
+
+@trigger_sessions.command("list")
+@click.option("--profile", "-p", default=None, help="Profile to list")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+def trigger_sessions_list(profile, samples_dir):
+    """List prior trigger-capture sessions."""
+    from saymo.analysis.trigger_sessions import list_trigger_sessions
+
+    sessions = list_trigger_sessions(_samples_base_dir(samples_dir), profile=profile)
+    console.print(f"sessions: {len(sessions)}")
+    for session in sessions:
+        summary = session.summary
+        ended = session.ended_at or "-"
+        console.print(
+            f"{session.session_id}: profile={session.profile} "
+            f"name={session.session_name} status={session.status} "
+            f"started={session.started_at or '-'} ended={ended} "
+            f"samples={summary.saved_samples} "
+            f"skipped_silence={summary.skipped_silence} "
+            f"readiness={summary.readiness}"
+        )
+
+
+@trigger_sessions.command("summary")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option(
+    "--session",
+    "session_id",
+    required=True,
+    help="Session id to summarize; unique prefixes are accepted",
+)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+def trigger_sessions_summary(profile, session_id, samples_dir):
+    """Show one trigger-capture session summary."""
+    from saymo.analysis.trigger_sessions import list_trigger_sessions
+
+    sessions = [
+        s
+        for s in list_trigger_sessions(_samples_base_dir(samples_dir), profile=profile)
+        if s.session_id == session_id or s.session_id.startswith(session_id)
+    ]
+    if not sessions:
+        raise click.ClickException(f"Session not found: {session_id}")
+    if len(sessions) > 1:
+        raise click.ClickException(f"Session id is ambiguous: {session_id}")
+    _print_trigger_session_summary(sessions[0])
 
 
 @main.group("trigger-classifier")
@@ -1742,6 +1856,9 @@ def _load_trigger_sample(path: Path) -> TriggerSampleRecord:
         path=p,
         profile=str(data.get("profile") or _profile_from_sample_path(p)),
         category=str(data.get("category") or p.parent.name),
+        session_id=str(data.get("session_id") or ""),
+        session_name=str(data.get("session_name") or ""),
+        session_sequence=int(data.get("session_sequence") or 0),
         speaker=_normalize_speaker_label(data.get("speaker")),
         answer_decision=_normalize_answer_decision(data.get("answer_decision")),
         created_at=str(data.get("created_at") or ""),
@@ -1780,6 +1897,8 @@ def _iter_trigger_sample_records(
 
     records: list[TriggerSampleRecord] = []
     for path in paths:
+        if path.parent.name == SESSION_LEDGER_DIR:
+            continue
         try:
             records.append(_load_trigger_sample(path))
         except (OSError, json.JSONDecodeError, TypeError, ValueError) as e:
@@ -2087,6 +2206,37 @@ def _render_trigger_report(profile: str, rows: list[TriggerEvaluationRow]) -> st
             f"rms={row.record.rms:.4f}, peak={row.record.peak:.4f}"
         )
     return "\n".join(lines) + "\n"
+
+
+def _print_trigger_session_summary(session) -> None:
+    summary = session.summary
+    console.print(f"session: {session.session_id}")
+    console.print(f"name: {session.session_name}")
+    console.print(f"profile: {session.profile}")
+    console.print(f"status: {session.status}")
+    console.print(f"started: {session.started_at or '-'}")
+    console.print(f"ended: {session.ended_at or '-'}")
+    if summary.first_sample_at or summary.last_sample_at:
+        console.print(
+            "sample range: "
+            f"{summary.first_sample_at or '-'} -> {summary.last_sample_at or '-'}"
+        )
+    console.print(
+        f"windows: total={summary.total_windows} "
+        f"saved={summary.saved_samples} "
+        f"skipped_silence={summary.skipped_silence}"
+    )
+    for category in _TRIGGER_SAMPLE_CATEGORIES:
+        console.print(f"category {category}: {summary.categories.get(category, 0)}")
+    for speaker in _SPEAKER_LABELS:
+        console.print(f"speaker {speaker}: {summary.speakers.get(speaker, 0)}")
+    for decision in _ANSWER_DECISION_LABELS:
+        console.print(
+            f"decision {decision}: {summary.answer_decisions.get(decision, 0)}"
+        )
+    console.print(f"readiness: {summary.readiness}")
+    if session.path:
+        console.print(f"ledger: {session.path}")
 
 
 # ---------------------------------------------------------------------------

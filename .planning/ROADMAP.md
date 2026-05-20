@@ -14,7 +14,7 @@ safe classifier promotion.
 
 ## Active Milestone
 
-- 🚧 **v1.2 Trigger Training Console** - Phases 8-10 planned.
+- 🚧 **v1.2 Trigger Training Console** - Phase 8 complete; phases 9-10 planned.
 
 ## Phases
 
@@ -22,7 +22,7 @@ safe classifier promotion.
 - Integer phases (8, 9, 10): Planned milestone work
 - Decimal phases (9.1, 9.2): Urgent insertions
 
-- [ ] **Phase 8: Capture Session Ledger** - Track named trigger-capture
+- [x] **Phase 8: Capture Session Ledger** - Track named trigger-capture
   sessions and summarize what each recording run saved.
 - [ ] **Phase 9: Review And Relabel Workflow** - Let the user filter, replay,
   and correct sample category/speaker/answer labels without JSON edits.
@@ -45,9 +45,9 @@ counts and metadata.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01: Add session metadata and storage helpers
-- [ ] 08-02: Wire session ids into trigger-capture
-- [ ] 08-03: Add session list/summary commands and docs
+- [x] 08-01: Add session metadata and storage helpers
+- [x] 08-02: Wire session ids into trigger-capture
+- [x] 08-03: Add session list/summary commands and docs
 
 ### Phase 9: Review And Relabel Workflow
 **Goal**: Make saved samples easy to triage and correct from the CLI after a
@@ -98,6 +98,6 @@ Phases execute in numeric order: 8 → 9 → 10
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 8. Capture Session Ledger | v1.2 | 0/3 | Planned | — |
+| 8. Capture Session Ledger | v1.2 | 3/3 | Complete | 2026-05-20 |
 | 9. Review And Relabel Workflow | v1.2 | 0/4 | Planned | — |
 | 10. Classifier Readiness Gate | v1.2 | 0/4 | Planned | — |
