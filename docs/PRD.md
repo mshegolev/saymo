@@ -335,6 +335,7 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 | `saymo trigger-classifier evaluate -p PROFILE` | Run deterministic local holdout evaluation |
 | `saymo trigger-classifier live-assist enable -p PROFILE` | Enable guarded assist only after readiness passes and a trained model exists |
 | `saymo trigger-classifier live-assist status -p PROFILE` | Inspect guarded live-assist state |
+| `saymo diarization-check` | Check optional local diarization backend setup |
 | `saymo provider-latency -p PROFILE` | Measure provider mute/playback latency and export local history |
 | `saymo review` | Review audio sentence-by-sentence |
 | `saymo record-voice -d 300` | Record 5-min voice sample |
@@ -353,6 +354,8 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 - `[tts]`: `torch`, `torchaudio`, `coqui-tts[codec]`, `piper-tts`, `scipy`, `transformers`
 - `[stt]`: `faster-whisper`
 - `[cloud]`: `anthropic`, `openai`, `deepgram-sdk`, `aiohttp`
+- Diarization backends such as `pyannote.audio` are optional and checked with
+  `saymo diarization-check`; they are not required for the base install.
 - `[all]`: everything
 
 ### System

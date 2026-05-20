@@ -84,6 +84,19 @@ class STTConfig:
 
 
 @dataclass
+class DiarizationConfig:
+    """Optional local speaker diarization configuration."""
+
+    enabled: bool = False
+    engine: str = "disabled"
+    model: str = "pyannote/speaker-diarization-3.1"
+    device: str = "cpu"
+    min_speakers: int = 1
+    max_speakers: int = 4
+    auth_token_env: str = "SAYMO_DIARIZATION_TOKEN"
+
+
+@dataclass
 class AnthropicLLMConfig:
     api_key: str = ""
     model: str = "claude-sonnet-4-20250514"
@@ -285,6 +298,7 @@ class SaymoConfig:
     user: UserConfig = field(default_factory=UserConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     stt: STTConfig = field(default_factory=STTConfig)
+    diarization: DiarizationConfig = field(default_factory=DiarizationConfig)
     analysis: AnalysisConfig = field(default_factory=AnalysisConfig)
     tts: TTSConfig = field(default_factory=TTSConfig)
     jira: JiraConfig = field(default_factory=JiraConfig)

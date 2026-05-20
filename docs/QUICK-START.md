@@ -318,6 +318,7 @@ saymo trigger-classifier inspect -p personal
 saymo trigger-eval -p personal --classifier-shadow
 saymo trigger-classifier delete -p personal --yes
 saymo trigger-samples report -p personal -o ~/.saymo/trigger_samples/personal-report.md
+saymo diarization-check
 ```
 
 `trigger-eval` reports stored/current categories, misses, and false positives.
@@ -345,6 +346,10 @@ Saymo stores a fingerprint of that model and disables live assist if the model
 is missing or changed. Live assist only uses transcript/speaker features and
 can downgrade an already deterministic answer candidate to skip; it cannot
 bypass trigger/addressing checks.
+
+Optional diarization starts disabled. Add a `diarization:` section to
+`config.yaml`, keep tokens in env vars such as `SAYMO_DIARIZATION_TOKEN`, then
+run `saymo diarization-check` before using speaker-suggestion workflows.
 
 ### Measure call provider latency
 

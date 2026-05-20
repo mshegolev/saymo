@@ -7,6 +7,7 @@ import pytest
 
 from saymo.config import (
     AudioConfig,
+    DiarizationConfig,
     SaymoConfig,
     UserConfig,
     _dict_to_dataclass,
@@ -158,6 +159,33 @@ def test_load_config_populates_confirmation_timeout(tmp_path):
     cfg = load_config(config_path=str(cfg_file))
     assert cfg.safety.require_confirmation is True
     assert cfg.safety.confirmation_timeout_seconds == 2.5
+
+
+def test_load_config_populates_diarization_section(tmp_path, monkeypatch):
+    monkeypatch.setenv("SAYMO_DIAR_TOKEN", "hf-secret")
+    yaml_content = textwrap.dedent("""\
+        diarization:
+          enabled: true
+          engine: pyannote
+          model: pyannote/speaker-diarization-3.1
+          device: mps
+          min_speakers: 1
+          max_speakers: 4
+          auth_token_env: SAYMO_DIAR_TOKEN
+    """)
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(yaml_content)
+
+    cfg = load_config(config_path=str(cfg_file))
+
+    assert isinstance(cfg.diarization, DiarizationConfig)
+    assert cfg.diarization.enabled is True
+    assert cfg.diarization.engine == "pyannote"
+    assert cfg.diarization.model == "pyannote/speaker-diarization-3.1"
+    assert cfg.diarization.device == "mps"
+    assert cfg.diarization.min_speakers == 1
+    assert cfg.diarization.max_speakers == 4
+    assert cfg.diarization.auth_token_env == "SAYMO_DIAR_TOKEN"
 
 
 def test_load_config_resolves_env_vars_in_yaml(tmp_path, monkeypatch):

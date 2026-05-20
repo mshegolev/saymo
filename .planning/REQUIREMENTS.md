@@ -10,12 +10,12 @@ Requirements for milestone v1.3 Local Diarization Assist.
 
 ### Optional Diarization
 
-- [ ] **DIAR-01**: User can check whether a configured local diarization backend
+- [x] **DIAR-01**: User can check whether a configured local diarization backend
   is available and see actionable setup diagnostics when it is missing.
-- [ ] **DIAR-02**: User can configure diarization engine, model id, device,
+- [x] **DIAR-02**: User can configure diarization engine, model id, device,
   speaker-count bounds, and required tokens through config/env without
   committing secrets.
-- [ ] **DIAR-03**: User can keep Saymo fully usable when diarization is disabled
+- [x] **DIAR-03**: User can keep Saymo fully usable when diarization is disabled
   or dependencies are not installed.
 - [ ] **DIAR-04**: User can run diarization against one completed
   trigger-capture session and store the output locally.
@@ -71,9 +71,9 @@ Deferred beyond v1.3.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DIAR-01 | Phase 11 | Pending |
-| DIAR-02 | Phase 11 | Pending |
-| DIAR-03 | Phase 11 | Pending |
+| DIAR-01 | Phase 11 | Complete |
+| DIAR-02 | Phase 11 | Complete |
+| DIAR-03 | Phase 11 | Complete |
 | DIAR-04 | Phase 12 | Pending |
 | SPKR-01 | Phase 12 | Pending |
 | SPKR-02 | Phase 12 | Pending |
@@ -85,8 +85,9 @@ Deferred beyond v1.3.
 **Coverage:**
 - v1.3 requirements: 10 total
 - Mapped to phases: 10
+- Complete: 3
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after roadmap creation*
+*Last updated: 2026-05-20 after completing Phase 11*

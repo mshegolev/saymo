@@ -25,7 +25,7 @@ runtime dependency or adding risky real-time behavior to `saymo auto`.
 - Integer phases (11, 12, 13): Planned milestone work
 - Decimal phases (12.1, 12.2): Urgent insertions if needed
 
-- [ ] **Phase 11: Diarization Adapter And Config** - Add optional local
+- [x] **Phase 11: Diarization Adapter And Config** - Add optional local
   diarization backend detection, configuration, and stable data contracts.
 - [ ] **Phase 12: Session Speaker Suggestions** - Run diarization against
   completed capture sessions and store reviewable speaker suggestions.
@@ -105,6 +105,6 @@ Phases execute in numeric order: 11 -> 12 -> 13
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 11. Diarization Adapter And Config | v1.3 | 0/3 | Not started | - |
+| 11. Diarization Adapter And Config | v1.3 | 3/3 | Complete | 2026-05-20 |
 | 12. Session Speaker Suggestions | v1.3 | 0/3 | Not started | - |
 | 13. Speaker Review And Quality Reports | v1.3 | 0/4 | Not started | - |

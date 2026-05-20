@@ -44,6 +44,15 @@ stt:
     model: nova-3
     language: ru
 
+diarization:
+  enabled: false              # optional; disabled keeps base install lightweight
+  engine: disabled            # `disabled` or `pyannote`
+  model: pyannote/speaker-diarization-3.1
+  device: cpu                 # cpu | mps | cuda, depending on backend support
+  min_speakers: 1
+  max_speakers: 4
+  auth_token_env: SAYMO_DIARIZATION_TOKEN  # env var name, not the token value
+
 analysis:
   llm_provider: ollama        # `ollama` (local, default) or `anthropic` (cloud)
   anthropic:

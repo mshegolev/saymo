@@ -64,6 +64,41 @@ def test_trigger_check_text_reports_addressed_question(tmp_path):
     assert "response:" in result.output
 
 
+def test_diarization_check_reports_disabled_by_default(tmp_path):
+    config_path = _write_config(tmp_path)
+    runner = CliRunner()
+
+    result = runner.invoke(main, ["--config", str(config_path), "diarization-check"])
+
+    assert result.exit_code == 0
+    assert "diarization: disabled" in result.output
+    assert "engine: disabled" in result.output
+
+
+def test_diarization_check_reports_pyannote_token_without_value(tmp_path):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        textwrap.dedent(
+            """
+            diarization:
+              enabled: true
+              engine: pyannote
+              auth_token_env: SAYMO_MISSING_DIAR_TOKEN
+            """
+        ),
+        encoding="utf-8",
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(main, ["--config", str(config_path), "diarization-check"])
+
+    assert result.exit_code == 0
+    assert "engine: pyannote" in result.output
+    assert "token env: SAYMO_MISSING_DIAR_TOKEN" in result.output
+    assert "token: missing" in result.output
+    assert "SAYMO_MISSING_DIAR_TOKEN=" not in result.output
+
+
 def test_trigger_check_reports_confirmation_wait_for_first_trigger(tmp_path):
     config_path = _write_config(tmp_path)
     runner = CliRunner()

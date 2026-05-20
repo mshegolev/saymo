@@ -154,6 +154,51 @@ def list_plugins_cmd():
     console.print(table2)
 
 
+@main.command("diarization-check")
+@click.option("--engine", default=None, help="Override configured diarization engine")
+@click.option("--model", default=None, help="Override configured diarization model id")
+@click.option("--device", default=None, help="Override configured diarization device")
+@click.option(
+    "--token-env",
+    default=None,
+    help="Override env var name that contains the backend token",
+)
+@click.pass_context
+def diarization_check(ctx, engine, model, device, token_env):
+    """Check optional local diarization backend setup."""
+    from dataclasses import replace
+
+    from saymo.analysis.diarization import check_diarization_availability
+
+    config = ctx.obj["config"]
+    diarization = config.diarization
+    overrides = {}
+    if engine is not None:
+        overrides["enabled"] = engine.strip().lower() not in {"", "disabled", "off", "none"}
+        overrides["engine"] = engine
+    if model is not None:
+        overrides["model"] = model
+    if device is not None:
+        overrides["device"] = device
+    if token_env is not None:
+        overrides["auth_token_env"] = token_env
+    if overrides:
+        diarization = replace(diarization, **overrides)
+
+    status = check_diarization_availability(diarization)
+    console.print(f"diarization: {status.status}")
+    console.print(f"engine: {status.engine}")
+    console.print(f"model: {status.model}")
+    console.print(f"device: {status.device}")
+    if status.token_env:
+        console.print(f"token env: {status.token_env}")
+        console.print(f"token: {'present' if status.token_available else 'missing'}")
+    if status.missing:
+        console.print(f"missing: {', '.join(status.missing)}")
+    console.print(f"available: {'yes' if status.available else 'no'}")
+    console.print(f"reason: {status.reason}")
+
+
 @main.command("test-notes")
 @click.pass_context
 def test_notes(ctx):
