@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Live Conversation Memory + Answer Cockpit
-status: All phases complete; milestone audit pending
-stopped_at: Phase 17 complete; next step is milestone audit and completion.
+status: Milestone v1.4 archived; no active milestone
+stopped_at: v1.4 Live Conversation Memory + Answer Cockpit archived; next step is $gsd-new-milestone.
 last_updated: "2026-05-20"
-last_activity: "2026-05-20 - completed Phase 17 Answer Cockpit And Audit Trail"
+last_activity: "2026-05-20 - archived v1.4 Live Conversation Memory + Answer Cockpit"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -22,15 +22,15 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.4 Live Conversation Memory + Answer Cockpit.
+**Current focus:** Between milestones.
 
 ## Current Position
 
 Phase: Complete
 Plan: Complete
-Status: All v1.4 phases complete; milestone audit pending
-Last activity: 2026-05-20 - Phase 17 added cockpit state, explicit actions,
-and answer audit reports.
+Status: v1.4 archived; no active roadmap phases
+Last activity: 2026-05-20 - archived roadmap, requirements, and milestone
+audit for v1.4 Live Conversation Memory + Answer Cockpit.
 
 Progress: [##########] 100%
 
@@ -47,6 +47,7 @@ Progress: [##########] 100%
 - v1.1 completed 9 plans across 3 phases.
 - v1.2 completed 11 plans across 3 phases.
 - v1.3 completed 10 plans across 3 phases.
+- v1.4 completed 15 plans across 4 phases.
 
 **By Phase:**
 
@@ -58,9 +59,10 @@ Progress: [##########] 100%
 | 17. Answer Cockpit And Audit Trail | 4 | 4/4 | complete |
 
 **Recent Trend:**
-- v1.2 created reviewable sessions and corrected sample labels.
 - v1.3 added optional diarization diagnostics, session sidecars, reviewable
   suggestion promotion, and sanitized speaker-quality reporting.
+- v1.4 added local meeting memory, cited meeting ask, grounded answer drafts,
+  explicit answer-cockpit actions, and sanitized answer audit trails.
 
 ## Accumulated Context
 
@@ -78,10 +80,12 @@ Recent decisions affecting current work:
 - v1.2: Keep deterministic trigger/addressing checks as the live-call safety
   boundary; learned assist can only downgrade an answer candidate.
 - v1.3: Diarization must be optional, disabled by default, and review-first.
+- v1.4: Generated answer drafts stay pending until explicit cockpit action;
+  `speak` records approval but does not auto-play generated speech.
 
 ### Pending Todos
 
-- Run milestone audit, then complete/archive v1.4.
+Start the next milestone with `$gsd-new-milestone` when a new goal is chosen.
 
 ### Blockers/Concerns
 
@@ -99,5 +103,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-05-20
-Stopped at: all v1.4 phases complete; next step is milestone audit.
+Stopped at: v1.4 archived; next step is `$gsd-new-milestone`.
 Resume file: None

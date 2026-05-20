@@ -2,22 +2,34 @@
 
 ## Current
 
+No active milestone. Start the next cycle with `$gsd-new-milestone`.
+
+## Completed
+
 ### v1.4 Live Conversation Memory + Answer Cockpit
 
 **Started:** 2026-05-20
-**Status:** Roadmap ready
+**Completed:** 2026-05-20
+**Archived:** 2026-05-20
+**Status:** Complete
 
 Focus: turn recorded and live call context into local meeting memory plus an
 explicit answer cockpit, so Saymo can show why it thinks the user was addressed,
 draft a source-grounded answer, and wait for speak/edit/skip/takeover approval.
 
-Planned phases:
-- Phase 14: Meeting Memory Ledger
-- Phase 15: Meeting Ask And Search
-- Phase 16: Grounded Answer Drafts
-- Phase 17: Answer Cockpit And Audit Trail
+Delivered:
+- Full-session local transcript ledgers and summaries for captured meetings.
+- Local meeting search and cited `meeting-ask` over current or past sessions.
+- Pending answer drafts grounded in meeting memory and configured source
+  plugins.
+- CLI/TUI-compatible answer cockpit with speak/edit/skip/takeover actions.
+- Local JSONL audit trail and sanitized audit reports for trigger/draft/action
+  evidence.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.4-ROADMAP.md`
+- `.planning/milestones/v1.4-REQUIREMENTS.md`
+- `.planning/milestones/v1.4-MILESTONE-AUDIT.md`
 
 ### v1.3 Local Diarization Assist
 
