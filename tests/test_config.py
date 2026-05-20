@@ -8,6 +8,7 @@ import pytest
 from saymo.config import (
     AudioConfig,
     DiarizationConfig,
+    MeetingMemoryConfig,
     SaymoConfig,
     UserConfig,
     _dict_to_dataclass,
@@ -186,6 +187,28 @@ def test_load_config_populates_diarization_section(tmp_path, monkeypatch):
     assert cfg.diarization.min_speakers == 1
     assert cfg.diarization.max_speakers == 4
     assert cfg.diarization.auth_token_env == "SAYMO_DIAR_TOKEN"
+
+
+def test_load_config_populates_meeting_memory_section(tmp_path):
+    yaml_content = textwrap.dedent("""\
+        meeting_memory:
+          enabled: true
+          retain_transcripts: false
+          base_dir: "~/saymo-memory"
+          default_window_seconds: 6.5
+          summary_max_items: 3
+    """)
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(yaml_content)
+
+    cfg = load_config(config_path=str(cfg_file))
+
+    assert isinstance(cfg.meeting_memory, MeetingMemoryConfig)
+    assert cfg.meeting_memory.enabled is True
+    assert cfg.meeting_memory.retain_transcripts is False
+    assert cfg.meeting_memory.base_dir == "~/saymo-memory"
+    assert cfg.meeting_memory.default_window_seconds == 6.5
+    assert cfg.meeting_memory.summary_max_items == 3
 
 
 def test_load_config_resolves_env_vars_in_yaml(tmp_path, monkeypatch):

@@ -10,13 +10,13 @@ Requirements for milestone v1.4 Live Conversation Memory + Answer Cockpit.
 
 ### Meeting Memory
 
-- [ ] **MEM-01**: User can save a full-session transcript ledger for a
+- [x] **MEM-01**: User can save a full-session transcript ledger for a
   recorded call session with chronological segments, timestamps, confidence,
   source window, category, and speaker metadata.
-- [ ] **MEM-02**: User can configure whether session transcripts are retained
+- [x] **MEM-02**: User can configure whether session transcripts are retained
   locally per profile/session and can see where the local ledger files are
   stored.
-- [ ] **MEM-03**: User can view a concise summary for one session, including
+- [x] **MEM-03**: User can view a concise summary for one session, including
   questions, handoffs, action items, and incomplete transcript coverage.
 
 ### Meeting Ask And Search
@@ -96,9 +96,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MEM-01 | Phase 14 | Pending |
-| MEM-02 | Phase 14 | Pending |
-| MEM-03 | Phase 14 | Pending |
+| MEM-01 | Phase 14 | Complete |
+| MEM-02 | Phase 14 | Complete |
+| MEM-03 | Phase 14 | Complete |
 | ASK-01 | Phase 15 | Pending |
 | ASK-02 | Phase 15 | Pending |
 | ASK-03 | Phase 15 | Pending |
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after roadmap creation*
+*Last updated: 2026-05-20 after completing Phase 14*

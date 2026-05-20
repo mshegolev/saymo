@@ -97,6 +97,17 @@ class DiarizationConfig:
 
 
 @dataclass
+class MeetingMemoryConfig:
+    """Local full-session transcript memory configuration."""
+
+    enabled: bool = True
+    retain_transcripts: bool = True
+    base_dir: str = ""  # defaults to ~/.saymo/trigger_samples/
+    default_window_seconds: float = 8.0
+    summary_max_items: int = 5
+
+
+@dataclass
 class AnthropicLLMConfig:
     api_key: str = ""
     model: str = "claude-sonnet-4-20250514"
@@ -299,6 +310,7 @@ class SaymoConfig:
     audio: AudioConfig = field(default_factory=AudioConfig)
     stt: STTConfig = field(default_factory=STTConfig)
     diarization: DiarizationConfig = field(default_factory=DiarizationConfig)
+    meeting_memory: MeetingMemoryConfig = field(default_factory=MeetingMemoryConfig)
     analysis: AnalysisConfig = field(default_factory=AnalysisConfig)
     tts: TTSConfig = field(default_factory=TTSConfig)
     jira: JiraConfig = field(default_factory=JiraConfig)

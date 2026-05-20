@@ -53,6 +53,13 @@ diarization:
   max_speakers: 4
   auth_token_env: SAYMO_DIARIZATION_TOKEN  # env var name, not the token value
 
+meeting_memory:
+  enabled: true
+  retain_transcripts: true     # false keeps metadata but blanks transcript text
+  base_dir: ""                 # defaults to ~/.saymo/trigger_samples/
+  default_window_seconds: 8.0
+  summary_max_items: 5
+
 analysis:
   llm_provider: ollama        # `ollama` (local, default) or `anthropic` (cloud)
   anthropic:

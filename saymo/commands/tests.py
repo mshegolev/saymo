@@ -2237,6 +2237,167 @@ def trigger_sessions_speaker_report(profile, session_id, samples_dir, output):
         console.print(rendered)
 
 
+@main.group("meeting-memory")
+def meeting_memory():
+    """Build and inspect local full-session meeting memory."""
+
+
+@meeting_memory.command("build")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option(
+    "--session",
+    "session_id",
+    required=True,
+    help="Session id to build; unique prefixes are accepted",
+)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to meeting_memory.base_dir or ~/.saymo/trigger_samples",
+)
+@click.option(
+    "--window",
+    "window_seconds",
+    default=None,
+    type=float,
+    help="Seconds represented by one trigger-capture sample window",
+)
+@click.option(
+    "--retain/--no-retain",
+    "retain_transcripts",
+    default=None,
+    help="Whether to store transcript text in the local ledger",
+)
+@click.pass_context
+def meeting_memory_build(ctx, profile, session_id, samples_dir, window_seconds, retain_transcripts):
+    """Build a local transcript ledger for one captured meeting session."""
+    ledger, path, base_dir = _build_meeting_memory_ledger(
+        ctx,
+        profile=profile,
+        session_id=session_id,
+        samples_dir=samples_dir,
+        window_seconds=window_seconds,
+        retain_transcripts=retain_transcripts,
+    )
+    console.print("meeting memory: saved")
+    console.print(f"profile: {profile}")
+    console.print(f"session: {ledger.session_id}")
+    console.print(f"segments: {len(ledger.segments)}")
+    console.print(f"incomplete: {ledger.incomplete_segments}")
+    console.print(f"retain transcripts: {'yes' if ledger.retain_transcripts else 'no'}")
+    console.print(f"base dir: {base_dir}")
+    console.print(f"ledger: {path}")
+
+
+@main.command("meeting-summary")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option(
+    "--session",
+    "session_id",
+    required=True,
+    help="Session id to summarize; unique prefixes are accepted",
+)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to meeting_memory.base_dir or ~/.saymo/trigger_samples",
+)
+@click.option("--build-missing", is_flag=True, help="Build the transcript ledger if it is missing")
+@click.option("--output", "-o", default=None, type=click.Path(), help="Markdown output path")
+@click.pass_context
+def meeting_summary(ctx, profile, session_id, samples_dir, build_missing, output):
+    """Show a concise local full-session meeting summary."""
+    from saymo.analysis.meeting_memory import (
+        load_meeting_ledger,
+        meeting_memory_base_dir,
+        meeting_transcript_path,
+        render_meeting_summary,
+        summarize_meeting_ledger,
+    )
+
+    base_dir = meeting_memory_base_dir(ctx.obj["config"], samples_dir)
+    resolved_session = _resolve_trigger_session_id(base_dir, profile, session_id)
+    path = meeting_transcript_path(base_dir, profile, resolved_session)
+    if not path.exists():
+        if not build_missing:
+            raise click.ClickException(f"Meeting memory ledger not found: {path}")
+        ledger, path, _ = _build_meeting_memory_ledger(
+            ctx,
+            profile=profile,
+            session_id=resolved_session,
+            samples_dir=samples_dir,
+            window_seconds=None,
+            retain_transcripts=None,
+        )
+    else:
+        ledger = load_meeting_ledger(path)
+    max_items = int(getattr(ctx.obj["config"].meeting_memory, "summary_max_items", 5) or 5)
+    rendered = render_meeting_summary(
+        summarize_meeting_ledger(ledger, max_items=max_items),
+        include_text=ledger.retain_transcripts,
+    )
+    if output:
+        out_path = Path(output).expanduser()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered, encoding="utf-8")
+        console.print(f"meeting summary: {out_path}")
+    else:
+        console.print(rendered)
+
+
+def _build_meeting_memory_ledger(
+    ctx,
+    *,
+    profile: str,
+    session_id: str,
+    samples_dir: str | None,
+    window_seconds: float | None,
+    retain_transcripts: bool | None,
+):
+    from saymo.analysis.meeting_memory import (
+        build_meeting_ledger_from_samples,
+        meeting_memory_base_dir,
+        write_meeting_ledger,
+    )
+    from saymo.analysis.trigger_sessions import list_trigger_sessions
+
+    config = ctx.obj["config"]
+    memory_cfg = config.meeting_memory
+    if not getattr(memory_cfg, "enabled", True):
+        raise click.ClickException("meeting_memory.enabled=false")
+    base_dir = meeting_memory_base_dir(config, samples_dir)
+    resolved_session = _resolve_trigger_session_id(base_dir, profile, session_id)
+    sessions = [
+        session
+        for session in list_trigger_sessions(base_dir, profile=profile)
+        if session.session_id == resolved_session
+    ]
+    resolved_window = (
+        float(window_seconds)
+        if window_seconds is not None
+        else float(getattr(memory_cfg, "default_window_seconds", 8.0) or 8.0)
+    )
+    retain = (
+        bool(retain_transcripts)
+        if retain_transcripts is not None
+        else bool(getattr(memory_cfg, "retain_transcripts", True))
+    )
+    ledger = build_meeting_ledger_from_samples(
+        base_dir=base_dir,
+        profile=profile,
+        session_id=resolved_session,
+        session=sessions[0] if sessions else None,
+        window_seconds=resolved_window,
+        retain_transcripts=retain,
+    )
+    if not ledger.segments:
+        raise click.ClickException(f"No transcript samples found for session: {resolved_session}")
+    path = write_meeting_ledger(base_dir, ledger)
+    return ledger, path, base_dir
+
+
 @main.group("trigger-classifier")
 def trigger_classifier():
     """Train, inspect, and delete the local trigger classifier."""
