@@ -13,23 +13,24 @@ cloud voice APIs.
 Saymo must reliably catch when the user is expected to answer and respond fast
 enough that the call still feels live.
 
-## Current State
+## Current Milestone: v1.2 Trigger Training Console
 
-**Shipped milestones:**
+**Goal:** Turn recorded call samples into a practical local training loop for
+reviewing, correcting, and safely promoting trigger decisions.
 
-- v1.0 Speedly Catcher + Speedly Sayer — shipped 2026-05-15.
-- v1.1 Call Intelligence Loop — shipped 2026-05-18, archived 2026-05-19.
+**Status:** Defining requirements on 2026-05-20.
 
-Saymo now has local trigger diagnostics, sample capture/review, speaker-aware
-sample evaluation, mention-vs-handoff sample categories, local classifier
-shadow diagnostics, and provider latency history. No active milestone is
-currently defined.
+**Target features:**
+- Capture sessions: named recording runs with summaries of what was captured.
+- Review and relabel workflow: bulk list/filter/replay/correct sample category,
+  speaker, and answer-decision labels without editing JSON manually.
+- Classifier readiness gate: local quality checks and per-profile guardrails
+  before any learned classifier can assist live auto-mode.
 
 ## Next Milestone Goals
 
-The next milestone is not defined yet. Candidate directions from deferred scope:
+Deferred candidate directions remain:
 - make local diarization a first-class optional component;
-- enable the trained classifier in live auto-mode after enough shadow evidence;
 - add provider-specific UI regression checks for call-provider web app changes.
 
 ## Requirements
@@ -53,6 +54,16 @@ The next milestone is not defined yet. Candidate directions from deferred scope:
   `asked_to_speak` sample categories.
 - ✓ Active-call provider probes can report segmented latency and export local
   JSON/Markdown history by profile/provider.
+
+### Active
+
+- User can treat one live recording run as a named training session and review
+  its saved samples together.
+- User can correct category, speaker, and answer-decision labels in bulk from
+  CLI review commands.
+- User can see whether the local classifier has enough balanced evidence to be
+  trusted as a live-call assist, while deterministic gating remains the safety
+  boundary.
 
 ### Out of Scope
 
@@ -97,6 +108,7 @@ The next milestone is not defined yet. Candidate directions from deferred scope:
 | Run classifier in shadow mode before enabling it | Protect live calls from unproven learned behavior | ✓ Implemented in Phase 6 |
 | Separate name mentions from handoffs deterministically | Plain mentions should train/tune differently from moments where Saymo should answer | ✓ Implemented after real sample review |
 | Measure providers through the existing abstraction | Keep provider latency work scoped to Chrome call automation, not UI redesign | ✓ Implemented in Phase 7 |
+| Require a readiness gate before live classifier assist | Learned behavior should be opt-in and evidence-backed per profile | Pending in v1.2 |
 
 ---
-*Last updated: 2026-05-19 after archiving milestone v1.1*
+*Last updated: 2026-05-20 after starting milestone v1.2 Trigger Training Console*

@@ -2,27 +2,28 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-18)
+See: .planning/PROJECT.md (updated 2026-05-20)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** No active milestone
+**Current focus:** Milestone v1.2 Trigger Training Console
 
 ## Current Position
 
-Phase: —
+Phase: Not started (defining requirements)
 Plan: —
-Status: Archived
-Last activity: 2026-05-19 — Archived milestone v1.1 Call Intelligence Loop
+Status: Defining requirements
+Last activity: 2026-05-20 — Started milestone v1.2 Trigger Training Console
 
-Progress: [██████████] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans completed: 9
-- Average duration: autonomous batch
-- Total execution time: one autonomous session
+- Total plans planned: 11
+- Plans completed: 0
+- Average duration: pending
+- Total execution time: pending
 
 **Historical Velocity:**
 - v1.0 completed 11 plans across 4 phases in one autonomous batch.
@@ -31,13 +32,13 @@ Progress: [██████████] 100%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 5. Speaker-Aware Sample Loop | 3 | 3/3 | autonomous |
-| 6. Local Trigger Classifier | 3 | 3/3 | autonomous |
-| 7. Provider Latency Probe | 3 | 3/3 | autonomous |
+| 8. Capture Session Ledger | 3 | 0/3 | pending |
+| 9. Review And Relabel Workflow | 4 | 0/4 | pending |
+| 10. Classifier Readiness Gate | 4 | 0/4 | pending |
 
 **Recent Trend:**
-- Last 5 plans: 06-02, 06-03, 07-01, 07-02, 07-03
-- Trend: milestone complete
+- Last completed plans: 06-03, 07-01, 07-02, 07-03, v1.1 archive
+- Trend: new milestone defining requirements
 
 ## Accumulated Context
 
@@ -72,7 +73,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Start the next milestone with `$gsd-new-milestone`.
+Plan Phase 8 with `$gsd-plan-phase 08`.
 
 ### Blockers/Concerns
 
@@ -84,9 +85,11 @@ Start the next milestone with `$gsd-new-milestone`.
 - Mention-vs-handoff heuristics need continued review against real saved
   samples before they should become learned live behavior.
 - Provider latency history is only meaningful after probing real active calls.
+- v1.2 live-assist scope must keep deterministic trigger/addressing checks as
+  the safety boundary.
 
 ## Session Continuity
 
-Last session: 2026-05-18
-Stopped at: v1.1 archived; next step is `$gsd-new-milestone`.
+Last session: 2026-05-20
+Stopped at: v1.2 milestone defined; next step is `$gsd-plan-phase 08`.
 Resume file: None

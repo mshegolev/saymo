@@ -2,9 +2,19 @@
 
 ## Current
 
-No active milestone.
+### v1.2 Trigger Training Console
 
-Next step: run `$gsd-new-milestone` to define the next milestone.
+**Started:** 2026-05-20
+**Status:** Planned
+
+Focus: turn recorded call samples into a practical local loop for session
+review, relabeling, and safe classifier promotion.
+
+Target:
+- Named capture sessions with local summaries.
+- CLI review/relabel workflow for sample category, speaker, and answer
+  decisions.
+- Classifier readiness checks and guarded per-profile live-assist setup.
 
 ## Completed
 
