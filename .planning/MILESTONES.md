@@ -5,11 +5,17 @@
 ### v1.4 Live Conversation Memory + Answer Cockpit
 
 **Started:** 2026-05-20
-**Status:** Planning
+**Status:** Roadmap ready
 
 Focus: turn recorded and live call context into local meeting memory plus an
 explicit answer cockpit, so Saymo can show why it thinks the user was addressed,
 draft a source-grounded answer, and wait for speak/edit/skip/takeover approval.
+
+Planned phases:
+- Phase 14: Meeting Memory Ledger
+- Phase 15: Meeting Ask And Search
+- Phase 16: Grounded Answer Drafts
+- Phase 17: Answer Cockpit And Audit Trail
 
 ## Completed
 

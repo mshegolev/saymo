@@ -96,25 +96,25 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MEM-01 | Pending roadmap | Pending |
-| MEM-02 | Pending roadmap | Pending |
-| MEM-03 | Pending roadmap | Pending |
-| ASK-01 | Pending roadmap | Pending |
-| ASK-02 | Pending roadmap | Pending |
-| ASK-03 | Pending roadmap | Pending |
-| ANS-01 | Pending roadmap | Pending |
-| ANS-02 | Pending roadmap | Pending |
-| ANS-03 | Pending roadmap | Pending |
-| COCK-01 | Pending roadmap | Pending |
-| COCK-02 | Pending roadmap | Pending |
-| AUD-01 | Pending roadmap | Pending |
-| AUD-02 | Pending roadmap | Pending |
+| MEM-01 | Phase 14 | Pending |
+| MEM-02 | Phase 14 | Pending |
+| MEM-03 | Phase 14 | Pending |
+| ASK-01 | Phase 15 | Pending |
+| ASK-02 | Phase 15 | Pending |
+| ASK-03 | Phase 15 | Pending |
+| ANS-01 | Phase 16 | Pending |
+| ANS-02 | Phase 16 | Pending |
+| ANS-03 | Phase 16 | Pending |
+| COCK-01 | Phase 17 | Pending |
+| COCK-02 | Phase 17 | Pending |
+| AUD-01 | Phase 17 | Pending |
+| AUD-02 | Phase 17 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after initial definition*
+*Last updated: 2026-05-20 after roadmap creation*
