@@ -300,13 +300,19 @@ Review and tune the saved windows locally:
 ```bash
 saymo trigger-sessions list -p personal
 saymo trigger-sessions summary -p personal --session daily-2026-05-20
-saymo trigger-samples list -p personal
+saymo trigger-samples list -p personal --session daily-2026-05-20 --speaker other
+saymo trigger-samples list -p personal --classifier-disagreement --model-dir ~/.saymo/models/trigger_classifier
 saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
 saymo trigger-samples decision ~/.saymo/trigger_samples/personal/question/<sample>.json --decision rejected
+saymo trigger-samples category ~/.saymo/trigger_samples/personal/question/<sample>.json --category mentioned_me
+saymo trigger-samples review -p personal --session daily-2026-05-20
 saymo trigger-samples replay ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
 saymo trigger-eval -p personal
 saymo trigger-eval -p personal --promote ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
 saymo trigger-classifier train -p personal
+saymo trigger-classifier readiness -p personal
+saymo trigger-classifier evaluate -p personal
+saymo trigger-classifier live-assist status -p personal
 saymo trigger-classifier inspect -p personal
 saymo trigger-eval -p personal --classifier-shadow
 saymo trigger-classifier delete -p personal --yes
@@ -330,6 +336,11 @@ text.
 `trigger-sessions list` shows one row per capture run with saved-sample counts,
 skipped silence windows, and a basic readiness hint. `trigger-sessions summary`
 prints category, speaker, and answer-decision counts for one meeting session.
+Use `trigger-samples category` when the automatic bucket is wrong, and
+`trigger-samples review` when you want to walk a filtered queue after a call.
+`trigger-classifier readiness` and `evaluate` must look healthy before enabling
+live assist; live assist can only downgrade an already deterministic answer
+candidate to skip, not bypass trigger/addressing checks.
 
 ### Measure call provider latency
 

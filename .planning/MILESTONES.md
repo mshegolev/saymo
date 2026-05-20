@@ -5,7 +5,8 @@
 ### v1.2 Trigger Training Console
 
 **Started:** 2026-05-20
-**Status:** In progress - Phase 8 complete
+**Completed:** 2026-05-20
+**Status:** Implementation complete - ready for archive
 
 Focus: turn recorded call samples into a practical local loop for session
 review, relabeling, and safe classifier promotion.
@@ -13,8 +14,8 @@ review, relabeling, and safe classifier promotion.
 Target:
 - Named capture sessions with local summaries. (done)
 - CLI review/relabel workflow for sample category, speaker, and answer
-  decisions.
-- Classifier readiness checks and guarded per-profile live-assist setup.
+  decisions. (done)
+- Classifier readiness checks and guarded per-profile live-assist setup. (done)
 
 ## Completed
 
