@@ -2306,14 +2306,16 @@ def meeting_memory_build(ctx, profile, session_id, samples_dir, window_seconds, 
 )
 @click.option("--build-missing", is_flag=True, help="Build the transcript ledger if it is missing")
 @click.option("--output", "-o", default=None, type=click.Path(), help="Markdown output path")
+@click.option("--sanitized", is_flag=True, help="Export sanitized summary output")
 @click.pass_context
-def meeting_summary(ctx, profile, session_id, samples_dir, build_missing, output):
+def meeting_summary(ctx, profile, session_id, samples_dir, build_missing, output, sanitized):
     """Show a concise local full-session meeting summary."""
     from saymo.analysis.meeting_memory import (
         load_meeting_ledger,
         meeting_memory_base_dir,
         meeting_transcript_path,
         render_meeting_summary,
+        render_sanitized_meeting_export,
         summarize_meeting_ledger,
     )
 
@@ -2334,10 +2336,13 @@ def meeting_summary(ctx, profile, session_id, samples_dir, build_missing, output
     else:
         ledger = load_meeting_ledger(path)
     max_items = int(getattr(ctx.obj["config"].meeting_memory, "summary_max_items", 5) or 5)
-    rendered = render_meeting_summary(
-        summarize_meeting_ledger(ledger, max_items=max_items),
-        include_text=ledger.retain_transcripts,
-    )
+    if sanitized:
+        rendered = render_sanitized_meeting_export(ledger)
+    else:
+        rendered = render_meeting_summary(
+            summarize_meeting_ledger(ledger, max_items=max_items),
+            include_text=ledger.retain_transcripts,
+        )
     if output:
         out_path = Path(output).expanduser()
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2345,6 +2350,90 @@ def meeting_summary(ctx, profile, session_id, samples_dir, build_missing, output
         console.print(f"meeting summary: {out_path}")
     else:
         console.print(rendered)
+
+
+@main.command("meeting-search")
+@click.option("--profile", "-p", default=None, help="Profile to search")
+@click.option("--session", "session_id", default=None, help="Session id/prefix to search")
+@click.option("--keyword", "-k", default=None, help="Keyword or phrase to search")
+@click.option("--speaker", default=None, type=click.Choice(_SPEAKER_LABELS), help="Speaker label filter")
+@click.option("--category", default=None, help="Trigger category filter")
+@click.option("--date-from", default=None, help="Minimum segment created_at value")
+@click.option("--date-to", default=None, help="Maximum segment created_at value")
+@click.option("--limit", default=20, type=click.IntRange(min=1), show_default=True)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to meeting_memory.base_dir or ~/.saymo/trigger_samples",
+)
+@click.pass_context
+def meeting_search(ctx, profile, session_id, keyword, speaker, category, date_from, date_to, limit, samples_dir):
+    """Search local meeting-memory transcript ledgers."""
+    from saymo.analysis.meeting_memory import (
+        MeetingSearchFilters,
+        meeting_memory_base_dir,
+        render_meeting_search_results,
+        search_meeting_memory,
+    )
+
+    base_dir = meeting_memory_base_dir(ctx.obj["config"], samples_dir)
+    filters = MeetingSearchFilters(
+        profile=profile,
+        session_id=session_id,
+        date_from=date_from,
+        date_to=date_to,
+        speaker=speaker,
+        category=category,
+        keyword=keyword,
+    )
+    results = search_meeting_memory(base_dir, filters, limit=limit)
+    console.print(f"matches: {len(results)}")
+    rendered = render_meeting_search_results(results)
+    if rendered:
+        console.print(rendered)
+
+
+@main.command("meeting-ask")
+@click.argument("question")
+@click.option("--profile", "-p", default=None, help="Profile to search")
+@click.option("--session", "session_id", default=None, help="Session id/prefix to search")
+@click.option("--speaker", default=None, type=click.Choice(_SPEAKER_LABELS), help="Speaker label filter")
+@click.option("--category", default=None, help="Trigger category filter")
+@click.option("--date-from", default=None, help="Minimum segment created_at value")
+@click.option("--date-to", default=None, help="Maximum segment created_at value")
+@click.option("--max-citations", default=5, type=click.IntRange(min=1), show_default=True)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to meeting_memory.base_dir or ~/.saymo/trigger_samples",
+)
+@click.pass_context
+def meeting_ask(ctx, question, profile, session_id, speaker, category, date_from, date_to, max_citations, samples_dir):
+    """Ask a question about local meeting-memory transcripts."""
+    from saymo.analysis.meeting_memory import (
+        MeetingSearchFilters,
+        answer_meeting_question,
+        meeting_memory_base_dir,
+        render_meeting_ask_answer,
+    )
+
+    base_dir = meeting_memory_base_dir(ctx.obj["config"], samples_dir)
+    answer = answer_meeting_question(
+        question,
+        base_dir=base_dir,
+        filters=MeetingSearchFilters(
+            profile=profile,
+            session_id=session_id,
+            date_from=date_from,
+            date_to=date_to,
+            speaker=speaker,
+            category=category,
+        ),
+        max_citations=max_citations,
+    )
+    console.print(render_meeting_ask_answer(answer))
 
 
 def _build_meeting_memory_ledger(

@@ -71,6 +71,47 @@ class MeetingMemorySummary:
     action_items: tuple[TranscriptSegment, ...]
 
 
+@dataclass(frozen=True)
+class MeetingSearchFilters:
+    """Filters for local meeting-memory search."""
+
+    profile: str | None = None
+    session_id: str | None = None
+    date_from: str | None = None
+    date_to: str | None = None
+    speaker: str | None = None
+    category: str | None = None
+    keyword: str | None = None
+
+
+@dataclass(frozen=True)
+class MeetingSearchResult:
+    """One cited meeting-memory search hit."""
+
+    profile: str
+    session_id: str
+    session_name: str
+    sequence: int
+    start_seconds: float
+    end_seconds: float
+    speaker: str
+    category: str
+    created_at: str
+    transcript: str
+    citation: str
+    score: float
+
+
+@dataclass(frozen=True)
+class MeetingAskAnswer:
+    """Deterministic answer to a question with transcript citations."""
+
+    question: str
+    answer: str
+    citations: tuple[MeetingSearchResult, ...]
+    insufficient_evidence: bool = False
+
+
 def meeting_memory_base_dir(config=None, samples_dir: str | None = None) -> Path:
     """Resolve the base directory for local meeting memory/session files."""
     if samples_dir:
@@ -155,6 +196,26 @@ def load_meeting_ledger(path: Path) -> MeetingMemoryLedger:
         segments=segments,
         path=Path(path),
     )
+
+
+def list_meeting_ledgers(
+    base_dir: Path,
+    *,
+    profile: str | None = None,
+) -> tuple[MeetingMemoryLedger, ...]:
+    """Load local meeting-memory ledgers, newest first."""
+    root = Path(base_dir).expanduser()
+    if profile:
+        paths = sorted((root / profile / SESSION_LEDGER_DIR).glob(f"*{MEMORY_LEDGER_SUFFIX}"))
+    else:
+        paths = sorted(root.glob(f"*/{SESSION_LEDGER_DIR}/*{MEMORY_LEDGER_SUFFIX}"))
+    ledgers: list[MeetingMemoryLedger] = []
+    for path in paths:
+        try:
+            ledgers.append(load_meeting_ledger(path))
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            continue
+    return tuple(sorted(ledgers, key=lambda item: (item.updated_at, item.session_id), reverse=True))
 
 
 def build_meeting_ledger_from_samples(
@@ -314,6 +375,183 @@ def render_meeting_summary(summary: MeetingMemorySummary, *, include_text: bool 
     return "\n".join(lines).rstrip() + "\n"
 
 
+def search_meeting_memory(
+    base_dir: Path,
+    filters: MeetingSearchFilters,
+    *,
+    limit: int = 20,
+) -> tuple[MeetingSearchResult, ...]:
+    """Search local meeting-memory ledgers with simple deterministic filters."""
+    terms = _keyword_terms(filters.keyword or "")
+    results: list[MeetingSearchResult] = []
+    for ledger in list_meeting_ledgers(base_dir, profile=filters.profile):
+        if filters.session_id and not (
+            ledger.session_id == filters.session_id
+            or ledger.session_id.startswith(filters.session_id)
+        ):
+            continue
+        for segment in ledger.segments:
+            if filters.date_from and segment.created_at and segment.created_at < filters.date_from:
+                continue
+            if filters.date_to and segment.created_at and segment.created_at > filters.date_to:
+                continue
+            if filters.speaker and segment.speaker != filters.speaker:
+                continue
+            if filters.category and segment.category != filters.category:
+                continue
+            text = segment.transcript or ""
+            if terms and not _segment_matches_terms(segment, terms):
+                continue
+            score = _segment_score(segment, terms)
+            results.append(
+                MeetingSearchResult(
+                    profile=ledger.profile,
+                    session_id=ledger.session_id,
+                    session_name=ledger.session_name,
+                    sequence=segment.sequence,
+                    start_seconds=segment.start_seconds,
+                    end_seconds=segment.end_seconds,
+                    speaker=segment.speaker,
+                    category=segment.category,
+                    created_at=segment.created_at,
+                    transcript=text,
+                    citation=_citation(ledger.session_id, segment),
+                    score=score,
+                )
+            )
+    results.sort(key=lambda item: (-item.score, item.created_at, item.session_id, item.sequence))
+    return tuple(results[: max(0, limit)])
+
+
+def answer_meeting_question(
+    question: str,
+    *,
+    base_dir: Path,
+    filters: MeetingSearchFilters,
+    max_citations: int = 5,
+) -> MeetingAskAnswer:
+    """Answer a meeting question with cited local transcript evidence."""
+    terms = _keyword_terms(question)
+    query = " ".join(terms) or question
+    results = search_meeting_memory(
+        base_dir,
+        MeetingSearchFilters(
+            profile=filters.profile,
+            session_id=filters.session_id,
+            date_from=filters.date_from,
+            date_to=filters.date_to,
+            speaker=filters.speaker,
+            category=filters.category,
+            keyword=query,
+        ),
+        limit=max_citations,
+    )
+    if not results and terms:
+        # Fall back to question/handoff windows from the selected scope.
+        fallback = []
+        for result in search_meeting_memory(
+            base_dir,
+            MeetingSearchFilters(
+                profile=filters.profile,
+                session_id=filters.session_id,
+                date_from=filters.date_from,
+                date_to=filters.date_to,
+                speaker=filters.speaker,
+            ),
+            limit=50,
+        ):
+            if result.category in {"asked_to_speak", "question"}:
+                fallback.append(result)
+        results = tuple(fallback[:max_citations])
+    if not results:
+        return MeetingAskAnswer(
+            question=question,
+            answer="Недостаточно данных в локальной памяти встречи, чтобы ответить с цитатами.",
+            citations=(),
+            insufficient_evidence=True,
+        )
+    evidence = "; ".join(
+        f"{_clip(result.transcript, 120)} [{result.citation}]"
+        for result in results
+        if result.transcript
+    )
+    if not evidence:
+        return MeetingAskAnswer(
+            question=question,
+            answer="Найдены только пустые фрагменты без текста; ответ с цитатами невозможен.",
+            citations=results,
+            insufficient_evidence=True,
+        )
+    return MeetingAskAnswer(
+        question=question,
+        answer=f"По найденным фрагментам: {evidence}",
+        citations=results,
+        insufficient_evidence=False,
+    )
+
+
+def render_meeting_search_results(results: Iterable[MeetingSearchResult]) -> str:
+    """Render search results as grep-friendly text."""
+    lines = []
+    for result in results:
+        lines.append(
+            f"{result.citation} profile={result.profile} speaker={result.speaker} "
+            f"category={result.category} score={result.score:.2f} "
+            f"text={_clip(result.transcript, 180)}"
+        )
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
+def render_meeting_ask_answer(answer: MeetingAskAnswer) -> str:
+    """Render a meeting ask answer and citations."""
+    lines = [
+        f"question: {answer.question}",
+        f"answer: {answer.answer}",
+        f"insufficient evidence: {'yes' if answer.insufficient_evidence else 'no'}",
+        "citations:",
+    ]
+    if answer.citations:
+        for result in answer.citations:
+            lines.append(
+                f"- {result.citation} speaker={result.speaker} "
+                f"category={result.category} text={_clip(result.transcript, 160)}"
+            )
+    else:
+        lines.append("- none")
+    return "\n".join(lines) + "\n"
+
+
+def render_sanitized_meeting_export(ledger: MeetingMemoryLedger) -> str:
+    """Render a sanitized markdown export for one local meeting session."""
+    summary = summarize_meeting_ledger(ledger)
+    lines = [
+        f"# Sanitized Meeting Export: {ledger.session_id}",
+        "",
+        f"- profile: {ledger.profile}",
+        f"- session name: {ledger.session_name}",
+        f"- segments: {summary.total_segments}",
+        f"- transcript segments: {summary.transcript_segments}",
+        f"- incomplete coverage: {summary.incomplete_segments}",
+        f"- categories: {_format_counts(summary.categories)}",
+        f"- speakers: {_format_counts(summary.speakers)}",
+        "",
+        "## Questions",
+    ]
+    lines.extend(_render_sanitized_segments(ledger.session_id, summary.questions))
+    lines.append("")
+    lines.append("## Handoffs")
+    lines.extend(_render_sanitized_segments(ledger.session_id, summary.handoffs))
+    lines.append("")
+    lines.append("## Action Items")
+    lines.extend(_render_sanitized_segments(ledger.session_id, summary.action_items))
+    lines.append("")
+    lines.append("## Sanitization")
+    lines.append("- raw audio: omitted")
+    lines.append("- source sample paths: omitted")
+    lines.append("- secrets and config values: omitted")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _render_segment_list(
     segments: Iterable[TranscriptSegment],
     *,
@@ -330,6 +568,76 @@ def _render_segment_list(
         else:
             rendered.append(prefix)
     return rendered or ["- none"]
+
+
+def _render_sanitized_segments(
+    session_id: str,
+    segments: Iterable[TranscriptSegment],
+) -> list[str]:
+    rendered = []
+    for segment in segments:
+        rendered.append(
+            f"- {_citation(session_id, segment)} "
+            f"speaker={segment.speaker} category={segment.category}: "
+            f"{_clip(segment.transcript, 160)}"
+        )
+    return rendered or ["- none"]
+
+
+def _citation(session_id: str, segment: TranscriptSegment) -> str:
+    return (
+        f"{session_id}#{segment.sequence}"
+        f"@{segment.start_seconds:.1f}-{segment.end_seconds:.1f}s"
+    )
+
+
+def _keyword_terms(text: str) -> tuple[str, ...]:
+    raw = re.findall(r"[\wа-яА-ЯёЁ]+", (text or "").lower(), flags=re.UNICODE)
+    stop = {
+        "и",
+        "в",
+        "на",
+        "по",
+        "что",
+        "как",
+        "это",
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "to",
+        "of",
+        "is",
+        "are",
+        "you",
+        "can",
+    }
+    return tuple(term for term in raw if len(term) > 2 and term not in stop)
+
+
+def _segment_matches_terms(segment: TranscriptSegment, terms: tuple[str, ...]) -> bool:
+    haystack = " ".join(
+        [
+            segment.transcript,
+            segment.category,
+            segment.speaker,
+            segment.addressing,
+            segment.reason,
+        ]
+    ).lower()
+    return all(term in haystack for term in terms)
+
+
+def _segment_score(segment: TranscriptSegment, terms: tuple[str, ...]) -> float:
+    text = segment.transcript.lower()
+    score = segment.confidence
+    score += sum(text.count(term) for term in terms)
+    if segment.question:
+        score += 0.5
+    if segment.will_answer or segment.category == "asked_to_speak":
+        score += 0.75
+    return score
 
 
 def _format_counts(counts: Mapping[str, int]) -> str:

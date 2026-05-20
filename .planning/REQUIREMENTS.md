@@ -21,11 +21,11 @@ Requirements for milestone v1.4 Live Conversation Memory + Answer Cockpit.
 
 ### Meeting Ask And Search
 
-- [ ] **ASK-01**: User can search local meeting sessions by profile, session id,
+- [x] **ASK-01**: User can search local meeting sessions by profile, session id,
   date range, speaker label, trigger category, and keyword.
-- [ ] **ASK-02**: User can ask a question about the current or selected past
+- [x] **ASK-02**: User can ask a question about the current or selected past
   session and get an answer with citations to transcript segments.
-- [ ] **ASK-03**: User can export a sanitized session summary that omits raw
+- [x] **ASK-03**: User can export a sanitized session summary that omits raw
   audio, secrets, and private configuration values.
 
 ### Grounded Answer Drafts
@@ -99,9 +99,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEM-01 | Phase 14 | Complete |
 | MEM-02 | Phase 14 | Complete |
 | MEM-03 | Phase 14 | Complete |
-| ASK-01 | Phase 15 | Pending |
-| ASK-02 | Phase 15 | Pending |
-| ASK-03 | Phase 15 | Pending |
+| ASK-01 | Phase 15 | Complete |
+| ASK-02 | Phase 15 | Complete |
+| ASK-03 | Phase 15 | Complete |
 | ANS-01 | Phase 16 | Pending |
 | ANS-02 | Phase 16 | Pending |
 | ANS-03 | Phase 16 | Pending |
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after completing Phase 14*
+*Last updated: 2026-05-20 after completing Phase 15*

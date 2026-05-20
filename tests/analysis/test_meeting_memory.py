@@ -3,9 +3,13 @@
 import json
 
 from saymo.analysis.meeting_memory import (
+    MeetingSearchFilters,
+    answer_meeting_question,
     build_meeting_ledger_from_samples,
     load_meeting_ledger,
     meeting_transcript_path,
+    render_sanitized_meeting_export,
+    search_meeting_memory,
     render_meeting_summary,
     summarize_meeting_ledger,
     write_meeting_ledger,
@@ -137,3 +141,81 @@ def test_meeting_summary_counts_questions_handoffs_and_actions(tmp_path):
     assert summary.action_items[0].sequence == 2
     assert "incomplete coverage: 0" in rendered
     assert "John, can you share the status?" in rendered
+
+
+def test_search_meeting_memory_filters_by_keyword_and_speaker(tmp_path):
+    _write_sample(
+        tmp_path,
+        sequence=1,
+        speaker="other",
+        transcript="John, what is the release status?",
+    )
+    _write_sample(
+        tmp_path,
+        sequence=2,
+        speaker="me",
+        category="speech",
+        transcript="I will check logs today",
+        trigger=False,
+        question=False,
+        will_answer=False,
+    )
+    ledger = build_meeting_ledger_from_samples(
+        base_dir=tmp_path,
+        profile="daily",
+        session_id="daily-20260520-100000",
+    )
+    write_meeting_ledger(tmp_path, ledger)
+
+    results = search_meeting_memory(
+        tmp_path,
+        MeetingSearchFilters(profile="daily", keyword="release status", speaker="other"),
+    )
+
+    assert len(results) == 1
+    assert results[0].citation == "daily-20260520-100000#1@0.0-8.0s"
+    assert "release status" in results[0].transcript
+
+
+def test_answer_meeting_question_returns_cited_evidence(tmp_path):
+    _write_sample(
+        tmp_path,
+        sequence=1,
+        transcript="John, can you share the release status?",
+    )
+    ledger = build_meeting_ledger_from_samples(
+        base_dir=tmp_path,
+        profile="daily",
+        session_id="daily-20260520-100000",
+    )
+    write_meeting_ledger(tmp_path, ledger)
+
+    answer = answer_meeting_question(
+        "What is the release status?",
+        base_dir=tmp_path,
+        filters=MeetingSearchFilters(profile="daily"),
+    )
+
+    assert answer.insufficient_evidence is False
+    assert answer.citations[0].citation == "daily-20260520-100000#1@0.0-8.0s"
+    assert "release status" in answer.answer
+
+
+def test_render_sanitized_export_omits_source_windows_and_audio_names(tmp_path):
+    _write_sample(
+        tmp_path,
+        sequence=1,
+        transcript="John, can you share the status?",
+    )
+    ledger = build_meeting_ledger_from_samples(
+        base_dir=tmp_path,
+        profile="daily",
+        session_id="daily-20260520-100000",
+    )
+
+    rendered = render_sanitized_meeting_export(ledger)
+
+    assert "sample-1.wav" not in rendered
+    assert "sample-1.json" not in rendered
+    assert "raw audio: omitted" in rendered
+    assert "daily-20260520-100000#1@0.0-8.0s" in rendered

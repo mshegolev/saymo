@@ -32,7 +32,7 @@ cockpit action gate before live speech.
 
 - [x] **Phase 14: Meeting Memory Ledger** - Save full-session transcript
   ledgers and summaries for recorded call sessions.
-- [ ] **Phase 15: Meeting Ask And Search** - Search local sessions and answer
+- [x] **Phase 15: Meeting Ask And Search** - Search local sessions and answer
   questions with transcript citations.
 - [ ] **Phase 16: Grounded Answer Drafts** - Generate source-backed drafts from
   meeting memory and configured context sources.
@@ -78,9 +78,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 15-01: Add local meeting search filters and result rendering
-- [ ] 15-02: Add cited meeting-ask command and retrieval flow
-- [ ] 15-03: Add sanitized summary export and edge-case diagnostics
+- [x] 15-01: Add local meeting search filters and result rendering
+- [x] 15-02: Add cited meeting-ask command and retrieval flow
+- [x] 15-03: Add sanitized summary export and edge-case diagnostics
 
 ### Phase 16: Grounded Answer Drafts
 **Goal**: Draft answers for addressed-question events using cited meeting memory and configured source-plugin context.
@@ -131,7 +131,7 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 14. Meeting Memory Ledger | v1.4 | 4/4 | Complete | 2026-05-20 |
-| 15. Meeting Ask And Search | v1.4 | 0/3 | Not Started | — |
+| 15. Meeting Ask And Search | v1.4 | 3/3 | Complete | 2026-05-20 |
 | 16. Grounded Answer Drafts | v1.4 | 0/4 | Not Started | — |
 | 17. Answer Cockpit And Audit Trail | v1.4 | 0/4 | Not Started | — |
 

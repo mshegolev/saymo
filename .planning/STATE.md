@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: Live Conversation Memory + Answer Cockpit
 status: Roadmap ready
-stopped_at: Phase 14 complete; next step is Phase 15 Meeting Ask And Search.
+stopped_at: Phase 15 complete; next step is Phase 16 Grounded Answer Drafts.
 last_updated: "2026-05-20"
-last_activity: "2026-05-20 - completed Phase 14 Meeting Memory Ledger"
+last_activity: "2026-05-20 - completed Phase 15 Meeting Ask And Search"
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 15
-  completed_plans: 4
-  percent: 25
+  completed_plans: 7
+  percent: 50
 ---
 
 # Project State
@@ -26,19 +26,19 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 15 Meeting Ask And Search
+Phase: 16 Grounded Answer Drafts
 Plan: —
-Status: Ready to plan Phase 15
-Last activity: 2026-05-20 - Phase 14 added transcript ledgers, retention
-config, local path diagnostics, and session summary output.
+Status: Ready to plan Phase 16
+Last activity: 2026-05-20 - Phase 15 added local meeting search,
+cited meeting ask, and sanitized summary export.
 
-Progress: [###-------] 25%
+Progress: [#####-----] 50%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 15
-- Plans completed: 4
+- Plans completed: 7
 - Average duration: pending
 - Total execution time: pending
 
@@ -53,7 +53,7 @@ Progress: [###-------] 25%
 | Phase | Plans | Total | Status |
 |-------|-------|-------|--------|
 | 14. Meeting Memory Ledger | 4 | 4/4 | complete |
-| 15. Meeting Ask And Search | 3 | 0/3 | not started |
+| 15. Meeting Ask And Search | 3 | 3/3 | complete |
 | 16. Grounded Answer Drafts | 4 | 0/4 | not started |
 | 17. Answer Cockpit And Audit Trail | 4 | 0/4 | not started |
 
@@ -81,8 +81,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Start Phase 15 planning for local meeting search, cited meeting ask, and
-  sanitized session export.
+- Start Phase 16 planning for grounded answer drafts using meeting memory plus
+  configured source plugins.
 
 ### Blockers/Concerns
 
@@ -100,5 +100,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-05-20
-Stopped at: Phase 14 complete; next step is Phase 15.
+Stopped at: Phase 15 complete; next step is Phase 16.
 Resume file: None

@@ -134,3 +134,114 @@ def test_meeting_summary_build_missing_outputs_questions(tmp_path):
     assert "John, can you share the" in result.output
     assert "status?" in result.output
     assert "incomplete coverage: 0" in result.output
+
+
+def test_meeting_search_command_outputs_citations(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir, session = _session_with_sample(tmp_path)
+    runner = CliRunner()
+    runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "meeting-memory",
+            "build",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "meeting-search",
+            "-p",
+            "daily",
+            "--keyword",
+            "status",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "matches: 1" in result.output
+    assert f"{session.session_id}#1@0.0-8.0s" in result.output
+
+
+def test_meeting_ask_command_outputs_answer_and_citations(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir, session = _session_with_sample(tmp_path)
+    runner = CliRunner()
+    runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "meeting-memory",
+            "build",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "meeting-ask",
+            "What is the status?",
+            "-p",
+            "daily",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "insufficient evidence: no" in result.output
+    assert f"{session.session_id}#1@0.0-8.0s" in result.output
+
+
+def test_meeting_summary_sanitized_export_omits_audio_names(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir, session = _session_with_sample(tmp_path)
+    output_path = tmp_path / "summary.md"
+    runner = CliRunner()
+
+    result = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "meeting-summary",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--samples-dir",
+            str(samples_dir),
+            "--build-missing",
+            "--sanitized",
+            "-o",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    rendered = output_path.read_text(encoding="utf-8")
+    assert "raw audio: omitted" in rendered
+    assert "sample-1.wav" not in rendered
+    assert "sample-1.json" not in rendered
