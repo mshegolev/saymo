@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: null
+milestone_name: null
+status: v1.2 archived; no active milestone
+stopped_at: v1.2 Trigger Training Console archived; next step is new milestone planning.
+last_updated: "2026-05-20"
+last_activity: "2026-05-20 — v1.2 milestone archived and ready for next cycle"
+progress:
+  total_phases: 3
+  completed_phases: 3
+  total_plans: 11
+  completed_plans: 11
+  percent: 100
+---
+
 # Project State
 
 ## Project Reference
@@ -6,91 +22,83 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Milestone v1.2 Trigger Training Console
+**Current focus:** Planning the next milestone after v1.2 archive.
 
 ## Current Position
 
-Phase: 10 — Classifier Readiness Gate
+Phase: —
 Plan: —
-Status: v1.2 implementation merged; milestone audit/archive is next
-Last activity: 2026-05-20 — PR #26 merged to main and post-merge CI passed
+Status: v1.2 Trigger Training Console archived; no active roadmap phase.
+Last activity: 2026-05-20 — milestone archive created, requirements archived,
+and roadmap collapsed to completed milestones.
 
-Progress: [##########] 100%
+Progress: [##########] 100% for v1.2
 
 ## Performance Metrics
 
-**Current Milestone Velocity:**
-- Total plans planned: 11
-- Plans completed: 11
-- Average duration: pending
-- Total execution time: pending
+**Most Recent Milestone:**
+- v1.2 Trigger Training Console: 3 phases, 11 plans, 11 requirements complete.
+- Git range reviewed: 3319ffc through 112e7d1.
+- Focused verification: 50 trigger review/readiness/classifier tests passed
+  after implementation and audit updates.
 
 **Historical Velocity:**
 - v1.0 completed 11 plans across 4 phases in one autonomous batch.
+- v1.1 completed 9 plans across 3 phases.
+- v1.2 completed 11 plans across 3 phases.
 
 **By Phase:**
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 8. Capture Session Ledger | 3 | 3/3 | complete |
-| 9. Review And Relabel Workflow | 4 | 4/4 | complete |
-| 10. Classifier Readiness Gate | 4 | 4/4 | complete |
+| Phase | Plans | Total | Status |
+|-------|-------|-------|--------|
+| 8. Capture Session Ledger | 3 | 3/3 | archived |
+| 9. Review And Relabel Workflow | 4 | 4/4 | archived |
+| 10. Classifier Readiness Gate | 4 | 4/4 | archived |
 
 **Recent Trend:**
-- Last completed plans: 09-01, 09-02, 09-03, 09-04, 10-01, 10-02, 10-03, 10-04
-- Trend: v1.2 implementation complete and merged; next step is milestone
-  archive/audit.
+- v1.2 moved trigger training from raw recorded samples to session-aware review,
+  relabeling, readiness evaluation, and guarded live assist.
+- Next roadmap work should be chosen from deferred product directions rather
+  than continuing an already completed phase.
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+Recent decisions affecting future work:
 
-- v1.0: Separate Speedly Catcher work from Speedly Sayer work so latency and
-  quality regressions can be isolated.
-- v1.0: Use captured call windows as the tuning substrate before adding any
-  custom classifier.
-- v1.0: Keep the sample report sanitized by omitting transcript text and raw
-  audio payloads while still listing sample basenames and classification flags.
-- v1.0: Treat response cache coverage as a preflight warning, not a hard block,
-  because prepared standup fallback remains valid.
 - v1.1: Use local speaker-label sidecars before requiring any diarization
   engine.
 - v1.1: Keep learned trigger classifier behavior in shadow mode until there is
   enough accepted/rejected sample evidence.
 - v1.1: Measure provider latency through existing provider abstractions instead
   of redesigning provider UI automation.
-- v1.1 Phase 5: Speaker labels are stored in sample JSON metadata and restricted
-  to `me`, `other`, and `unknown`.
-- v1.1 Phase 6: Answer-decision labels are stored as `answer_decision`, and the
-  local classifier remains shadow-only until enough evidence supports enabling
-  it in live auto-mode.
-- v1.1 refinement: plain name mentions are classified as `mentioned_me`, while
-  direct questions and floor handoffs remain `asked_to_speak`.
-- v1.1 Phase 7: Provider latency probes use existing Chrome provider
-  abstractions and write JSON/Markdown history by profile/provider.
+- v1.2: Treat capture runs as named local sessions so training samples can be
+  reviewed in meeting context.
+- v1.2: Keep review/relabel workflows local and CLI-first to avoid manual JSON
+  edits.
+- v1.2: Require readiness gates and trained model fingerprints before enabling
+  per-profile live assist.
+- v1.2: Keep deterministic trigger/addressing checks as the live-call safety
+  boundary; learned assist can only downgrade an answer candidate.
 
 ### Pending Todos
 
-Archive milestone v1.2 after audit artifacts and documentation are current.
+Start the next milestone with `$gsd-new-milestone` and define fresh
+requirements before adding more phases.
 
 ### Blockers/Concerns
 
 - Need enough real captured samples in `~/.saymo/trigger_samples/` to make
-  speaker-aware evaluation and classifier training meaningful.
-- Local diarization remains optional; v1.1 must work without it.
-- Classifier quality depends on accepted/rejected labels; low-label training is
-  intentionally refused.
-- Mention-vs-handoff heuristics need continued review against real saved
-  samples before they should become learned live behavior.
-- Provider latency history is only meaningful after probing real active calls.
-- v1.2 live-assist scope must keep deterministic trigger/addressing checks as
-  the safety boundary.
+  classifier readiness and live-assist evaluation meaningful.
+- Fully local diarization remains optional and deferred.
+- Provider UI regression checks remain a candidate for a future milestone.
+- Voice-clone training from call recordings remains out of scope for trigger
+  training data.
 
 ## Session Continuity
 
 Last session: 2026-05-20
-Stopped at: v1.2 implementation merged; next step is milestone archive/audit.
+Stopped at: v1.2 archived; ready to start the next milestone.
 Resume file: None

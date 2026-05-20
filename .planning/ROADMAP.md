@@ -2,103 +2,28 @@
 
 ## Overview
 
-Milestone v1.2 focuses on the Trigger Training Console: turning recorded
-call samples into a practical local loop for session review, relabeling, and
-safe classifier promotion.
+No active milestone is currently open. Milestone v1.2 shipped the Trigger
+Training Console and was archived on 2026-05-20. Start the next cycle with
+`$gsd-new-milestone` to define fresh requirements and phases.
 
 ## Completed Milestones
 
-- ✅ **v1.0 Speedly Catcher + Speedly Sayer** - Phases 1-4 complete.
-- ✅ **v1.1 Call Intelligence Loop** - Phases 5-7 complete.
+- ✅ **v1.0 Speedly Catcher + Speedly Sayer** - Phases 1-4 shipped
+  2026-05-15.
+- ✅ **v1.1 Call Intelligence Loop** - Phases 5-7 shipped 2026-05-18.
   Archive: `.planning/milestones/v1.1-ROADMAP.md`
+- ✅ **v1.2 Trigger Training Console** - Phases 8-10 shipped 2026-05-20.
+  Archive: `.planning/milestones/v1.2-ROADMAP.md`
 
 ## Active Milestone
 
-- ✅ **v1.2 Trigger Training Console** - Phases 8-10 complete; ready for
-  milestone audit/archive.
-
-## Phases
-
-**Phase Numbering:**
-- Integer phases (8, 9, 10): Planned milestone work
-- Decimal phases (9.1, 9.2): Urgent insertions
-
-- [x] **Phase 8: Capture Session Ledger** - Track named trigger-capture
-  sessions and summarize what each recording run saved.
-- [x] **Phase 9: Review And Relabel Workflow** - Let the user filter, replay,
-  and correct sample category/speaker/answer labels without JSON edits.
-- [x] **Phase 10: Classifier Readiness Gate** - Add local quality/readiness
-  checks and guarded per-profile live-assist configuration.
-
-## Phase Details
-
-### Phase 8: Capture Session Ledger
-**Goal**: Treat each recording run as a named local session with auditable
-counts and metadata.
-**Depends on**: v1.1 trigger sample metadata and capture command
-**Requirements**: SES-01, SES-02, SES-03
-**Success Criteria** (what must be TRUE):
-  1. Starting trigger capture with a session id stores that id in every sample.
-  2. A completed session summary reports counts by category, speaker, decision,
-     and skipped silence.
-  3. Prior sessions can be listed by profile with timestamps and sample counts.
-  4. Existing samples without session ids remain valid.
-**Plans**: 3 plans
-
-Plans:
-- [x] 08-01: Add session metadata and storage helpers
-- [x] 08-02: Wire session ids into trigger-capture
-- [x] 08-03: Add session list/summary commands and docs
-
-### Phase 9: Review And Relabel Workflow
-**Goal**: Make saved samples easy to triage and correct from the CLI after a
-call.
-**Depends on**: Phase 8
-**Requirements**: REV-01, REV-02, REV-03, REV-04
-**Success Criteria** (what must be TRUE):
-  1. Sample listing supports profile, session, category, speaker, decision,
-     disagreement, and date filters.
-  2. Category correction writes consistent metadata and keeps the adjacent WAV
-     discoverable.
-  3. Review queue can replay samples and write category/speaker/decision labels
-     in one command flow.
-  4. Sanitized review reports group results by session and category without raw
-     audio payloads.
-**Plans**: 4 plans
-
-Plans:
-- [x] 09-01: Extend sample filtering and disagreement detection
-- [x] 09-02: Add category relabel command
-- [x] 09-03: Add interactive review queue
-- [x] 09-04: Add session-aware sanitized reports and docs
-
-### Phase 10: Classifier Readiness Gate
-**Goal**: Let learned behavior assist live calls only when local evidence is
-strong enough and deterministic safety checks still pass.
-**Depends on**: Phase 9
-**Requirements**: CLS-01, CLS-02, CLS-03, CLS-04
-**Success Criteria** (what must be TRUE):
-  1. Readiness check reports label balance, category coverage,
-     mention-vs-handoff coverage, and threshold failures.
-  2. Holdout evaluation reports answer/skip quality metrics from local samples.
-  3. Per-profile live-assist config cannot be enabled until readiness passes.
-  4. Live-assist diagnostics explain classifier confidence and feature signals
-     without cloud calls.
-**Plans**: 4 plans
-
-Plans:
-- [x] 10-01: Add classifier readiness metrics
-- [x] 10-02: Add holdout evaluation reporting
-- [x] 10-03: Add guarded per-profile live-assist config
-- [x] 10-04: Add live-assist diagnostics and docs
+None. The next milestone should start from a fresh `.planning/REQUIREMENTS.md`
+created by `$gsd-new-milestone`.
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 8 → 9 → 10
-
-| Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 8. Capture Session Ledger | v1.2 | 3/3 | Complete | 2026-05-20 |
-| 9. Review And Relabel Workflow | v1.2 | 4/4 | Complete | 2026-05-20 |
-| 10. Classifier Readiness Gate | v1.2 | 4/4 | Complete | 2026-05-20 |
+| Milestone | Phases | Plans | Status | Shipped |
+|-----------|--------|-------|--------|---------|
+| v1.0 Speedly Catcher + Speedly Sayer | 1-4 | 11 | Complete | 2026-05-15 |
+| v1.1 Call Intelligence Loop | 5-7 | 9 | Complete | 2026-05-18 |
+| v1.2 Trigger Training Console | 8-10 | 11 | Complete | 2026-05-20 |

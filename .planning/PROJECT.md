@@ -13,14 +13,15 @@ cloud voice APIs.
 Saymo must reliably catch when the user is expected to answer and respond fast
 enough that the call still feels live.
 
-## Completed Milestone: v1.2 Trigger Training Console
+## Current State
 
-**Goal:** Turn recorded call samples into a practical local training loop for
-reviewing, correcting, and safely promoting trigger decisions.
+Saymo has shipped v1.2 Trigger Training Console. The project currently has no
+active milestone; the next cycle should start by defining fresh requirements.
 
-**Status:** Implemented and merged on 2026-05-20.
+**Latest shipped milestone:** v1.2 Trigger Training Console, archived on
+2026-05-20.
 
-**Target features:**
+**Shipped capabilities:**
 - Capture sessions: named recording runs with summaries of what was captured.
 - Review and relabel workflow: bulk list/filter/replay/correct sample category,
   speaker, and answer-decision labels without editing JSON manually.
@@ -108,4 +109,4 @@ Deferred candidate directions remain:
 | Require a readiness gate before live classifier assist | Learned behavior should be opt-in and evidence-backed per profile | ✓ Implemented in Phase 10 |
 
 ---
-*Last updated: 2026-05-20 after completing milestone v1.2 Trigger Training Console*
+*Last updated: 2026-05-20 after archiving milestone v1.2 Trigger Training Console*

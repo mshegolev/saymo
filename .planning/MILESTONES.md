@@ -2,22 +2,35 @@
 
 ## Current
 
+No active milestone. Start the next milestone with `$gsd-new-milestone` after
+choosing the next product direction.
+
+## Completed
+
 ### v1.2 Trigger Training Console
 
 **Started:** 2026-05-20
 **Completed:** 2026-05-20
-**Status:** Audit passed - ready for archive
+**Archived:** 2026-05-20
+**Status:** Complete
 
 Focus: turn recorded call samples into a practical local loop for session
 review, relabeling, and safe classifier promotion.
 
-Target:
-- Named capture sessions with local summaries. (done)
-- CLI review/relabel workflow for sample category, speaker, and answer
-  decisions. (done)
-- Classifier readiness checks and guarded per-profile live-assist setup. (done)
+Delivered:
+- Named capture sessions with local ledgers, summaries, and profile/session
+  inspection commands.
+- CLI review/relabel workflow for sample category, speaker, and answer-decision
+  labels.
+- Sanitized session/category review reports for training data inspection.
+- Readiness and holdout evaluation commands for the local trigger classifier.
+- Guarded per-profile live-assist enablement that keeps deterministic
+  trigger/addressing checks as the safety boundary.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.2-ROADMAP.md`
+- `.planning/milestones/v1.2-REQUIREMENTS.md`
+- `.planning/milestones/v1.2-MILESTONE-AUDIT.md`
 
 ### v1.1 Call Intelligence Loop
 
