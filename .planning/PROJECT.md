@@ -13,12 +13,12 @@ cloud voice APIs.
 Saymo must reliably catch when the user is expected to answer and respond fast
 enough that the call still feels live.
 
-## Current Milestone: v1.2 Trigger Training Console
+## Completed Milestone: v1.2 Trigger Training Console
 
 **Goal:** Turn recorded call samples into a practical local training loop for
 reviewing, correcting, and safely promoting trigger decisions.
 
-**Status:** Defining requirements on 2026-05-20.
+**Status:** Implemented and merged on 2026-05-20.
 
 **Target features:**
 - Capture sessions: named recording runs with summaries of what was captured.
@@ -54,16 +54,13 @@ Deferred candidate directions remain:
   `asked_to_speak` sample categories.
 - ✓ Active-call provider probes can report segmented latency and export local
   JSON/Markdown history by profile/provider.
-
-### Active
-
-- User can treat one live recording run as a named training session and review
-  its saved samples together.
-- User can correct category, speaker, and answer-decision labels in bulk from
+- ✓ User can treat one live recording run as a named training session and
+  review its saved samples together.
+- ✓ User can correct category, speaker, and answer-decision labels in bulk from
   CLI review commands.
-- User can see whether the local classifier has enough balanced evidence to be
-  trusted as a live-call assist, while deterministic gating remains the safety
-  boundary.
+- ✓ User can see whether the local classifier has enough balanced evidence to
+  be trusted as a live-call assist, while deterministic gating remains the
+  safety boundary.
 
 ### Out of Scope
 
@@ -108,7 +105,7 @@ Deferred candidate directions remain:
 | Run classifier in shadow mode before enabling it | Protect live calls from unproven learned behavior | ✓ Implemented in Phase 6 |
 | Separate name mentions from handoffs deterministically | Plain mentions should train/tune differently from moments where Saymo should answer | ✓ Implemented after real sample review |
 | Measure providers through the existing abstraction | Keep provider latency work scoped to Chrome call automation, not UI redesign | ✓ Implemented in Phase 7 |
-| Require a readiness gate before live classifier assist | Learned behavior should be opt-in and evidence-backed per profile | Pending in v1.2 |
+| Require a readiness gate before live classifier assist | Learned behavior should be opt-in and evidence-backed per profile | ✓ Implemented in Phase 10 |
 
 ---
-*Last updated: 2026-05-20 after starting milestone v1.2 Trigger Training Console*
+*Last updated: 2026-05-20 after completing milestone v1.2 Trigger Training Console*

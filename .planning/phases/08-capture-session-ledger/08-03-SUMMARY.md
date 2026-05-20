@@ -1,3 +1,11 @@
+---
+phase: 08-capture-session-ledger
+plan: 03
+subsystem: trigger-training
+requirements-completed: [SES-02, SES-03]
+completed: 2026-05-20
+---
+
 # Plan 08-03 Summary: Session Commands And Docs
 
 ## Completed

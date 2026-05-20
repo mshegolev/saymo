@@ -125,6 +125,7 @@ trigger detection:
 
 ```bash
 saymo trigger-capture -p personal
+saymo trigger-capture -p personal --session daily-2026-05-20
 saymo trigger-capture -p personal --device "MacBook Pro Microphone" --duration 60
 saymo trigger-eval -p personal
 ```
@@ -132,18 +133,28 @@ saymo trigger-eval -p personal
 By default it listens on `audio.capture_device`, normally `BlackHole 16ch`.
 Each window is saved as WAV plus JSON metadata under
 `~/.saymo/trigger_samples/<profile>/` and separated into:
-`asked_to_speak`, `question`, and `speech`. Add `--save-silence` only when you
-also need silent windows for debugging.
+`asked_to_speak`, `mentioned_me`, `question`, `speech`, and optional
+`silence`. Add `--save-silence` only when you also need silent windows for
+debugging. Named sessions let you review one meeting run later.
 
 Review the saved windows without opening JSON by hand:
 
 ```bash
+saymo trigger-sessions list -p personal
+saymo trigger-sessions summary -p personal --session daily-2026-05-20
 saymo trigger-samples list -p personal
+saymo trigger-samples list -p personal --session daily-2026-05-20 --speaker other
 saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
 saymo trigger-samples decision ~/.saymo/trigger_samples/personal/question/<sample>.json --decision rejected
+saymo trigger-samples category ~/.saymo/trigger_samples/personal/question/<sample>.json --category mentioned_me
+saymo trigger-samples review -p personal --session daily-2026-05-20
 saymo trigger-samples replay ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
 saymo trigger-eval -p personal --promote ~/.saymo/trigger_samples/personal/asked_to_speak/<sample>.json
 saymo trigger-classifier train -p personal
+saymo trigger-classifier readiness -p personal
+saymo trigger-classifier evaluate -p personal
+saymo trigger-classifier live-assist enable -p personal
+saymo trigger-classifier live-assist status -p personal
 saymo trigger-classifier inspect -p personal
 saymo trigger-eval -p personal --classifier-shadow
 saymo trigger-classifier delete -p personal --yes
@@ -155,13 +166,17 @@ false positives, groups results by speaker label (`me`, `other`, `unknown`),
 and can promote a heard name variant into `vocabulary.fuzzy_expansions` before
 re-running the evaluation. Use `trigger-samples label` to correct who spoke in a
 saved window; old samples without a label are treated as `unknown`. Use
-`trigger-samples decision` to mark whether Saymo's answer decision was
-`accepted` or `rejected`; then `trigger-classifier train` writes a local JSON
-artifact under `~/.saymo/models/trigger_classifier/`. The classifier stays in
-shadow mode: `trigger-eval --classifier-shadow` and
-`trigger-check --classifier-shadow` show learned confidence without changing
-live-call decisions. Use `trigger-classifier inspect` or `delete` to audit or
-remove the local artifact. Reports omit raw audio and transcript text.
+`trigger-samples category` and `trigger-samples review` to correct buckets and
+labels after a call. Use `trigger-samples decision` to mark whether Saymo's
+answer decision was `accepted` or `rejected`; then `trigger-classifier train`
+writes a local JSON artifact under `~/.saymo/models/trigger_classifier/`.
+`trigger-classifier readiness` and `evaluate` show whether labels are balanced
+enough for local assist. `trigger-classifier live-assist enable` is guarded by
+readiness and model-fingerprint checks; in live mode it can only downgrade an
+already deterministic answer candidate to skip. `trigger-eval
+--classifier-shadow` and `trigger-check --classifier-shadow` remain available
+for non-live diagnostics. Use `trigger-classifier inspect` or `delete` to audit
+or remove the local artifact. Reports omit raw audio and transcript text.
 
 ### Call providers
 

@@ -9,10 +9,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Added
 - `saymo trigger-capture` captures live call-audio windows into
   `~/.saymo/trigger_samples/<profile>/` as WAV plus JSON metadata, classified
-  into `asked_to_speak`, `question`, `speech`, and optional `silence` samples
-  for trigger-training review.
+  into `asked_to_speak`, `mentioned_me`, `question`, `speech`, and optional
+  `silence` samples for trigger-training review.
+- Named trigger-capture session ledgers with `trigger-sessions list` and
+  `trigger-sessions summary`.
+- `trigger-samples category`, `trigger-samples review`, and session-aware
+  sanitized reports for correcting sample category, speaker, and answer labels
+  without manually editing JSON.
+- `trigger-classifier readiness`, deterministic holdout `evaluate`, and
+  guarded `live-assist status|enable|disable` commands.
+- `trigger-check --live-assist` diagnostics for local classifier confidence,
+  model state, and final guarded action.
 
 ### Changed
+- Local trigger classifier behavior can now be promoted from shadow diagnostics
+  to guarded live assist after readiness passes and a trained model fingerprint
+  matches the current artifact.
 - Public examples and docs now use generic ACME / John-style placeholders
   instead of project-, company-, or person-specific names.
 

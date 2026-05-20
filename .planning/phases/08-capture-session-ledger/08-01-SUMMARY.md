@@ -1,3 +1,11 @@
+---
+phase: 08-capture-session-ledger
+plan: 01
+subsystem: trigger-training
+requirements-completed: [SES-01, SES-02]
+completed: 2026-05-20
+---
+
 # Plan 08-01 Summary: Session Metadata And Storage Helpers
 
 ## Completed

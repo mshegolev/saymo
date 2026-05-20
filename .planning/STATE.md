@@ -12,8 +12,8 @@ and respond fast enough that the call still feels live.
 
 Phase: 10 — Classifier Readiness Gate
 Plan: —
-Status: v1.2 implementation complete; verification/PR in progress
-Last activity: 2026-05-20 — Completed Phase 9 and Phase 10 implementation
+Status: v1.2 implementation merged; milestone audit/archive is next
+Last activity: 2026-05-20 — PR #26 merged to main and post-merge CI passed
 
 Progress: [##########] 100%
 
@@ -38,8 +38,8 @@ Progress: [##########] 100%
 
 **Recent Trend:**
 - Last completed plans: 09-01, 09-02, 09-03, 09-04, 10-01, 10-02, 10-03, 10-04
-- Trend: v1.2 implementation complete; next step is PR verification and
-  milestone archive/audit.
+- Trend: v1.2 implementation complete and merged; next step is milestone
+  archive/audit.
 
 ## Accumulated Context
 
@@ -74,8 +74,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Run final PR verification, merge the implementation branch, then archive/audit
-milestone v1.2 if no follow-up gaps are found.
+Archive milestone v1.2 after audit artifacts and documentation are current.
 
 ### Blockers/Concerns
 
@@ -93,6 +92,5 @@ milestone v1.2 if no follow-up gaps are found.
 ## Session Continuity
 
 Last session: 2026-05-20
-Stopped at: v1.2 implementation complete; next step is PR verification and
-merge.
+Stopped at: v1.2 implementation merged; next step is milestone archive/audit.
 Resume file: None
