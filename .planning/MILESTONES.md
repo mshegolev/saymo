@@ -2,11 +2,16 @@
 
 ## Current
 
+No active milestone. Start the next cycle with `$gsd-new-milestone`.
+
+## Completed
+
 ### v1.3 Local Diarization Assist
 
 **Started:** 2026-05-20
 **Completed:** 2026-05-20
-**Status:** Implementation complete; audit pending
+**Archived:** 2026-05-20
+**Status:** Complete
 
 Focus: make local speaker identity useful during trigger training by adding
 optional diarization, speaker-cluster review, and safe promotion into existing
@@ -18,7 +23,10 @@ Delivered:
 - Review and promotion flow for diarization suggestions.
 - Speaker-label quality reports before training/readiness uses suggestions.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.3-ROADMAP.md`
+- `.planning/milestones/v1.3-REQUIREMENTS.md`
+- `.planning/milestones/v1.3-MILESTONE-AUDIT.md`
 
 ### v1.2 Trigger Training Console
 

@@ -13,22 +13,17 @@ cloud voice APIs.
 Saymo must reliably catch when the user is expected to answer and respond fast
 enough that the call still feels live.
 
-## Current Milestone: v1.3 Local Diarization Assist
+## Current State
 
-**Goal:** Make local speaker identity useful during trigger training by adding
-optional diarization, speaker-cluster review, and safe promotion into existing
-`me`/`other`/`unknown` labels.
+Saymo has shipped milestone v1.3 Local Diarization Assist. The product can now
+run optional local diarization on completed trigger-capture sessions, store
+speaker suggestions as sidecars, review/promote those suggestions into manual
+sample labels, and export speaker-label quality reports before training.
 
-**Status:** Implementation complete on 2026-05-20; audit pending.
+**Status:** v1.3 archived on 2026-05-20. No active milestone is selected.
 
-**Target features:**
-- Optional local diarization backend checks and per-profile configuration.
-- Session-level diarization that writes local sidecar suggestions without
-  overwriting manual speaker labels.
-- Speaker-cluster review, mapping, and promotion into the existing trigger
-  sample workflow.
-- Speaker quality reports that show unknown coverage, suggestion confidence,
-  and manual-vs-suggested conflicts.
+**Next milestone:** start with `$gsd-new-milestone` when the next product goal
+is chosen.
 
 ## Requirements
 
@@ -88,7 +83,8 @@ optional diarization, speaker-cluster review, and safe promotion into existing
   user wants to answer themselves.
 - Recent work added trigger diagnostics, fuzzy trigger learning, manual
   takeover hotkeys, trigger confirmation, response cache routing diagnostics,
-  and classified trigger sample capture.
+  classified trigger sample capture, session-ledger review, classifier
+  readiness, and optional offline speaker diarization review.
 
 ## Constraints
 
@@ -116,4 +112,4 @@ optional diarization, speaker-cluster review, and safe promotion into existing
 | Keep diarization optional and review-first | Speaker suggestions are useful only after the user can inspect and correct them locally | ✓ Implemented in v1.3 |
 
 ---
-*Last updated: 2026-05-20 after completing milestone v1.3 implementation*
+*Last updated: 2026-05-20 after archiving milestone v1.3*

@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Local Diarization Assist
-status: Milestone v1.3 implementation complete; audit next
-stopped_at: Phase 13 Speaker Review And Quality Reports complete; next step is milestone audit.
+status: Milestone v1.3 archived; no active milestone
+stopped_at: v1.3 Local Diarization Assist archived; next step is $gsd-new-milestone.
 last_updated: "2026-05-20"
-last_activity: "2026-05-20 - completed Phase 13 speaker review and quality reports"
+last_activity: "2026-05-20 - archived v1.3 Local Diarization Assist"
 progress:
   total_phases: 3
   completed_phases: 3
@@ -22,15 +22,15 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Milestone v1.3 audit and closure.
+**Current focus:** Between milestones.
 
 ## Current Position
 
 Phase: Complete
 Plan: Complete
-Status: All v1.3 phases complete; milestone audit pending
-Last activity: 2026-05-20 - added speaker suggestion review, promotion,
-quality reports, and tests proving unreviewed sidecars do not affect training.
+Status: v1.3 archived; no active roadmap phases
+Last activity: 2026-05-20 - archived roadmap, requirements, and milestone
+audit for v1.3 Local Diarization Assist.
 
 Progress: [##########] 100%
 
@@ -79,7 +79,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Audit and close milestone v1.3.
+Start the next milestone with `$gsd-new-milestone` when a new goal is chosen.
 
 ### Blockers/Concerns
 
@@ -93,5 +93,5 @@ Audit and close milestone v1.3.
 ## Session Continuity
 
 Last session: 2026-05-20
-Stopped at: v1.3 implementation complete; next step is milestone audit.
+Stopped at: v1.3 archived; next step is `$gsd-new-milestone`.
 Resume file: None
