@@ -20,28 +20,28 @@ Requirements for milestone v1.2 Trigger Training Console.
 
 ### Review And Relabel
 
-- [ ] **REV-01**: User can filter saved samples by profile, session, category,
+- [x] **REV-01**: User can filter saved samples by profile, session, category,
   speaker, answer decision, current classifier disagreement, and date range.
-- [ ] **REV-02**: User can correct a sample category from the CLI, including
+- [x] **REV-02**: User can correct a sample category from the CLI, including
   `asked_to_speak`, `mentioned_me`, `question`, `speech`, and `silence`,
   without manually editing JSON.
-- [ ] **REV-03**: User can run a review queue that replays samples one by one
+- [x] **REV-03**: User can run a review queue that replays samples one by one
   and accepts category, speaker, and answer-decision corrections from one
   command flow.
-- [ ] **REV-04**: User can export a sanitized training-review report grouped by
+- [x] **REV-04**: User can export a sanitized training-review report grouped by
   session and category, without raw audio payloads or private config values.
 
 ### Classifier Readiness
 
-- [ ] **CLS-01**: User can run a readiness check that reports accepted/rejected
+- [x] **CLS-01**: User can run a readiness check that reports accepted/rejected
   label balance, category coverage, mention-vs-handoff coverage, and minimum
   sample thresholds per profile.
-- [ ] **CLS-02**: User can run a local holdout evaluation for the trained
+- [x] **CLS-02**: User can run a local holdout evaluation for the trained
   classifier and see precision/recall-style quality metrics for answer vs skip.
-- [ ] **CLS-03**: User can configure classifier live-assist mode per profile,
+- [x] **CLS-03**: User can configure classifier live-assist mode per profile,
   but only after readiness gates pass; deterministic trigger/addressing checks
   remain the hard safety boundary.
-- [ ] **CLS-04**: User can inspect why classifier live-assist accepted or
+- [x] **CLS-04**: User can inspect why classifier live-assist accepted or
   rejected a candidate answer using local features and confidence, with no
   cloud calls.
 
@@ -79,14 +79,14 @@ Deferred beyond v1.2.
 | SES-01 | Phase 8 | Complete |
 | SES-02 | Phase 8 | Complete |
 | SES-03 | Phase 8 | Complete |
-| REV-01 | Phase 9 | Pending |
-| REV-02 | Phase 9 | Pending |
-| REV-03 | Phase 9 | Pending |
-| REV-04 | Phase 9 | Pending |
-| CLS-01 | Phase 10 | Pending |
-| CLS-02 | Phase 10 | Pending |
-| CLS-03 | Phase 10 | Pending |
-| CLS-04 | Phase 10 | Pending |
+| REV-01 | Phase 9 | Complete |
+| REV-02 | Phase 9 | Complete |
+| REV-03 | Phase 9 | Complete |
+| REV-04 | Phase 9 | Complete |
+| CLS-01 | Phase 10 | Complete |
+| CLS-02 | Phase 10 | Complete |
+| CLS-03 | Phase 10 | Complete |
+| CLS-04 | Phase 10 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 11 total
@@ -95,4 +95,4 @@ Deferred beyond v1.2.
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after starting milestone v1.2*
+*Last updated: 2026-05-20 after completing milestone v1.2 implementation*

@@ -516,6 +516,44 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                     f"[dim]decision latency: addressing={addressing_ms:.0f}ms "
                     f"action={action_ms:.0f}ms final=answer[/]"
                 )
+                try:
+                    from saymo.analysis.trigger_classifier import (
+                        TriggerClassifierSample,
+                        classifier_model_path,
+                        load_model,
+                        predict_live_assist,
+                    )
+                    from saymo.analysis.trigger_readiness import (
+                        apply_live_assist_decision,
+                        live_assist_status,
+                    )
+
+                    assist = live_assist_status(profile)
+                    model_path = classifier_model_path(profile)
+                    if assist.enabled and model_path.exists():
+                        prediction = predict_live_assist(
+                            load_model(model_path),
+                            TriggerClassifierSample(
+                                transcript=transcript_window,
+                                speaker="unknown",
+                                decision="unlabeled",
+                            ),
+                        )
+                        assist_decision = apply_live_assist_decision(
+                            deterministic_will_answer=True,
+                            classifier_prediction=prediction,
+                        )
+                        console.print(
+                            f"[dim]live assist: {prediction.label} "
+                            f"confidence={prediction.confidence:.2f} "
+                            f"action={assist_decision.final_action}[/]"
+                        )
+                        if assist_decision.final_action == "skip":
+                            detector.reset_cooldown()
+                            console.print("\n[bold yellow]Listening again...[/]\n")
+                            continue
+                except Exception as e:
+                    console.print(f"[dim]live assist skipped: {e}[/]")
 
             # Drain audio queue — don't process stale chunks after trigger
             while not capture.audio_queue.empty():

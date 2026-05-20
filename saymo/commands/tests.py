@@ -327,9 +327,10 @@ async def _prepare_responses(config, force: bool = False) -> int:
 @click.option("--seconds", default=4.0, type=float, show_default=True, help="Seconds to record with --mic")
 @click.option("--device", "-d", default=None, help="Input device name for --mic")
 @click.option("--classifier-shadow", is_flag=True, help="Show local classifier confidence without changing the decision")
+@click.option("--live-assist", is_flag=True, help="Show guarded live-assist classifier diagnostics")
 @click.option("--model-dir", default=None, type=click.Path(), help="Directory with trigger-classifier artifacts")
 @click.pass_context
-def trigger_check(ctx, profile, text, mic, seconds, device, classifier_shadow, model_dir):
+def trigger_check(ctx, profile, text, mic, seconds, device, classifier_shadow, live_assist, model_dir):
     """Diagnose trigger, addressing, and response-cache routing.
 
     Use ``--text`` for a deterministic dry-run. Use ``--mic`` to record a
@@ -345,6 +346,7 @@ def trigger_check(ctx, profile, text, mic, seconds, device, classifier_shadow, m
         profile,
         text,
         classifier_shadow=classifier_shadow,
+        live_assist=live_assist,
         model_dir=model_dir,
     )
 
@@ -362,6 +364,7 @@ def _print_trigger_diagnostics(
     text: str,
     *,
     classifier_shadow: bool = False,
+    live_assist: bool = False,
     model_dir: str | None = None,
 ) -> None:
     from saymo.analysis.addressing import (
@@ -409,6 +412,18 @@ def _print_trigger_diagnostics(
     console.print(f"auto action: {auto_action}")
     if classifier_shadow:
         _print_trigger_check_classifier_shadow(
+            profile=profile,
+            text=text,
+            speaker="unknown",
+            category=_current_trigger_category(text, will_answer, decision.is_question),
+            trigger=triggered,
+            question=decision.is_question,
+            will_answer=will_answer,
+            addressing=decision.label,
+            model_dir=model_dir,
+        )
+    if live_assist:
+        _print_trigger_check_live_assist(
             profile=profile,
             text=text,
             speaker="unknown",
@@ -1561,14 +1576,24 @@ def trigger_samples():
 @trigger_samples.command("list")
 @click.option("--profile", "-p", default=None, help="Profile to list")
 @click.option("--category", default=None, help="Category to filter")
+@click.option("--session", "session_id", default=None, help="Session id/prefix to filter")
+@click.option("--speaker", default=None, type=click.Choice(_SPEAKER_LABELS), help="Speaker label to filter")
+@click.option("--decision", default=None, type=click.Choice(_ANSWER_DECISION_LABELS), help="Answer decision to filter")
+@click.option("--date-from", default=None, help="Inclusive created_at lower bound")
+@click.option("--date-to", default=None, help="Inclusive created_at upper bound")
+@click.option("--classifier-disagreement", is_flag=True, help="Only show rows where classifier and deterministic decision disagree")
+@click.option("--model-dir", default=None, type=click.Path(), help="Directory with trigger-classifier artifacts")
 @click.option(
     "--samples-dir",
     default=None,
     type=click.Path(),
     help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
 )
-def trigger_samples_list(profile, category, samples_dir):
+@click.pass_context
+def trigger_samples_list(ctx, profile, category, session_id, speaker, decision, date_from, date_to, classifier_disagreement, model_dir, samples_dir):
     """List captured trigger-sample metadata without opening JSON manually."""
+    from saymo.analysis.trigger_review import TriggerReviewFilters
+
     records = list(
         _iter_trigger_sample_records(
             _samples_base_dir(samples_dir),
@@ -1576,6 +1601,26 @@ def trigger_samples_list(profile, category, samples_dir):
             category=category,
         )
     )
+    filters = TriggerReviewFilters(
+        session=session_id,
+        speaker=speaker,
+        answer_decision=decision,
+        date_from=date_from,
+        date_to=date_to,
+    )
+    records = _filter_review_rows_or_fail(records, filters)
+    if classifier_disagreement:
+        if not profile:
+            raise click.ClickException("--classifier-disagreement requires --profile")
+        rows = _evaluate_trigger_records(ctx.obj["config"], profile, records)
+        records = [
+            row.record
+            for row in _filter_classifier_disagreements(
+                rows,
+                profile=profile,
+                model_dir=model_dir,
+            )
+        ]
     console.print(f"samples: {len(records)}")
     for record in records:
         session = f" session={record.session_id}" if record.session_id else ""
@@ -1657,8 +1702,114 @@ def trigger_samples_decision(sample_json, decision):
     console.print(f"decision: {previous} -> {decision}")
 
 
+@trigger_samples.command("category")
+@click.argument("sample_json", type=click.Path(exists=True))
+@click.option(
+    "--category",
+    required=True,
+    type=click.Choice(_TRIGGER_SAMPLE_CATEGORIES),
+    help="Target sample category",
+)
+def trigger_samples_category(sample_json, category):
+    """Move a sample JSON/WAV pair to a corrected category."""
+    from saymo.analysis.trigger_review import apply_category_relabel
+
+    result = apply_category_relabel(Path(sample_json), category)
+    console.print(f"sample: {result.path}")
+    console.print(f"category: {result.previous_category} -> {result.category}")
+    console.print(f"wav: {result.wav_path if result.wav_moved else 'missing'}")
+
+
+@trigger_samples.command("review")
+@click.option("--profile", "-p", default="personal", help="Profile to review")
+@click.option("--category", default=None, help="Category to filter")
+@click.option("--session", "session_id", default=None, help="Session id/prefix to filter")
+@click.option("--speaker", default=None, type=click.Choice(_SPEAKER_LABELS), help="Speaker label to filter")
+@click.option("--decision", default=None, type=click.Choice(_ANSWER_DECISION_LABELS), help="Answer decision to filter")
+@click.option("--date-from", default=None, help="Inclusive created_at lower bound")
+@click.option("--date-to", default=None, help="Inclusive created_at upper bound")
+@click.option("--limit", default=0, type=click.IntRange(min=0), show_default=True, help="Maximum samples; 0 means all")
+@click.option("--play/--no-play", default=True, show_default=True, help="Play adjacent WAV before prompting")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.pass_context
+def trigger_samples_review(ctx, profile, category, session_id, speaker, decision, date_from, date_to, limit, play, samples_dir):
+    """Replay and relabel a filtered trigger-sample queue."""
+    from saymo.analysis.trigger_review import TriggerReviewFilters, apply_category_relabel, parse_review_action
+
+    records = list(
+        _iter_trigger_sample_records(
+            _samples_base_dir(samples_dir),
+            profile=profile,
+            category=category,
+        )
+    )
+    records = _filter_review_rows_or_fail(
+        records,
+        TriggerReviewFilters(
+            session=session_id,
+            speaker=speaker,
+            answer_decision=decision,
+            date_from=date_from,
+            date_to=date_to,
+        ),
+    )
+    if limit:
+        records = records[:limit]
+    console.print(f"review samples: {len(records)}")
+    for index, record in enumerate(records, start=1):
+        row = _evaluate_trigger_records(ctx.obj["config"], profile, [record])[0]
+        console.print(f"[{index}/{len(records)}] {record.path}")
+        console.print(
+            f"stored category={record.category} speaker={record.speaker} "
+            f"decision={record.answer_decision}"
+        )
+        console.print(
+            f"current category={row.current_category} "
+            f"will_answer={'yes' if row.current_will_answer else 'no'}"
+        )
+        if play:
+            _play_trigger_sample(record)
+        while True:
+            raw_action = click.prompt(
+                "action",
+                default="skip",
+                show_default=True,
+            )
+            action = parse_review_action(raw_action)
+            if action is None:
+                console.print("unknown action")
+                continue
+            if action.kind == "skip":
+                break
+            if action.kind == "quit":
+                console.print("review stopped")
+                return
+            if action.kind == "category":
+                result = apply_category_relabel(record.path, action.value)
+                record = _load_trigger_sample(result.path)
+                console.print(f"category: {result.previous_category} -> {result.category}")
+                continue
+            if action.kind == "speaker":
+                previous = _write_trigger_sample_speaker(record.path, action.value)
+                record = _load_trigger_sample(record.path)
+                console.print(f"speaker: {previous} -> {action.value}")
+                continue
+            if action.kind == "decision":
+                previous = _write_trigger_sample_decision(record.path, action.value)
+                record = _load_trigger_sample(record.path)
+                console.print(f"decision: {previous} -> {action.value}")
+                continue
+    console.print("review complete")
+
+
 @trigger_samples.command("report")
 @click.option("--profile", "-p", default="personal", help="Profile to report")
+@click.option("--session", "session_id", default=None, help="Session id/prefix to filter")
 @click.option(
     "--samples-dir",
     default=None,
@@ -1667,11 +1818,16 @@ def trigger_samples_decision(sample_json, decision):
 )
 @click.option("--output", "-o", default=None, type=click.Path(), help="Markdown output path")
 @click.pass_context
-def trigger_samples_report(ctx, profile, samples_dir, output):
+def trigger_samples_report(ctx, profile, session_id, samples_dir, output):
     """Export a sanitized trigger-sample report without audio or private config."""
-    records = list(_iter_trigger_sample_records(_samples_base_dir(samples_dir), profile))
+    from saymo.analysis.trigger_review import TriggerReviewFilters, render_grouped_trigger_report
+
+    records = _filter_review_rows_or_fail(
+        list(_iter_trigger_sample_records(_samples_base_dir(samples_dir), profile)),
+        TriggerReviewFilters(session=session_id),
+    )
     rows = _evaluate_trigger_records(ctx.obj["config"], profile, records)
-    report = _render_trigger_report(profile, rows)
+    report = render_grouped_trigger_report(profile, rows)
     if output:
         out_path = Path(output).expanduser()
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1824,6 +1980,133 @@ def trigger_classifier_inspect(profile, model_dir):
     console.print(f"thresholds: min_total={model.min_total} min_per_class={model.min_per_class}")
 
 
+@trigger_classifier.command("readiness")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.option("--min-total", default=8, show_default=True, type=click.IntRange(min=1))
+@click.option("--min-per-class", default=2, show_default=True, type=click.IntRange(min=1))
+def trigger_classifier_readiness(profile, samples_dir, min_total, min_per_class):
+    """Check whether local labels are ready for classifier live assist."""
+    from saymo.analysis.trigger_readiness import TriggerReadinessThresholds, readiness_metrics
+
+    records = list(_iter_trigger_sample_records(_samples_base_dir(samples_dir), profile))
+    report = readiness_metrics(
+        records,
+        TriggerReadinessThresholds(
+            min_labeled=min_total,
+            min_accepted=min_per_class,
+            min_rejected=min_per_class,
+        ),
+    )
+    _print_readiness_report(report)
+
+
+@trigger_classifier.command("evaluate")
+@click.option("--profile", "-p", default="personal", help="Profile to evaluate")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.option("--min-total", default=4, show_default=True, type=click.IntRange(min=1))
+@click.option("--min-per-class", default=1, show_default=True, type=click.IntRange(min=1))
+@click.option(
+    "--holdout-ratio",
+    default=0.4,
+    show_default=True,
+    type=click.FloatRange(min=0.0, max=1.0, min_open=True, max_open=True),
+)
+def trigger_classifier_evaluate(profile, samples_dir, min_total, min_per_class, holdout_ratio):
+    """Run deterministic local holdout evaluation for the trigger classifier."""
+    from saymo.analysis.trigger_classifier import InsufficientTrainingData
+    from saymo.analysis.trigger_readiness import evaluate_holdout
+
+    records = list(_iter_trigger_sample_records(_samples_base_dir(samples_dir), profile))
+    try:
+        result = evaluate_holdout(
+            [_classifier_sample_from_record(record) for record in records],
+            profile=profile,
+            min_total=min_total,
+            min_per_class=min_per_class,
+            holdout_fraction=holdout_ratio,
+        )
+    except (InsufficientTrainingData, ValueError) as e:
+        raise click.ClickException(str(e)) from e
+    _print_holdout_report(result)
+
+
+@trigger_classifier.group("live-assist")
+def trigger_classifier_live_assist():
+    """Manage guarded classifier live assist for a profile."""
+
+
+@trigger_classifier_live_assist.command("status")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option("--model-dir", default=None, type=click.Path(), help="Directory with classifier artifacts")
+def trigger_classifier_live_assist_status(profile, model_dir):
+    """Show live-assist status for a profile."""
+    from saymo.analysis.trigger_readiness import live_assist_status
+
+    status = live_assist_status(profile, model_dir)
+    _print_live_assist_status(status)
+
+
+@trigger_classifier_live_assist.command("enable")
+@click.option("--profile", "-p", default="personal", help="Profile to enable")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.option("--model-dir", default=None, type=click.Path(), help="Directory with classifier artifacts")
+@click.option("--min-total", default=8, show_default=True, type=click.IntRange(min=1))
+@click.option("--min-per-class", default=2, show_default=True, type=click.IntRange(min=1))
+def trigger_classifier_live_assist_enable(profile, samples_dir, model_dir, min_total, min_per_class):
+    """Enable live assist only when readiness gates pass."""
+    from saymo.analysis.trigger_readiness import (
+        TriggerReadinessThresholds,
+        enable_live_assist,
+        live_assist_status,
+        readiness_metrics,
+    )
+
+    records = list(_iter_trigger_sample_records(_samples_base_dir(samples_dir), profile))
+    readiness = readiness_metrics(
+        records,
+        TriggerReadinessThresholds(
+            min_labeled=min_total,
+            min_accepted=min_per_class,
+            min_rejected=min_per_class,
+        ),
+    )
+    if not readiness.passed:
+        _print_readiness_report(readiness)
+        raise click.ClickException("readiness failed; live assist not enabled")
+    try:
+        enable_live_assist(profile, model_dir, readiness)
+    except (FileNotFoundError, ValueError) as e:
+        raise click.ClickException(str(e)) from e
+    _print_live_assist_status(live_assist_status(profile, model_dir))
+
+
+@trigger_classifier_live_assist.command("disable")
+@click.option("--profile", "-p", default="personal", help="Profile to disable")
+@click.option("--model-dir", default=None, type=click.Path(), help="Directory with classifier artifacts")
+def trigger_classifier_live_assist_disable(profile, model_dir):
+    """Disable classifier live assist for a profile."""
+    from saymo.analysis.trigger_readiness import disable_live_assist, live_assist_status
+
+    disable_live_assist(profile, model_dir)
+    _print_live_assist_status(live_assist_status(profile, model_dir))
+
+
 @trigger_classifier.command("delete")
 @click.option("--profile", "-p", default="personal", help="Profile artifact to delete")
 @click.option("--model-dir", default=None, type=click.Path(), help="Directory with classifier artifacts")
@@ -1847,6 +2130,15 @@ def trigger_classifier_delete(profile, model_dir, yes):
 
 def _samples_base_dir(samples_dir: str | None) -> Path:
     return Path(samples_dir).expanduser() if samples_dir else Path.home() / ".saymo" / "trigger_samples"
+
+
+def _filter_review_rows_or_fail(records, filters):
+    from saymo.analysis.trigger_review import filter_review_rows
+
+    try:
+        return filter_review_rows(records, filters)
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
 
 
 def _load_trigger_sample(path: Path) -> TriggerSampleRecord:
@@ -2024,6 +2316,56 @@ def _print_trigger_check_classifier_shadow(
     )
 
 
+def _print_trigger_check_live_assist(
+    *,
+    profile: str,
+    text: str,
+    speaker: str,
+    category: str,
+    trigger: bool,
+    question: bool,
+    will_answer: bool,
+    addressing: str,
+    model_dir: str | None,
+) -> None:
+    from saymo.analysis.trigger_classifier import (
+        TriggerClassifierSample,
+        classifier_model_path,
+        load_model,
+        predict_live_assist,
+    )
+    from saymo.analysis.trigger_readiness import (
+        apply_live_assist_decision,
+        live_assist_status,
+    )
+
+    status = live_assist_status(profile, model_dir)
+    model_path = classifier_model_path(profile, model_dir)
+    console.print(f"live assist: {'enabled' if status.enabled else 'disabled'}")
+    if status.reason:
+        console.print(f"live assist status: {status.reason}")
+    if not status.enabled:
+        console.print(f"live assist action: {'answer' if will_answer else 'skip'}")
+        return
+    model = load_model(model_path)
+    sample = TriggerClassifierSample(
+        transcript=text,
+        speaker=speaker,
+        decision="unlabeled",
+    )
+    prediction = predict_live_assist(model, sample)
+    decision = apply_live_assist_decision(
+        deterministic_will_answer=will_answer,
+        classifier_prediction=prediction,
+    )
+    console.print(
+        f"live assist classifier: {prediction.label} "
+        f"confidence={prediction.confidence:.2f} model={model_path}"
+    )
+    console.print(f"live assist action: {decision.final_action}")
+    console.print(f"live assist reason: {decision.reason}")
+
+
 def _print_classifier_shadow_evaluation(
     rows: list[TriggerEvaluationRow],
     *,
@@ -2058,6 +2400,78 @@ def _print_classifier_shadow_evaluation(
             f"classifier={prediction.label} "
             f"conf={prediction.confidence:.2f}"
         )
+
+
+def _filter_classifier_disagreements(
+    rows: list[TriggerEvaluationRow],
+    *,
+    profile: str,
+    model_dir: str | None,
+) -> list[TriggerEvaluationRow]:
+    from saymo.analysis.trigger_classifier import classifier_model_path, load_model, predict
+
+    model_path = classifier_model_path(profile, model_dir)
+    if not model_path.exists():
+        raise click.ClickException(f"Classifier artifact not found: {model_path}")
+    model = load_model(model_path)
+    disagreements: list[TriggerEvaluationRow] = []
+    for row in rows:
+        prediction = predict(model, _classifier_sample_from_row(row))
+        deterministic = "accepted" if row.current_will_answer else "rejected"
+        if prediction.label != deterministic:
+            disagreements.append(row)
+    return disagreements
+
+
+def _print_readiness_report(report) -> None:
+    console.print(f"readiness: {'ready' if report.passed else 'not_ready'}")
+    console.print(f"samples: {report.total_samples}")
+    console.print(f"labeled: {report.total_labeled}")
+    console.print(f"accepted: {report.accepted}")
+    console.print(f"rejected: {report.rejected}")
+    console.print(f"categories: {', '.join(report.category_counts) or '(none)'}")
+    console.print(f"mention coverage: {'yes' if report.has_mentioned_me else 'no'}")
+    console.print(f"handoff coverage: {'yes' if report.has_asked_to_speak else 'no'}")
+    if report.missing_items:
+        console.print("missing:")
+        for item in report.missing_items:
+            console.print(f"  - {item}")
+
+
+def _print_holdout_report(result) -> None:
+    console.print(f"holdout samples: {result.holdout_count}")
+    console.print(f"train samples: {result.train_count}")
+    console.print(f"accuracy: {_format_metric(result.accuracy)}")
+    console.print(f"accepted precision: {_format_metric(result.precision.get('accepted'))}")
+    console.print(f"accepted recall: {_format_metric(result.recall.get('accepted'))}")
+    console.print(f"rejected precision: {_format_metric(result.precision.get('rejected'))}")
+    console.print(f"rejected recall: {_format_metric(result.recall.get('rejected'))}")
+    true_accept = result.confusion_matrix["accepted"]["accepted"]
+    false_accept = result.confusion_matrix["rejected"]["accepted"]
+    true_reject = result.confusion_matrix["rejected"]["rejected"]
+    false_reject = result.confusion_matrix["accepted"]["rejected"]
+    console.print(
+        "confusion: "
+        f"tp={true_accept} fp={false_accept} "
+        f"tn={true_reject} fn={false_reject}"
+    )
+
+
+def _print_live_assist_status(status) -> None:
+    profile = status.artifact.profile if status.artifact else status.path.stem.replace(".live_assist", "")
+    console.print(f"profile: {profile}")
+    console.print(f"live assist: {'enabled' if status.enabled else 'disabled'}")
+    if status.reason:
+        console.print(f"status: {status.reason}")
+    console.print(f"updated_at: {status.artifact.updated_at if status.artifact else '-'}")
+    if status.artifact and status.artifact.model_sha256:
+        console.print(f"model_sha256: {status.artifact.model_sha256[:12]}")
+    if status.path:
+        console.print(f"artifact: {status.path}")
+
+
+def _format_metric(value: float | None) -> str:
+    return "n/a" if value is None else f"{value:.2f}"
 
 
 def _evaluate_trigger_records(

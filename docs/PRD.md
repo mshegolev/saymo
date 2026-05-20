@@ -322,8 +322,17 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 | `saymo speak -p PROFILE --provider glip` | Play cached audio into call |
 | `saymo auto -p PROFILE` | Listen for trigger, auto-speak |
 | `saymo trigger-check -p PROFILE --text TEXT` | Preview trigger/addressing/Q&A routing |
+| `saymo trigger-sessions list -p PROFILE` | List named trigger-capture sessions |
+| `saymo trigger-sessions summary -p PROFILE --session SESSION` | Summarize one captured meeting session |
+| `saymo trigger-samples list -p PROFILE --session SESSION --speaker other --decision accepted` | Filter saved samples for review |
+| `saymo trigger-samples category SAMPLE.json --category mentioned_me` | Correct the stored sample category |
+| `saymo trigger-samples review -p PROFILE --session SESSION` | Replay/relabel a filtered review queue |
 | `saymo trigger-samples decision SAMPLE.json --decision accepted` | Label a saved answer decision for local training |
 | `saymo trigger-classifier train -p PROFILE` | Train the local shadow classifier from accepted/rejected samples |
+| `saymo trigger-classifier readiness -p PROFILE` | Check whether local labels are ready for classifier use |
+| `saymo trigger-classifier evaluate -p PROFILE` | Run deterministic local holdout evaluation |
+| `saymo trigger-classifier live-assist enable -p PROFILE` | Enable guarded assist only after readiness passes and a trained model exists |
+| `saymo trigger-classifier live-assist status -p PROFILE` | Inspect guarded live-assist state |
 | `saymo provider-latency -p PROFILE` | Measure provider mute/playback latency and export local history |
 | `saymo review` | Review audio sentence-by-sentence |
 | `saymo record-voice -d 300` | Record 5-min voice sample |

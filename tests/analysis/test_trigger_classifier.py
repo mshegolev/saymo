@@ -5,6 +5,7 @@ from saymo.analysis.trigger_classifier import (
     TriggerClassifierSample,
     load_model,
     predict,
+    predict_live_assist,
     save_model,
     train_classifier,
 )
@@ -76,3 +77,55 @@ def test_trigger_classifier_predicts_and_persists(tmp_path):
     loaded = load_model(model_path)
     assert loaded.profile == "personal"
     assert loaded.label_counts == {"accepted": 1, "rejected": 1}
+
+
+def test_live_assist_prediction_ignores_deterministic_gate_features():
+    samples = [
+        TriggerClassifierSample(
+            transcript="John, что по статусу?",
+            speaker="other",
+            category="asked_to_speak",
+            trigger=True,
+            question=True,
+            will_answer=True,
+            addressing="addressed_to_me",
+            decision="accepted",
+        ),
+        TriggerClassifierSample(
+            transcript="как John вчера говорил, надо проверить логи",
+            speaker="other",
+            category="mentioned_me",
+            trigger=True,
+            question=False,
+            will_answer=False,
+            addressing="mentioned_not_addressed",
+            decision="rejected",
+        ),
+    ]
+    model = train_classifier(samples, profile="personal", min_total=2, min_per_class=1)
+
+    deterministic_answer = TriggerClassifierSample(
+        transcript="John, что по статусу?",
+        speaker="other",
+        category="asked_to_speak",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        addressing="addressed_to_me",
+        decision="unlabeled",
+    )
+    deterministic_skip = TriggerClassifierSample(
+        transcript="John, что по статусу?",
+        speaker="other",
+        category="speech",
+        trigger=False,
+        question=False,
+        will_answer=False,
+        addressing="ignore",
+        decision="unlabeled",
+    )
+
+    assert predict_live_assist(model, deterministic_answer) == predict_live_assist(
+        model,
+        deterministic_skip,
+    )

@@ -14,7 +14,8 @@ safe classifier promotion.
 
 ## Active Milestone
 
-- 🚧 **v1.2 Trigger Training Console** - Phase 8 complete; phases 9-10 planned.
+- ✅ **v1.2 Trigger Training Console** - Phases 8-10 complete; ready for
+  milestone audit/archive.
 
 ## Phases
 
@@ -24,9 +25,9 @@ safe classifier promotion.
 
 - [x] **Phase 8: Capture Session Ledger** - Track named trigger-capture
   sessions and summarize what each recording run saved.
-- [ ] **Phase 9: Review And Relabel Workflow** - Let the user filter, replay,
+- [x] **Phase 9: Review And Relabel Workflow** - Let the user filter, replay,
   and correct sample category/speaker/answer labels without JSON edits.
-- [ ] **Phase 10: Classifier Readiness Gate** - Add local quality/readiness
+- [x] **Phase 10: Classifier Readiness Gate** - Add local quality/readiness
   checks and guarded per-profile live-assist configuration.
 
 ## Phase Details
@@ -66,10 +67,10 @@ call.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 09-01: Extend sample filtering and disagreement detection
-- [ ] 09-02: Add category relabel command
-- [ ] 09-03: Add interactive review queue
-- [ ] 09-04: Add session-aware sanitized reports and docs
+- [x] 09-01: Extend sample filtering and disagreement detection
+- [x] 09-02: Add category relabel command
+- [x] 09-03: Add interactive review queue
+- [x] 09-04: Add session-aware sanitized reports and docs
 
 ### Phase 10: Classifier Readiness Gate
 **Goal**: Let learned behavior assist live calls only when local evidence is
@@ -86,10 +87,10 @@ strong enough and deterministic safety checks still pass.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 10-01: Add classifier readiness metrics
-- [ ] 10-02: Add holdout evaluation reporting
-- [ ] 10-03: Add guarded per-profile live-assist config
-- [ ] 10-04: Add live-assist diagnostics and docs
+- [x] 10-01: Add classifier readiness metrics
+- [x] 10-02: Add holdout evaluation reporting
+- [x] 10-03: Add guarded per-profile live-assist config
+- [x] 10-04: Add live-assist diagnostics and docs
 
 ## Progress
 
@@ -99,5 +100,5 @@ Phases execute in numeric order: 8 → 9 → 10
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 8. Capture Session Ledger | v1.2 | 3/3 | Complete | 2026-05-20 |
-| 9. Review And Relabel Workflow | v1.2 | 0/4 | Planned | — |
-| 10. Classifier Readiness Gate | v1.2 | 0/4 | Planned | — |
+| 9. Review And Relabel Workflow | v1.2 | 4/4 | Complete | 2026-05-20 |
+| 10. Classifier Readiness Gate | v1.2 | 4/4 | Complete | 2026-05-20 |
