@@ -6,7 +6,10 @@ Saymo is a fully local macOS voice assistant that listens to live calls,
 detects when the user is addressed, and speaks into the meeting through a
 virtual microphone using the user's cloned voice. It is for a user who wants a
 local, controllable assistant for standups, Q&A, and takeover moments without
-cloud voice APIs.
+cloud voice APIs. The next product direction is turning captured call audio
+into local meeting memory and a live answer cockpit, so the user can see why
+Saymo thinks they were addressed, inspect a grounded draft, and decide whether
+to speak, edit, skip, or take over.
 
 ## Core Value
 
@@ -20,10 +23,26 @@ run optional local diarization on completed trigger-capture sessions, store
 speaker suggestions as sidecars, review/promote those suggestions into manual
 sample labels, and export speaker-label quality reports before training.
 
-**Status:** v1.3 archived on 2026-05-20. No active milestone is selected.
+**Status:** v1.4 Live Conversation Memory + Answer Cockpit started on
+2026-05-20.
 
-**Next milestone:** start with `$gsd-new-milestone` when the next product goal
-is chosen.
+## Current Milestone: v1.4 Live Conversation Memory + Answer Cockpit
+
+**Goal:** make Saymo useful during live conversations as a local meeting-memory
+assistant that drafts grounded answers only after the user can inspect and
+approve them.
+
+**Target features:**
+- Full-session transcript ledger grouped by profile/session with speaker,
+  timing, confidence, and local storage controls.
+- Local meeting memory commands for searching and asking questions about the
+  current or past recorded sessions.
+- Source-grounded answer drafts that combine current meeting context with
+  configured Jira, Confluence, Obsidian, and file sources.
+- Live answer cockpit showing trigger evidence, draft text, confidence,
+  sources, and explicit speak/edit/skip/takeover actions.
+- Audit trail for trigger decisions, generated drafts, user actions, and spoken
+  responses.
 
 ## Requirements
 
@@ -62,6 +81,17 @@ is chosen.
 - ✓ User can evaluate speaker-label quality before using suggested labels in
   classifier readiness or training.
 
+### Active
+
+- [ ] User can treat a call as a local transcript ledger, not only isolated
+  trigger samples.
+- [ ] User can ask questions about a current or past local meeting and get
+  cited answers from stored transcript/context evidence.
+- [ ] User can review a live grounded answer draft before Saymo speaks into the
+  call.
+- [ ] User can inspect an audit trail explaining each trigger, draft, action,
+  and spoken response.
+
 ### Out of Scope
 
 - Cloud STT/TTS as a required path — the product remains local-by-default.
@@ -85,6 +115,10 @@ is chosen.
   takeover hotkeys, trigger confirmation, response cache routing diagnostics,
   classified trigger sample capture, session-ledger review, classifier
   readiness, and optional offline speaker diarization review.
+- GitHub ecosystem review found that local meeting assistants are usually
+  strong at transcription, summaries, search, or meeting bots, while Saymo's
+  differentiating direction is a local "listen and answer as me" flow with
+  explicit user approval and source-backed answer drafts.
 
 ## Constraints
 
@@ -110,6 +144,7 @@ is chosen.
 | Measure providers through the existing abstraction | Keep provider latency work scoped to Chrome call automation, not UI redesign | ✓ Implemented in Phase 7 |
 | Require a readiness gate before live classifier assist | Learned behavior should be opt-in and evidence-backed per profile | ✓ Implemented in Phase 10 |
 | Keep diarization optional and review-first | Speaker suggestions are useful only after the user can inspect and correct them locally | ✓ Implemented in v1.3 |
+| Build answer cockpit before autonomous speaking | The user must be able to inspect trigger evidence and approve a draft before Saymo talks in a live call | — Pending |
 
 ---
-*Last updated: 2026-05-20 after archiving milestone v1.3*
+*Last updated: 2026-05-20 after starting milestone v1.4*

@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Local Diarization Assist
-status: Milestone v1.3 archived; no active milestone
-stopped_at: v1.3 Local Diarization Assist archived; next step is $gsd-new-milestone.
+milestone: v1.4
+milestone_name: Live Conversation Memory + Answer Cockpit
+status: Defining requirements
+stopped_at: v1.4 Live Conversation Memory + Answer Cockpit started; requirements and roadmap pending.
 last_updated: "2026-05-20"
-last_activity: "2026-05-20 - archived v1.3 Local Diarization Assist"
+last_activity: "2026-05-20 - started v1.4 Live Conversation Memory + Answer Cockpit"
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -22,23 +22,23 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Between milestones.
+**Current focus:** v1.4 Live Conversation Memory + Answer Cockpit.
 
 ## Current Position
 
-Phase: Complete
-Plan: Complete
-Status: v1.3 archived; no active roadmap phases
-Last activity: 2026-05-20 - archived roadmap, requirements, and milestone
-audit for v1.3 Local Diarization Assist.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-20 - milestone v1.4 started from GitHub-gap analysis:
+local meeting memory plus a live answer cockpit.
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: 10
-- Plans completed: 10
+- Total plans planned: 0
+- Plans completed: 0
 - Average duration: pending
 - Total execution time: pending
 
@@ -49,11 +49,7 @@ Progress: [##########] 100%
 
 **By Phase:**
 
-| Phase | Plans | Total | Status |
-|-------|-------|-------|--------|
-| 11. Diarization Adapter And Config | 3 | 3/3 | complete |
-| 12. Session Speaker Suggestions | 3 | 3/3 | complete |
-| 13. Speaker Review And Quality Reports | 4 | 4/4 | complete |
+Roadmap pending.
 
 **Recent Trend:**
 - v1.2 created reviewable sessions and corrected sample labels.
@@ -79,7 +75,9 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Start the next milestone with `$gsd-new-milestone` when a new goal is chosen.
+- Define v1.4 requirements for local meeting memory, grounded answer drafts,
+  cockpit controls, and audit trail.
+- Create the v1.4 roadmap starting at Phase 14.
 
 ### Blockers/Concerns
 
@@ -89,6 +87,10 @@ Start the next milestone with `$gsd-new-milestone` when a new goal is chosen.
 - Real-time diarization is intentionally out of scope until offline session
   suggestions prove reliable.
 - Provider UI regression checks remain deferred beyond v1.3.
+- Answer drafts must not become automatic live speaking without explicit user
+  approval.
+- Stored transcripts and summaries must stay local, configurable, and
+  sanitizable.
 
 ## Session Continuity
 

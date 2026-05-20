@@ -2,7 +2,14 @@
 
 ## Current
 
-No active milestone. Start the next cycle with `$gsd-new-milestone`.
+### v1.4 Live Conversation Memory + Answer Cockpit
+
+**Started:** 2026-05-20
+**Status:** Planning
+
+Focus: turn recorded and live call context into local meeting memory plus an
+explicit answer cockpit, so Saymo can show why it thinks the user was addressed,
+draft a source-grounded answer, and wait for speak/edit/skip/takeover approval.
 
 ## Completed
 
