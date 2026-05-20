@@ -191,6 +191,7 @@ def test_trigger_capture_help_is_available():
 
     assert result.exit_code == 0
     assert "Capture live call audio into classified trigger samples" in result.output
+    assert "--session" in result.output
 
 
 def test_trigger_capture_defaults_to_capture_device(monkeypatch):
@@ -387,6 +388,9 @@ def _write_sample(
     peak=0.1,
     speaker=None,
     decision=None,
+    session_id=None,
+    session_name=None,
+    session_sequence=None,
 ):
     metadata = {
         "profile": profile,
@@ -407,6 +411,12 @@ def _write_sample(
         metadata["speaker"] = speaker
     if decision is not None:
         metadata["answer_decision"] = decision
+    if session_id is not None:
+        metadata["session_id"] = session_id
+    if session_name is not None:
+        metadata["session_name"] = session_name
+    if session_sequence is not None:
+        metadata["session_sequence"] = session_sequence
     sample_dir = samples_dir / profile / category
     sample_dir.mkdir(parents=True, exist_ok=True)
     path = sample_dir / f"{name}.json"
@@ -631,6 +641,56 @@ def test_trigger_samples_list_replay_and_sanitized_report(tmp_path):
     assert "секретный текст вопроса" not in report
 
 
+def test_trigger_samples_list_ignores_ledgers_and_prints_session(tmp_path):
+    from saymo.analysis.trigger_sessions import (
+        finish_trigger_session,
+        start_trigger_session,
+    )
+
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    session = start_trigger_session(
+        base_dir=samples_dir,
+        profile="personal",
+        session_name="daily",
+        started_at="2026-05-20T10:00:00",
+    )
+    _write_sample(
+        samples_dir,
+        category="question",
+        name="question",
+        transcript="что по статусу?",
+        question=True,
+        session_id=session.session_id,
+        session_name=session.session_name,
+        session_sequence=1,
+    )
+    finish_trigger_session(
+        base_dir=samples_dir,
+        session=session,
+        ended_at="2026-05-20T10:00:05",
+        status="completed",
+    )
+
+    listed = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "list",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    assert listed.exit_code == 0
+    assert "samples: 1" in listed.output
+    assert f"session={session.session_id}" in listed.output
+
+
 def test_trigger_samples_label_updates_speaker_metadata(tmp_path):
     config_path = _write_config(tmp_path)
     samples_dir = tmp_path / "samples"
@@ -720,6 +780,97 @@ def test_trigger_samples_decision_updates_answer_metadata(tmp_path):
     assert "decision=accepted" in listed.output
     assert replayed.exit_code == 0
     assert "decision=accepted" in replayed.output
+
+
+def test_trigger_sessions_list_and_summary(tmp_path):
+    from saymo.analysis.trigger_sessions import (
+        finish_trigger_session,
+        start_trigger_session,
+    )
+
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    session = start_trigger_session(
+        base_dir=samples_dir,
+        profile="personal",
+        session_name="daily meeting",
+        started_at="2026-05-20T10:00:00",
+    )
+    _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="accepted",
+        transcript="John, что по статусу?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        speaker="other",
+        decision="accepted",
+        session_id=session.session_id,
+        session_name=session.session_name,
+        session_sequence=1,
+    )
+    _write_sample(
+        samples_dir,
+        category="speech",
+        name="rejected",
+        transcript="как John вчера говорил",
+        trigger=True,
+        speaker="me",
+        decision="rejected",
+        session_id=session.session_id,
+        session_name=session.session_name,
+        session_sequence=2,
+    )
+    finish_trigger_session(
+        base_dir=samples_dir,
+        session=session,
+        ended_at="2026-05-20T10:00:10",
+        status="completed",
+        skipped_silence=3,
+    )
+    runner = CliRunner()
+
+    listed = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-sessions",
+            "list",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+    summarized = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-sessions",
+            "summary",
+            "--profile",
+            "personal",
+            "--session",
+            "daily-meeting",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    assert listed.exit_code == 0
+    assert "sessions: 1" in listed.output
+    assert f"{session.session_id}: profile=personal" in listed.output
+    assert "samples=2" in listed.output
+    assert "skipped_silence=3" in listed.output
+    assert summarized.exit_code == 0
+    assert f"session: {session.session_id}" in summarized.output
+    assert "windows: total=5 saved=2 skipped_silence=3" in summarized.output
+    assert "category asked_to_speak: 1" in summarized.output
+    assert "speaker other: 1" in summarized.output
+    assert "decision accepted: 1" in summarized.output
 
 
 def test_trigger_classifier_train_refuses_insufficient_labels(tmp_path):

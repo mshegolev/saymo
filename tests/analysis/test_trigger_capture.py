@@ -141,3 +141,30 @@ def test_save_trigger_sample_writes_wav_and_metadata_under_category(tmp_path):
     assert metadata["speaker"] == "unknown"
     assert metadata["transcript"] == "Does anyone have questions?"
     assert metadata["wav"] == wav_path.name
+
+
+def test_save_trigger_sample_writes_optional_session_metadata(tmp_path):
+    audio = np.zeros(1600, dtype=np.float32)
+    sample = classify_trigger_sample(
+        "John, what is the status?",
+        trigger_phrases=["John"],
+        rms=0.04,
+        peak=0.4,
+    )
+
+    _, meta_path = save_trigger_sample(
+        audio,
+        sample_rate=16000,
+        sample=sample,
+        base_dir=tmp_path,
+        profile="daily",
+        sequence=3,
+        created_at="2026-05-15T19:21:00",
+        session_id="daily-20260515-192100",
+        session_name="daily",
+    )
+
+    metadata = json.loads(meta_path.read_text(encoding="utf-8"))
+    assert metadata["session_id"] == "daily-20260515-192100"
+    assert metadata["session_name"] == "daily"
+    assert metadata["session_sequence"] == 3

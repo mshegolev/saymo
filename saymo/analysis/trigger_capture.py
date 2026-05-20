@@ -125,6 +125,8 @@ def save_trigger_sample(
     profile: str,
     sequence: int,
     created_at: str,
+    session_id: str | None = None,
+    session_name: str | None = None,
 ) -> tuple[Path, Path]:
     """Write a captured window as ``.wav`` plus adjacent JSON metadata."""
     category_dir = Path(base_dir).expanduser() / profile / sample.category
@@ -146,6 +148,11 @@ def save_trigger_sample(
         "wav": wav_path.name,
         **asdict(sample),
     }
+    if session_id:
+        metadata["session_id"] = session_id
+        metadata["session_sequence"] = sequence
+    if session_name:
+        metadata["session_name"] = session_name
     meta_path.write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
