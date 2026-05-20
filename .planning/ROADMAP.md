@@ -36,7 +36,7 @@ cockpit action gate before live speech.
   questions with transcript citations.
 - [x] **Phase 16: Grounded Answer Drafts** - Generate source-backed drafts from
   meeting memory and configured context sources.
-- [ ] **Phase 17: Answer Cockpit And Audit Trail** - Show live handoff
+- [x] **Phase 17: Answer Cockpit And Audit Trail** - Show live handoff
   evidence, approve/edit/skip/takeover actions, and audit what happened.
 
 ## Phase Details
@@ -118,10 +118,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 17-01: Add cockpit state model and command output
-- [ ] 17-02: Add speak/edit/skip/takeover action handling
-- [ ] 17-03: Add local audit trail for trigger/draft/action/speech events
-- [ ] 17-04: Add sanitized replay/report flow and safety tests
+- [x] 17-01: Add cockpit state model and command output
+- [x] 17-02: Add speak/edit/skip/takeover action handling
+- [x] 17-03: Add local audit trail for trigger/draft/action/speech events
+- [x] 17-04: Add sanitized replay/report flow and safety tests
 
 ## Progress
 
@@ -133,7 +133,7 @@ Phases execute in numeric order: 14 -> 15 -> 16 -> 17
 | 14. Meeting Memory Ledger | v1.4 | 4/4 | Complete | 2026-05-20 |
 | 15. Meeting Ask And Search | v1.4 | 3/3 | Complete | 2026-05-20 |
 | 16. Grounded Answer Drafts | v1.4 | 4/4 | Complete | 2026-05-20 |
-| 17. Answer Cockpit And Audit Trail | v1.4 | 0/4 | Not Started | — |
+| 17. Answer Cockpit And Audit Trail | v1.4 | 4/4 | Complete | 2026-05-20 |
 
 ## Requirement Coverage
 

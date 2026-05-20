@@ -329,6 +329,14 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 | `saymo trigger-sessions speakers -p PROFILE --session SESSION` | Inspect diarization speaker clusters and suggestions |
 | `saymo trigger-sessions map-speaker -p PROFILE --session SESSION --speaker-id SPEAKER_00 --label me` | Map one diarization speaker id to a Saymo label |
 | `saymo trigger-sessions speaker-report -p PROFILE --session SESSION -o REPORT.md` | Export sanitized speaker-review quality metrics |
+| `saymo meeting-memory build -p PROFILE --session SESSION` | Build a local full-session transcript ledger |
+| `saymo meeting-summary -p PROFILE --session SESSION` | Render meeting-memory questions, handoffs, action items, and coverage |
+| `saymo meeting-search -p PROFILE --session SESSION --keyword TEXT` | Search local meeting transcript ledgers |
+| `saymo meeting-ask -p PROFILE --session SESSION QUESTION` | Answer from cited local transcript evidence |
+| `saymo answer-draft -p PROFILE --session SESSION QUESTION -o DRAFT.json` | Generate a pending answer draft with citations and source diagnostics |
+| `saymo answer-cockpit show --draft-json DRAFT.json` | Show draft, trigger evidence, citations, confidence, and available actions |
+| `saymo answer-cockpit action -p PROFILE --session SESSION --action speak` | Record explicit speak/edit/skip/takeover action; generated drafts do not auto-play |
+| `saymo answer-audit report -p PROFILE --session SESSION -o REPORT.md` | Export sanitized trigger/draft/action audit evidence |
 | `saymo trigger-samples list -p PROFILE --session SESSION --speaker other --decision accepted` | Filter saved samples for review |
 | `saymo trigger-samples speaker-suggestion SAMPLE.json --accept` | Accept/reject/override one sidecar speaker suggestion |
 | `saymo trigger-samples category SAMPLE.json --category mentioned_me` | Correct the stored sample category |

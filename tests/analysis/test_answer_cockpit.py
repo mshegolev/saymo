@@ -2,13 +2,23 @@
 
 from saymo.analysis.answer_cockpit import (
     TriggerEvidence,
+    append_audit_event,
     answer_draft_from_json,
     answer_draft_to_json,
+    apply_cockpit_action,
     build_answer_draft,
+    build_cockpit_state,
     build_trigger_evidence,
+    draft_created_event,
+    load_audit_events,
+    render_audit_events,
+    render_cockpit_state,
+    render_sanitized_audit_report,
     render_answer_draft,
     source_evidence_error,
     source_evidence_from_payload,
+    write_cockpit_state,
+    load_cockpit_state,
 )
 from saymo.analysis.meeting_memory import MeetingAskAnswer, MeetingSearchResult
 
@@ -103,3 +113,89 @@ def test_source_evidence_error_redacts_token_like_values():
     assert evidence.status == "error"
     assert "secret-value" not in evidence.diagnostic
     assert "<redacted>" in evidence.diagnostic
+
+
+def test_cockpit_state_renders_pending_actions(tmp_path):
+    draft = build_answer_draft(
+        profile="daily",
+        session_id="daily-1",
+        question="What is the release status?",
+        trigger_evidence=TriggerEvidence(transcript="John?", confidence=0.5),
+        meeting_answer=_meeting_answer(),
+        created_at="2026-05-20T10:00:00+00:00",
+    )
+    state = build_cockpit_state(draft, updated_at="2026-05-20T10:00:01+00:00")
+    path = write_cockpit_state(tmp_path, state)
+    loaded = load_cockpit_state(path)
+    rendered = render_cockpit_state(loaded)
+
+    assert loaded.state == "pending"
+    assert "available actions: speak, edit, skip, takeover" in rendered
+    assert "daily-1#1@0.0-8.0s" in rendered
+
+
+def test_apply_cockpit_speak_records_approval_without_playback():
+    draft = build_answer_draft(
+        profile="daily",
+        session_id="daily-1",
+        question="What is the release status?",
+        trigger_evidence=TriggerEvidence(transcript="John?", confidence=0.5),
+        meeting_answer=_meeting_answer(),
+        created_at="2026-05-20T10:00:00+00:00",
+    )
+    state = build_cockpit_state(draft)
+
+    updated, event = apply_cockpit_action(
+        state,
+        action="speak",
+        at="2026-05-20T10:00:02+00:00",
+    )
+
+    assert updated.state == "approved_to_speak"
+    assert updated.draft.action_state == "approved_to_speak"
+    assert event.action == "speak"
+    assert event.metadata["playback_started"] is False
+
+
+def test_apply_cockpit_edit_requires_text_and_saves_approved_text():
+    draft = build_answer_draft(
+        profile="daily",
+        session_id="daily-1",
+        question="What is the release status?",
+        trigger_evidence=TriggerEvidence(transcript="John?", confidence=0.5),
+        meeting_answer=_meeting_answer(),
+        created_at="2026-05-20T10:00:00+00:00",
+    )
+    state = build_cockpit_state(draft)
+
+    updated, event = apply_cockpit_action(
+        state,
+        action="edit",
+        edited_text="I will verify the release after this call.",
+        at="2026-05-20T10:00:03+00:00",
+    )
+
+    assert updated.state == "edited"
+    assert updated.approved_text == "I will verify the release after this call."
+    assert event.metadata["state"] == "edited"
+
+
+def test_audit_events_round_trip_and_sanitized_report(tmp_path):
+    draft = build_answer_draft(
+        profile="daily",
+        session_id="daily-1",
+        question="What is the release status?",
+        trigger_evidence=TriggerEvidence(transcript="John?", confidence=0.5),
+        meeting_answer=_meeting_answer(),
+        created_at="2026-05-20T10:00:00+00:00",
+    )
+    event = draft_created_event(draft, at="2026-05-20T10:00:04+00:00")
+    path = append_audit_event(tmp_path, event)
+
+    events = load_audit_events(path)
+    rendered = render_audit_events(events)
+    report = render_sanitized_audit_report(events)
+
+    assert events[0].event_type == "draft_shown"
+    assert "type=draft_shown" in rendered
+    assert "raw audio: omitted" in report

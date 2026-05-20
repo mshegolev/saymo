@@ -40,18 +40,18 @@ Requirements for milestone v1.4 Live Conversation Memory + Answer Cockpit.
 
 ### Live Answer Cockpit
 
-- [ ] **COCK-01**: User can open a live cockpit view that shows the current
+- [x] **COCK-01**: User can open a live cockpit view that shows the current
   handoff candidate, trigger evidence, answer draft, citations, confidence,
   and available actions.
-- [ ] **COCK-02**: User can choose speak, edit, skip, or takeover from the
+- [x] **COCK-02**: User can choose speak, edit, skip, or takeover from the
   cockpit or hotkey-compatible CLI action without Saymo auto-speaking an
   unapproved generated draft.
 
 ### Audit And Debugging
 
-- [ ] **AUD-01**: User can inspect a local audit trail for each trigger
+- [x] **AUD-01**: User can inspect a local audit trail for each trigger
   decision, generated draft, source set, user action, and spoken response.
-- [ ] **AUD-02**: User can replay or report captured evidence for missed or
+- [x] **AUD-02**: User can replay or report captured evidence for missed or
   incorrect triggers without exposing raw audio payloads, secrets, or private
   config values.
 
@@ -105,10 +105,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ANS-01 | Phase 16 | Complete |
 | ANS-02 | Phase 16 | Complete |
 | ANS-03 | Phase 16 | Complete |
-| COCK-01 | Phase 17 | Pending |
-| COCK-02 | Phase 17 | Pending |
-| AUD-01 | Phase 17 | Pending |
-| AUD-02 | Phase 17 | Pending |
+| COCK-01 | Phase 17 | Complete |
+| COCK-02 | Phase 17 | Complete |
+| AUD-01 | Phase 17 | Complete |
+| AUD-02 | Phase 17 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 13 total
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after completing Phase 16*
+*Last updated: 2026-05-20 after completing Phase 17*

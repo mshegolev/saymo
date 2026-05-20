@@ -2606,6 +2606,161 @@ async def _fetch_answer_source_evidence(config, source_names: tuple[str, ...]):
     return tuple(evidence)
 
 
+@main.group("answer-cockpit")
+def answer_cockpit():
+    """Review answer drafts and choose explicit live-call actions."""
+
+
+@answer_cockpit.command("show")
+@click.option("--draft-json", required=True, type=click.Path(exists=True), help="Answer draft JSON from answer-draft")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to meeting_memory.base_dir or ~/.saymo/trigger_samples",
+)
+@click.pass_context
+def answer_cockpit_show(ctx, draft_json, samples_dir):
+    """Show current answer cockpit state for a draft."""
+    from saymo.analysis.answer_cockpit import (
+        append_audit_event,
+        build_cockpit_state,
+        draft_created_event,
+        load_answer_draft,
+        render_cockpit_state,
+        write_cockpit_state,
+    )
+    from saymo.analysis.meeting_memory import meeting_memory_base_dir
+
+    base_dir = meeting_memory_base_dir(ctx.obj["config"], samples_dir)
+    draft = load_answer_draft(Path(draft_json))
+    state = build_cockpit_state(draft)
+    state_path = write_cockpit_state(base_dir, state)
+    audit_path = append_audit_event(base_dir, draft_created_event(draft))
+    console.print(f"cockpit state: {state_path}")
+    console.print(f"audit: {audit_path}")
+    console.print(render_cockpit_state(state))
+
+
+@answer_cockpit.command("action")
+@click.option("--profile", "-p", required=True, help="Meeting profile")
+@click.option("--session", "session_id", required=True, help="Session id")
+@click.option(
+    "--action",
+    "action_name",
+    required=True,
+    type=click.Choice(["speak", "edit", "skip", "takeover"]),
+    help="Explicit cockpit action",
+)
+@click.option("--text", "edited_text", default=None, help="Edited answer text for --action edit")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to meeting_memory.base_dir or ~/.saymo/trigger_samples",
+)
+@click.pass_context
+def answer_cockpit_action(ctx, profile, session_id, action_name, edited_text, samples_dir):
+    """Apply one explicit cockpit action to the current draft."""
+    from saymo.analysis.answer_cockpit import (
+        append_audit_event,
+        apply_cockpit_action,
+        cockpit_state_path,
+        load_cockpit_state,
+        render_cockpit_state,
+        write_cockpit_state,
+    )
+    from saymo.analysis.meeting_memory import meeting_memory_base_dir
+
+    base_dir = meeting_memory_base_dir(ctx.obj["config"], samples_dir)
+    path = cockpit_state_path(base_dir, profile, session_id)
+    if not path.exists():
+        raise click.ClickException(f"Cockpit state not found: {path}")
+    state = load_cockpit_state(path)
+    try:
+        updated, event = apply_cockpit_action(
+            state,
+            action=action_name,
+            edited_text=edited_text,
+        )
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
+    state_path = write_cockpit_state(base_dir, updated)
+    audit_path = append_audit_event(base_dir, event)
+    console.print(f"action: {action_name}")
+    console.print(f"state: {updated.state}")
+    console.print(f"playback started: no")
+    console.print(f"cockpit state: {state_path}")
+    console.print(f"audit: {audit_path}")
+    console.print(render_cockpit_state(updated))
+
+
+@main.group("answer-audit")
+def answer_audit():
+    """Inspect local answer cockpit audit events."""
+
+
+@answer_audit.command("list")
+@click.option("--profile", "-p", required=True, help="Meeting profile")
+@click.option("--session", "session_id", required=True, help="Session id")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to meeting_memory.base_dir or ~/.saymo/trigger_samples",
+)
+@click.pass_context
+def answer_audit_list(ctx, profile, session_id, samples_dir):
+    """List local answer cockpit audit events."""
+    from saymo.analysis.answer_cockpit import (
+        answer_audit_path,
+        load_audit_events,
+        render_audit_events,
+    )
+    from saymo.analysis.meeting_memory import meeting_memory_base_dir
+
+    base_dir = meeting_memory_base_dir(ctx.obj["config"], samples_dir)
+    path = answer_audit_path(base_dir, profile, session_id)
+    events = load_audit_events(path)
+    console.print(f"audit: {path}")
+    console.print(f"events: {len(events)}")
+    rendered = render_audit_events(events)
+    if rendered:
+        console.print(rendered)
+
+
+@answer_audit.command("report")
+@click.option("--profile", "-p", required=True, help="Meeting profile")
+@click.option("--session", "session_id", required=True, help="Session id")
+@click.option("--output", "-o", default=None, type=click.Path(), help="Markdown output path")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to meeting_memory.base_dir or ~/.saymo/trigger_samples",
+)
+@click.pass_context
+def answer_audit_report(ctx, profile, session_id, output, samples_dir):
+    """Render sanitized answer cockpit audit report."""
+    from saymo.analysis.answer_cockpit import (
+        answer_audit_path,
+        load_audit_events,
+        render_sanitized_audit_report,
+    )
+    from saymo.analysis.meeting_memory import meeting_memory_base_dir
+
+    base_dir = meeting_memory_base_dir(ctx.obj["config"], samples_dir)
+    path = answer_audit_path(base_dir, profile, session_id)
+    rendered = render_sanitized_audit_report(load_audit_events(path))
+    if output:
+        out_path = Path(output).expanduser()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered, encoding="utf-8")
+        console.print(f"answer audit report: {out_path}")
+    else:
+        console.print(rendered)
+
+
 def _build_meeting_memory_ledger(
     ctx,
     *,

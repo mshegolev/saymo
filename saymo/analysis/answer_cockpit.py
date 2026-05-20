@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from saymo.analysis.meeting_memory import MeetingAskAnswer, MeetingSearchResult
+from saymo.analysis.trigger_sessions import SESSION_LEDGER_DIR
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,35 @@ class AnswerDraft:
     confidence: float = 0.0
     composer: str = "deterministic"
     action_state: str = "pending"
+
+
+@dataclass(frozen=True)
+class CockpitState:
+    """Current review/control state for one answer draft."""
+
+    profile: str
+    session_id: str
+    draft: AnswerDraft
+    state: str = "pending"
+    selected_action: str = ""
+    approved_text: str = ""
+    updated_at: str = ""
+    available_actions: tuple[str, ...] = ("speak", "edit", "skip", "takeover")
+
+
+@dataclass(frozen=True)
+class AuditEvent:
+    """Sanitized local audit event for answer cockpit decisions."""
+
+    event_id: str
+    event_type: str
+    profile: str
+    session_id: str
+    draft_id: str
+    created_at: str
+    action: str = ""
+    summary: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def build_trigger_evidence(
@@ -265,6 +295,222 @@ def load_answer_draft(path: Path) -> AnswerDraft:
     return answer_draft_from_json(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
+def cockpit_state_path(base_dir: Path, profile: str, session_id: str) -> Path:
+    """Return local cockpit state sidecar path for one session."""
+    return (
+        Path(base_dir).expanduser()
+        / profile
+        / SESSION_LEDGER_DIR
+        / f"{session_id}.cockpit.json"
+    )
+
+
+def answer_audit_path(base_dir: Path, profile: str, session_id: str) -> Path:
+    """Return local answer audit JSONL path for one session."""
+    return (
+        Path(base_dir).expanduser()
+        / profile
+        / SESSION_LEDGER_DIR
+        / f"{session_id}.answer-audit.jsonl"
+    )
+
+
+def build_cockpit_state(draft: AnswerDraft, *, updated_at: str | None = None) -> CockpitState:
+    """Create pending cockpit state for a draft."""
+    return CockpitState(
+        profile=draft.profile,
+        session_id=draft.session_id,
+        draft=draft,
+        state=draft.action_state or "pending",
+        selected_action="",
+        approved_text="",
+        updated_at=updated_at or _now(),
+    )
+
+
+def cockpit_state_to_json(state: CockpitState) -> dict[str, Any]:
+    """Serialize cockpit state to JSON-compatible primitives."""
+    return {
+        "profile": state.profile,
+        "session_id": state.session_id,
+        "draft": answer_draft_to_json(state.draft),
+        "state": state.state,
+        "selected_action": state.selected_action,
+        "approved_text": state.approved_text,
+        "updated_at": state.updated_at,
+        "available_actions": list(state.available_actions),
+    }
+
+
+def cockpit_state_from_json(data: Mapping[str, Any]) -> CockpitState:
+    """Load cockpit state from JSON-compatible primitives."""
+    draft = answer_draft_from_json(data.get("draft") or {})
+    return CockpitState(
+        profile=str(data.get("profile") or draft.profile),
+        session_id=str(data.get("session_id") or draft.session_id),
+        draft=draft,
+        state=str(data.get("state") or "pending"),
+        selected_action=str(data.get("selected_action") or ""),
+        approved_text=str(data.get("approved_text") or ""),
+        updated_at=str(data.get("updated_at") or ""),
+        available_actions=tuple(data.get("available_actions") or ("speak", "edit", "skip", "takeover")),
+    )
+
+
+def write_cockpit_state(base_dir: Path, state: CockpitState) -> Path:
+    """Write cockpit state sidecar for one session."""
+    path = cockpit_state_path(base_dir, state.profile, state.session_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(cockpit_state_to_json(state), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def load_cockpit_state(path: Path) -> CockpitState:
+    """Load cockpit state sidecar."""
+    return cockpit_state_from_json(json.loads(Path(path).read_text(encoding="utf-8")))
+
+
+def apply_cockpit_action(
+    state: CockpitState,
+    *,
+    action: str,
+    edited_text: str | None = None,
+    at: str | None = None,
+) -> tuple[CockpitState, AuditEvent]:
+    """Apply one explicit cockpit action without implicit audio playback."""
+    normalized = action.strip().lower()
+    if normalized not in {"speak", "edit", "skip", "takeover"}:
+        raise ValueError("action must be one of: speak, edit, skip, takeover")
+    now = at or _now()
+    approved_text = state.draft.draft_text
+    if normalized == "edit":
+        approved_text = " ".join((edited_text or "").split())
+        if not approved_text:
+            raise ValueError("edited_text is required for edit action")
+        new_state = "edited"
+        summary = "draft edited and approved for review"
+    elif normalized == "speak":
+        new_state = "approved_to_speak"
+        summary = "draft approved to speak; playback not started by this command"
+    elif normalized == "skip":
+        approved_text = ""
+        new_state = "skipped"
+        summary = "draft skipped"
+    else:
+        approved_text = ""
+        new_state = "takeover"
+        summary = "manual takeover selected"
+    updated = CockpitState(
+        profile=state.profile,
+        session_id=state.session_id,
+        draft=AnswerDraft(
+            draft_id=state.draft.draft_id,
+            profile=state.draft.profile,
+            session_id=state.draft.session_id,
+            question=state.draft.question,
+            created_at=state.draft.created_at,
+            trigger_evidence=state.draft.trigger_evidence,
+            citations=state.draft.citations,
+            sources=state.draft.sources,
+            draft_text=state.draft.draft_text,
+            confidence=state.draft.confidence,
+            composer=state.draft.composer,
+            action_state=new_state,
+        ),
+        state=new_state,
+        selected_action=normalized,
+        approved_text=approved_text,
+        updated_at=now,
+        available_actions=state.available_actions,
+    )
+    event = AuditEvent(
+        event_id=_event_id(state.profile, state.session_id, state.draft.draft_id, now, normalized),
+        event_type="cockpit_action",
+        profile=state.profile,
+        session_id=state.session_id,
+        draft_id=state.draft.draft_id,
+        created_at=now,
+        action=normalized,
+        summary=summary,
+        metadata={
+            "state": new_state,
+            "confidence": round(state.draft.confidence, 4),
+            "citation_count": len(state.draft.citations),
+            "playback_started": False,
+        },
+    )
+    return updated, event
+
+
+def audit_event_to_json(event: AuditEvent) -> dict[str, Any]:
+    """Serialize audit event to JSON-compatible primitives."""
+    return asdict(event)
+
+
+def audit_event_from_json(data: Mapping[str, Any]) -> AuditEvent:
+    """Load audit event from JSON-compatible primitives."""
+    return AuditEvent(
+        event_id=str(data.get("event_id") or ""),
+        event_type=str(data.get("event_type") or ""),
+        profile=str(data.get("profile") or ""),
+        session_id=str(data.get("session_id") or ""),
+        draft_id=str(data.get("draft_id") or ""),
+        created_at=str(data.get("created_at") or ""),
+        action=str(data.get("action") or ""),
+        summary=str(data.get("summary") or ""),
+        metadata=dict(data.get("metadata") or {}),
+    )
+
+
+def append_audit_event(base_dir: Path, event: AuditEvent) -> Path:
+    """Append one event to the local answer audit JSONL ledger."""
+    path = answer_audit_path(base_dir, event.profile, event.session_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(audit_event_to_json(event), ensure_ascii=False) + "\n")
+    return path
+
+
+def load_audit_events(path: Path) -> tuple[AuditEvent, ...]:
+    """Load local answer audit events from JSONL."""
+    events: list[AuditEvent] = []
+    if not Path(path).exists():
+        return ()
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            events.append(audit_event_from_json(payload))
+    return tuple(events)
+
+
+def draft_created_event(draft: AnswerDraft, *, at: str | None = None) -> AuditEvent:
+    """Build an audit event for a displayed/generated draft."""
+    created = at or _now()
+    return AuditEvent(
+        event_id=_event_id(draft.profile, draft.session_id, draft.draft_id, created, "draft"),
+        event_type="draft_shown",
+        profile=draft.profile,
+        session_id=draft.session_id,
+        draft_id=draft.draft_id,
+        created_at=created,
+        summary="draft shown in answer cockpit",
+        metadata={
+            "confidence": round(draft.confidence, 4),
+            "citation_count": len(draft.citations),
+            "source_count": len(draft.sources),
+            "action_state": draft.action_state,
+        },
+    )
+
+
 def render_answer_draft(draft: AnswerDraft) -> str:
     """Render a reviewable answer draft for CLI/cockpit use."""
     lines = [
@@ -305,6 +551,87 @@ def render_answer_draft(draft: AnswerDraft) -> str:
     lines.append("draft text:")
     lines.append(draft.draft_text or "(empty)")
     return "\n".join(lines) + "\n"
+
+
+def render_cockpit_state(state: CockpitState) -> str:
+    """Render current cockpit state and available actions."""
+    lines = [
+        "# Answer Cockpit",
+        "",
+        f"state: {state.state}",
+        f"profile: {state.profile}",
+        f"session: {state.session_id or '-'}",
+        f"draft: {state.draft.draft_id}",
+        f"confidence: {state.draft.confidence:.2f}",
+        f"selected action: {state.selected_action or '-'}",
+        f"available actions: {', '.join(state.available_actions)}",
+        "",
+        "## Trigger Evidence",
+        (
+            f"- trigger={'yes' if state.draft.trigger_evidence.trigger else 'no'} "
+            f"question={'yes' if state.draft.trigger_evidence.question else 'no'} "
+            f"will_answer={'yes' if state.draft.trigger_evidence.will_answer else 'no'} "
+            f"confidence={state.draft.trigger_evidence.confidence:.2f} "
+            f"addressing={state.draft.trigger_evidence.addressing or '-'}"
+        ),
+        "",
+        "## Draft",
+        state.approved_text or state.draft.draft_text or "(empty)",
+        "",
+        "## Citations",
+    ]
+    if state.draft.citations:
+        for citation in state.draft.citations:
+            lines.append(
+                f"- {citation.citation} speaker={citation.speaker} "
+                f"category={citation.category} text={_clip(citation.transcript, 140)}"
+            )
+    else:
+        lines.append("- none")
+    lines.append("")
+    lines.append("## Sources")
+    if state.draft.sources:
+        for source in state.draft.sources:
+            detail = source.diagnostic or _clip(source.summary, 120)
+            lines.append(f"- {source.name}: {source.status} {detail}".rstrip())
+    else:
+        lines.append("- none")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def render_audit_events(events: Iterable[AuditEvent]) -> str:
+    """Render audit events as grep-friendly lines."""
+    lines = []
+    for event in events:
+        lines.append(
+            f"{event.created_at} type={event.event_type} action={event.action or '-'} "
+            f"profile={event.profile} session={event.session_id} draft={event.draft_id} "
+            f"summary={event.summary}"
+        )
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
+def render_sanitized_audit_report(events: Iterable[AuditEvent]) -> str:
+    """Render sanitized markdown audit report."""
+    events = tuple(events)
+    lines = [
+        "# Answer Cockpit Audit Report",
+        "",
+        f"- events: {len(events)}",
+        "- raw audio: omitted",
+        "- secrets and config values: omitted",
+        "",
+        "## Events",
+    ]
+    for event in events:
+        lines.append(
+            f"- {event.created_at}: type={event.event_type}, action={event.action or '-'}, "
+            f"state={event.metadata.get('state', '-')}, draft={event.draft_id}, "
+            f"summary={event.summary}"
+        )
+    if not events:
+        lines.append("- none")
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def _draft_citation(result: MeetingSearchResult) -> DraftCitation:
@@ -371,6 +698,12 @@ def _draft_id(profile: str, session_id: str, created_at: str) -> str:
     raw = f"{profile}-{session_id or 'session'}-{created_at}"
     slug = re.sub(r"[^a-zA-Z0-9_.-]+", "-", raw).strip("-._")
     return slug or "draft"
+
+
+def _event_id(profile: str, session_id: str, draft_id: str, created_at: str, event: str) -> str:
+    raw = f"{profile}-{session_id}-{draft_id}-{created_at}-{event}"
+    slug = re.sub(r"[^a-zA-Z0-9_.-]+", "-", raw).strip("-._")
+    return slug or "event"
 
 
 def _clip(text: str, limit: int) -> str:

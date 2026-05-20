@@ -293,3 +293,164 @@ def test_answer_draft_command_outputs_pending_draft_with_citations(tmp_path):
     assert "confidence:" in result.output
     assert f"{session.session_id}#1@0.0-8.0s" in result.output
     assert output_path.exists()
+
+
+def _write_answer_draft(runner, config_path, samples_dir, session, output_path):
+    return runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "answer-draft",
+            "John, can you share the status?",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--samples-dir",
+            str(samples_dir),
+            "--source",
+            "none",
+            "-o",
+            str(output_path),
+        ],
+    )
+
+
+def test_answer_cockpit_show_and_action_write_audit(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir, session = _session_with_sample(tmp_path)
+    draft_path = tmp_path / "draft.json"
+    runner = CliRunner()
+    runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "meeting-memory",
+            "build",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+    _write_answer_draft(runner, config_path, samples_dir, session, draft_path)
+
+    show = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "answer-cockpit",
+            "show",
+            "--draft-json",
+            str(draft_path),
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+    action = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "answer-cockpit",
+            "action",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--action",
+            "speak",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    assert show.exit_code == 0
+    assert "available actions: speak, edit, skip, takeover" in show.output
+    assert action.exit_code == 0
+    assert "state: approved_to_speak" in action.output
+    assert "playback started: no" in action.output
+    assert (samples_dir / "daily" / "_sessions" / f"{session.session_id}.answer-audit.jsonl").exists()
+
+
+def test_answer_audit_list_and_report_are_sanitized(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir, session = _session_with_sample(tmp_path)
+    draft_path = tmp_path / "draft.json"
+    report_path = tmp_path / "audit.md"
+    runner = CliRunner()
+    runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "meeting-memory",
+            "build",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+    _write_answer_draft(runner, config_path, samples_dir, session, draft_path)
+    runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "answer-cockpit",
+            "show",
+            "--draft-json",
+            str(draft_path),
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    listed = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "answer-audit",
+            "list",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+    reported = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "answer-audit",
+            "report",
+            "-p",
+            "daily",
+            "--session",
+            session.session_id,
+            "--samples-dir",
+            str(samples_dir),
+            "-o",
+            str(report_path),
+        ],
+    )
+
+    assert listed.exit_code == 0
+    assert "events: 1" in listed.output
+    assert "type=draft_shown" in listed.output
+    assert reported.exit_code == 0
+    rendered = report_path.read_text(encoding="utf-8")
+    assert "raw audio: omitted" in rendered
+    assert "secrets and config values: omitted" in rendered

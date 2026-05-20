@@ -304,6 +304,14 @@ saymo trigger-sessions diarize -p personal --session daily-2026-05-20
 saymo trigger-sessions speakers -p personal --session daily-2026-05-20
 saymo trigger-sessions map-speaker -p personal --session daily-2026-05-20 --speaker-id SPEAKER_00 --label me
 saymo trigger-sessions speaker-report -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/speaker-report.md
+saymo meeting-memory build -p personal --session daily-2026-05-20
+saymo meeting-summary -p personal --session daily-2026-05-20
+saymo meeting-search -p personal --session daily-2026-05-20 --keyword "status"
+saymo meeting-ask -p personal --session daily-2026-05-20 "what did they ask me?"
+saymo answer-draft -p personal --session daily-2026-05-20 "Your Name, what is the status?" -o ~/.saymo/trigger_samples/draft.json
+saymo answer-cockpit show --draft-json ~/.saymo/trigger_samples/draft.json
+saymo answer-cockpit action -p personal --session daily-2026-05-20 --action speak
+saymo answer-audit report -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/answer-audit.md
 saymo trigger-samples list -p personal --session daily-2026-05-20 --speaker other
 saymo trigger-samples list -p personal --classifier-disagreement --model-dir ~/.saymo/models/trigger_classifier
 saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
@@ -351,6 +359,15 @@ Saymo stores a fingerprint of that model and disables live assist if the model
 is missing or changed. Live assist only uses transcript/speaker features and
 can downgrade an already deterministic answer candidate to skip; it cannot
 bypass trigger/addressing checks.
+
+`meeting-memory build` creates a full-session local transcript sidecar under
+`~/.saymo/trigger_samples/<profile>/_sessions/`. `meeting-summary`,
+`meeting-search`, and `meeting-ask` read those local ledgers; `meeting-ask`
+answers only with cited transcript evidence. `answer-draft` combines the cited
+meeting evidence with configured source plugins and leaves the draft in
+`pending` state. `answer-cockpit action --action speak` records explicit
+approval but does not auto-play generated speech by itself. `answer-audit`
+exports sanitized trigger/draft/action evidence without raw audio or secrets.
 
 Optional diarization starts disabled. Add a `diarization:` section to
 `config.yaml`, keep tokens in env vars such as `SAYMO_DIARIZATION_TOKEN`, then
