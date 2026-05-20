@@ -9,7 +9,8 @@ hard safety boundary.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, is_dataclass
+import hashlib
+from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -20,8 +21,9 @@ from saymo.analysis.trigger_classifier import (
     TriggerClassifierPrediction,
     TriggerClassifierSample,
     classifier_model_path,
+    load_model,
     normalize_decision_label,
-    predict,
+    predict_live_assist,
     train_classifier,
 )
 
@@ -78,6 +80,10 @@ class TriggerLiveAssistArtifact:
     enabled: bool
     updated_at: str
     readiness: dict[str, Any]
+    model_path: str = ""
+    model_sha256: str = ""
+    model_trained_at: str = ""
+    model_label_counts: dict[str, int] = field(default_factory=dict)
     version: int = 1
 
 
@@ -87,6 +93,16 @@ class TriggerLiveAssistStatus:
     exists: bool
     enabled: bool
     artifact: TriggerLiveAssistArtifact | None
+    model_valid: bool = False
+    reason: str = ""
+
+
+@dataclass(frozen=True)
+class TriggerLiveAssistModelSnapshot:
+    path: Path
+    sha256: str
+    trained_at: str
+    label_counts: dict[str, int]
 
 
 @dataclass(frozen=True)
@@ -254,7 +270,7 @@ def evaluate_holdout(
     confusion = _empty_confusion_matrix()
     for sample in split.holdout_samples:
         actual = normalize_decision_label(sample.decision)
-        prediction = predict(model, sample)
+        prediction = predict_live_assist(model, sample)
         predicted = normalize_decision_label(prediction.label)
         if actual in DECISION_LABELS and predicted in DECISION_LABELS:
             confusion[actual][predicted] += 1
@@ -304,13 +320,17 @@ def live_assist_status(
             exists=False,
             enabled=False,
             artifact=None,
+            reason="artifact_missing",
         )
     artifact = load_live_assist_artifact(path)
+    model_valid, reason = _live_assist_model_valid(artifact, model_dir)
     return TriggerLiveAssistStatus(
         path=path,
         exists=True,
-        enabled=artifact.enabled,
+        enabled=artifact.enabled and model_valid,
         artifact=artifact,
+        model_valid=model_valid,
+        reason=reason,
     )
 
 
@@ -329,6 +349,13 @@ def load_live_assist_artifact(
         enabled=bool(data.get("enabled")),
         updated_at=str(data.get("updated_at") or ""),
         readiness=dict(readiness) if isinstance(readiness, Mapping) else {},
+        model_path=str(data.get("model_path") or ""),
+        model_sha256=str(data.get("model_sha256") or ""),
+        model_trained_at=str(data.get("model_trained_at") or ""),
+        model_label_counts={
+            str(label): int(count)
+            for label, count in (data.get("model_label_counts") or {}).items()
+        },
         version=int(data.get("version") or 1),
     )
 
@@ -366,18 +393,54 @@ def enable_live_assist(
         raise ValueError("readiness is required")
     if not _readiness_passed(readiness):
         raise LiveAssistReadinessError("Classifier readiness has not passed")
+    snapshot = live_assist_model_snapshot(
+        profile,
+        model_dir if _is_path_like(model_dir) else None,
+    )
+    expected_counts = _readiness_label_counts(readiness)
+    if expected_counts and snapshot.label_counts != expected_counts:
+        raise ValueError(
+            "Classifier model label counts do not match readiness labels; "
+            "retrain before enabling live assist"
+        )
 
     artifact = TriggerLiveAssistArtifact(
         profile=profile,
         enabled=True,
         updated_at=_utc_now(),
         readiness=_readiness_snapshot(readiness),
+        model_path=str(snapshot.path),
+        model_sha256=snapshot.sha256,
+        model_trained_at=snapshot.trained_at,
+        model_label_counts=snapshot.label_counts,
     )
     save_live_assist_artifact(
         artifact,
         live_assist_artifact_path(profile, model_dir if _is_path_like(model_dir) else None),
     )
     return artifact
+
+
+def live_assist_model_snapshot(
+    profile: str,
+    model_dir: str | Path | None = None,
+) -> TriggerLiveAssistModelSnapshot:
+    """Return identifying metadata for the current trained classifier model."""
+    path = classifier_model_path(profile, model_dir)
+    if not path.exists():
+        raise FileNotFoundError(f"Classifier artifact not found: {path}")
+    data = path.read_bytes()
+    model = load_model(path)
+    if model.profile and model.profile != profile:
+        raise ValueError(
+            f"Classifier profile mismatch: artifact={model.profile!r} expected={profile!r}"
+        )
+    return TriggerLiveAssistModelSnapshot(
+        path=path,
+        sha256=hashlib.sha256(data).hexdigest(),
+        trained_at=model.trained_at,
+        label_counts=dict(model.label_counts),
+    )
 
 
 def disable_live_assist(
@@ -560,6 +623,20 @@ def _readiness_snapshot(
     return {"passed": bool(getattr(readiness, "passed", False))}
 
 
+def _readiness_label_counts(
+    readiness: TriggerReadinessReport | Mapping[str, Any],
+) -> dict[str, int]:
+    if isinstance(readiness, Mapping):
+        accepted = readiness.get("accepted")
+        rejected = readiness.get("rejected")
+    else:
+        accepted = getattr(readiness, "accepted", None)
+        rejected = getattr(readiness, "rejected", None)
+    if accepted is None or rejected is None:
+        return {}
+    return {"accepted": int(accepted), "rejected": int(rejected)}
+
+
 def _is_path_like(value: Any) -> bool:
     return isinstance(value, (str, Path))
 
@@ -577,6 +654,25 @@ def _prediction_label_and_confidence(
         else getattr(classifier_prediction, "confidence", None)
     )
     return label, resolved_confidence
+
+
+def _live_assist_model_valid(
+    artifact: TriggerLiveAssistArtifact,
+    model_dir: str | Path | None,
+) -> tuple[bool, str]:
+    if not artifact.enabled:
+        return False, "disabled"
+    if not artifact.model_sha256:
+        return False, "model_fingerprint_missing"
+    try:
+        snapshot = live_assist_model_snapshot(artifact.profile, model_dir)
+    except FileNotFoundError:
+        return False, "model_missing"
+    except ValueError as e:
+        return False, str(e)
+    if snapshot.sha256 != artifact.model_sha256:
+        return False, "model_mismatch"
+    return True, "model_ok"
 
 
 def _utc_now() -> str:

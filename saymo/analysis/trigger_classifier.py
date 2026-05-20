@@ -76,11 +76,7 @@ def classifier_model_path(profile: str, model_dir: str | Path | None = None) -> 
 
 def extract_features(sample: TriggerClassifierSample) -> list[str]:
     """Extract sparse text + metadata features for the local classifier."""
-    features: list[str] = []
-    text = " ".join((sample.transcript or "").split()).casefold()
-    for token in re.findall(r"[\w']+", text, flags=re.UNICODE):
-        features.append(f"tok={token}")
-
+    features = _text_features(sample.transcript)
     features.extend(
         [
             f"speaker={_clean_feature_value(sample.speaker or 'unknown')}",
@@ -91,6 +87,20 @@ def extract_features(sample: TriggerClassifierSample) -> list[str]:
             f"will_answer={'yes' if sample.will_answer else 'no'}",
         ]
     )
+    return features
+
+
+def extract_live_assist_features(sample: TriggerClassifierSample) -> list[str]:
+    """Extract live-assist features without deterministic target leakage.
+
+    Live assist runs after deterministic trigger/addressing checks have already
+    decided a candidate answer exists. Feeding those same deterministic fields
+    back into the classifier would let the model learn the gate instead of the
+    transcript pattern. Keep live assist to transcript plus independent speaker
+    context.
+    """
+    features = _text_features(sample.transcript)
+    features.append(f"speaker={_clean_feature_value(sample.speaker or 'unknown')}")
     return features
 
 
@@ -154,7 +164,21 @@ def predict(
     sample: TriggerClassifierSample,
 ) -> TriggerClassifierPrediction:
     """Predict accepted/rejected for a sample and return normalized confidence."""
-    features = extract_features(sample)
+    return _predict_from_features(model, extract_features(sample))
+
+
+def predict_live_assist(
+    model: TriggerClassifierModel,
+    sample: TriggerClassifierSample,
+) -> TriggerClassifierPrediction:
+    """Predict for guarded live assist without deterministic gate features."""
+    return _predict_from_features(model, extract_live_assist_features(sample))
+
+
+def _predict_from_features(
+    model: TriggerClassifierModel,
+    features: list[str],
+) -> TriggerClassifierPrediction:
     total_samples = sum(model.label_counts.values())
     vocab_size = max(len(model.vocabulary), 1)
     raw_scores: dict[str, float] = {}
@@ -237,6 +261,14 @@ def _threshold_message(
         f"(accepted={label_counts.get('accepted', 0)} "
         f"rejected={label_counts.get('rejected', 0)})"
     )
+
+
+def _text_features(transcript: str) -> list[str]:
+    text = " ".join((transcript or "").split()).casefold()
+    return [
+        f"tok={token}"
+        for token in re.findall(r"[\w']+", text, flags=re.UNICODE)
+    ]
 
 
 def _safe_profile_name(profile: str) -> str:

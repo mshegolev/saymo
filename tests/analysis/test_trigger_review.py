@@ -132,6 +132,17 @@ def test_filter_review_rows_matches_metadata_and_classifier_disagreement(tmp_pat
     assert [row.record.path.name for row in filtered] == ["match.json"]
 
 
+def test_filter_review_rows_rejects_invalid_date_filter(tmp_path):
+    rows = [_row(tmp_path, "sample")]
+
+    try:
+        filter_review_rows(rows, TriggerReviewFilters(date_from="not-a-date"))
+    except ValueError as e:
+        assert "Invalid date_from" in str(e)
+    else:
+        raise AssertionError("invalid date filter should fail")
+
+
 def test_apply_category_relabel_updates_metadata_and_moves_adjacent_wav(tmp_path):
     json_path, wav_path = _write_sample(tmp_path, category="question")
 

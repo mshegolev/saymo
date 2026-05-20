@@ -5,11 +5,11 @@ status: passed
 ## Evidence
 
 - `.venv/bin/python -m pytest -q tests/test_trigger_check.py tests/analysis/test_trigger_review.py tests/analysis/test_trigger_readiness.py`
-  - 44 passed
+  - 50 passed
 - `.venv/bin/python -m pytest -q tests/analysis/test_trigger_review.py tests/analysis/test_trigger_readiness.py tests/analysis/test_trigger_classifier.py tests/analysis/test_trigger_capture.py tests/test_trigger_check.py tests/test_auto_qa_flow.py`
-  - 90 passed
+  - 94 passed
 - `.venv/bin/python -m pytest -q -k 'not qwen3_compute_loss'`
-  - 276 passed, 6 deselected
+  - 280 passed, 6 deselected
 - `.venv/bin/saymo -c config.yaml trigger-classifier readiness --help`
   - shows readiness thresholds and sample directory options
 - `.venv/bin/saymo -c config.yaml trigger-classifier evaluate --help`

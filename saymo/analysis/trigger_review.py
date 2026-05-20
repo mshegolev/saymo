@@ -135,7 +135,20 @@ def filter_review_rows(
     """
     if filters is None:
         return list(rows)
+    validate_review_filters(filters)
     return [row for row in rows if review_row_matches(row, filters)]
+
+
+def validate_review_filters(filters: TriggerReviewFilters) -> None:
+    """Validate user-provided review filters before applying them."""
+    for name, value, end_of_day in (
+        ("date_from", filters.date_from, False),
+        ("date_to", filters.date_to, True),
+    ):
+        if value is not None and _parse_datetime_bound(value, end_of_day=end_of_day) is None:
+            raise ValueError(
+                f"Invalid {name}: {value!r}; expected ISO date or datetime"
+            )
 
 
 def review_row_matches(row: Any, filters: TriggerReviewFilters) -> bool:

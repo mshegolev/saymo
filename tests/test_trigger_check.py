@@ -859,6 +859,38 @@ def test_trigger_samples_list_filters_by_review_metadata(tmp_path):
     assert "John wrong date" not in result.output
 
 
+def test_trigger_samples_list_rejects_invalid_date_filter(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    _write_sample(
+        samples_dir,
+        category="question",
+        name="private",
+        transcript="private transcript",
+        question=True,
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "list",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--date-from",
+            "not-a-date",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Invalid date_from" in result.output
+    assert "private transcript" not in result.output
+
+
 def test_trigger_samples_category_moves_json_and_wav(tmp_path):
     config_path = _write_config(tmp_path)
     samples_dir = tmp_path / "samples"
@@ -1319,6 +1351,45 @@ def test_trigger_classifier_live_assist_requires_readiness_and_toggles(tmp_path)
         ],
     )
     _write_ready_classifier_samples(samples_dir)
+    missing_model = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-classifier",
+            "live-assist",
+            "enable",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--model-dir",
+            str(model_dir),
+            "--min-total",
+            "4",
+            "--min-per-class",
+            "2",
+        ],
+    )
+    trained = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-classifier",
+            "train",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--model-dir",
+            str(model_dir),
+            "--min-total",
+            "4",
+            "--min-per-class",
+            "2",
+        ],
+    )
     enabled = runner.invoke(
         main,
         [
@@ -1371,8 +1442,12 @@ def test_trigger_classifier_live_assist_requires_readiness_and_toggles(tmp_path)
     assert failed.exit_code != 0
     assert "readiness: not_ready" in failed.output
     assert "readiness failed; live assist not enabled" in failed.output
+    assert missing_model.exit_code != 0
+    assert "Classifier artifact not found" in missing_model.output
+    assert trained.exit_code == 0
     assert enabled.exit_code == 0
     assert "live assist: enabled" in enabled.output
+    assert "status: model_ok" in enabled.output
     assert (model_dir / "personal.live_assist.json").exists()
     assert status.exit_code == 0
     assert "live assist: enabled" in status.output

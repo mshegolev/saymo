@@ -20,4 +20,4 @@
 ## Verification
 
 - `.venv/bin/python -m pytest -q tests/test_trigger_check.py tests/analysis/test_trigger_review.py tests/analysis/test_trigger_readiness.py`
-  - 44 passed
+  - 50 passed

@@ -517,12 +517,11 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                     f"action={action_ms:.0f}ms final=answer[/]"
                 )
                 try:
-                    from saymo.analysis.trigger_capture import classify_trigger_sample
                     from saymo.analysis.trigger_classifier import (
                         TriggerClassifierSample,
                         classifier_model_path,
                         load_model,
-                        predict,
+                        predict_live_assist,
                     )
                     from saymo.analysis.trigger_readiness import (
                         apply_live_assist_decision,
@@ -532,21 +531,11 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                     assist = live_assist_status(profile)
                     model_path = classifier_model_path(profile)
                     if assist.enabled and model_path.exists():
-                        sample_meta = classify_trigger_sample(
-                            transcript_window,
-                            trigger_phrases,
-                            (config.vocabulary or {}).get("fuzzy_expansions") or {},
-                        )
-                        prediction = predict(
+                        prediction = predict_live_assist(
                             load_model(model_path),
                             TriggerClassifierSample(
-                                transcript=sample_meta.transcript,
-                                speaker=sample_meta.speaker,
-                                category=sample_meta.category,
-                                trigger=sample_meta.trigger,
-                                question=sample_meta.question,
-                                will_answer=sample_meta.will_answer,
-                                addressing=sample_meta.addressing,
+                                transcript=transcript_window,
+                                speaker="unknown",
                                 decision="unlabeled",
                             ),
                         )

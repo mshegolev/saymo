@@ -2,7 +2,12 @@ from dataclasses import dataclass
 
 import pytest
 
-from saymo.analysis.trigger_classifier import TriggerClassifierSample
+from saymo.analysis.trigger_classifier import (
+    TriggerClassifierSample,
+    classifier_model_path,
+    save_model,
+    train_classifier,
+)
 from saymo.analysis.trigger_readiness import (
     LiveAssistReadinessError,
     TriggerReadinessThresholds,
@@ -177,18 +182,33 @@ def test_live_assist_artifact_roundtrip_and_readiness_gate(tmp_path):
         TriggerReadinessThresholds(min_labeled=2, min_accepted=1, min_rejected=1),
     )
 
+    with pytest.raises(FileNotFoundError):
+        enable_live_assist("personal", tmp_path, ready)
+
+    model_path = _save_model(tmp_path)
+
     enabled = enable_live_assist("personal", tmp_path, ready)
     path = live_assist_artifact_path("personal", tmp_path)
     loaded = load_live_assist_artifact(path)
     status = live_assist_status("personal", tmp_path)
 
     assert path.exists()
+    assert model_path.exists()
     assert loaded == enabled
     assert status.exists is True
     assert status.enabled is True
+    assert status.model_valid is True
+    assert status.reason == "model_ok"
     assert status.artifact == enabled
     assert enabled.readiness["passed"] is True
     assert enabled.readiness["total_labeled"] == 2
+    assert enabled.model_sha256
+    assert enabled.model_label_counts == {"accepted": 1, "rejected": 1}
+
+    model_path.write_text(model_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    stale_status = live_assist_status("personal", tmp_path)
+    assert stale_status.enabled is False
+    assert stale_status.reason == "model_mismatch"
 
     disabled = disable_live_assist("personal", tmp_path)
     disabled_status = live_assist_status("personal", tmp_path)
@@ -196,6 +216,33 @@ def test_live_assist_artifact_roundtrip_and_readiness_gate(tmp_path):
     assert disabled.enabled is False
     assert disabled_status.enabled is False
     assert disabled_status.artifact == disabled
+
+
+def test_live_assist_enable_refuses_model_label_count_mismatch(tmp_path):
+    _save_model(tmp_path)
+    readiness = readiness_metrics(
+        [
+            _record("John, can you answer?", "asked_to_speak", "accepted", True),
+            _record("John, can you own this?", "asked_to_speak", "accepted", True),
+            _record(
+                "we mentioned John earlier",
+                "mentioned_me",
+                "rejected",
+                False,
+                addressing="mentioned_not_addressed",
+            ),
+        ],
+        TriggerReadinessThresholds(
+            min_labeled=3,
+            min_accepted=2,
+            min_rejected=1,
+        ),
+    )
+
+    with pytest.raises(ValueError) as exc:
+        enable_live_assist("personal", tmp_path, readiness)
+
+    assert "retrain before enabling live assist" in str(exc.value)
 
 
 def test_live_assist_decision_never_bypasses_deterministic_skip():
@@ -248,3 +295,18 @@ def _classifier(
         addressing=addressing,
         decision=decision,
     )
+
+
+def _save_model(model_dir):
+    samples = [
+        _classifier("John can you answer?", "asked_to_speak", "accepted", True),
+        _classifier(
+            "we mentioned John earlier",
+            "mentioned_me",
+            "rejected",
+            False,
+            addressing="mentioned_not_addressed",
+        ),
+    ]
+    model = train_classifier(samples, profile="personal", min_total=2, min_per_class=1)
+    return save_model(model, classifier_model_path("personal", model_dir))

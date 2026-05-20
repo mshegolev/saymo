@@ -1592,7 +1592,7 @@ def trigger_samples():
 @click.pass_context
 def trigger_samples_list(ctx, profile, category, session_id, speaker, decision, date_from, date_to, classifier_disagreement, model_dir, samples_dir):
     """List captured trigger-sample metadata without opening JSON manually."""
-    from saymo.analysis.trigger_review import TriggerReviewFilters, filter_review_rows
+    from saymo.analysis.trigger_review import TriggerReviewFilters
 
     records = list(
         _iter_trigger_sample_records(
@@ -1608,7 +1608,7 @@ def trigger_samples_list(ctx, profile, category, session_id, speaker, decision, 
         date_from=date_from,
         date_to=date_to,
     )
-    records = filter_review_rows(records, filters)
+    records = _filter_review_rows_or_fail(records, filters)
     if classifier_disagreement:
         if not profile:
             raise click.ClickException("--classifier-disagreement requires --profile")
@@ -1739,7 +1739,7 @@ def trigger_samples_category(sample_json, category):
 @click.pass_context
 def trigger_samples_review(ctx, profile, category, session_id, speaker, decision, date_from, date_to, limit, play, samples_dir):
     """Replay and relabel a filtered trigger-sample queue."""
-    from saymo.analysis.trigger_review import TriggerReviewFilters, apply_category_relabel, filter_review_rows, parse_review_action
+    from saymo.analysis.trigger_review import TriggerReviewFilters, apply_category_relabel, parse_review_action
 
     records = list(
         _iter_trigger_sample_records(
@@ -1748,7 +1748,7 @@ def trigger_samples_review(ctx, profile, category, session_id, speaker, decision
             category=category,
         )
     )
-    records = filter_review_rows(
+    records = _filter_review_rows_or_fail(
         records,
         TriggerReviewFilters(
             session=session_id,
@@ -1820,9 +1820,9 @@ def trigger_samples_review(ctx, profile, category, session_id, speaker, decision
 @click.pass_context
 def trigger_samples_report(ctx, profile, session_id, samples_dir, output):
     """Export a sanitized trigger-sample report without audio or private config."""
-    from saymo.analysis.trigger_review import TriggerReviewFilters, filter_review_rows, render_grouped_trigger_report
+    from saymo.analysis.trigger_review import TriggerReviewFilters, render_grouped_trigger_report
 
-    records = filter_review_rows(
+    records = _filter_review_rows_or_fail(
         list(_iter_trigger_sample_records(_samples_base_dir(samples_dir), profile)),
         TriggerReviewFilters(session=session_id),
     )
@@ -2089,7 +2089,10 @@ def trigger_classifier_live_assist_enable(profile, samples_dir, model_dir, min_t
     if not readiness.passed:
         _print_readiness_report(readiness)
         raise click.ClickException("readiness failed; live assist not enabled")
-    enable_live_assist(profile, model_dir, readiness)
+    try:
+        enable_live_assist(profile, model_dir, readiness)
+    except (FileNotFoundError, ValueError) as e:
+        raise click.ClickException(str(e)) from e
     _print_live_assist_status(live_assist_status(profile, model_dir))
 
 
@@ -2127,6 +2130,15 @@ def trigger_classifier_delete(profile, model_dir, yes):
 
 def _samples_base_dir(samples_dir: str | None) -> Path:
     return Path(samples_dir).expanduser() if samples_dir else Path.home() / ".saymo" / "trigger_samples"
+
+
+def _filter_review_rows_or_fail(records, filters):
+    from saymo.analysis.trigger_review import filter_review_rows
+
+    try:
+        return filter_review_rows(records, filters)
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
 
 
 def _load_trigger_sample(path: Path) -> TriggerSampleRecord:
@@ -2320,7 +2332,7 @@ def _print_trigger_check_live_assist(
         TriggerClassifierSample,
         classifier_model_path,
         load_model,
-        predict,
+        predict_live_assist,
     )
     from saymo.analysis.trigger_readiness import (
         apply_live_assist_decision,
@@ -2330,25 +2342,18 @@ def _print_trigger_check_live_assist(
     status = live_assist_status(profile, model_dir)
     model_path = classifier_model_path(profile, model_dir)
     console.print(f"live assist: {'enabled' if status.enabled else 'disabled'}")
+    if status.reason:
+        console.print(f"live assist status: {status.reason}")
     if not status.enabled:
-        console.print(f"live assist action: {'answer' if will_answer else 'skip'}")
-        return
-    if not model_path.exists():
-        console.print(f"live assist model: missing ({model_path})")
         console.print(f"live assist action: {'answer' if will_answer else 'skip'}")
         return
     model = load_model(model_path)
     sample = TriggerClassifierSample(
         transcript=text,
         speaker=speaker,
-        category=category,
-        trigger=trigger,
-        question=question,
-        will_answer=will_answer,
-        addressing=addressing,
         decision="unlabeled",
     )
-    prediction = predict(model, sample)
+    prediction = predict_live_assist(model, sample)
     decision = apply_live_assist_decision(
         deterministic_will_answer=will_answer,
         classifier_prediction=prediction,
@@ -2456,7 +2461,11 @@ def _print_live_assist_status(status) -> None:
     profile = status.artifact.profile if status.artifact else status.path.stem.replace(".live_assist", "")
     console.print(f"profile: {profile}")
     console.print(f"live assist: {'enabled' if status.enabled else 'disabled'}")
+    if status.reason:
+        console.print(f"status: {status.reason}")
     console.print(f"updated_at: {status.artifact.updated_at if status.artifact else '-'}")
+    if status.artifact and status.artifact.model_sha256:
+        console.print(f"model_sha256: {status.artifact.model_sha256[:12]}")
     if status.path:
         console.print(f"artifact: {status.path}")
 

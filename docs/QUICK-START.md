@@ -312,6 +312,7 @@ saymo trigger-eval -p personal --promote ~/.saymo/trigger_samples/personal/asked
 saymo trigger-classifier train -p personal
 saymo trigger-classifier readiness -p personal
 saymo trigger-classifier evaluate -p personal
+saymo trigger-classifier live-assist enable -p personal
 saymo trigger-classifier live-assist status -p personal
 saymo trigger-classifier inspect -p personal
 saymo trigger-eval -p personal --classifier-shadow
@@ -339,8 +340,11 @@ prints category, speaker, and answer-decision counts for one meeting session.
 Use `trigger-samples category` when the automatic bucket is wrong, and
 `trigger-samples review` when you want to walk a filtered queue after a call.
 `trigger-classifier readiness` and `evaluate` must look healthy before enabling
-live assist; live assist can only downgrade an already deterministic answer
-candidate to skip, not bypass trigger/addressing checks.
+live assist, and `enable` requires an existing trained classifier artifact.
+Saymo stores a fingerprint of that model and disables live assist if the model
+is missing or changed. Live assist only uses transcript/speaker features and
+can downgrade an already deterministic answer candidate to skip; it cannot
+bypass trigger/addressing checks.
 
 ### Measure call provider latency
 
