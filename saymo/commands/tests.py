@@ -1709,6 +1709,7 @@ def trigger_samples_replay(ctx, sample_json, profile, play):
         f"question={'yes' if row.current_question else 'no'} "
         f"will_answer={'yes' if row.current_will_answer else 'no'}"
     )
+    _print_record_speaker_suggestion(record, samples_dir=None)
     console.print(f"action: {'answer' if row.current_will_answer else 'skip'}")
     if record.transcript:
         console.print(f"transcript: {record.transcript}")
@@ -1730,6 +1731,54 @@ def trigger_samples_label(sample_json, speaker):
     previous = _write_trigger_sample_speaker(Path(sample_json), speaker)
     console.print(f"sample: {sample_json}")
     console.print(f"speaker: {previous} -> {speaker}")
+
+
+@trigger_samples.command("speaker-suggestion")
+@click.argument("sample_json", type=click.Path(exists=True))
+@click.option("--accept", is_flag=True, help="Apply the suggested speaker label")
+@click.option("--reject", is_flag=True, help="Reject the suggestion without changing sample metadata")
+@click.option(
+    "--label",
+    default=None,
+    type=click.Choice(_SPEAKER_LABELS),
+    help="Override with an explicit speaker label and apply it",
+)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+def trigger_samples_speaker_suggestion(sample_json, accept, reject, label, samples_dir):
+    """Show, accept, reject, or override one sample's speaker suggestion."""
+    record = _load_trigger_sample(Path(sample_json))
+    loaded = _load_record_speaker_suggestion(record, samples_dir, require=True)
+    if loaded is None:
+        raise click.ClickException("Speaker suggestion not found")
+    _, _, _, suggestion = loaded
+    _print_speaker_suggestion(record, suggestion)
+
+    requested_actions = sum(1 for enabled in (accept, reject, label is not None) if enabled)
+    if requested_actions > 1:
+        raise click.ClickException("Choose only one of --accept, --reject, or --label")
+    if requested_actions == 0:
+        return
+
+    if accept:
+        action = "accept"
+        override_label = None
+    elif reject:
+        action = "reject"
+        override_label = None
+    else:
+        action = "override"
+        override_label = label
+    _apply_record_speaker_suggestion_review(
+        record,
+        samples_dir,
+        action=action,
+        label=override_label,
+    )
 
 
 @trigger_samples.command("decision")
@@ -1817,6 +1866,7 @@ def trigger_samples_review(ctx, profile, category, session_id, speaker, decision
             f"current category={row.current_category} "
             f"will_answer={'yes' if row.current_will_answer else 'no'}"
         )
+        _print_record_speaker_suggestion(record, samples_dir=samples_dir)
         if play:
             _play_trigger_sample(record)
         while True:
@@ -1848,6 +1898,14 @@ def trigger_samples_review(ctx, profile, category, session_id, speaker, decision
                 previous = _write_trigger_sample_decision(record.path, action.value)
                 record = _load_trigger_sample(record.path)
                 console.print(f"decision: {previous} -> {action.value}")
+                continue
+            if action.kind.startswith("speaker_suggestion_"):
+                record = _apply_record_speaker_suggestion_review(
+                    record,
+                    samples_dir,
+                    action=action.kind.removeprefix("speaker_suggestion_"),
+                    label=action.value,
+                )
                 continue
     console.print("review complete")
 
@@ -2132,6 +2190,53 @@ def trigger_sessions_map_speaker(profile, session_id, speaker_id, label, samples
     console.print(f"sidecar: {path}")
 
 
+@trigger_sessions.command("speaker-report")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option(
+    "--session",
+    "session_id",
+    required=True,
+    help="Session id to report; unique prefixes are accepted",
+)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.option("--output", "-o", default=None, type=click.Path(), help="Markdown output path")
+def trigger_sessions_speaker_report(profile, session_id, samples_dir, output):
+    """Export a sanitized speaker-suggestion quality report."""
+    from saymo.analysis.diarization import (
+        build_speaker_quality_report,
+        load_session_diarization,
+        render_speaker_quality_report,
+        session_diarization_path,
+    )
+
+    base_dir = _samples_base_dir(samples_dir)
+    resolved_session = _resolve_trigger_session_id(base_dir, profile, session_id)
+    path = session_diarization_path(base_dir, profile, resolved_session)
+    if not path.exists():
+        raise click.ClickException(f"Diarization sidecar not found: {path}")
+    sidecar = load_session_diarization(path)
+    records = [
+        record
+        for record in _iter_trigger_sample_records(base_dir, profile=profile)
+        if record.session_id == resolved_session
+    ]
+    sample_speakers = {str(record.path): record.speaker for record in records}
+    report = build_speaker_quality_report(sidecar, sample_speakers=sample_speakers)
+    rendered = render_speaker_quality_report(report)
+    if output:
+        out_path = Path(output).expanduser()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered, encoding="utf-8")
+        console.print(f"speaker report: {out_path}")
+    else:
+        console.print(rendered)
+
+
 @main.group("trigger-classifier")
 def trigger_classifier():
     """Train, inspect, and delete the local trigger classifier."""
@@ -2363,6 +2468,114 @@ def trigger_classifier_delete(profile, model_dir, yes):
 
 def _samples_base_dir(samples_dir: str | None) -> Path:
     return Path(samples_dir).expanduser() if samples_dir else Path.home() / ".saymo" / "trigger_samples"
+
+
+def _samples_base_dir_for_record(
+    record: TriggerSampleRecord,
+    samples_dir: str | None,
+) -> Path:
+    if samples_dir:
+        return _samples_base_dir(samples_dir)
+    try:
+        return record.path.parents[2]
+    except IndexError:
+        return _samples_base_dir(None)
+
+
+def _load_record_speaker_suggestion(
+    record: TriggerSampleRecord,
+    samples_dir: str | None,
+    *,
+    require: bool = False,
+):
+    from saymo.analysis.diarization import (
+        find_sample_speaker_suggestion,
+        load_session_diarization,
+        session_diarization_path,
+    )
+
+    if not record.session_id:
+        if require:
+            raise click.ClickException("Sample has no session_id")
+        return None
+    base_dir = _samples_base_dir_for_record(record, samples_dir)
+    sidecar_path = session_diarization_path(base_dir, record.profile, record.session_id)
+    if not sidecar_path.exists():
+        if require:
+            raise click.ClickException(f"Diarization sidecar not found: {sidecar_path}")
+        return None
+    sidecar = load_session_diarization(sidecar_path)
+    suggestion = find_sample_speaker_suggestion(
+        sidecar,
+        record.path,
+        session_sequence=record.session_sequence,
+    )
+    if suggestion is None and require:
+        raise click.ClickException(f"Speaker suggestion not found for sample: {record.path}")
+    return base_dir, sidecar_path, sidecar, suggestion
+
+
+def _print_record_speaker_suggestion(
+    record: TriggerSampleRecord,
+    samples_dir: str | None,
+) -> None:
+    loaded = _load_record_speaker_suggestion(record, samples_dir)
+    if loaded is None:
+        return
+    _, _, _, suggestion = loaded
+    if suggestion is not None:
+        _print_speaker_suggestion(record, suggestion)
+
+
+def _print_speaker_suggestion(record: TriggerSampleRecord, suggestion) -> None:
+    console.print(
+        f"suggestion: speaker_id={suggestion.speaker_id} "
+        f"suggested={suggestion.suggested_speaker} "
+        f"status={suggestion.status} "
+        f"confidence={suggestion.confidence:.2f} "
+        f"reviewed={suggestion.reviewed_speaker}"
+    )
+    console.print(f"sample speaker: {record.speaker}")
+
+
+def _apply_record_speaker_suggestion_review(
+    record: TriggerSampleRecord,
+    samples_dir: str | None,
+    *,
+    action: str,
+    label: str | None,
+) -> TriggerSampleRecord:
+    from datetime import datetime, timezone
+
+    from saymo.analysis.diarization import (
+        review_speaker_suggestion,
+        write_session_diarization,
+    )
+
+    loaded = _load_record_speaker_suggestion(record, samples_dir, require=True)
+    if loaded is None:
+        raise click.ClickException("Speaker suggestion not found")
+    base_dir, _, sidecar, _ = loaded
+    try:
+        updated, reviewed = review_speaker_suggestion(
+            sidecar,
+            sample_path=record.path,
+            action=action,
+            label=label,
+            session_sequence=record.session_sequence,
+            reviewed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        )
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
+
+    write_session_diarization(base_dir, updated)
+    console.print(f"review: {reviewed.status}")
+    if reviewed.status in {"accepted", "overridden"}:
+        previous = _write_trigger_sample_speaker(record.path, reviewed.reviewed_speaker)
+        console.print(f"speaker: {previous} -> {reviewed.reviewed_speaker}")
+        return _load_trigger_sample(record.path)
+    console.print("speaker: unchanged")
+    return record
 
 
 def _resolve_trigger_session_id(base_dir: Path, profile: str, session_id: str) -> str:

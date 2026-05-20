@@ -29,7 +29,7 @@ runtime dependency or adding risky real-time behavior to `saymo auto`.
   diarization backend detection, configuration, and stable data contracts.
 - [x] **Phase 12: Session Speaker Suggestions** - Run diarization against
   completed capture sessions and store reviewable speaker suggestions.
-- [ ] **Phase 13: Speaker Review And Quality Reports** - Promote reviewed
+- [x] **Phase 13: Speaker Review And Quality Reports** - Promote reviewed
   suggestions into sample labels and report speaker-label quality before
   training.
 
@@ -52,9 +52,9 @@ without adding a required ML dependency.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 11-01: Add diarization config and backend availability checks
-- [ ] 11-02: Add backend-neutral diarization result contracts
-- [ ] 11-03: Add CLI diagnostics and docs for optional setup
+- [x] 11-01: Add diarization config and backend availability checks
+- [x] 11-02: Add backend-neutral diarization result contracts
+- [x] 11-03: Add CLI diagnostics and docs for optional setup
 
 ### Phase 12: Session Speaker Suggestions
 **Goal**: Run local diarization over completed trigger-capture sessions and
@@ -72,9 +72,9 @@ store reviewable speaker suggestions beside existing sample metadata.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 12-01: Load session audio windows and run diarization backend
-- [ ] 12-02: Store diarization sidecars and sample speaker suggestions
-- [ ] 12-03: Add session speaker-summary command output
+- [x] 12-01: Load session audio windows and run diarization backend
+- [x] 12-02: Store diarization sidecars and sample speaker suggestions
+- [x] 12-03: Add session speaker-summary command output
 
 ### Phase 13: Speaker Review And Quality Reports
 **Goal**: Let the user inspect, accept, and measure speaker suggestions before
@@ -93,10 +93,10 @@ they affect classifier readiness or training.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 13-01: Extend sample review with speaker suggestions
-- [ ] 13-02: Add speaker suggestion apply/reject metadata
-- [ ] 13-03: Add speaker quality and conflict reports
-- [ ] 13-04: Wire reviewed labels into evaluation/readiness docs and tests
+- [x] 13-01: Extend sample review with speaker suggestions
+- [x] 13-02: Add speaker suggestion apply/reject metadata
+- [x] 13-03: Add speaker quality and conflict reports
+- [x] 13-04: Wire reviewed labels into evaluation/readiness docs and tests
 
 ## Progress
 
@@ -107,4 +107,4 @@ Phases execute in numeric order: 11 -> 12 -> 13
 |-------|-----------|----------------|--------|-----------|
 | 11. Diarization Adapter And Config | v1.3 | 3/3 | Complete | 2026-05-20 |
 | 12. Session Speaker Suggestions | v1.3 | 3/3 | Complete | 2026-05-20 |
-| 13. Speaker Review And Quality Reports | v1.3 | 0/4 | Not started | - |
+| 13. Speaker Review And Quality Reports | v1.3 | 4/4 | Complete | 2026-05-20 |

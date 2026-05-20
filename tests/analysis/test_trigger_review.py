@@ -223,6 +223,16 @@ def test_parse_review_action_accepts_category_speaker_decision_skip_and_quit():
         "decision",
         "rejected",
     )
+    assert parse_review_action("suggest accept") == ReviewAction(
+        "speaker_suggestion_accept"
+    )
+    assert parse_review_action("suggest reject") == ReviewAction(
+        "speaker_suggestion_reject"
+    )
+    assert parse_review_action("suggest other") == ReviewAction(
+        "speaker_suggestion_override",
+        "other",
+    )
     assert parse_review_action("accepted") == ReviewAction("decision", "accepted")
     assert parse_review_action("skip") == ReviewAction("skip")
     assert parse_review_action("q") == ReviewAction("quit")

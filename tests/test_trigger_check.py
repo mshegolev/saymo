@@ -463,6 +463,45 @@ def _write_sample(
     return path
 
 
+def _write_diarization_sidecar(samples_dir, *, profile, session_id, suggestions):
+    sidecar_dir = samples_dir / profile / "_sessions"
+    sidecar_dir.mkdir(parents=True, exist_ok=True)
+    path = sidecar_dir / f"{session_id}.diarization.json"
+    path.write_text(
+        json.dumps(
+            {
+                "profile": profile,
+                "session_id": session_id,
+                "engine": "import",
+                "model": "segments-json",
+                "created_at": "2026-05-20T12:00:00",
+                "segments": [
+                    {
+                        "speaker_id": "SPEAKER_00",
+                        "start_seconds": 0.0,
+                        "end_seconds": 8.0,
+                        "confidence": 0.91,
+                    },
+                    {
+                        "speaker_id": "SPEAKER_01",
+                        "start_seconds": 8.0,
+                        "end_seconds": 16.0,
+                        "confidence": 0.64,
+                    },
+                ],
+                "speaker_mappings": {
+                    "SPEAKER_00": "me",
+                    "SPEAKER_01": "other",
+                },
+                "suggestions": suggestions,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 def test_trigger_eval_reports_counts_misses_and_false_positives(tmp_path):
     config_path = _write_config(tmp_path)
     samples_dir = tmp_path / "samples"
@@ -886,6 +925,363 @@ def test_trigger_sessions_speakers_and_map_speaker(tmp_path):
     assert payload["speaker_mappings"]["SPEAKER_00"] == "me"
     assert payload["suggestions"][0]["suggested_speaker"] == "me"
     assert json.loads(sample_path.read_text(encoding="utf-8"))["speaker"] == "unknown"
+
+
+def test_trigger_samples_speaker_suggestion_accept_reject_and_override(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    session_id = "daily-20260520-100000"
+    accept_path = _write_sample(
+        samples_dir,
+        category="question",
+        name="accept_me",
+        transcript="secret accept transcript",
+        speaker="unknown",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=1,
+    )
+    reject_path = _write_sample(
+        samples_dir,
+        category="question",
+        name="reject_me",
+        transcript="secret reject transcript",
+        speaker="unknown",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=2,
+    )
+    override_path = _write_sample(
+        samples_dir,
+        category="question",
+        name="override_me",
+        transcript="secret override transcript",
+        speaker="unknown",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=3,
+    )
+    sidecar = _write_diarization_sidecar(
+        samples_dir,
+        profile="personal",
+        session_id=session_id,
+        suggestions=[
+            {
+                "sample_path": str(accept_path),
+                "session_sequence": 1,
+                "current_speaker": "unknown",
+                "speaker_id": "SPEAKER_00",
+                "suggested_speaker": "me",
+                "confidence": 0.91,
+                "overlap_seconds": 8.0,
+                "status": "suggested",
+            },
+            {
+                "sample_path": str(reject_path),
+                "session_sequence": 2,
+                "current_speaker": "unknown",
+                "speaker_id": "SPEAKER_01",
+                "suggested_speaker": "other",
+                "confidence": 0.64,
+                "overlap_seconds": 8.0,
+                "status": "suggested",
+            },
+            {
+                "sample_path": str(override_path),
+                "session_sequence": 3,
+                "current_speaker": "unknown",
+                "speaker_id": "SPEAKER_00",
+                "suggested_speaker": "me",
+                "confidence": 0.91,
+                "overlap_seconds": 8.0,
+                "status": "suggested",
+            },
+        ],
+    )
+    runner = CliRunner()
+
+    shown = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "speaker-suggestion",
+            str(accept_path),
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+    accepted = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "speaker-suggestion",
+            str(accept_path),
+            "--samples-dir",
+            str(samples_dir),
+            "--accept",
+        ],
+    )
+    rejected = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "speaker-suggestion",
+            str(reject_path),
+            "--samples-dir",
+            str(samples_dir),
+            "--reject",
+        ],
+    )
+    overridden = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "speaker-suggestion",
+            str(override_path),
+            "--samples-dir",
+            str(samples_dir),
+            "--label",
+            "other",
+        ],
+    )
+
+    assert shown.exit_code == 0
+    assert "suggestion: speaker_id=SPEAKER_00 suggested=me status=suggested" in shown.output
+    assert accepted.exit_code == 0
+    assert "review: accepted" in accepted.output
+    assert "speaker: unknown -> me" in accepted.output
+    assert rejected.exit_code == 0
+    assert "review: rejected" in rejected.output
+    assert overridden.exit_code == 0
+    assert "review: overridden" in overridden.output
+    assert "speaker: unknown -> other" in overridden.output
+    assert json.loads(accept_path.read_text(encoding="utf-8"))["speaker"] == "me"
+    assert json.loads(reject_path.read_text(encoding="utf-8"))["speaker"] == "unknown"
+    assert json.loads(override_path.read_text(encoding="utf-8"))["speaker"] == "other"
+    payload = json.loads(sidecar.read_text(encoding="utf-8"))
+    statuses = [item["status"] for item in payload["suggestions"]]
+    reviewed = [item.get("reviewed_speaker", "unknown") for item in payload["suggestions"]]
+    assert statuses == ["accepted", "rejected", "overridden"]
+    assert reviewed == ["me", "unknown", "other"]
+    assert payload["suggestions"][2]["suggested_speaker"] == "me"
+
+
+def test_trigger_sessions_speaker_report_exports_sanitized_quality(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    session_id = "daily-20260520-100000"
+    sample_a = _write_sample(
+        samples_dir,
+        category="question",
+        name="accepted",
+        transcript="secret accepted transcript",
+        speaker="me",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=1,
+    )
+    sample_b = _write_sample(
+        samples_dir,
+        category="question",
+        name="unknown",
+        transcript="secret unknown transcript",
+        speaker="unknown",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=2,
+    )
+    sample_c = _write_sample(
+        samples_dir,
+        category="question",
+        name="conflict",
+        transcript="secret conflict transcript",
+        speaker="other",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=3,
+    )
+    _write_diarization_sidecar(
+        samples_dir,
+        profile="personal",
+        session_id=session_id,
+        suggestions=[
+            {
+                "sample_path": str(sample_a),
+                "session_sequence": 1,
+                "current_speaker": "unknown",
+                "speaker_id": "SPEAKER_00",
+                "suggested_speaker": "me",
+                "confidence": 0.91,
+                "overlap_seconds": 8.0,
+                "status": "accepted",
+                "reviewed_speaker": "me",
+            },
+            {
+                "sample_path": str(sample_b),
+                "session_sequence": 2,
+                "current_speaker": "unknown",
+                "speaker_id": "SPEAKER_01",
+                "suggested_speaker": "other",
+                "confidence": 0.64,
+                "overlap_seconds": 8.0,
+                "status": "rejected",
+            },
+            {
+                "sample_path": str(sample_c),
+                "session_sequence": 3,
+                "current_speaker": "unknown",
+                "speaker_id": "SPEAKER_00",
+                "suggested_speaker": "me",
+                "confidence": 0.32,
+                "overlap_seconds": 8.0,
+                "status": "suggested",
+            },
+        ],
+    )
+    report_path = tmp_path / "speaker-report.md"
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-sessions",
+            "speaker-report",
+            "--profile",
+            "personal",
+            "--session",
+            "daily",
+            "--samples-dir",
+            str(samples_dir),
+            "--output",
+            str(report_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "speaker report:" in result.output
+    report = report_path.read_text(encoding="utf-8")
+    assert "accepted suggestions: 1" in report
+    assert "rejected suggestions: 1" in report
+    assert "unknown coverage: 1/3" in report
+    assert "confidence high: 1" in report
+    assert "confidence medium: 1" in report
+    assert "confidence low: 1" in report
+    assert "conflict.json" in report
+    assert "secret" not in report
+
+
+def test_trigger_eval_and_training_ignore_unreviewed_speaker_suggestions(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    model_dir = tmp_path / "models"
+    session_id = "daily-20260520-100000"
+    accepted = _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="accepted",
+        transcript="John, what is the status?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        speaker="unknown",
+        decision="accepted",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=1,
+    )
+    rejected = _write_sample(
+        samples_dir,
+        category="mentioned_me",
+        name="rejected",
+        transcript="we mentioned John in notes",
+        trigger=True,
+        question=False,
+        will_answer=False,
+        speaker="unknown",
+        decision="rejected",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=2,
+    )
+    _write_diarization_sidecar(
+        samples_dir,
+        profile="personal",
+        session_id=session_id,
+        suggestions=[
+            {
+                "sample_path": str(accepted),
+                "session_sequence": 1,
+                "current_speaker": "unknown",
+                "speaker_id": "SPEAKER_00",
+                "suggested_speaker": "me",
+                "confidence": 0.91,
+                "overlap_seconds": 8.0,
+                "status": "suggested",
+            },
+            {
+                "sample_path": str(rejected),
+                "session_sequence": 2,
+                "current_speaker": "unknown",
+                "speaker_id": "SPEAKER_01",
+                "suggested_speaker": "other",
+                "confidence": 0.64,
+                "overlap_seconds": 8.0,
+                "status": "suggested",
+            },
+        ],
+    )
+    runner = CliRunner()
+
+    evaluated = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-eval",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+    trained = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-classifier",
+            "train",
+            "--profile",
+            "personal",
+            "--samples-dir",
+            str(samples_dir),
+            "--model-dir",
+            str(model_dir),
+            "--min-total",
+            "2",
+            "--min-per-class",
+            "1",
+        ],
+    )
+
+    assert evaluated.exit_code == 0
+    assert "speaker unknown: records=2" in evaluated.output
+    assert "speaker me: records=0" in evaluated.output
+    assert "speaker other: records=0" in evaluated.output
+    assert trained.exit_code == 0
+    model = json.loads((model_dir / "personal.json").read_text(encoding="utf-8"))
+    assert "speaker=unknown" in model["vocabulary"]
+    assert "speaker=me" not in model["vocabulary"]
+    assert "speaker=other" not in model["vocabulary"]
 
 
 def test_trigger_samples_label_updates_speaker_metadata(tmp_path):

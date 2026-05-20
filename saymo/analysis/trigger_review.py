@@ -511,6 +511,25 @@ def _parse_prefixed_action(text: str) -> ReviewAction | None:
         return parse_speaker_action(value)
     if prefix in {"d", "dec", "decision"}:
         return parse_decision_action(value)
+    if prefix in {"sg", "suggest", "suggestion"}:
+        return parse_suggestion_review_action(value)
+    return None
+
+
+def parse_suggestion_review_action(raw: str | None) -> ReviewAction | None:
+    """Parse a speaker-suggestion review action."""
+    text = _clean_action_text(raw)
+    if text in {"accept", "accepted", "a", "yes"}:
+        return ReviewAction("speaker_suggestion_accept")
+    if text in {"reject", "rejected", "r", "no"}:
+        return ReviewAction("speaker_suggestion_reject")
+    if text.startswith("override "):
+        speaker = _speaker_alias(text.removeprefix("override "))
+        if speaker is not None:
+            return ReviewAction("speaker_suggestion_override", speaker)
+    speaker = _speaker_alias(text)
+    if speaker is not None:
+        return ReviewAction("speaker_suggestion_override", speaker)
     return None
 
 

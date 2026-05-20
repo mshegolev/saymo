@@ -19,7 +19,7 @@ enough that the call still feels live.
 optional diarization, speaker-cluster review, and safe promotion into existing
 `me`/`other`/`unknown` labels.
 
-**Status:** Requirements and roadmap defined on 2026-05-20.
+**Status:** Implementation complete on 2026-05-20; audit pending.
 
 **Target features:**
 - Optional local diarization backend checks and per-profile configuration.
@@ -58,16 +58,13 @@ optional diarization, speaker-cluster review, and safe promotion into existing
 - ✓ User can see whether the local classifier has enough balanced evidence to
   be trusted as a live-call assist, while deterministic gating remains the
   safety boundary.
-
-### Active
-
-- [ ] User can run optional local diarization on a completed trigger-capture
+- ✓ User can run optional local diarization on a completed trigger-capture
   session without making cloud services or heavy ML packages mandatory.
-- [ ] User can inspect diarization speaker clusters and map them to
+- ✓ User can inspect diarization speaker clusters and map them to
   `me`/`other`/`unknown` labels for the current profile/session.
-- [ ] User can review and promote speaker suggestions into existing trigger
+- ✓ User can review and promote speaker suggestions into existing trigger
   sample metadata while preserving manual overrides.
-- [ ] User can evaluate speaker-label quality before using suggested labels in
+- ✓ User can evaluate speaker-label quality before using suggested labels in
   classifier readiness or training.
 
 ### Out of Scope
@@ -116,7 +113,7 @@ optional diarization, speaker-cluster review, and safe promotion into existing
 | Separate name mentions from handoffs deterministically | Plain mentions should train/tune differently from moments where Saymo should answer | ✓ Implemented after real sample review |
 | Measure providers through the existing abstraction | Keep provider latency work scoped to Chrome call automation, not UI redesign | ✓ Implemented in Phase 7 |
 | Require a readiness gate before live classifier assist | Learned behavior should be opt-in and evidence-backed per profile | ✓ Implemented in Phase 10 |
-| Keep diarization optional and review-first | Speaker suggestions are useful only after the user can inspect and correct them locally | — Pending |
+| Keep diarization optional and review-first | Speaker suggestions are useful only after the user can inspect and correct them locally | ✓ Implemented in v1.3 |
 
 ---
-*Last updated: 2026-05-20 after starting milestone v1.3 Local Diarization Assist*
+*Last updated: 2026-05-20 after completing milestone v1.3 implementation*

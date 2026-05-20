@@ -8,10 +8,13 @@ from saymo.analysis.diarization import (
     DiarizationSessionSidecar,
     DiarizationSegment,
     TriggerSampleSpeakerSuggestion,
+    build_speaker_quality_report,
     build_session_speaker_suggestions,
     check_diarization_availability,
     diarization_result_from_json,
     diarization_result_to_json,
+    render_speaker_quality_report,
+    review_speaker_suggestion,
     load_session_diarization,
     session_diarization_path,
     speaker_cluster_summary,
@@ -199,3 +202,112 @@ def test_speaker_cluster_summary_counts_segments_and_suggestions():
     assert summary["SPEAKER_00"].mapped_label == "me"
     assert summary["SPEAKER_01"].sample_count == 1
     assert summary["SPEAKER_01"].mapped_label == "unknown"
+
+
+def test_review_speaker_suggestion_accepts_without_losing_original():
+    sidecar = DiarizationSessionSidecar(
+        profile="personal",
+        session_id="daily",
+        engine="import",
+        model="segments-json",
+        created_at="2026-05-20T12:00:00",
+        segments=(DiarizationSegment("SPEAKER_00", 0.0, 8.0, 0.91),),
+        speaker_mappings={"SPEAKER_00": "me"},
+        suggestions=(
+            TriggerSampleSpeakerSuggestion(
+                "/samples/personal/question/a.json",
+                1,
+                "unknown",
+                "SPEAKER_00",
+                "me",
+                0.91,
+                8.0,
+            ),
+        ),
+    )
+
+    updated, reviewed = review_speaker_suggestion(
+        sidecar,
+        sample_path="/samples/personal/question/a.json",
+        action="accept",
+        reviewed_at="2026-05-20T13:00:00",
+    )
+
+    assert reviewed.status == "accepted"
+    assert reviewed.speaker_id == "SPEAKER_00"
+    assert reviewed.suggested_speaker == "me"
+    assert reviewed.reviewed_speaker == "me"
+    assert reviewed.reviewed_at == "2026-05-20T13:00:00"
+    assert updated.suggestions[0] == reviewed
+
+
+def test_speaker_quality_report_counts_status_confidence_and_conflicts():
+    sidecar = DiarizationSessionSidecar(
+        profile="personal",
+        session_id="daily",
+        engine="import",
+        model="segments-json",
+        created_at="2026-05-20T12:00:00",
+        segments=(
+            DiarizationSegment("SPEAKER_00", 0.0, 8.0, 0.91),
+            DiarizationSegment("SPEAKER_01", 8.0, 16.0, 0.64),
+            DiarizationSegment("SPEAKER_02", 16.0, 24.0, 0.32),
+        ),
+        speaker_mappings={
+            "SPEAKER_00": "me",
+            "SPEAKER_01": "other",
+            "SPEAKER_02": "me",
+        },
+        suggestions=(
+            TriggerSampleSpeakerSuggestion(
+                "/samples/personal/question/a.json",
+                1,
+                "unknown",
+                "SPEAKER_00",
+                "me",
+                0.91,
+                8.0,
+                status="accepted",
+                reviewed_speaker="me",
+            ),
+            TriggerSampleSpeakerSuggestion(
+                "/samples/personal/question/b.json",
+                2,
+                "unknown",
+                "SPEAKER_01",
+                "other",
+                0.64,
+                8.0,
+                status="rejected",
+            ),
+            TriggerSampleSpeakerSuggestion(
+                "/samples/personal/question/c.json",
+                3,
+                "unknown",
+                "SPEAKER_02",
+                "me",
+                0.32,
+                8.0,
+            ),
+        ),
+    )
+
+    report = build_speaker_quality_report(
+        sidecar,
+        sample_speakers={
+            "/samples/personal/question/a.json": "me",
+            "/samples/personal/question/b.json": "unknown",
+            "/samples/personal/question/c.json": "other",
+        },
+    )
+    rendered = render_speaker_quality_report(report)
+
+    assert report.total_suggestions == 3
+    assert report.accepted_suggestions == 1
+    assert report.rejected_suggestions == 1
+    assert report.unknown_speaker_labels == 1
+    assert report.confidence_buckets == {"high": 1, "medium": 1, "low": 1}
+    assert len(report.conflicts) == 1
+    assert report.conflicts[0].sample_name == "c.json"
+    assert "accepted suggestions: 1" in rendered
+    assert "confidence high: 1" in rendered

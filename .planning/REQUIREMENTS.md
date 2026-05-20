@@ -27,17 +27,17 @@ Requirements for milestone v1.3 Local Diarization Assist.
   coverage.
 - [x] **SPKR-02**: User can map diarization speaker ids to Saymo labels
   `me`, `other`, or `unknown` for the current profile/session.
-- [ ] **SPKR-03**: User can review, accept, reject, or override suggested
+- [x] **SPKR-03**: User can review, accept, reject, or override suggested
   speaker labels without losing the original diarization suggestion.
 
 ### Training Signal Quality
 
-- [ ] **QUAL-01**: User can report speaker-label quality by session, including
+- [x] **QUAL-01**: User can report speaker-label quality by session, including
   unknown coverage, accepted suggestion count, confidence buckets, and
   manual-vs-suggested conflicts.
-- [ ] **QUAL-02**: User can run trigger evaluation/readiness with manual speaker
+- [x] **QUAL-02**: User can run trigger evaluation/readiness with manual speaker
   labels taking precedence over unreviewed suggestions.
-- [ ] **QUAL-03**: User can export sanitized diarization/speaker-review reports
+- [x] **QUAL-03**: User can export sanitized diarization/speaker-review reports
   without raw audio payloads, transcript text, or private config values.
 
 ## Future Requirements
@@ -77,17 +77,17 @@ Deferred beyond v1.3.
 | DIAR-04 | Phase 12 | Complete |
 | SPKR-01 | Phase 12 | Complete |
 | SPKR-02 | Phase 12 | Complete |
-| SPKR-03 | Phase 13 | Pending |
-| QUAL-01 | Phase 13 | Pending |
-| QUAL-02 | Phase 13 | Pending |
-| QUAL-03 | Phase 13 | Pending |
+| SPKR-03 | Phase 13 | Complete |
+| QUAL-01 | Phase 13 | Complete |
+| QUAL-02 | Phase 13 | Complete |
+| QUAL-03 | Phase 13 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 10 total
 - Mapped to phases: 10
-- Complete: 6
+- Complete: 10
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after completing Phase 12*
+*Last updated: 2026-05-20 after completing Phase 13*

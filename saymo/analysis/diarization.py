@@ -7,12 +7,19 @@ import json
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from saymo.config import DiarizationConfig
 
 
 DEFAULT_PYANNOTE_MODEL = "pyannote/speaker-diarization-3.1"
+SPEAKER_LABELS = ("me", "other", "unknown")
+SPEAKER_SUGGESTION_STATUSES = (
+    "suggested",
+    "accepted",
+    "rejected",
+    "overridden",
+)
 
 
 @dataclass(frozen=True)
@@ -105,6 +112,8 @@ class TriggerSampleSpeakerSuggestion:
     confidence: float
     overlap_seconds: float
     status: str = "suggested"
+    reviewed_speaker: str = "unknown"
+    reviewed_at: str = ""
 
 
 @dataclass(frozen=True)
@@ -132,6 +141,34 @@ class SpeakerClusterSummary:
     end_seconds: float
     confidence: float
     mapped_label: str
+
+
+@dataclass(frozen=True)
+class SpeakerQualityConflict:
+    """One manual-vs-suggested speaker-label conflict."""
+
+    sample_name: str
+    speaker_id: str
+    current_speaker: str
+    suggested_speaker: str
+    status: str
+
+
+@dataclass(frozen=True)
+class SpeakerQualityReport:
+    """Sanitized speaker-suggestion quality report for one session."""
+
+    profile: str
+    session_id: str
+    total_suggestions: int
+    unknown_speaker_labels: int
+    unknown_speaker_ratio: float
+    accepted_suggestions: int
+    rejected_suggestions: int
+    overridden_suggestions: int
+    pending_suggestions: int
+    confidence_buckets: dict[str, int]
+    conflicts: tuple[SpeakerQualityConflict, ...]
 
 
 def check_diarization_availability(
@@ -331,7 +368,9 @@ def load_session_diarization(path: Path) -> DiarizationSessionSidecar:
             suggested_speaker=_normalize_speaker(item.get("suggested_speaker")),
             confidence=_clamp_confidence(item.get("confidence", 0.0)),
             overlap_seconds=max(0.0, float(item.get("overlap_seconds", 0.0) or 0.0)),
-            status=str(item.get("status", "") or "suggested"),
+            status=_normalize_suggestion_status(item.get("status")),
+            reviewed_speaker=_normalize_speaker(item.get("reviewed_speaker")),
+            reviewed_at=str(item.get("reviewed_at", "") or ""),
         )
         for item in data.get("suggestions", ())
         if isinstance(item, dict)
@@ -371,6 +410,8 @@ def apply_speaker_mapping(
             confidence=item.confidence,
             overlap_seconds=item.overlap_seconds,
             status=item.status,
+            reviewed_speaker=item.reviewed_speaker,
+            reviewed_at=item.reviewed_at,
         )
         for item in sidecar.suggestions
     )
@@ -414,6 +455,194 @@ def speaker_cluster_summary(
             mapped_label=sidecar.speaker_mappings.get(speaker_id, "unknown"),
         )
     return summaries
+
+
+def find_sample_speaker_suggestion(
+    sidecar: DiarizationSessionSidecar,
+    sample_path: str | Path,
+    *,
+    session_sequence: int = 0,
+) -> TriggerSampleSpeakerSuggestion | None:
+    """Find the sidecar suggestion for a sample path.
+
+    Matching tolerates category moves after diarization by falling back to the
+    session sequence plus filename when an exact path match is not available.
+    """
+    path = Path(sample_path)
+    exact = str(path)
+    expanded = str(path.expanduser())
+    name = path.name
+    for suggestion in sidecar.suggestions:
+        suggestion_path = Path(suggestion.sample_path)
+        if suggestion.sample_path in {exact, expanded}:
+            return suggestion
+        if str(suggestion_path) in {exact, expanded}:
+            return suggestion
+        if (
+            session_sequence
+            and suggestion.session_sequence == session_sequence
+            and suggestion_path.name == name
+        ):
+            return suggestion
+    return None
+
+
+def review_speaker_suggestion(
+    sidecar: DiarizationSessionSidecar,
+    *,
+    sample_path: str | Path,
+    action: str,
+    label: str | None = None,
+    session_sequence: int = 0,
+    reviewed_at: str = "",
+) -> tuple[DiarizationSessionSidecar, TriggerSampleSpeakerSuggestion]:
+    """Return a sidecar with one suggestion reviewed.
+
+    Accepted and overridden labels are stored separately from the original
+    suggested label so audit/reporting can still compare them later.
+    """
+    suggestion = find_sample_speaker_suggestion(
+        sidecar,
+        sample_path,
+        session_sequence=session_sequence,
+    )
+    if suggestion is None:
+        raise ValueError(f"Speaker suggestion not found for sample: {sample_path}")
+
+    normalized_action = str(action or "").strip().lower()
+    if normalized_action == "accept":
+        if suggestion.suggested_speaker == "unknown":
+            raise ValueError("Cannot accept an unknown speaker suggestion; use --label")
+        status = "accepted"
+        reviewed_speaker = suggestion.suggested_speaker
+    elif normalized_action == "reject":
+        status = "rejected"
+        reviewed_speaker = "unknown"
+    elif normalized_action == "override":
+        status = "overridden"
+        reviewed_speaker = _require_speaker_label(label)
+    else:
+        raise ValueError("action must be accept, reject, or override")
+
+    reviewed = TriggerSampleSpeakerSuggestion(
+        sample_path=suggestion.sample_path,
+        session_sequence=suggestion.session_sequence,
+        current_speaker=suggestion.current_speaker,
+        speaker_id=suggestion.speaker_id,
+        suggested_speaker=suggestion.suggested_speaker,
+        confidence=suggestion.confidence,
+        overlap_seconds=suggestion.overlap_seconds,
+        status=status,
+        reviewed_speaker=reviewed_speaker,
+        reviewed_at=reviewed_at,
+    )
+    suggestions = tuple(
+        reviewed
+        if _same_sample_suggestion(
+            item,
+            sample_path,
+            session_sequence=session_sequence,
+        )
+        else item
+        for item in sidecar.suggestions
+    )
+    return (
+        DiarizationSessionSidecar(
+            profile=sidecar.profile,
+            session_id=sidecar.session_id,
+            engine=sidecar.engine,
+            model=sidecar.model,
+            created_at=sidecar.created_at,
+            segments=sidecar.segments,
+            speaker_mappings=dict(sidecar.speaker_mappings),
+            suggestions=suggestions,
+        ),
+        reviewed,
+    )
+
+
+def build_speaker_quality_report(
+    sidecar: DiarizationSessionSidecar,
+    *,
+    sample_speakers: Mapping[str, str] | None = None,
+) -> SpeakerQualityReport:
+    """Build sanitized quality metrics for one session sidecar."""
+    speaker_lookup = _normalized_sample_speaker_lookup(sample_speakers or {})
+    total = len(sidecar.suggestions)
+    status_counts = {status: 0 for status in SPEAKER_SUGGESTION_STATUSES}
+    buckets = {"high": 0, "medium": 0, "low": 0}
+    unknown = 0
+    conflicts: list[SpeakerQualityConflict] = []
+
+    for suggestion in sidecar.suggestions:
+        status = _normalize_suggestion_status(suggestion.status)
+        status_counts[status] += 1
+        bucket = _confidence_bucket(suggestion.confidence)
+        buckets[bucket] += 1
+        current = _current_sample_speaker(suggestion, speaker_lookup)
+        if current == "unknown":
+            unknown += 1
+        suggested = suggestion.suggested_speaker
+        if current != "unknown" and suggested != "unknown" and current != suggested:
+            conflicts.append(
+                SpeakerQualityConflict(
+                    sample_name=Path(suggestion.sample_path).name,
+                    speaker_id=suggestion.speaker_id,
+                    current_speaker=current,
+                    suggested_speaker=suggested,
+                    status=status,
+                )
+            )
+
+    return SpeakerQualityReport(
+        profile=sidecar.profile,
+        session_id=sidecar.session_id,
+        total_suggestions=total,
+        unknown_speaker_labels=unknown,
+        unknown_speaker_ratio=unknown / total if total else 0.0,
+        accepted_suggestions=status_counts["accepted"],
+        rejected_suggestions=status_counts["rejected"],
+        overridden_suggestions=status_counts["overridden"],
+        pending_suggestions=status_counts["suggested"],
+        confidence_buckets=buckets,
+        conflicts=tuple(conflicts),
+    )
+
+
+def render_speaker_quality_report(report: SpeakerQualityReport) -> str:
+    """Render a sanitized markdown speaker quality report."""
+    lines = [
+        "# Saymo Speaker Quality Report",
+        "",
+        f"profile: {report.profile}",
+        f"session: {report.session_id}",
+        f"suggestions: {report.total_suggestions}",
+        (
+            "unknown coverage: "
+            f"{report.unknown_speaker_labels}/{report.total_suggestions} "
+            f"({report.unknown_speaker_ratio:.0%})"
+        ),
+        f"accepted suggestions: {report.accepted_suggestions}",
+        f"rejected suggestions: {report.rejected_suggestions}",
+        f"overridden suggestions: {report.overridden_suggestions}",
+        f"pending suggestions: {report.pending_suggestions}",
+        f"confidence high: {report.confidence_buckets.get('high', 0)}",
+        f"confidence medium: {report.confidence_buckets.get('medium', 0)}",
+        f"confidence low: {report.confidence_buckets.get('low', 0)}",
+        f"manual conflicts: {len(report.conflicts)}",
+    ]
+    if report.conflicts:
+        lines.extend(["", "## Conflicts"])
+        for conflict in report.conflicts:
+            lines.append(
+                "- "
+                f"{conflict.sample_name}: "
+                f"manual={conflict.current_speaker} "
+                f"suggested={conflict.suggested_speaker} "
+                f"speaker_id={conflict.speaker_id} "
+                f"status={conflict.status}"
+            )
+    return "\n".join(lines) + "\n"
 
 
 def run_pyannote_diarization(
@@ -503,7 +732,78 @@ def _clamp_confidence(value: Any) -> float:
 
 def _normalize_speaker(value: Any) -> str:
     label = str(value or "").strip().lower()
-    return label if label in {"me", "other", "unknown"} else "unknown"
+    return label if label in SPEAKER_LABELS else "unknown"
+
+
+def _require_speaker_label(value: Any) -> str:
+    label = str(value or "").strip().lower()
+    if label not in SPEAKER_LABELS:
+        allowed = ", ".join(SPEAKER_LABELS)
+        raise ValueError(f"speaker label must be one of: {allowed}")
+    return label
+
+
+def _normalize_suggestion_status(value: Any) -> str:
+    status = str(value or "").strip().lower()
+    if status in SPEAKER_SUGGESTION_STATUSES:
+        return status
+    return "suggested"
+
+
+def _same_sample_suggestion(
+    suggestion: TriggerSampleSpeakerSuggestion,
+    sample_path: str | Path,
+    *,
+    session_sequence: int = 0,
+) -> bool:
+    path = Path(sample_path)
+    suggestion_path = Path(suggestion.sample_path)
+    if suggestion.sample_path == str(path):
+        return True
+    if str(suggestion_path) == str(path.expanduser()):
+        return True
+    return (
+        bool(session_sequence)
+        and suggestion.session_sequence == session_sequence
+        and suggestion_path.name == path.name
+    )
+
+
+def _normalized_sample_speaker_lookup(
+    sample_speakers: Mapping[str, str],
+) -> dict[str, str]:
+    lookup: dict[str, str] = {}
+    for raw_path, speaker in sample_speakers.items():
+        normalized = _normalize_speaker(speaker)
+        text = str(raw_path)
+        lookup[text] = normalized
+        lookup[str(Path(text).expanduser())] = normalized
+        lookup[Path(text).name] = normalized
+    return lookup
+
+
+def _current_sample_speaker(
+    suggestion: TriggerSampleSpeakerSuggestion,
+    sample_speakers: Mapping[str, str],
+) -> str:
+    path = Path(suggestion.sample_path)
+    for key in (
+        suggestion.sample_path,
+        str(path),
+        str(path.expanduser()),
+        path.name,
+    ):
+        if key in sample_speakers:
+            return _normalize_speaker(sample_speakers[key])
+    return suggestion.current_speaker
+
+
+def _confidence_bucket(confidence: float) -> str:
+    if confidence >= 0.8:
+        return "high"
+    if confidence >= 0.5:
+        return "medium"
+    return "low"
 
 
 def _overlap_seconds(

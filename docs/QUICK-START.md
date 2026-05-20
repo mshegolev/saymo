@@ -303,9 +303,11 @@ saymo trigger-sessions summary -p personal --session daily-2026-05-20
 saymo trigger-sessions diarize -p personal --session daily-2026-05-20
 saymo trigger-sessions speakers -p personal --session daily-2026-05-20
 saymo trigger-sessions map-speaker -p personal --session daily-2026-05-20 --speaker-id SPEAKER_00 --label me
+saymo trigger-sessions speaker-report -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/speaker-report.md
 saymo trigger-samples list -p personal --session daily-2026-05-20 --speaker other
 saymo trigger-samples list -p personal --classifier-disagreement --model-dir ~/.saymo/models/trigger_classifier
 saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
+saymo trigger-samples speaker-suggestion ~/.saymo/trigger_samples/personal/question/<sample>.json --accept
 saymo trigger-samples decision ~/.saymo/trigger_samples/personal/question/<sample>.json --decision rejected
 saymo trigger-samples category ~/.saymo/trigger_samples/personal/question/<sample>.json --category mentioned_me
 saymo trigger-samples review -p personal --session daily-2026-05-20
@@ -355,7 +357,12 @@ Optional diarization starts disabled. Add a `diarization:` section to
 run `saymo diarization-check` before using speaker-suggestion workflows. The
 session diarization sidecar stores speaker suggestions separately from sample
 metadata; manual `speaker` labels are not overwritten by `trigger-sessions
-diarize` or `map-speaker`.
+diarize` or `map-speaker`. Use `trigger-samples speaker-suggestion` or the
+prefixed `suggest accept`, `suggest reject`, and `suggest other` actions inside
+`trigger-samples review` to promote reviewed suggestions. Only accepted or
+overridden suggestions update sample JSON and become training signal for
+`trigger-eval`, classifier readiness, and classifier training. `speaker-report`
+exports aggregate speaker-review quality without transcript text or audio.
 
 ### Measure call provider latency
 

@@ -5,13 +5,14 @@
 ### v1.3 Local Diarization Assist
 
 **Started:** 2026-05-20
-**Status:** Planned
+**Completed:** 2026-05-20
+**Status:** Implementation complete; audit pending
 
 Focus: make local speaker identity useful during trigger training by adding
 optional diarization, speaker-cluster review, and safe promotion into existing
 `me`/`other`/`unknown` labels.
 
-Target:
+Delivered:
 - Optional local diarization backend detection and configuration.
 - Session-level speaker suggestions stored as local sidecars.
 - Review and promotion flow for diarization suggestions.
