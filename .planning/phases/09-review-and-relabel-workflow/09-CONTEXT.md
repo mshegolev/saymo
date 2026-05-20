@@ -39,4 +39,3 @@ call without manually editing JSON files.
   speaker, and answer-decision corrections in one command flow.
 - REV-04: `trigger-samples report` groups sanitized output by session and
   category.
-

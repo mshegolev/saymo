@@ -36,4 +36,3 @@ the hard safety boundary.
   passes, and `saymo auto` respects the local guard.
 - CLS-04: `trigger-check` can explain live-assist accept/reject diagnostics
   using local features and confidence.
-
