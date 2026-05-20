@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Local Diarization Assist
-status: Phase 11 complete; Phase 12 next
-stopped_at: Phase 11 Diarization Adapter And Config complete; next step is Phase 12.
+status: Phase 12 complete; Phase 13 next
+stopped_at: Phase 12 Session Speaker Suggestions complete; next step is Phase 13.
 last_updated: "2026-05-20"
-last_activity: "2026-05-20 - completed Phase 11 optional diarization config and diagnostics"
+last_activity: "2026-05-20 - completed Phase 12 session speaker suggestions"
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 3
-  percent: 33
+  completed_plans: 6
+  percent: 67
 ---
 
 # Project State
@@ -22,23 +22,23 @@ See: .planning/PROJECT.md (updated 2026-05-20)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Phase 12 Session Speaker Suggestions.
+**Current focus:** Phase 13 Speaker Review And Quality Reports.
 
 ## Current Position
 
-Phase: 12 - Session Speaker Suggestions
+Phase: 13 - Speaker Review And Quality Reports
 Plan: Not started
-Status: Phase 11 complete; Phase 12 not started
-Last activity: 2026-05-20 - added optional diarization config, backend-neutral
-contracts, diagnostics, docs, and focused tests.
+Status: Phase 12 complete; Phase 13 not started
+Last activity: 2026-05-20 - added session diarization sidecars, speaker
+suggestions, cluster summaries, and speaker-id mapping.
 
-Progress: [###-------] 33%
+Progress: [######----] 67%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 10
-- Plans completed: 3
+- Plans completed: 6
 - Average duration: pending
 - Total execution time: pending
 
@@ -52,13 +52,13 @@ Progress: [###-------] 33%
 | Phase | Plans | Total | Status |
 |-------|-------|-------|--------|
 | 11. Diarization Adapter And Config | 3 | 3/3 | complete |
-| 12. Session Speaker Suggestions | 3 | 0/3 | not started |
+| 12. Session Speaker Suggestions | 3 | 3/3 | complete |
 | 13. Speaker Review And Quality Reports | 4 | 0/4 | not started |
 
 **Recent Trend:**
 - v1.2 created reviewable sessions and corrected sample labels.
-- v1.3 added optional diarization config/diagnostics and now moves into
-  session speaker suggestions.
+- v1.3 added optional diarization config/diagnostics and session speaker
+  suggestion sidecars, and now moves into review/promotion quality reports.
 
 ## Accumulated Context
 
@@ -79,7 +79,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Plan and execute Phase 12: Session Speaker Suggestions.
+Plan and execute Phase 13: Speaker Review And Quality Reports.
 
 ### Blockers/Concerns
 
@@ -93,5 +93,5 @@ Plan and execute Phase 12: Session Speaker Suggestions.
 ## Session Continuity
 
 Last session: 2026-05-20
-Stopped at: Phase 11 complete; next step is `$gsd-plan-phase 12`.
+Stopped at: Phase 12 complete; next step is `$gsd-plan-phase 13`.
 Resume file: None

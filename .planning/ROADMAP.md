@@ -27,7 +27,7 @@ runtime dependency or adding risky real-time behavior to `saymo auto`.
 
 - [x] **Phase 11: Diarization Adapter And Config** - Add optional local
   diarization backend detection, configuration, and stable data contracts.
-- [ ] **Phase 12: Session Speaker Suggestions** - Run diarization against
+- [x] **Phase 12: Session Speaker Suggestions** - Run diarization against
   completed capture sessions and store reviewable speaker suggestions.
 - [ ] **Phase 13: Speaker Review And Quality Reports** - Promote reviewed
   suggestions into sample labels and report speaker-label quality before
@@ -106,5 +106,5 @@ Phases execute in numeric order: 11 -> 12 -> 13
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 11. Diarization Adapter And Config | v1.3 | 3/3 | Complete | 2026-05-20 |
-| 12. Session Speaker Suggestions | v1.3 | 0/3 | Not started | - |
+| 12. Session Speaker Suggestions | v1.3 | 3/3 | Complete | 2026-05-20 |
 | 13. Speaker Review And Quality Reports | v1.3 | 0/4 | Not started | - |

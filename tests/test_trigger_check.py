@@ -727,6 +727,167 @@ def test_trigger_samples_list_ignores_ledgers_and_prints_session(tmp_path):
     assert f"session={session.session_id}" in listed.output
 
 
+def test_trigger_sessions_diarize_writes_sidecar_without_changing_speakers(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    sample_path = _write_sample(
+        samples_dir,
+        category="question",
+        name="question",
+        transcript="John, status?",
+        speaker="unknown",
+        session_id="daily-20260520-100000",
+        session_name="daily",
+        session_sequence=1,
+    )
+    segments_path = tmp_path / "segments.json"
+    segments_path.write_text(
+        json.dumps(
+            {
+                "segments": [
+                    {
+                        "speaker_id": "SPEAKER_00",
+                        "start_seconds": 0.0,
+                        "end_seconds": 8.0,
+                        "confidence": 0.82,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-sessions",
+            "diarize",
+            "--profile",
+            "personal",
+            "--session",
+            "daily",
+            "--samples-dir",
+            str(samples_dir),
+            "--segments-json",
+            str(segments_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "diarization: saved" in result.output
+    assert "segments: 1" in result.output
+    assert "suggestions: 1" in result.output
+    assert json.loads(sample_path.read_text(encoding="utf-8"))["speaker"] == "unknown"
+    sidecar = samples_dir / "personal" / "_sessions" / "daily-20260520-100000.diarization.json"
+    payload = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert payload["suggestions"][0]["speaker_id"] == "SPEAKER_00"
+
+
+def test_trigger_sessions_speakers_and_map_speaker(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    sample_path = _write_sample(
+        samples_dir,
+        category="question",
+        name="question",
+        transcript="John, status?",
+        speaker="unknown",
+        session_id="daily-20260520-100000",
+        session_name="daily",
+        session_sequence=1,
+    )
+    sidecar_dir = samples_dir / "personal" / "_sessions"
+    sidecar_dir.mkdir(parents=True)
+    (sidecar_dir / "daily-20260520-100000.diarization.json").write_text(
+        json.dumps(
+            {
+                "profile": "personal",
+                "session_id": "daily-20260520-100000",
+                "engine": "import",
+                "model": "segments-json",
+                "created_at": "2026-05-20T12:00:00",
+                "segments": [
+                    {
+                        "speaker_id": "SPEAKER_00",
+                        "start_seconds": 0.0,
+                        "end_seconds": 8.0,
+                        "confidence": 0.82,
+                    }
+                ],
+                "speaker_mappings": {},
+                "suggestions": [
+                    {
+                        "sample_path": str(sample_path),
+                        "session_sequence": 1,
+                        "current_speaker": "unknown",
+                        "speaker_id": "SPEAKER_00",
+                        "suggested_speaker": "unknown",
+                        "confidence": 0.82,
+                        "overlap_seconds": 8.0,
+                        "status": "suggested",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    runner = CliRunner()
+
+    listed = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-sessions",
+            "speakers",
+            "--profile",
+            "personal",
+            "--session",
+            "daily",
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    assert listed.exit_code == 0
+    assert "speaker clusters: 1" in listed.output
+    assert "SPEAKER_00" in listed.output
+    assert "unresolved suggestions: 1" in listed.output
+
+    mapped = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-sessions",
+            "map-speaker",
+            "--profile",
+            "personal",
+            "--session",
+            "daily",
+            "--samples-dir",
+            str(samples_dir),
+            "--speaker-id",
+            "SPEAKER_00",
+            "--label",
+            "me",
+        ],
+    )
+
+    assert mapped.exit_code == 0
+    assert "SPEAKER_00 -> me" in mapped.output
+    payload = json.loads(
+        (sidecar_dir / "daily-20260520-100000.diarization.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert payload["speaker_mappings"]["SPEAKER_00"] == "me"
+    assert payload["suggestions"][0]["suggested_speaker"] == "me"
+    assert json.loads(sample_path.read_text(encoding="utf-8"))["speaker"] == "unknown"
+
+
 def test_trigger_samples_label_updates_speaker_metadata(tmp_path):
     config_path = _write_config(tmp_path)
     samples_dir = tmp_path / "samples"

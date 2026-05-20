@@ -163,6 +163,8 @@ def list_trigger_sessions(
         paths = sorted(root.glob(f"*/{SESSION_LEDGER_DIR}/*.json"))
     sessions: list[TriggerSession] = []
     for path in paths:
+        if path.name.endswith(".diarization.json"):
+            continue
         try:
             sessions.append(load_trigger_session(path, base_dir=root))
         except (OSError, json.JSONDecodeError, TypeError, ValueError):

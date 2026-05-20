@@ -325,6 +325,9 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 | `saymo trigger-check -p PROFILE --text TEXT --live-assist` | Explain guarded live-assist prediction and final action |
 | `saymo trigger-sessions list -p PROFILE` | List named trigger-capture sessions |
 | `saymo trigger-sessions summary -p PROFILE --session SESSION` | Summarize one captured meeting session |
+| `saymo trigger-sessions diarize -p PROFILE --session SESSION` | Run/import optional diarization for one captured session |
+| `saymo trigger-sessions speakers -p PROFILE --session SESSION` | Inspect diarization speaker clusters and suggestions |
+| `saymo trigger-sessions map-speaker -p PROFILE --session SESSION --speaker-id SPEAKER_00 --label me` | Map one diarization speaker id to a Saymo label |
 | `saymo trigger-samples list -p PROFILE --session SESSION --speaker other --decision accepted` | Filter saved samples for review |
 | `saymo trigger-samples category SAMPLE.json --category mentioned_me` | Correct the stored sample category |
 | `saymo trigger-samples review -p PROFILE --session SESSION` | Replay/relabel a filtered review queue |

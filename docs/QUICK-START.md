@@ -300,6 +300,9 @@ Review and tune the saved windows locally:
 ```bash
 saymo trigger-sessions list -p personal
 saymo trigger-sessions summary -p personal --session daily-2026-05-20
+saymo trigger-sessions diarize -p personal --session daily-2026-05-20
+saymo trigger-sessions speakers -p personal --session daily-2026-05-20
+saymo trigger-sessions map-speaker -p personal --session daily-2026-05-20 --speaker-id SPEAKER_00 --label me
 saymo trigger-samples list -p personal --session daily-2026-05-20 --speaker other
 saymo trigger-samples list -p personal --classifier-disagreement --model-dir ~/.saymo/models/trigger_classifier
 saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
@@ -349,7 +352,10 @@ bypass trigger/addressing checks.
 
 Optional diarization starts disabled. Add a `diarization:` section to
 `config.yaml`, keep tokens in env vars such as `SAYMO_DIARIZATION_TOKEN`, then
-run `saymo diarization-check` before using speaker-suggestion workflows.
+run `saymo diarization-check` before using speaker-suggestion workflows. The
+session diarization sidecar stores speaker suggestions separately from sample
+metadata; manual `speaker` labels are not overwritten by `trigger-sessions
+diarize` or `map-speaker`.
 
 ### Measure call provider latency
 

@@ -17,15 +17,15 @@ Requirements for milestone v1.3 Local Diarization Assist.
   committing secrets.
 - [x] **DIAR-03**: User can keep Saymo fully usable when diarization is disabled
   or dependencies are not installed.
-- [ ] **DIAR-04**: User can run diarization against one completed
+- [x] **DIAR-04**: User can run diarization against one completed
   trigger-capture session and store the output locally.
 
 ### Speaker Mapping
 
-- [ ] **SPKR-01**: User can inspect diarization speaker clusters for a session,
+- [x] **SPKR-01**: User can inspect diarization speaker clusters for a session,
   including cluster id, time range, sample count, confidence, and unknown
   coverage.
-- [ ] **SPKR-02**: User can map diarization speaker ids to Saymo labels
+- [x] **SPKR-02**: User can map diarization speaker ids to Saymo labels
   `me`, `other`, or `unknown` for the current profile/session.
 - [ ] **SPKR-03**: User can review, accept, reject, or override suggested
   speaker labels without losing the original diarization suggestion.
@@ -74,9 +74,9 @@ Deferred beyond v1.3.
 | DIAR-01 | Phase 11 | Complete |
 | DIAR-02 | Phase 11 | Complete |
 | DIAR-03 | Phase 11 | Complete |
-| DIAR-04 | Phase 12 | Pending |
-| SPKR-01 | Phase 12 | Pending |
-| SPKR-02 | Phase 12 | Pending |
+| DIAR-04 | Phase 12 | Complete |
+| SPKR-01 | Phase 12 | Complete |
+| SPKR-02 | Phase 12 | Complete |
 | SPKR-03 | Phase 13 | Pending |
 | QUAL-01 | Phase 13 | Pending |
 | QUAL-02 | Phase 13 | Pending |
@@ -85,9 +85,9 @@ Deferred beyond v1.3.
 **Coverage:**
 - v1.3 requirements: 10 total
 - Mapped to phases: 10
-- Complete: 3
+- Complete: 6
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-20*
-*Last updated: 2026-05-20 after completing Phase 11*
+*Last updated: 2026-05-20 after completing Phase 12*

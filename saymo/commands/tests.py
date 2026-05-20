@@ -1944,6 +1944,194 @@ def trigger_sessions_summary(profile, session_id, samples_dir):
     _print_trigger_session_summary(sessions[0])
 
 
+@trigger_sessions.command("diarize")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option(
+    "--session",
+    "session_id",
+    required=True,
+    help="Session id to diarize; unique prefixes are accepted",
+)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.option(
+    "--segments-json",
+    default=None,
+    type=click.Path(exists=True),
+    help="Import precomputed diarization segments instead of running a backend",
+)
+@click.option(
+    "--window",
+    "window_seconds",
+    default=8.0,
+    type=float,
+    show_default=True,
+    help="Seconds represented by one trigger-capture sample window",
+)
+@click.pass_context
+def trigger_sessions_diarize(ctx, profile, session_id, samples_dir, segments_json, window_seconds):
+    """Run or import diarization for one completed trigger-capture session."""
+    from datetime import datetime
+
+    from saymo.analysis.diarization import (
+        DiarizationSessionSidecar,
+        build_session_speaker_suggestions,
+        diarization_result_from_json,
+        run_pyannote_diarization,
+        write_session_diarization,
+    )
+
+    base_dir = _samples_base_dir(samples_dir)
+    resolved_session = _resolve_trigger_session_id(base_dir, profile, session_id)
+    records = [
+        record
+        for record in _iter_trigger_sample_records(base_dir, profile=profile)
+        if record.session_id == resolved_session
+    ]
+    if not records:
+        raise click.ClickException(f"No samples found for session: {resolved_session}")
+
+    created_at = datetime.now().isoformat(timespec="seconds")
+    if segments_json:
+        payload = json.loads(Path(segments_json).read_text(encoding="utf-8"))
+        payload = {
+            **payload,
+            "profile": payload.get("profile") or profile,
+            "session_id": payload.get("session_id") or resolved_session,
+            "engine": payload.get("engine") or "import",
+            "model": payload.get("model") or "segments-json",
+            "created_at": payload.get("created_at") or created_at,
+        }
+        result = diarization_result_from_json(payload)
+    else:
+        audio_path = _write_session_mixdown(records)
+        try:
+            result = run_pyannote_diarization(
+                audio_path=audio_path,
+                config=ctx.obj["config"].diarization,
+                profile=profile,
+                session_id=resolved_session,
+                created_at=created_at,
+            )
+        finally:
+            try:
+                audio_path.unlink()
+            except OSError:
+                pass
+
+    suggestions = build_session_speaker_suggestions(
+        records,
+        result.segments,
+        window_seconds=window_seconds,
+    )
+    sidecar = DiarizationSessionSidecar(
+        profile=profile,
+        session_id=resolved_session,
+        engine=result.engine,
+        model=result.model,
+        created_at=result.created_at,
+        segments=result.segments,
+        speaker_mappings={},
+        suggestions=suggestions,
+    )
+    path = write_session_diarization(base_dir, sidecar)
+    console.print("diarization: saved")
+    console.print(f"session: {resolved_session}")
+    console.print(f"segments: {len(result.segments)}")
+    console.print(f"suggestions: {len(suggestions)}")
+    console.print(f"sidecar: {path}")
+
+
+@trigger_sessions.command("speakers")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option(
+    "--session",
+    "session_id",
+    required=True,
+    help="Session id to summarize; unique prefixes are accepted",
+)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+def trigger_sessions_speakers(profile, session_id, samples_dir):
+    """Show diarization speaker clusters for one session."""
+    from saymo.analysis.diarization import (
+        load_session_diarization,
+        session_diarization_path,
+        speaker_cluster_summary,
+    )
+
+    base_dir = _samples_base_dir(samples_dir)
+    resolved_session = _resolve_trigger_session_id(base_dir, profile, session_id)
+    path = session_diarization_path(base_dir, profile, resolved_session)
+    if not path.exists():
+        raise click.ClickException(f"Diarization sidecar not found: {path}")
+    sidecar = load_session_diarization(path)
+    summary = speaker_cluster_summary(sidecar)
+    unresolved = sum(
+        1 for suggestion in sidecar.suggestions if suggestion.speaker_id not in sidecar.speaker_mappings
+    )
+    unknown_samples = sum(1 for suggestion in sidecar.suggestions if suggestion.current_speaker == "unknown")
+    console.print(f"session: {resolved_session}")
+    console.print(f"speaker clusters: {len(summary)}")
+    console.print(f"unresolved suggestions: {unresolved}")
+    console.print(f"unknown samples: {unknown_samples}")
+    for speaker_id, cluster in summary.items():
+        console.print(
+            f"{speaker_id}: segments={cluster.segment_count} "
+            f"samples={cluster.sample_count} "
+            f"start={cluster.start_seconds:.2f}s "
+            f"end={cluster.end_seconds:.2f}s "
+            f"confidence={cluster.confidence:.2f} "
+            f"label={cluster.mapped_label}"
+        )
+
+
+@trigger_sessions.command("map-speaker")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option(
+    "--session",
+    "session_id",
+    required=True,
+    help="Session id to update; unique prefixes are accepted",
+)
+@click.option("--speaker-id", required=True, help="Diarization speaker id to map")
+@click.option("--label", required=True, type=click.Choice(_SPEAKER_LABELS), help="Saymo speaker label")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+def trigger_sessions_map_speaker(profile, session_id, speaker_id, label, samples_dir):
+    """Map a diarization speaker id to me/other/unknown for one session."""
+    from saymo.analysis.diarization import (
+        apply_speaker_mapping,
+        load_session_diarization,
+        session_diarization_path,
+        write_session_diarization,
+    )
+
+    base_dir = _samples_base_dir(samples_dir)
+    resolved_session = _resolve_trigger_session_id(base_dir, profile, session_id)
+    path = session_diarization_path(base_dir, profile, resolved_session)
+    if not path.exists():
+        raise click.ClickException(f"Diarization sidecar not found: {path}")
+    sidecar = load_session_diarization(path)
+    updated = apply_speaker_mapping(sidecar, speaker_id, label)
+    write_session_diarization(base_dir, updated)
+    console.print(f"session: {resolved_session}")
+    console.print(f"mapping: {speaker_id} -> {label}")
+    console.print(f"sidecar: {path}")
+
+
 @main.group("trigger-classifier")
 def trigger_classifier():
     """Train, inspect, and delete the local trigger classifier."""
@@ -2175,6 +2363,59 @@ def trigger_classifier_delete(profile, model_dir, yes):
 
 def _samples_base_dir(samples_dir: str | None) -> Path:
     return Path(samples_dir).expanduser() if samples_dir else Path.home() / ".saymo" / "trigger_samples"
+
+
+def _resolve_trigger_session_id(base_dir: Path, profile: str, session_id: str) -> str:
+    from saymo.analysis.trigger_sessions import list_trigger_sessions
+
+    sessions = [
+        session
+        for session in list_trigger_sessions(base_dir, profile=profile)
+        if session.session_id == session_id or session.session_id.startswith(session_id)
+    ]
+    if len(sessions) == 1:
+        return sessions[0].session_id
+    if len(sessions) > 1:
+        raise click.ClickException(f"Session id is ambiguous: {session_id}")
+
+    sample_ids = sorted(
+        {
+            record.session_id
+            for record in _iter_trigger_sample_records(base_dir, profile=profile)
+            if record.session_id
+            and (record.session_id == session_id or record.session_id.startswith(session_id))
+        }
+    )
+    if len(sample_ids) == 1:
+        return sample_ids[0]
+    if len(sample_ids) > 1:
+        raise click.ClickException(f"Session id is ambiguous: {session_id}")
+    raise click.ClickException(f"Session not found: {session_id}")
+
+
+def _write_session_mixdown(records: list[TriggerSampleRecord]) -> Path:
+    import tempfile
+
+    import numpy as np
+    import soundfile as sf
+
+    chunks = []
+    sample_rate = 16000
+    for record in sorted(records, key=lambda item: item.session_sequence):
+        wav_path = record.path.with_name(record.wav)
+        if not wav_path.exists():
+            continue
+        audio, rate = sf.read(str(wav_path), dtype="float32")
+        sample_rate = int(rate)
+        chunks.append(np.asarray(audio, dtype=np.float32).reshape(-1))
+    if not chunks:
+        raise click.ClickException("No session WAV files found for diarization")
+    audio = np.concatenate(chunks)
+    handle = tempfile.NamedTemporaryFile(prefix="saymo-diarization-", suffix=".wav", delete=False)
+    path = Path(handle.name)
+    handle.close()
+    sf.write(str(path), audio, sample_rate, subtype="PCM_16")
+    return path
 
 
 def _filter_review_rows_or_fail(records, filters):

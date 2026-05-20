@@ -5,10 +5,17 @@ import json
 from saymo.analysis.diarization import (
     DiarizationConfigView,
     DiarizationResult,
+    DiarizationSessionSidecar,
     DiarizationSegment,
+    TriggerSampleSpeakerSuggestion,
+    build_session_speaker_suggestions,
     check_diarization_availability,
     diarization_result_from_json,
     diarization_result_to_json,
+    load_session_diarization,
+    session_diarization_path,
+    speaker_cluster_summary,
+    write_session_diarization,
 )
 from saymo.config import DiarizationConfig
 
@@ -104,3 +111,91 @@ def test_diarization_result_json_roundtrip():
     loaded = diarization_result_from_json(json.loads(json.dumps(payload)))
 
     assert loaded == result
+
+
+def test_build_session_speaker_suggestions_uses_best_overlap():
+    class Sample:
+        path = "/samples/personal/question/a.json"
+        session_sequence = 1
+        speaker = "unknown"
+
+    suggestions = build_session_speaker_suggestions(
+        [Sample()],
+        (
+            DiarizationSegment("SPEAKER_00", 0.0, 2.0, 0.8),
+            DiarizationSegment("SPEAKER_01", 2.0, 8.0, 0.6),
+        ),
+        window_seconds=8.0,
+        speaker_mappings={"SPEAKER_01": "other"},
+    )
+
+    assert suggestions == (
+        TriggerSampleSpeakerSuggestion(
+            sample_path="/samples/personal/question/a.json",
+            session_sequence=1,
+            current_speaker="unknown",
+            speaker_id="SPEAKER_01",
+            suggested_speaker="other",
+            confidence=0.6,
+            overlap_seconds=6.0,
+            status="suggested",
+        ),
+    )
+
+
+def test_session_diarization_sidecar_roundtrip(tmp_path):
+    sidecar = DiarizationSessionSidecar(
+        profile="personal",
+        session_id="daily-20260520-120000",
+        engine="pyannote",
+        model="model",
+        created_at="2026-05-20T12:00:00",
+        segments=(DiarizationSegment("SPEAKER_00", 0.0, 4.0, 0.7),),
+        speaker_mappings={"SPEAKER_00": "me"},
+        suggestions=(
+            TriggerSampleSpeakerSuggestion(
+                sample_path="question/a.json",
+                session_sequence=1,
+                current_speaker="unknown",
+                speaker_id="SPEAKER_00",
+                suggested_speaker="me",
+                confidence=0.7,
+                overlap_seconds=4.0,
+            ),
+        ),
+    )
+
+    path = write_session_diarization(tmp_path, sidecar)
+    loaded = load_session_diarization(path)
+
+    assert path == session_diarization_path(tmp_path, "personal", sidecar.session_id)
+    assert loaded == sidecar
+
+
+def test_speaker_cluster_summary_counts_segments_and_suggestions():
+    sidecar = DiarizationSessionSidecar(
+        profile="personal",
+        session_id="daily",
+        engine="pyannote",
+        model="model",
+        created_at="2026-05-20T12:00:00",
+        segments=(
+            DiarizationSegment("SPEAKER_00", 0.0, 2.0, 0.5),
+            DiarizationSegment("SPEAKER_00", 3.0, 5.0, 0.9),
+            DiarizationSegment("SPEAKER_01", 6.0, 7.0, 0.4),
+        ),
+        speaker_mappings={"SPEAKER_00": "me"},
+        suggestions=(
+            TriggerSampleSpeakerSuggestion("a.json", 1, "unknown", "SPEAKER_00", "me", 0.9, 2.0),
+            TriggerSampleSpeakerSuggestion("b.json", 2, "unknown", "SPEAKER_01", "unknown", 0.4, 1.0),
+        ),
+    )
+
+    summary = speaker_cluster_summary(sidecar)
+
+    assert summary["SPEAKER_00"].sample_count == 1
+    assert summary["SPEAKER_00"].start_seconds == 0.0
+    assert summary["SPEAKER_00"].end_seconds == 5.0
+    assert summary["SPEAKER_00"].mapped_label == "me"
+    assert summary["SPEAKER_01"].sample_count == 1
+    assert summary["SPEAKER_01"].mapped_label == "unknown"
