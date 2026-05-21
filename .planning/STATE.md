@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Live Review + Safe Approved Speak
-status: v1.5 roadmap ready; next phase is 18 Post-call Review Queue
-stopped_at: v1.5 roadmap created; next step is $gsd-plan-phase 18.
+status: Phase 18 complete; next phase is 19 Addressing v2
+stopped_at: Phase 18 complete; next step is Phase 19 Addressing v2.
 last_updated: "2026-05-21"
-last_activity: "2026-05-21 - created v1.5 requirements and roadmap"
+last_activity: "2026-05-21 - completed Phase 18 post-call review queue"
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 18
-  completed_plans: 0
-  percent: 0
+  completed_plans: 4
+  percent: 22
 ---
 
 # Project State
@@ -26,21 +26,19 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 18 - Post-call Review Queue
+Phase: 19 - Addressing v2
 Plan: Not started
-Status: Roadmap ready; Phase 18 is next
-Last activity: 2026-05-21 - created v1.5 requirements and roadmap from the
-real-call recording gaps: speaker labels are all unknown, handoff candidates
-include likely false positives, and approved drafts still need safe playback
-wiring.
+Status: Phase 18 complete; Phase 19 is next
+Last activity: 2026-05-21 - added prioritized review queue and progress
+diagnostics for completed trigger-capture sessions.
 
-Progress: [----------] 0%
+Progress: [##--------] 22%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 18
-- Plans completed: 0
+- Plans completed: 4
 - Average duration: pending
 - Total execution time: pending
 
@@ -55,7 +53,7 @@ Progress: [----------] 0%
 
 | Phase | Plans | Total | Status |
 |-------|-------|-------|--------|
-| 18. Post-call Review Queue | 4 | 0/4 | pending |
+| 18. Post-call Review Queue | 4 | 4/4 | complete |
 | 19. Addressing v2 | 4 | 0/4 | pending |
 | 20. Speaker Bootstrap | 3 | 0/3 | pending |
 | 21. Approved Draft Playback | 4 | 0/4 | pending |
@@ -92,7 +90,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Start Phase 18 with `$gsd-plan-phase 18`.
+Start Phase 19 Addressing v2.
 
 ### Blockers/Concerns
 
@@ -113,5 +111,5 @@ Start Phase 18 with `$gsd-plan-phase 18`.
 ## Session Continuity
 
 Last session: 2026-05-21
-Stopped at: v1.5 roadmap ready; next step is `$gsd-plan-phase 18`.
+Stopped at: Phase 18 complete; next step is Phase 19 Addressing v2.
 Resume file: None

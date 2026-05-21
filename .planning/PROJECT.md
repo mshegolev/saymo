@@ -91,12 +91,15 @@ playback, and regression replay.
   into the call.
 - ✓ User can inspect an audit trail explaining each trigger, draft, action, and
   spoken response.
+- ✓ User can review a completed call through a prioritized queue that moves
+  likely handoffs, questions, name mentions, and unlabeled speaker windows to
+  the top.
+- ✓ User can see post-call review progress with unknown speaker counts,
+  answer-decision coverage, accepted/rejected labels, and classifier-readiness
+  blockers.
 
 ### Active
 
-- [ ] User can review a completed call through a prioritized queue that moves
-  likely handoffs, questions, name mentions, and unlabeled speaker windows to
-  the top.
 - [ ] User can correct false handoffs where Saymo treats an incidental name
   mention as a request to speak.
 - [ ] User can bootstrap enough speaker labels from a completed session that

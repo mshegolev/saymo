@@ -1683,6 +1683,113 @@ def trigger_samples_list(ctx, profile, category, session_id, speaker, decision, 
             console.print(f"  transcript: {record.transcript}")
 
 
+@trigger_samples.command("queue")
+@click.option("--profile", "-p", default="personal", help="Profile to review")
+@click.option("--category", default=None, help="Category to filter")
+@click.option("--session", "session_id", default=None, help="Session id/prefix to filter")
+@click.option("--speaker", default=None, type=click.Choice(_SPEAKER_LABELS), help="Speaker label to filter")
+@click.option("--decision", default=None, type=click.Choice(_ANSWER_DECISION_LABELS), help="Answer decision to filter")
+@click.option("--date-from", default=None, help="Inclusive created_at lower bound")
+@click.option("--date-to", default=None, help="Inclusive created_at upper bound")
+@click.option("--limit", default=0, type=click.IntRange(min=0), show_default=True, help="Maximum samples; 0 means all")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.pass_context
+def trigger_samples_queue(ctx, profile, category, session_id, speaker, decision, date_from, date_to, limit, samples_dir):
+    """Show a prioritized post-call review queue without editing metadata."""
+    from saymo.analysis.trigger_review import TriggerReviewFilters, prioritize_review_rows
+
+    records = list(
+        _iter_trigger_sample_records(
+            _samples_base_dir(samples_dir),
+            profile=profile,
+            category=category,
+        )
+    )
+    rows = _evaluate_trigger_records(ctx.obj["config"], profile, records)
+    rows = _filter_review_rows_or_fail(
+        rows,
+        TriggerReviewFilters(
+            session=session_id,
+            speaker=speaker,
+            answer_decision=decision,
+            date_from=date_from,
+            date_to=date_to,
+        ),
+    )
+    queue = prioritize_review_rows(rows)
+    if limit:
+        queue = queue[:limit]
+
+    console.print(f"queue samples: {len(queue)}")
+    for index, item in enumerate(queue, start=1):
+        row = item.row
+        record = row.record
+        console.print(
+            f"[{index}/{len(queue)}] priority={item.priority} "
+            f"sample={record.path.name} {record.path}"
+        )
+        console.print(f"  reasons: {', '.join(item.reasons)}")
+        console.print(
+            f"  stored category={record.category} speaker={record.speaker} "
+            f"decision={record.answer_decision}"
+        )
+        console.print(
+            f"  current category={row.current_category} "
+            f"will_answer={'yes' if row.current_will_answer else 'no'}"
+        )
+        if record.transcript:
+            console.print(f"  transcript: {record.transcript}")
+
+
+@trigger_samples.command("progress")
+@click.option("--profile", "-p", default="personal", help="Profile to inspect")
+@click.option("--category", default=None, help="Category to filter")
+@click.option("--session", "session_id", default=None, help="Session id/prefix to filter")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+def trigger_samples_progress(profile, category, session_id, samples_dir):
+    """Report post-call review coverage and readiness blockers."""
+    from saymo.analysis.trigger_review import TriggerReviewFilters, review_progress
+
+    records = list(
+        _iter_trigger_sample_records(
+            _samples_base_dir(samples_dir),
+            profile=profile,
+            category=category,
+        )
+    )
+    records = _filter_review_rows_or_fail(
+        records,
+        TriggerReviewFilters(session=session_id),
+    )
+    progress = review_progress(records)
+    console.print(f"review progress: {session_id or 'all'}")
+    console.print(f"samples: {progress.total}")
+    console.print(f"unknown speakers: {progress.unknown_speakers}")
+    console.print(f"unlabeled decisions: {progress.unlabeled_decisions}")
+    console.print(f"accepted: {progress.accepted}")
+    console.print(f"rejected: {progress.rejected}")
+    console.print(f"categories: {_format_review_counts(progress.category_counts)}")
+    console.print(f"speakers: {_format_review_counts(progress.speaker_counts)}")
+    console.print(
+        f"decisions: {_format_review_counts(progress.answer_decision_counts)}"
+    )
+    console.print(f"readiness: {progress.readiness}")
+    if progress.readiness_missing:
+        console.print("missing:")
+        for item in progress.readiness_missing:
+            console.print(f"  - {item}")
+
+
 @trigger_samples.command("replay")
 @click.argument("sample_json", type=click.Path(exists=True))
 @click.option("--profile", "-p", default=None, help="Profile to reclassify with")
@@ -3495,6 +3602,12 @@ def _filter_classifier_disagreements(
         if prediction.label != deterministic:
             disagreements.append(row)
     return disagreements
+
+
+def _format_review_counts(counts: dict[str, int]) -> str:
+    if not counts:
+        return "(none)"
+    return ", ".join(f"{key}={value}" for key, value in counts.items())
 
 
 def _print_readiness_report(report) -> None:

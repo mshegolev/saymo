@@ -10,14 +10,14 @@ Requirements for milestone v1.5 Live Review + Safe Approved Speak.
 
 ### Post-call Review Queue
 
-- [ ] **REV-05**: User can open a prioritized post-call review queue for one
+- [x] **REV-05**: User can open a prioritized post-call review queue for one
   capture session that surfaces likely handoffs, questions, name mentions,
   unlabeled speaker windows, and classifier-critical samples before ordinary
   speech.
-- [ ] **REV-06**: User can apply category, speaker, and answer-decision labels
+- [x] **REV-06**: User can apply category, speaker, and answer-decision labels
   from that queue without manually editing JSON files or losing the sample's
   original metadata.
-- [ ] **REV-07**: User can see review progress for one session, including
+- [x] **REV-07**: User can see review progress for one session, including
   remaining unknown speakers, unlabeled answer decisions, accepted/rejected
   counts, and whether classifier readiness blockers remain.
 
@@ -119,9 +119,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REV-05 | Phase 18 | Pending |
-| REV-06 | Phase 18 | Pending |
-| REV-07 | Phase 18 | Pending |
+| REV-05 | Phase 18 | Complete |
+| REV-06 | Phase 18 | Complete |
+| REV-07 | Phase 18 | Complete |
 | INT-02 | Phase 19 | Pending |
 | INT-03 | Phase 19 | Pending |
 | INT-04 | Phase 19 | Pending |

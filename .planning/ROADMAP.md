@@ -35,7 +35,7 @@ regression fixtures.
 - Integer phases (18, 19, 20, 21, 22): Planned milestone work
 - Decimal phases (19.1, 19.2): Urgent insertions if needed
 
-- [ ] **Phase 18: Post-call Review Queue** - Prioritize real-session samples
+- [x] **Phase 18: Post-call Review Queue** - Prioritize real-session samples
   that most affect handoff, speaker, and classifier quality.
 - [ ] **Phase 19: Addressing v2** - Separate direct handoffs from incidental
   name mentions and explain the decision path.
@@ -66,10 +66,10 @@ session first and apply labels needed for safer live behavior.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 18-01: Add post-call review priority scoring and queue model
-- [ ] 18-02: Add session-scoped review command and batch-safe label actions
-- [ ] 18-03: Add review progress and classifier-readiness diagnostics
-- [ ] 18-04: Add docs, edge-case tests, and no-raw-audio report checks
+- [x] 18-01: Add post-call review priority scoring and queue model
+- [x] 18-02: Add session-scoped review command and batch-safe label actions
+- [x] 18-03: Add review progress and classifier-readiness diagnostics
+- [x] 18-04: Add docs, edge-case tests, and no-raw-audio report checks
 
 ### Phase 19: Addressing v2
 **Goal**: Stop treating every recognized name as an addressed-to-me handoff
@@ -164,7 +164,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 18. Post-call Review Queue | v1.5 | 0/4 | Pending | — |
+| 18. Post-call Review Queue | v1.5 | 4/4 | Complete | 2026-05-21 |
 | 19. Addressing v2 | v1.5 | 0/4 | Pending | — |
 | 20. Speaker Bootstrap | v1.5 | 0/3 | Pending | — |
 | 21. Approved Draft Playback | v1.5 | 0/4 | Pending | — |

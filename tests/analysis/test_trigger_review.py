@@ -12,6 +12,8 @@ from saymo.analysis.trigger_review import (
     build_sanitized_review_report,
     filter_review_rows,
     parse_review_action,
+    prioritize_review_rows,
+    review_progress,
 )
 
 
@@ -209,6 +211,97 @@ def test_build_sanitized_review_report_groups_by_session_then_category(tmp_path)
     assert report.sessions[0].categories[0].samples[0].path == "answer.json"
     assert not hasattr(report.sessions[0].categories[0].samples[0], "transcript")
     assert "private" not in repr(report)
+
+
+def test_prioritize_review_rows_surfaces_handoffs_before_speech(tmp_path):
+    rows = [
+        _row(
+            tmp_path,
+            "speech",
+            category="speech",
+            session_sequence=1,
+            speaker="other",
+            answer_decision="rejected",
+            question=False,
+        ),
+        _row(
+            tmp_path,
+            "question",
+            category="question",
+            session_sequence=2,
+            question=True,
+            answer_decision="unlabeled",
+        ),
+        _row(
+            tmp_path,
+            "handoff",
+            category="asked_to_speak",
+            session_sequence=3,
+            trigger=True,
+            will_answer=True,
+            answer_decision="unlabeled",
+        ),
+    ]
+    rows[0] = _Row(record=rows[0].record, current_category="asked_to_speak")
+    rows[2] = _Row(
+        record=rows[2].record,
+        current_category="asked_to_speak",
+        current_trigger=True,
+        current_will_answer=True,
+    )
+
+    queue = prioritize_review_rows(rows)
+
+    assert [item.row.record.path.name for item in queue] == [
+        "speech.json",
+        "handoff.json",
+        "question.json",
+    ]
+    assert queue[0].reasons[0] == "classifier_disagreement"
+    assert "likely_handoff" in queue[1].reasons
+    assert "unlabeled_decision" in queue[2].reasons
+
+
+def test_review_progress_counts_labels_and_readiness_blockers(tmp_path):
+    rows = [
+        _row(
+            tmp_path,
+            "accepted",
+            category="asked_to_speak",
+            speaker="unknown",
+            answer_decision="accepted",
+            will_answer=True,
+        ),
+        _row(
+            tmp_path,
+            "rejected",
+            category="question",
+            speaker="other",
+            answer_decision="rejected",
+        ),
+        _row(
+            tmp_path,
+            "unlabeled",
+            category="mentioned_me",
+            speaker="unknown",
+            answer_decision="unlabeled",
+        ),
+    ]
+
+    progress = review_progress(rows)
+
+    assert progress.total == 3
+    assert progress.unknown_speakers == 2
+    assert progress.unlabeled_decisions == 1
+    assert progress.accepted == 1
+    assert progress.rejected == 1
+    assert progress.category_counts == {
+        "asked_to_speak": 1,
+        "mentioned_me": 1,
+        "question": 1,
+    }
+    assert progress.readiness == "not_ready"
+    assert "labeled>=10" in progress.readiness_missing
 
 
 def test_parse_review_action_accepts_category_speaker_decision_skip_and_quit():

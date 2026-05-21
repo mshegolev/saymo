@@ -124,6 +124,75 @@ class ReviewAction:
     value: str | None = None
 
 
+@dataclass(frozen=True)
+class ReviewQueueItem:
+    """One prioritized row in a post-call review queue."""
+
+    row: Any
+    priority: int
+    reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ReviewProgress:
+    """Review coverage and readiness summary for a row set."""
+
+    total: int
+    unknown_speakers: int
+    unlabeled_decisions: int
+    accepted: int
+    rejected: int
+    category_counts: dict[str, int]
+    speaker_counts: dict[str, int]
+    answer_decision_counts: dict[str, int]
+    readiness: str
+    readiness_missing: tuple[str, ...]
+
+
+def prioritize_review_rows(rows: Sequence[Any]) -> list[ReviewQueueItem]:
+    """Return rows sorted by post-call review value.
+
+    Classifier disagreements are ranked first because they represent current
+    behavior drifting from reviewed evidence. Handoffs, name mentions,
+    questions, unknown speakers, and unlabeled decisions follow before ordinary
+    speech.
+    """
+    items = [
+        ReviewQueueItem(row=row, priority=priority, reasons=reasons)
+        for row in rows
+        for priority, reasons in (_review_priority(row),)
+    ]
+    return sorted(
+        items,
+        key=lambda item: (-item.priority, _review_sort_key(item.row)),
+    )
+
+
+def review_progress(rows: Sequence[Any]) -> ReviewProgress:
+    """Return review coverage counts and classifier-readiness blockers."""
+    from saymo.analysis.trigger_readiness import readiness_metrics
+
+    records = [_record_from_row(row) for row in rows]
+    speaker_counts = _count_values(_get(record, "speaker", "unknown") for record in records)
+    decision_counts = _count_values(
+        _get(record, "answer_decision", "unlabeled") for record in records
+    )
+    category_counts = _count_values(_get(record, "category", "unknown") for record in records)
+    readiness = readiness_metrics(records)
+    return ReviewProgress(
+        total=len(records),
+        unknown_speakers=speaker_counts.get("unknown", 0),
+        unlabeled_decisions=decision_counts.get("unlabeled", 0),
+        accepted=decision_counts.get("accepted", 0),
+        rejected=decision_counts.get("rejected", 0),
+        category_counts=category_counts,
+        speaker_counts=speaker_counts,
+        answer_decision_counts=decision_counts,
+        readiness="ready" if readiness.passed else "not_ready",
+        readiness_missing=tuple(readiness.missing_items),
+    )
+
+
 def filter_review_rows(
     rows: Sequence[Any],
     filters: TriggerReviewFilters | None = None,
@@ -427,6 +496,92 @@ def _sanitize_row(row: Any) -> SanitizedReviewSample:
         rms=float(_get(record, "rms", 0.0) or 0.0),
         peak=float(_get(record, "peak", 0.0) or 0.0),
     )
+
+
+def _review_priority(row: Any) -> tuple[int, tuple[str, ...]]:
+    record = _record_from_row(row)
+    score = 0
+    reasons: list[str] = []
+
+    if _has_priority_disagreement(row):
+        score += 200
+        reasons.append("classifier_disagreement")
+    if bool(_get(row, "false_positive", False)):
+        score += 120
+        reasons.append("false_positive")
+    if bool(_get(row, "miss", False)):
+        score += 120
+        reasons.append("missed_handoff")
+
+    category = str(_get(record, "category", ""))
+    current_category = str(_get(row, "current_category", category))
+    likely_handoff = (
+        category == "asked_to_speak"
+        or current_category == "asked_to_speak"
+        or bool(_get(record, "will_answer", False))
+        or bool(_get(row, "current_will_answer", False))
+    )
+    if likely_handoff:
+        score += 90
+        reasons.append("likely_handoff")
+
+    name_mention = category == "mentioned_me" or current_category == "mentioned_me"
+    if name_mention:
+        score += 70
+        reasons.append("name_mention")
+
+    is_question = (
+        category == "question"
+        or current_category == "question"
+        or bool(_get(record, "question", False))
+        or bool(_get(row, "current_question", False))
+    )
+    if is_question and not likely_handoff:
+        score += 55
+        reasons.append("question")
+
+    if str(_get(record, "speaker", "unknown")) == "unknown":
+        score += 35
+        reasons.append("unknown_speaker")
+
+    decision = str(_get(record, "answer_decision", "unlabeled"))
+    if decision == "unlabeled" and (
+        likely_handoff or name_mention or is_question or category in {"asked_to_speak", "mentioned_me", "question"}
+    ):
+        score += 30
+        reasons.append("unlabeled_decision")
+
+    if not reasons:
+        reasons.append("ordinary_speech")
+    return score, tuple(reasons)
+
+
+def _review_sort_key(row: Any) -> tuple[int, str, str]:
+    record = _record_from_row(row)
+    sequence = int(_get(record, "session_sequence", 0) or 0)
+    created_at = str(_get(record, "created_at", ""))
+    path = Path(str(_get(record, "path", ""))).name
+    return sequence, created_at, path
+
+
+def _has_priority_disagreement(row: Any) -> bool:
+    explicit = _get(row, "classifier_disagreement", None)
+    if explicit is not None:
+        return bool(explicit)
+    if bool(_get(row, "miss", False)) or bool(_get(row, "false_positive", False)):
+        return True
+
+    record = _record_from_row(row)
+    for stored_name, current_name in (
+        ("category", "current_category"),
+        ("trigger", "current_trigger"),
+        ("question", "current_question"),
+        ("will_answer", "current_will_answer"),
+    ):
+        current = _get(row, current_name, None)
+        if current is not None and _get(record, stored_name, None) != current:
+            return True
+    return False
 
 
 def _read_sample_metadata(path: Path) -> dict[str, Any]:

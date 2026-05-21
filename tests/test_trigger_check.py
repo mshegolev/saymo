@@ -716,6 +716,98 @@ def test_trigger_samples_list_replay_and_sanitized_report(tmp_path):
     assert "секретный текст вопроса" not in report
 
 
+def test_trigger_samples_queue_prioritizes_session_review_and_progress(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    session_id = "daily-20260521-100000"
+    _write_sample(
+        samples_dir,
+        category="speech",
+        name="ordinary",
+        transcript="обычная речь без статуса",
+        speaker="other",
+        decision="rejected",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=1,
+    )
+    asked_path = _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="handoff",
+        transcript="John, что думаешь?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        speaker="unknown",
+        decision="unlabeled",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=2,
+    )
+    _write_sample(
+        samples_dir,
+        category="question",
+        name="question",
+        transcript="какой статус?",
+        question=True,
+        speaker="unknown",
+        decision="unlabeled",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=3,
+    )
+    runner = CliRunner()
+
+    queued = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "queue",
+            "--profile",
+            "personal",
+            "--session",
+            session_id,
+            "--samples-dir",
+            str(samples_dir),
+            "--limit",
+            "2",
+        ],
+    )
+    progress = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-samples",
+            "progress",
+            "--profile",
+            "personal",
+            "--session",
+            session_id,
+            "--samples-dir",
+            str(samples_dir),
+        ],
+    )
+
+    assert queued.exit_code == 0
+    assert "queue samples: 2" in queued.output
+    assert asked_path.name in queued.output
+    assert "reasons: likely_handoff, unknown_speaker, unlabeled_decision" in queued.output
+    assert "ordinary.json" not in queued.output
+    assert progress.exit_code == 0
+    assert "review progress: daily-20260521-100000" in progress.output
+    assert "samples: 3" in progress.output
+    assert "unknown speakers: 2" in progress.output
+    assert "unlabeled decisions: 2" in progress.output
+    assert "accepted: 0" in progress.output
+    assert "rejected: 1" in progress.output
+    assert "readiness: not_ready" in progress.output
+    assert "labeled>=10" in progress.output
+
+
 def test_trigger_samples_list_ignores_ledgers_and_prints_session(tmp_path):
     from saymo.analysis.trigger_sessions import (
         finish_trigger_session,
