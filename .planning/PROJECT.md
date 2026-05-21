@@ -105,11 +105,12 @@ playback, and regression replay.
 - ✓ User can approve a generated draft and have Saymo play only that approved
   text through the existing local TTS/playback path with preview, timeout, and
   audit.
+- ✓ User can replay a saved session as a regression fixture and see whether
+  addressing, question detection, and speaker coverage improved.
 
 ### Active
 
-- [ ] User can replay a saved session as a regression fixture and see whether
-  addressing, question detection, and speaker coverage improved.
+No active v1.5 requirements remain.
 
 ### Out of Scope
 
@@ -177,7 +178,7 @@ playback, and regression replay.
 | Require a readiness gate before live classifier assist | Learned behavior should be opt-in and evidence-backed per profile | ✓ Implemented in Phase 10 |
 | Keep diarization optional and review-first | Speaker suggestions are useful only after the user can inspect and correct them locally | ✓ Implemented in v1.3 |
 | Build answer cockpit before autonomous speaking | The user must be able to inspect trigger evidence and approve a draft before Saymo talks in a live call | ✓ Implemented in v1.4 |
-| Use real recorded sessions as regression fixtures | False positives and unknown-speaker coverage are visible only against actual call audio | In progress in v1.5 |
+| Use real recorded sessions as regression fixtures | False positives and unknown-speaker coverage are visible only against actual call audio | Implemented in v1.5 |
 | Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | Implemented in v1.5 |
 
 ---

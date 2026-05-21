@@ -365,6 +365,7 @@ def test_answer_cockpit_show_and_action_write_audit(tmp_path):
             session.session_id,
             "--action",
             "speak",
+            "--no-playback",
             "--samples-dir",
             str(samples_dir),
         ],

@@ -43,7 +43,7 @@ regression fixtures.
   completed sessions without requiring live diarization.
 - [x] **Phase 21: Approved Draft Playback** - Play only explicitly approved
   generated drafts through existing safe TTS/playback paths.
-- [ ] **Phase 22: Regression Replay** - Re-run saved sessions through current
+- [x] **Phase 22: Regression Replay** - Re-run saved sessions through current
   logic and report reliability metrics.
 
 ## Phase Details
@@ -153,9 +153,9 @@ addressing, question detection, speaker coverage, and live-assist readiness.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 22-01: Add saved-session replay engine over local sample metadata
-- [ ] 22-02: Add reliability metrics and before/after comparison
-- [ ] 22-03: Add sanitized regression reports, docs, and fixture tests
+- [x] 22-01: Add saved-session replay engine over local sample metadata
+- [x] 22-02: Add reliability metrics and before/after comparison
+- [x] 22-03: Add sanitized regression reports, docs, and fixture tests
 
 ## Progress
 
@@ -168,7 +168,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
 | 19. Addressing v2 | v1.5 | 4/4 | Complete | 2026-05-21 |
 | 20. Speaker Bootstrap | v1.5 | 3/3 | Complete | 2026-05-21 |
 | 21. Approved Draft Playback | v1.5 | 4/4 | Complete | 2026-05-21 |
-| 22. Regression Replay | v1.5 | 0/3 | Pending | — |
+| 22. Regression Replay | v1.5 | 3/3 | Complete | 2026-05-21 |
 
 ## Requirement Coverage
 

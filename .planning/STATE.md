@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Live Review + Safe Approved Speak
-status: Phase 21 complete; next phase is 22 Regression Replay
-stopped_at: Phase 21 complete; next step is Phase 22 Regression Replay.
+status: v1.5 complete; all active phases complete
+stopped_at: v1.5 implementation complete; next step is milestone audit/complete.
 last_updated: "2026-05-21"
-last_activity: "2026-05-21 - completed Phase 21 Approved Draft Playback"
+last_activity: "2026-05-21 - completed Phase 22 Regression Replay"
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 18
-  completed_plans: 15
-  percent: 83
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -26,19 +26,19 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 22 - Regression Replay
-Plan: Not started
-Status: Phase 21 complete; Phase 22 is next
-Last activity: 2026-05-21 - wired approved draft speak actions into local
-TTS/playback with preview, timeout, duration, and audit gates.
+Phase: None
+Plan: None
+Status: v1.5 implementation complete
+Last activity: 2026-05-21 - added saved-session regression replay with
+sanitized reports and baseline comparison.
 
-Progress: [########--] 83%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 18
-- Plans completed: 15
+- Plans completed: 18
 - Average duration: pending
 - Total execution time: pending
 
@@ -57,7 +57,7 @@ Progress: [########--] 83%
 | 19. Addressing v2 | 4 | 4/4 | complete |
 | 20. Speaker Bootstrap | 3 | 3/3 | complete |
 | 21. Approved Draft Playback | 4 | 4/4 | complete |
-| 22. Regression Replay | 3 | 0/3 | pending |
+| 22. Regression Replay | 3 | 3/3 | complete |
 
 **Recent Trend:**
 - v1.3 added optional diarization diagnostics, session sidecars, reviewable
@@ -90,7 +90,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Start Phase 22 Regression Replay.
+Run milestone audit/complete for v1.5.
 
 ### Blockers/Concerns
 
@@ -111,5 +111,5 @@ Start Phase 22 Regression Replay.
 ## Session Continuity
 
 Last session: 2026-05-21
-Stopped at: Phase 21 complete; next step is Phase 22 Regression Replay.
+Stopped at: v1.5 implementation complete; next step is milestone audit/complete.
 Resume file: None

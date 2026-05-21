@@ -2474,6 +2474,62 @@ def trigger_sessions_speaker_report(profile, session_id, samples_dir, output):
         console.print(rendered)
 
 
+@trigger_sessions.command("replay")
+@click.option("--profile", "-p", default="personal", help="Profile to replay")
+@click.option(
+    "--session",
+    "session_id",
+    required=True,
+    help="Session id to replay; unique prefixes are accepted",
+)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+@click.option("--output", "-o", default=None, type=click.Path(), help="Markdown report output path")
+@click.option("--json-output", default=None, type=click.Path(), help="Sanitized metrics JSON output path")
+@click.option("--baseline-json", default=None, type=click.Path(exists=True), help="Compare against prior sanitized metrics JSON")
+@click.pass_context
+def trigger_sessions_replay(ctx, profile, session_id, samples_dir, output, json_output, baseline_json):
+    """Replay saved session samples through current trigger/addressing logic."""
+    from saymo.analysis.regression_replay import (
+        build_regression_metrics,
+        load_regression_json,
+        render_regression_report,
+        write_regression_json,
+    )
+    from saymo.analysis.trigger_review import TriggerReviewFilters
+
+    base_dir = _samples_base_dir(samples_dir)
+    resolved_session = _resolve_trigger_session_id(base_dir, profile, session_id)
+    records = _filter_review_rows_or_fail(
+        list(_iter_trigger_sample_records(base_dir, profile=profile)),
+        TriggerReviewFilters(session=resolved_session),
+    )
+    if not records:
+        raise click.ClickException(f"No samples found for session: {resolved_session}")
+    rows = _evaluate_trigger_records(ctx.obj["config"], profile, records)
+    metrics = build_regression_metrics(
+        rows,
+        profile=profile,
+        session_id=resolved_session,
+    )
+    baseline = load_regression_json(baseline_json) if baseline_json else None
+    rendered = render_regression_report(metrics, baseline=baseline)
+    if output:
+        out_path = Path(output).expanduser()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered, encoding="utf-8")
+        console.print(f"regression report: {out_path}")
+    else:
+        console.print(rendered)
+    if json_output:
+        json_path = write_regression_json(json_output, metrics)
+        console.print(f"regression json: {json_path}")
+
+
 @main.group("meeting-memory")
 def meeting_memory():
     """Build and inspect local full-session meeting memory."""

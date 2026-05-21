@@ -2116,6 +2116,113 @@ def test_trigger_sessions_list_and_summary(tmp_path):
     assert "decision accepted: 1" in summarized.output
 
 
+def test_trigger_sessions_replay_exports_sanitized_regression_report(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    session_id = "daily-20260520-100000"
+    _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="false_positive",
+        transcript="I helped John with review",
+        trigger=True,
+        will_answer=True,
+        speaker="unknown",
+        decision="rejected",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=1,
+    )
+    _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="handoff",
+        transcript="John, what is the status?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        speaker="other",
+        decision="accepted",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=2,
+    )
+    _write_sample(
+        samples_dir,
+        category="question",
+        name="question",
+        transcript="what is the status?",
+        question=True,
+        speaker="unknown",
+        decision="unlabeled",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=3,
+    )
+    report_path = tmp_path / "regression.md"
+    json_path = tmp_path / "regression.json"
+    baseline_path = tmp_path / "baseline.json"
+    baseline_path.write_text(
+        json.dumps(
+            {
+                "profile": "personal",
+                "session_id": session_id,
+                "total": 3,
+                "false_handoffs": 2,
+                "missed_handoffs": 1,
+                "question_noise": 0,
+                "known_speakers": 0,
+                "unknown_speakers": 3,
+                "labeled_decisions": 0,
+                "unlabeled_decisions": 3,
+                "readiness": "not_ready",
+                "readiness_missing": [],
+                "speaker_counts": {},
+                "category_counts": {},
+                "decision_counts": {},
+                "samples": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-sessions",
+            "replay",
+            "--profile",
+            "personal",
+            "--session",
+            "daily",
+            "--samples-dir",
+            str(samples_dir),
+            "--output",
+            str(report_path),
+            "--json-output",
+            str(json_path),
+            "--baseline-json",
+            str(baseline_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    report = report_path.read_text(encoding="utf-8")
+    metrics = json.loads(json_path.read_text(encoding="utf-8"))
+    assert "regression report:" in result.output
+    assert "false handoffs: 0" in report
+    assert "missed handoffs: 0" in report
+    assert "question noise: 1" in report
+    assert "speaker coverage: known=1/3 unknown=2" in report
+    assert "false handoffs delta: -2" in report
+    assert "I helped John" not in report
+    assert metrics["false_handoffs"] == 0
+    assert metrics["samples"][0]["sample"] == "false_positive.json"
+    assert "I helped John" not in json.dumps(metrics)
+
+
 def test_trigger_classifier_train_refuses_insufficient_labels(tmp_path):
     config_path = _write_config(tmp_path)
     samples_dir = tmp_path / "samples"

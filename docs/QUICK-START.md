@@ -306,6 +306,7 @@ saymo trigger-sessions map-speaker -p personal --session daily-2026-05-20 --spea
 saymo trigger-sessions speaker-bootstrap -p personal --session daily-2026-05-20 --label other --category speech --apply
 saymo trigger-sessions speaker-bootstrap -p personal --session daily-2026-05-20 --from-suggestions --apply
 saymo trigger-sessions speaker-report -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/speaker-report.md
+saymo trigger-sessions replay -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/regression.md --json-output ~/.saymo/trigger_samples/regression.json
 saymo meeting-memory build -p personal --session daily-2026-05-20
 saymo meeting-summary -p personal --session daily-2026-05-20
 saymo meeting-search -p personal --session daily-2026-05-20 --keyword "status"
@@ -403,6 +404,11 @@ Use `trigger-sessions speaker-bootstrap` when many session windows are still
 writes labels for unknown-speaker samples and records bootstrap metadata in the
 sample JSON. Manual labels are not replaced unless `--overwrite-manual` is
 passed.
+Use `trigger-sessions replay` after tuning addressing or speaker labels. It
+re-runs a saved session through current logic and reports false handoffs,
+missed handoffs, question noise, speaker coverage, review coverage, and
+readiness. Use `--baseline-json` with a prior replay JSON to show before/after
+deltas; exported reports omit raw audio and transcript text.
 
 ### Measure call provider latency
 

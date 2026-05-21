@@ -63,13 +63,13 @@ Requirements for milestone v1.5 Live Review + Safe Approved Speak.
 
 ### Regression Replay
 
-- [ ] **REG-01**: User can replay one saved capture session through current
+- [x] **REG-01**: User can replay one saved capture session through current
   addressing, question, speaker, and classifier logic without re-recording
   audio.
-- [ ] **REG-02**: User can see session-level regression metrics for false
+- [x] **REG-02**: User can see session-level regression metrics for false
   handoffs, missed handoffs, question noise, speaker coverage, review coverage,
   and live-assist readiness.
-- [ ] **REG-03**: User can compare regression results before and after tuning
+- [x] **REG-03**: User can compare regression results before and after tuning
   and export a sanitized report that omits raw audio and secrets.
 
 ## Future Requirements
@@ -133,9 +133,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COCK-04 | Phase 21 | Complete |
 | AUD-03 | Phase 21 | Complete |
 | SAFE-01 | Phase 21 | Complete |
-| REG-01 | Phase 22 | Pending |
-| REG-02 | Phase 22 | Pending |
-| REG-03 | Phase 22 | Pending |
+| REG-01 | Phase 22 | Complete |
+| REG-02 | Phase 22 | Complete |
+| REG-03 | Phase 22 | Complete |
 
 **Coverage:**
 - v1.5 requirements: 17 total
