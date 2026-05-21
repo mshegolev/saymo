@@ -303,6 +303,8 @@ saymo trigger-sessions summary -p personal --session daily-2026-05-20
 saymo trigger-sessions diarize -p personal --session daily-2026-05-20
 saymo trigger-sessions speakers -p personal --session daily-2026-05-20
 saymo trigger-sessions map-speaker -p personal --session daily-2026-05-20 --speaker-id SPEAKER_00 --label me
+saymo trigger-sessions speaker-bootstrap -p personal --session daily-2026-05-20 --label other --category speech --apply
+saymo trigger-sessions speaker-bootstrap -p personal --session daily-2026-05-20 --from-suggestions --apply
 saymo trigger-sessions speaker-report -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/speaker-report.md
 saymo meeting-memory build -p personal --session daily-2026-05-20
 saymo meeting-summary -p personal --session daily-2026-05-20
@@ -392,6 +394,11 @@ prefixed `suggest accept`, `suggest reject`, and `suggest other` actions inside
 overridden suggestions update sample JSON and become training signal for
 `trigger-eval`, classifier readiness, and classifier training. `speaker-report`
 exports aggregate speaker-review quality without transcript text or audio.
+Use `trigger-sessions speaker-bootstrap` when many session windows are still
+`speaker=unknown`. Without `--apply` it previews candidates; with `--apply` it
+writes labels for unknown-speaker samples and records bootstrap metadata in the
+sample JSON. Manual labels are not replaced unless `--overwrite-manual` is
+passed.
 
 ### Measure call provider latency
 

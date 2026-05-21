@@ -39,7 +39,7 @@ regression fixtures.
   that most affect handoff, speaker, and classifier quality.
 - [x] **Phase 19: Addressing v2** - Separate direct handoffs from incidental
   name mentions and explain the decision path.
-- [ ] **Phase 20: Speaker Bootstrap** - Reduce unknown-speaker coverage for
+- [x] **Phase 20: Speaker Bootstrap** - Reduce unknown-speaker coverage for
   completed sessions without requiring live diarization.
 - [ ] **Phase 21: Approved Draft Playback** - Play only explicitly approved
   generated drafts through existing safe TTS/playback paths.
@@ -111,9 +111,9 @@ speaker-labeled training evidence through reviewed local workflows.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 20-01: Add speaker bootstrap candidates from sessions and suggestions
-- [ ] 20-02: Add bulk speaker label apply flow with audit preservation
-- [ ] 20-03: Add speaker coverage/readiness reports and disabled-backend tests
+- [x] 20-01: Add speaker bootstrap candidates from sessions and suggestions
+- [x] 20-02: Add bulk speaker label apply flow with audit preservation
+- [x] 20-03: Add speaker coverage/readiness reports and disabled-backend tests
 
 ### Phase 21: Approved Draft Playback
 **Goal**: Let the user send only explicitly approved generated draft text into
@@ -166,7 +166,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
 |-------|-----------|----------------|--------|-----------|
 | 18. Post-call Review Queue | v1.5 | 4/4 | Complete | 2026-05-21 |
 | 19. Addressing v2 | v1.5 | 4/4 | Complete | 2026-05-21 |
-| 20. Speaker Bootstrap | v1.5 | 0/3 | Pending | — |
+| 20. Speaker Bootstrap | v1.5 | 3/3 | Complete | 2026-05-21 |
 | 21. Approved Draft Playback | v1.5 | 0/4 | Pending | — |
 | 22. Regression Replay | v1.5 | 0/3 | Pending | — |
 

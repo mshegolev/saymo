@@ -100,11 +100,11 @@ playback, and regression replay.
 - ✓ User can correct false handoffs where Saymo treats an incidental name
   mention as a request to speak.
 - ✓ User can tune per-profile handoff and mention-only addressing patterns.
+- ✓ User can bootstrap enough speaker labels from a completed session that
+  classifier readiness can distinguish `me`, `other`, and `unknown`.
 
 ### Active
 
-- [ ] User can bootstrap enough speaker labels from a completed session that
-  classifier readiness can distinguish `me`, `other`, and `unknown`.
 - [ ] User can approve a generated draft and have Saymo play only that approved
   text through the existing local TTS/playback path with cancel and audit.
 - [ ] User can replay a saved session as a regression fixture and see whether

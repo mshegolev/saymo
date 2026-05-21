@@ -2334,6 +2334,99 @@ def trigger_sessions_map_speaker(profile, session_id, speaker_id, label, samples
     console.print(f"sidecar: {path}")
 
 
+@trigger_sessions.command("speaker-bootstrap")
+@click.option("--profile", "-p", default="personal", help="Profile to update")
+@click.option(
+    "--session",
+    "session_id",
+    required=True,
+    help="Session id to update; unique prefixes are accepted",
+)
+@click.option("--category", default=None, help="Limit manual candidates to one category")
+@click.option("--label", default=None, type=click.Choice(_SPEAKER_LABELS), help="Manual speaker label to apply")
+@click.option("--from-speaker", default="unknown", type=click.Choice(_SPEAKER_LABELS), show_default=True, help="Only relabel samples with this current speaker")
+@click.option("--from-suggestions", is_flag=True, help="Apply reviewed diarization suggestions instead of a manual label")
+@click.option("--overwrite-manual", is_flag=True, help="Allow replacing non-unknown speaker labels")
+@click.option("--apply", "apply_changes", is_flag=True, help="Write labels; otherwise preview only")
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples; defaults to ~/.saymo/trigger_samples",
+)
+def trigger_sessions_speaker_bootstrap(profile, session_id, category, label, from_speaker, from_suggestions, overwrite_manual, apply_changes, samples_dir):
+    """Bootstrap speaker labels for one completed trigger-capture session."""
+    from saymo.analysis.trigger_review import TriggerReviewFilters, review_progress
+
+    base_dir = _samples_base_dir(samples_dir)
+    resolved_session = _resolve_trigger_session_id(base_dir, profile, session_id)
+    records = _filter_review_rows_or_fail(
+        list(_iter_trigger_sample_records(base_dir, profile=profile, category=category)),
+        TriggerReviewFilters(session=resolved_session),
+    )
+    if not records:
+        raise click.ClickException(f"No samples found for session: {resolved_session}")
+
+    candidates: list[tuple[TriggerSampleRecord, str, str]] = []
+    skipped_manual = 0
+    skipped_unreviewed = 0
+    source = "suggestions" if from_suggestions else "manual"
+
+    if from_suggestions:
+        candidates, skipped_manual, skipped_unreviewed = _speaker_bootstrap_from_suggestions(
+            base_dir,
+            profile,
+            resolved_session,
+            records,
+            overwrite_manual=overwrite_manual,
+        )
+    else:
+        if label is None:
+            raise click.ClickException("--label is required unless --from-suggestions is used")
+        for record in records:
+            if record.speaker != from_speaker and not overwrite_manual:
+                if record.speaker != "unknown":
+                    skipped_manual += 1
+                continue
+            candidates.append((record, label, "manual"))
+
+    applied = 0
+    if apply_changes:
+        from datetime import datetime, timezone
+
+        reviewed_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        for record, target, candidate_source in candidates:
+            _write_trigger_sample_speaker_bootstrap(
+                record.path,
+                target,
+                source=candidate_source,
+                reviewed_at=reviewed_at,
+            )
+            applied += 1
+
+    all_records_after = _filter_review_rows_or_fail(
+        list(_iter_trigger_sample_records(base_dir, profile=profile)),
+        TriggerReviewFilters(session=resolved_session),
+    )
+    progress = review_progress(all_records_after)
+    console.print(
+        f"speaker bootstrap: {'applied' if apply_changes else 'preview'}"
+    )
+    console.print(f"session: {resolved_session}")
+    console.print(f"source: {source}")
+    console.print(f"candidates: {len(candidates)}")
+    console.print(f"applied: {applied}")
+    console.print(f"skipped manual: {skipped_manual}")
+    console.print(f"skipped unreviewed: {skipped_unreviewed}")
+    console.print(f"speakers after: {_format_review_counts(progress.speaker_counts)}")
+    console.print(f"unknown speakers: {progress.unknown_speakers}")
+    console.print(f"readiness: {progress.readiness}")
+    if progress.readiness_missing:
+        console.print("missing:")
+        for item in progress.readiness_missing:
+            console.print(f"  - {item}")
+
+
 @trigger_sessions.command("speaker-report")
 @click.option("--profile", "-p", default="personal", help="Profile to inspect")
 @click.option(
@@ -3238,6 +3331,48 @@ def _load_record_speaker_suggestion(
     return base_dir, sidecar_path, sidecar, suggestion
 
 
+def _speaker_bootstrap_from_suggestions(
+    base_dir: Path,
+    profile: str,
+    session_id: str,
+    records: list[TriggerSampleRecord],
+    *,
+    overwrite_manual: bool,
+) -> tuple[list[tuple[TriggerSampleRecord, str, str]], int, int]:
+    from saymo.analysis.diarization import (
+        find_sample_speaker_suggestion,
+        load_session_diarization,
+        session_diarization_path,
+    )
+
+    sidecar_path = session_diarization_path(base_dir, profile, session_id)
+    if not sidecar_path.exists():
+        raise click.ClickException(f"Diarization sidecar not found: {sidecar_path}")
+    sidecar = load_session_diarization(sidecar_path)
+    candidates: list[tuple[TriggerSampleRecord, str, str]] = []
+    skipped_manual = 0
+    skipped_unreviewed = 0
+
+    for record in records:
+        if record.speaker != "unknown" and not overwrite_manual:
+            skipped_manual += 1
+            continue
+        suggestion = find_sample_speaker_suggestion(
+            sidecar,
+            record.path,
+            session_sequence=record.session_sequence,
+        )
+        if suggestion is None or suggestion.status not in {"accepted", "overridden"}:
+            skipped_unreviewed += 1
+            continue
+        target = _normalize_speaker_label(suggestion.reviewed_speaker)
+        if target == "unknown":
+            skipped_unreviewed += 1
+            continue
+        candidates.append((record, target, f"suggestion:{suggestion.speaker_id}"))
+    return candidates, skipped_manual, skipped_unreviewed
+
+
 def _print_record_speaker_suggestion(
     record: TriggerSampleRecord,
     samples_dir: str | None,
@@ -3430,6 +3565,35 @@ def _write_trigger_sample_speaker(path: Path, speaker: str) -> str:
 
     previous = _normalize_speaker_label(data.get("speaker"))
     data["speaker"] = speaker
+    Path(path).write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return previous
+
+
+def _write_trigger_sample_speaker_bootstrap(
+    path: Path,
+    speaker: str,
+    *,
+    source: str,
+    reviewed_at: str,
+) -> str:
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        raise click.ClickException(f"Cannot read sample metadata: {e}") from e
+    if not isinstance(data, dict):
+        raise click.ClickException(f"Sample metadata is not an object: {path}")
+
+    previous = _normalize_speaker_label(data.get("speaker"))
+    data["speaker"] = speaker
+    data["speaker_bootstrap"] = {
+        "source": source,
+        "previous_speaker": previous,
+        "speaker": speaker,
+        "reviewed_at": reviewed_at,
+    }
     Path(path).write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Live Review + Safe Approved Speak
-status: Phase 19 complete; next phase is 20 Speaker Bootstrap
-stopped_at: Phase 19 complete; next step is Phase 20 Speaker Bootstrap.
+status: Phase 20 complete; next phase is 21 Approved Draft Playback
+stopped_at: Phase 20 complete; next step is Phase 21 Approved Draft Playback.
 last_updated: "2026-05-21"
-last_activity: "2026-05-21 - completed Phase 19 Addressing v2"
+last_activity: "2026-05-21 - completed Phase 20 Speaker Bootstrap"
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 18
-  completed_plans: 8
-  percent: 44
+  completed_plans: 11
+  percent: 61
 ---
 
 # Project State
@@ -26,19 +26,19 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 20 - Speaker Bootstrap
+Phase: 21 - Approved Draft Playback
 Plan: Not started
-Status: Phase 19 complete; Phase 20 is next
-Last activity: 2026-05-21 - added Addressing v2 mention-only heuristics,
-explain output, and per-profile pattern tuning.
+Status: Phase 20 complete; Phase 21 is next
+Last activity: 2026-05-21 - added session-scoped speaker bootstrap preview and
+apply flows with readiness impact reporting.
 
-Progress: [####------] 44%
+Progress: [######----] 61%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 18
-- Plans completed: 8
+- Plans completed: 11
 - Average duration: pending
 - Total execution time: pending
 
@@ -55,7 +55,7 @@ Progress: [####------] 44%
 |-------|-------|-------|--------|
 | 18. Post-call Review Queue | 4 | 4/4 | complete |
 | 19. Addressing v2 | 4 | 4/4 | complete |
-| 20. Speaker Bootstrap | 3 | 0/3 | pending |
+| 20. Speaker Bootstrap | 3 | 3/3 | complete |
 | 21. Approved Draft Playback | 4 | 0/4 | pending |
 | 22. Regression Replay | 3 | 0/3 | pending |
 
@@ -90,7 +90,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Start Phase 20 Speaker Bootstrap.
+Start Phase 21 Approved Draft Playback.
 
 ### Blockers/Concerns
 
@@ -111,5 +111,5 @@ Start Phase 20 Speaker Bootstrap.
 ## Session Continuity
 
 Last session: 2026-05-21
-Stopped at: Phase 19 complete; next step is Phase 20 Speaker Bootstrap.
+Stopped at: Phase 20 complete; next step is Phase 21 Approved Draft Playback.
 Resume file: None

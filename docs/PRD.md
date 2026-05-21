@@ -328,6 +328,7 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 | `saymo trigger-sessions diarize -p PROFILE --session SESSION` | Run/import optional diarization for one captured session |
 | `saymo trigger-sessions speakers -p PROFILE --session SESSION` | Inspect diarization speaker clusters and suggestions |
 | `saymo trigger-sessions map-speaker -p PROFILE --session SESSION --speaker-id SPEAKER_00 --label me` | Map one diarization speaker id to a Saymo label |
+| `saymo trigger-sessions speaker-bootstrap -p PROFILE --session SESSION --label other --apply` | Bulk apply reviewed/manual speaker labels for a session |
 | `saymo trigger-sessions speaker-report -p PROFILE --session SESSION -o REPORT.md` | Export sanitized speaker-review quality metrics |
 | `saymo meeting-memory build -p PROFILE --session SESSION` | Build a local full-session transcript ledger |
 | `saymo meeting-summary -p PROFILE --session SESSION` | Render meeting-memory questions, handoffs, action items, and coverage |

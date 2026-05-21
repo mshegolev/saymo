@@ -38,13 +38,13 @@ Requirements for milestone v1.5 Live Review + Safe Approved Speak.
 
 ### Speaker Bootstrap
 
-- [ ] **SPKR-04**: User can bootstrap speaker labels for a completed session
+- [x] **SPKR-04**: User can bootstrap speaker labels for a completed session
   without requiring always-on real-time diarization, using either reviewed
   diarization suggestions or a lightweight manual grouping workflow.
-- [ ] **SPKR-05**: User can apply session-scoped speaker labels in bulk while
+- [x] **SPKR-05**: User can apply session-scoped speaker labels in bulk while
   preserving manual labels as authoritative and keeping suggestion/audit
   metadata inspectable.
-- [ ] **QUAL-04**: User can see speaker coverage and classifier-readiness
+- [x] **QUAL-04**: User can see speaker coverage and classifier-readiness
   impact after bootstrap, including `me`, `other`, and `unknown` counts by
   session and category.
 
@@ -126,9 +126,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INT-03 | Phase 19 | Complete |
 | INT-04 | Phase 19 | Complete |
 | INT-05 | Phase 19 | Complete |
-| SPKR-04 | Phase 20 | Pending |
-| SPKR-05 | Phase 20 | Pending |
-| QUAL-04 | Phase 20 | Pending |
+| SPKR-04 | Phase 20 | Complete |
+| SPKR-05 | Phase 20 | Complete |
+| QUAL-04 | Phase 20 | Complete |
 | COCK-03 | Phase 21 | Pending |
 | COCK-04 | Phase 21 | Pending |
 | AUD-03 | Phase 21 | Pending |

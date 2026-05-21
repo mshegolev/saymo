@@ -1074,6 +1074,182 @@ def test_trigger_sessions_speakers_and_map_speaker(tmp_path):
     assert json.loads(sample_path.read_text(encoding="utf-8"))["speaker"] == "unknown"
 
 
+def test_trigger_sessions_speaker_bootstrap_manual_preview_and_apply(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    session_id = "daily-20260520-100000"
+    speech_path = _write_sample(
+        samples_dir,
+        category="speech",
+        name="speech",
+        transcript="ordinary speech",
+        speaker="unknown",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=1,
+    )
+    _write_sample(
+        samples_dir,
+        category="question",
+        name="question",
+        transcript="general question?",
+        question=True,
+        speaker="unknown",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=2,
+    )
+    me_path = _write_sample(
+        samples_dir,
+        category="asked_to_speak",
+        name="me",
+        transcript="John, status?",
+        trigger=True,
+        question=True,
+        will_answer=True,
+        speaker="me",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=3,
+    )
+    runner = CliRunner()
+
+    preview = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-sessions",
+            "speaker-bootstrap",
+            "--profile",
+            "personal",
+            "--session",
+            "daily",
+            "--samples-dir",
+            str(samples_dir),
+            "--category",
+            "speech",
+            "--label",
+            "other",
+        ],
+    )
+    assert preview.exit_code == 0
+    assert "speaker bootstrap: preview" in preview.output
+    assert "candidates: 1" in preview.output
+    assert json.loads(speech_path.read_text(encoding="utf-8"))["speaker"] == "unknown"
+
+    applied = runner.invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-sessions",
+            "speaker-bootstrap",
+            "--profile",
+            "personal",
+            "--session",
+            "daily",
+            "--samples-dir",
+            str(samples_dir),
+            "--category",
+            "speech",
+            "--label",
+            "other",
+            "--apply",
+        ],
+    )
+
+    assert applied.exit_code == 0
+    assert "speaker bootstrap: applied" in applied.output
+    assert "applied: 1" in applied.output
+    speech = json.loads(speech_path.read_text(encoding="utf-8"))
+    assert speech["speaker"] == "other"
+    assert speech["speaker_bootstrap"]["source"] == "manual"
+    assert json.loads(me_path.read_text(encoding="utf-8"))["speaker"] == "me"
+    assert "speakers after: me=1, other=1, unknown=1" in applied.output
+
+
+def test_trigger_sessions_speaker_bootstrap_applies_reviewed_suggestions(tmp_path):
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    session_id = "daily-20260520-100000"
+    unknown_path = _write_sample(
+        samples_dir,
+        category="question",
+        name="unknown",
+        transcript="general question?",
+        question=True,
+        speaker="unknown",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=1,
+    )
+    manual_path = _write_sample(
+        samples_dir,
+        category="question",
+        name="manual",
+        transcript="manual label stays",
+        speaker="me",
+        session_id=session_id,
+        session_name="daily",
+        session_sequence=2,
+    )
+    _write_diarization_sidecar(
+        samples_dir,
+        profile="personal",
+        session_id=session_id,
+        suggestions=[
+            {
+                "sample_path": str(unknown_path),
+                "session_sequence": 1,
+                "current_speaker": "unknown",
+                "speaker_id": "SPEAKER_00",
+                "suggested_speaker": "other",
+                "confidence": 0.91,
+                "overlap_seconds": 8.0,
+                "status": "accepted",
+                "reviewed_speaker": "other",
+            },
+            {
+                "sample_path": str(manual_path),
+                "session_sequence": 2,
+                "current_speaker": "me",
+                "speaker_id": "SPEAKER_01",
+                "suggested_speaker": "other",
+                "confidence": 0.72,
+                "overlap_seconds": 8.0,
+                "status": "accepted",
+                "reviewed_speaker": "other",
+            },
+        ],
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-sessions",
+            "speaker-bootstrap",
+            "--profile",
+            "personal",
+            "--session",
+            "daily",
+            "--samples-dir",
+            str(samples_dir),
+            "--from-suggestions",
+            "--apply",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "source: suggestions" in result.output
+    assert "applied: 1" in result.output
+    assert "skipped manual: 1" in result.output
+    assert json.loads(unknown_path.read_text(encoding="utf-8"))["speaker"] == "other"
+    assert json.loads(manual_path.read_text(encoding="utf-8"))["speaker"] == "me"
+
+
 def test_trigger_samples_speaker_suggestion_accept_reject_and_override(tmp_path):
     config_path = _write_config(tmp_path)
     samples_dir = tmp_path / "samples"
