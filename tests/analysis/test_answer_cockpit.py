@@ -5,6 +5,8 @@ from saymo.analysis.answer_cockpit import (
     append_audit_event,
     answer_draft_from_json,
     answer_draft_to_json,
+    approved_playback_event,
+    ApprovedPlaybackResult,
     apply_cockpit_action,
     build_answer_draft,
     build_cockpit_state,
@@ -155,6 +157,34 @@ def test_apply_cockpit_speak_records_approval_without_playback():
     assert updated.draft.action_state == "approved_to_speak"
     assert event.action == "speak"
     assert event.metadata["playback_started"] is False
+
+
+def test_approved_playback_event_records_route_and_blocked_reason():
+    draft = build_answer_draft(
+        profile="daily",
+        session_id="daily-1",
+        question="What is the release status?",
+        trigger_evidence=TriggerEvidence(transcript="John?", confidence=0.5),
+        meeting_answer=_meeting_answer(),
+        created_at="2026-05-20T10:00:00+00:00",
+    )
+    state = build_cockpit_state(draft)
+    result = ApprovedPlaybackResult(
+        status="blocked",
+        playback_started=False,
+        tts_engine="macos_say",
+        output_route="BlackHole 2ch",
+        started_at="2026-05-20T10:00:05+00:00",
+        blocked_reason="approved text is empty",
+    )
+
+    event = approved_playback_event(state, result)
+
+    assert event.event_type == "approved_playback"
+    assert event.action == "speak"
+    assert event.metadata["playback_started"] is False
+    assert event.metadata["tts_engine"] == "macos_say"
+    assert event.metadata["blocked_reason"] == "approved text is empty"
 
 
 def test_apply_cockpit_edit_requires_text_and_saves_approved_text():

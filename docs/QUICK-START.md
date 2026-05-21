@@ -313,6 +313,7 @@ saymo meeting-ask -p personal --session daily-2026-05-20 "what did they ask me?"
 saymo answer-draft -p personal --session daily-2026-05-20 "Your Name, what is the status?" -o ~/.saymo/trigger_samples/draft.json
 saymo answer-cockpit show --draft-json ~/.saymo/trigger_samples/draft.json
 saymo answer-cockpit action -p personal --session daily-2026-05-20 --action speak
+saymo answer-cockpit action -p personal --session daily-2026-05-20 --action speak --preview
 saymo answer-audit report -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/answer-audit.md
 saymo trigger-samples list -p personal --session daily-2026-05-20 --speaker other
 saymo trigger-samples queue -p personal --session daily-2026-05-20
@@ -380,8 +381,11 @@ specific phrase to pass the floor.
 answers only with cited transcript evidence. `answer-draft` combines the cited
 meeting evidence with configured source plugins and leaves the draft in
 `pending` state. `answer-cockpit action --action speak` records explicit
-approval but does not auto-play generated speech by itself. `answer-audit`
-exports sanitized trigger/draft/action evidence without raw audio or secrets.
+approval and routes the approved text through local TTS/playback unless
+`--no-playback` is passed. Use `--preview` to play only to the monitor/preview
+route first, `--timeout` to cap playback time, and `--max-duration` to block
+overlong approved text before synthesis. `answer-audit` exports sanitized
+trigger/draft/action/playback evidence without raw audio or secrets.
 
 Optional diarization starts disabled. Add a `diarization:` section to
 `config.yaml`, keep tokens in env vars such as `SAYMO_DIARIZATION_TOKEN`, then

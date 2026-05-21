@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Live Review + Safe Approved Speak
-status: Phase 20 complete; next phase is 21 Approved Draft Playback
-stopped_at: Phase 20 complete; next step is Phase 21 Approved Draft Playback.
+status: Phase 21 complete; next phase is 22 Regression Replay
+stopped_at: Phase 21 complete; next step is Phase 22 Regression Replay.
 last_updated: "2026-05-21"
-last_activity: "2026-05-21 - completed Phase 20 Speaker Bootstrap"
+last_activity: "2026-05-21 - completed Phase 21 Approved Draft Playback"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 18
-  completed_plans: 11
-  percent: 61
+  completed_plans: 15
+  percent: 83
 ---
 
 # Project State
@@ -26,19 +26,19 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 21 - Approved Draft Playback
+Phase: 22 - Regression Replay
 Plan: Not started
-Status: Phase 20 complete; Phase 21 is next
-Last activity: 2026-05-21 - added session-scoped speaker bootstrap preview and
-apply flows with readiness impact reporting.
+Status: Phase 21 complete; Phase 22 is next
+Last activity: 2026-05-21 - wired approved draft speak actions into local
+TTS/playback with preview, timeout, duration, and audit gates.
 
-Progress: [######----] 61%
+Progress: [########--] 83%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 18
-- Plans completed: 11
+- Plans completed: 15
 - Average duration: pending
 - Total execution time: pending
 
@@ -56,7 +56,7 @@ Progress: [######----] 61%
 | 18. Post-call Review Queue | 4 | 4/4 | complete |
 | 19. Addressing v2 | 4 | 4/4 | complete |
 | 20. Speaker Bootstrap | 3 | 3/3 | complete |
-| 21. Approved Draft Playback | 4 | 0/4 | pending |
+| 21. Approved Draft Playback | 4 | 4/4 | complete |
 | 22. Regression Replay | 3 | 0/3 | pending |
 
 **Recent Trend:**
@@ -90,7 +90,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Start Phase 21 Approved Draft Playback.
+Start Phase 22 Regression Replay.
 
 ### Blockers/Concerns
 
@@ -111,5 +111,5 @@ Start Phase 21 Approved Draft Playback.
 ## Session Continuity
 
 Last session: 2026-05-21
-Stopped at: Phase 20 complete; next step is Phase 21 Approved Draft Playback.
+Stopped at: Phase 21 complete; next step is Phase 22 Regression Replay.
 Resume file: None

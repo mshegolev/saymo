@@ -96,6 +96,25 @@ class AuditEvent:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class ApprovedPlaybackResult:
+    """Result of safety-gated approved draft playback."""
+
+    status: str
+    playback_started: bool = False
+    tts_engine: str = ""
+    output_route: str = ""
+    monitor_route: str = ""
+    preview: bool = False
+    started_at: str = ""
+    ended_at: str = ""
+    duration_seconds: float = 0.0
+    timeout_seconds: float = 0.0
+    max_duration_seconds: float = 0.0
+    cancel_hotkey: str = ""
+    blocked_reason: str = ""
+
+
 def build_trigger_evidence(
     *,
     transcript: str,
@@ -394,7 +413,7 @@ def apply_cockpit_action(
         summary = "draft edited and approved for review"
     elif normalized == "speak":
         new_state = "approved_to_speak"
-        summary = "draft approved to speak; playback not started by this command"
+        summary = "draft approved to speak; playback handled by caller"
     elif normalized == "skip":
         approved_text = ""
         new_state = "skipped"
@@ -507,6 +526,54 @@ def draft_created_event(draft: AnswerDraft, *, at: str | None = None) -> AuditEv
             "citation_count": len(draft.citations),
             "source_count": len(draft.sources),
             "action_state": draft.action_state,
+        },
+    )
+
+
+def approved_playback_event(
+    state: CockpitState,
+    result: ApprovedPlaybackResult,
+    *,
+    at: str | None = None,
+) -> AuditEvent:
+    """Build an audit event for approved draft playback."""
+    created = at or result.started_at or _now()
+    if result.blocked_reason:
+        summary = f"approved playback blocked: {result.blocked_reason}"
+    elif result.preview:
+        summary = "approved draft preview playback completed"
+    else:
+        summary = "approved draft playback completed"
+    return AuditEvent(
+        event_id=_event_id(
+            state.profile,
+            state.session_id,
+            state.draft.draft_id,
+            created,
+            "approved-playback",
+        ),
+        event_type="approved_playback",
+        profile=state.profile,
+        session_id=state.session_id,
+        draft_id=state.draft.draft_id,
+        created_at=created,
+        action="speak",
+        summary=summary,
+        metadata={
+            "state": state.state,
+            "playback_started": result.playback_started,
+            "status": result.status,
+            "tts_engine": result.tts_engine,
+            "output_route": result.output_route,
+            "monitor_route": result.monitor_route,
+            "preview": result.preview,
+            "started_at": result.started_at,
+            "ended_at": result.ended_at,
+            "duration_seconds": round(result.duration_seconds, 3),
+            "timeout_seconds": round(result.timeout_seconds, 3),
+            "max_duration_seconds": round(result.max_duration_seconds, 3),
+            "cancel_hotkey": result.cancel_hotkey,
+            "blocked_reason": result.blocked_reason,
         },
     )
 

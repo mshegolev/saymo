@@ -50,15 +50,15 @@ Requirements for milestone v1.5 Live Review + Safe Approved Speak.
 
 ### Approved Draft Playback
 
-- [ ] **COCK-03**: User can route an explicitly approved answer draft through
+- [x] **COCK-03**: User can route an explicitly approved answer draft through
   the existing local TTS and playback path into the configured call output
   device.
-- [ ] **COCK-04**: User can preview, monitor, cancel, or timeout approved draft
+- [x] **COCK-04**: User can preview, monitor, cancel, or timeout approved draft
   playback before or during live-call output.
-- [ ] **AUD-03**: User can inspect audit events for approved draft playback,
+- [x] **AUD-03**: User can inspect audit events for approved draft playback,
   including draft id, action id, TTS engine, output route, playback start/end,
   cancellation, and blocked reasons.
-- [ ] **SAFE-01**: Saymo refuses to play unapproved generated draft text and
+- [x] **SAFE-01**: Saymo refuses to play unapproved generated draft text and
   keeps existing manual takeover and confirmation safety behavior intact.
 
 ### Regression Replay
@@ -129,10 +129,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SPKR-04 | Phase 20 | Complete |
 | SPKR-05 | Phase 20 | Complete |
 | QUAL-04 | Phase 20 | Complete |
-| COCK-03 | Phase 21 | Pending |
-| COCK-04 | Phase 21 | Pending |
-| AUD-03 | Phase 21 | Pending |
-| SAFE-01 | Phase 21 | Pending |
+| COCK-03 | Phase 21 | Complete |
+| COCK-04 | Phase 21 | Complete |
+| AUD-03 | Phase 21 | Complete |
+| SAFE-01 | Phase 21 | Complete |
 | REG-01 | Phase 22 | Pending |
 | REG-02 | Phase 22 | Pending |
 | REG-03 | Phase 22 | Pending |

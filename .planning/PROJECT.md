@@ -102,11 +102,12 @@ playback, and regression replay.
 - ✓ User can tune per-profile handoff and mention-only addressing patterns.
 - ✓ User can bootstrap enough speaker labels from a completed session that
   classifier readiness can distinguish `me`, `other`, and `unknown`.
+- ✓ User can approve a generated draft and have Saymo play only that approved
+  text through the existing local TTS/playback path with preview, timeout, and
+  audit.
 
 ### Active
 
-- [ ] User can approve a generated draft and have Saymo play only that approved
-  text through the existing local TTS/playback path with cancel and audit.
 - [ ] User can replay a saved session as a regression fixture and see whether
   addressing, question detection, and speaker coverage improved.
 
@@ -177,7 +178,7 @@ playback, and regression replay.
 | Keep diarization optional and review-first | Speaker suggestions are useful only after the user can inspect and correct them locally | ✓ Implemented in v1.3 |
 | Build answer cockpit before autonomous speaking | The user must be able to inspect trigger evidence and approve a draft before Saymo talks in a live call | ✓ Implemented in v1.4 |
 | Use real recorded sessions as regression fixtures | False positives and unknown-speaker coverage are visible only against actual call audio | In progress in v1.5 |
-| Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | — Pending in v1.5 |
+| Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | Implemented in v1.5 |
 
 ---
 *Last updated: 2026-05-21 after starting milestone v1.5*

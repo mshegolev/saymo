@@ -1894,6 +1894,137 @@ def test_trigger_samples_review_applies_queue_actions_without_play(tmp_path):
     assert metadata["category"] == "asked_to_speak"
 
 
+def _write_cockpit_state_for_test(samples_dir, *, draft_text="Approved text."):
+    from saymo.analysis.answer_cockpit import (
+        AnswerDraft,
+        TriggerEvidence,
+        build_cockpit_state,
+        write_cockpit_state,
+    )
+
+    session_id = "daily-20260520-100000"
+    draft = AnswerDraft(
+        draft_id="draft-1",
+        profile="personal",
+        session_id=session_id,
+        question="John, status?",
+        created_at="2026-05-20T10:00:00+00:00",
+        trigger_evidence=TriggerEvidence(
+            transcript="John, status?",
+            profile="personal",
+            session_id=session_id,
+            trigger=True,
+            question=True,
+            will_answer=True,
+            addressing="addressed_to_me",
+            confidence=0.9,
+        ),
+        draft_text=draft_text,
+        confidence=0.9,
+        composer="deterministic",
+        action_state="pending",
+    )
+    return write_cockpit_state(samples_dir, build_cockpit_state(draft)), session_id
+
+
+def test_answer_cockpit_action_speak_routes_approved_playback(tmp_path, monkeypatch):
+    from saymo.analysis.answer_cockpit import (
+        ApprovedPlaybackResult,
+        answer_audit_path,
+        load_audit_events,
+    )
+    import saymo.commands.tests as command_module
+
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    _, session_id = _write_cockpit_state_for_test(samples_dir, draft_text="Short approved text.")
+    captured = {}
+
+    async def fake_play(config, text, **kwargs):
+        captured["text"] = text
+        captured["kwargs"] = kwargs
+        return ApprovedPlaybackResult(
+            status="played",
+            playback_started=True,
+            tts_engine="fake_tts",
+            output_route="BlackHole 2ch",
+            monitor_route="MacBook Speakers",
+            started_at="2026-05-20T10:00:01+00:00",
+            ended_at="2026-05-20T10:00:02+00:00",
+            duration_seconds=1.0,
+        )
+
+    monkeypatch.setattr(command_module, "_play_approved_draft_text", fake_play)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "answer-cockpit",
+            "action",
+            "--profile",
+            "personal",
+            "--session",
+            session_id,
+            "--samples-dir",
+            str(samples_dir),
+            "--action",
+            "speak",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured["text"] == "Short approved text."
+    assert captured["kwargs"]["preview"] is False
+    assert "playback started: yes" in result.output
+    assert "playback status: played" in result.output
+    events = load_audit_events(answer_audit_path(samples_dir, "personal", session_id))
+    assert [event.event_type for event in events] == [
+        "cockpit_action",
+        "approved_playback",
+    ]
+    assert events[1].metadata["tts_engine"] == "fake_tts"
+    assert events[1].metadata["playback_started"] is True
+
+
+def test_answer_cockpit_action_speak_blocks_text_over_max_duration(tmp_path):
+    from saymo.analysis.answer_cockpit import answer_audit_path, load_audit_events
+
+    config_path = _write_config(tmp_path)
+    samples_dir = tmp_path / "samples"
+    long_text = " ".join(["word"] * 20)
+    _, session_id = _write_cockpit_state_for_test(samples_dir, draft_text=long_text)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "answer-cockpit",
+            "action",
+            "--profile",
+            "personal",
+            "--session",
+            session_id,
+            "--samples-dir",
+            str(samples_dir),
+            "--action",
+            "speak",
+            "--max-duration",
+            "0.1",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "playback started: no" in result.output
+    assert "playback status: blocked" in result.output
+    assert "approved text exceeds max speech duration" in result.output
+    events = load_audit_events(answer_audit_path(samples_dir, "personal", session_id))
+    assert events[1].event_type == "approved_playback"
+    assert events[1].metadata["blocked_reason"] == "approved text exceeds max speech duration"
+
+
 def test_trigger_sessions_list_and_summary(tmp_path):
     from saymo.analysis.trigger_sessions import (
         finish_trigger_session,

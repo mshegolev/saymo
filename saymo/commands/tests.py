@@ -2894,6 +2894,11 @@ def answer_cockpit_show(ctx, draft_json, samples_dir):
     help="Explicit cockpit action",
 )
 @click.option("--text", "edited_text", default=None, help="Edited answer text for --action edit")
+@click.option("--playback/--no-playback", default=True, show_default=True, help="Play approved text when --action speak")
+@click.option("--preview", is_flag=True, help="Play approved text only to monitor/playback preview route")
+@click.option("--monitor/--no-monitor", default=True, show_default=True, help="Also route live playback to audio.monitor_device when configured")
+@click.option("--timeout", "timeout_seconds", default=0.0, type=float, show_default=True, help="Playback timeout in seconds; 0 disables")
+@click.option("--max-duration", "max_duration_seconds", default=None, type=float, help="Override safety.max_speech_duration")
 @click.option(
     "--samples-dir",
     default=None,
@@ -2901,11 +2906,12 @@ def answer_cockpit_show(ctx, draft_json, samples_dir):
     help="Directory with trigger samples; defaults to meeting_memory.base_dir or ~/.saymo/trigger_samples",
 )
 @click.pass_context
-def answer_cockpit_action(ctx, profile, session_id, action_name, edited_text, samples_dir):
+def answer_cockpit_action(ctx, profile, session_id, action_name, edited_text, playback, preview, monitor, timeout_seconds, max_duration_seconds, samples_dir):
     """Apply one explicit cockpit action to the current draft."""
     from saymo.analysis.answer_cockpit import (
         append_audit_event,
         apply_cockpit_action,
+        approved_playback_event,
         cockpit_state_path,
         load_cockpit_state,
         render_cockpit_state,
@@ -2928,12 +2934,180 @@ def answer_cockpit_action(ctx, profile, session_id, action_name, edited_text, sa
         raise click.ClickException(str(e)) from e
     state_path = write_cockpit_state(base_dir, updated)
     audit_path = append_audit_event(base_dir, event)
+    playback_result = None
+    if action_name == "speak" and playback:
+        playback_result = run_async(
+            _play_approved_draft_text(
+                ctx.obj["config"],
+                updated.approved_text,
+                preview=preview,
+                monitor=monitor,
+                timeout_seconds=timeout_seconds,
+                max_duration_seconds=max_duration_seconds,
+            )
+        )
+        append_audit_event(base_dir, approved_playback_event(updated, playback_result))
     console.print(f"action: {action_name}")
     console.print(f"state: {updated.state}")
-    console.print(f"playback started: no")
+    console.print(
+        "playback started: "
+        f"{'yes' if playback_result and playback_result.playback_started else 'no'}"
+    )
+    if playback_result:
+        console.print(f"playback status: {playback_result.status}")
+        if playback_result.blocked_reason:
+            console.print(f"playback blocked: {playback_result.blocked_reason}")
     console.print(f"cockpit state: {state_path}")
     console.print(f"audit: {audit_path}")
     console.print(render_cockpit_state(updated))
+
+
+async def _play_approved_draft_text(
+    config,
+    text: str,
+    *,
+    preview: bool,
+    monitor: bool,
+    timeout_seconds: float,
+    max_duration_seconds: float | None,
+):
+    import asyncio
+    import time
+    from datetime import datetime, timezone
+
+    from saymo.analysis.answer_cockpit import ApprovedPlaybackResult
+    from saymo.tts.factory import UnsupportedTTSEngine, get_tts_engine
+
+    normalized = " ".join((text or "").split())
+    engine_name = getattr(config.tts, "realtime_engine", "") or config.tts.engine
+    output = config.audio.playback_device or "BlackHole 2ch"
+    monitor_device = config.audio.monitor_device or ""
+    max_duration = (
+        float(max_duration_seconds)
+        if max_duration_seconds is not None
+        else float(getattr(config.safety, "max_speech_duration", 120) or 120)
+    )
+    cancel_hotkey = str(getattr(config.safety, "hotkey_stop", "") or "")
+    timeout = max(0.0, float(timeout_seconds or 0.0))
+    started_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+    if not normalized:
+        return ApprovedPlaybackResult(
+            status="blocked",
+            tts_engine=engine_name,
+            output_route=output,
+            preview=preview,
+            started_at=started_at,
+            max_duration_seconds=max_duration,
+            timeout_seconds=timeout,
+            cancel_hotkey=cancel_hotkey,
+            blocked_reason="approved text is empty",
+        )
+
+    estimated_duration = _estimate_spoken_duration(normalized)
+    if max_duration > 0 and estimated_duration > max_duration:
+        return ApprovedPlaybackResult(
+            status="blocked",
+            tts_engine=engine_name,
+            output_route=output,
+            preview=preview,
+            started_at=started_at,
+            duration_seconds=estimated_duration,
+            max_duration_seconds=max_duration,
+            timeout_seconds=timeout,
+            cancel_hotkey=cancel_hotkey,
+            blocked_reason="approved text exceeds max speech duration",
+        )
+
+    route_devices: list[str]
+    if preview:
+        preview_device = monitor_device or output
+        route_devices = [preview_device]
+        output_route = f"preview:{preview_device}"
+        monitor_route = preview_device
+    else:
+        route_devices = [output]
+        if monitor and monitor_device and monitor_device.lower() != output.lower():
+            route_devices.append(monitor_device)
+        output_route = output
+        monitor_route = monitor_device if len(route_devices) > 1 else ""
+
+    async def synthesize_and_play():
+        try:
+            tts = get_tts_engine(config, realtime=True)
+        except UnsupportedTTSEngine as e:
+            raise RuntimeError(str(e)) from e
+        audio_bytes = await tts.synthesize(normalized)
+        if len(route_devices) > 1:
+            from saymo.audio.multi_play import play_bytes_to_devices
+
+            await play_bytes_to_devices(audio_bytes, route_devices)
+        else:
+            from saymo.audio.playback import play_audio_bytes
+
+            await play_audio_bytes(audio_bytes, route_devices[0])
+
+    started = time.monotonic()
+    try:
+        if timeout > 0:
+            await asyncio.wait_for(synthesize_and_play(), timeout=timeout)
+        else:
+            await synthesize_and_play()
+    except asyncio.TimeoutError:
+        ended_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        return ApprovedPlaybackResult(
+            status="timeout",
+            playback_started=True,
+            tts_engine=engine_name,
+            output_route=output_route,
+            monitor_route=monitor_route,
+            preview=preview,
+            started_at=started_at,
+            ended_at=ended_at,
+            duration_seconds=time.monotonic() - started,
+            max_duration_seconds=max_duration,
+            timeout_seconds=timeout,
+            cancel_hotkey=cancel_hotkey,
+            blocked_reason="playback timeout",
+        )
+    except Exception as e:
+        ended_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        return ApprovedPlaybackResult(
+            status="blocked",
+            playback_started=False,
+            tts_engine=engine_name,
+            output_route=output_route,
+            monitor_route=monitor_route,
+            preview=preview,
+            started_at=started_at,
+            ended_at=ended_at,
+            duration_seconds=time.monotonic() - started,
+            max_duration_seconds=max_duration,
+            timeout_seconds=timeout,
+            cancel_hotkey=cancel_hotkey,
+            blocked_reason=str(e),
+        )
+
+    ended_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return ApprovedPlaybackResult(
+        status="previewed" if preview else "played",
+        playback_started=True,
+        tts_engine=engine_name,
+        output_route=output_route,
+        monitor_route=monitor_route,
+        preview=preview,
+        started_at=started_at,
+        ended_at=ended_at,
+        duration_seconds=time.monotonic() - started,
+        max_duration_seconds=max_duration,
+        timeout_seconds=timeout,
+        cancel_hotkey=cancel_hotkey,
+    )
+
+
+def _estimate_spoken_duration(text: str) -> float:
+    words = [word for word in text.split() if word.strip()]
+    return max(0.5, len(words) * 0.45)
 
 
 @main.group("answer-audit")

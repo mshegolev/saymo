@@ -41,7 +41,7 @@ regression fixtures.
   name mentions and explain the decision path.
 - [x] **Phase 20: Speaker Bootstrap** - Reduce unknown-speaker coverage for
   completed sessions without requiring live diarization.
-- [ ] **Phase 21: Approved Draft Playback** - Play only explicitly approved
+- [x] **Phase 21: Approved Draft Playback** - Play only explicitly approved
   generated drafts through existing safe TTS/playback paths.
 - [ ] **Phase 22: Regression Replay** - Re-run saved sessions through current
   logic and report reliability metrics.
@@ -132,10 +132,10 @@ the live call through existing local TTS and playback safety paths.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 21-01: Add approved playback request model and blocked-reason gates
-- [ ] 21-02: Wire approved drafts into existing TTS and playback routing
-- [ ] 21-03: Add preview, monitor, cancel, timeout, and max-duration controls
-- [ ] 21-04: Extend audit/reporting and safety regression tests
+- [x] 21-01: Add approved playback request model and blocked-reason gates
+- [x] 21-02: Wire approved drafts into existing TTS and playback routing
+- [x] 21-03: Add preview, monitor, cancel, timeout, and max-duration controls
+- [x] 21-04: Extend audit/reporting and safety regression tests
 
 ### Phase 22: Regression Replay
 **Goal**: Make saved sessions reusable as a local reliability test for
@@ -167,7 +167,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
 | 18. Post-call Review Queue | v1.5 | 4/4 | Complete | 2026-05-21 |
 | 19. Addressing v2 | v1.5 | 4/4 | Complete | 2026-05-21 |
 | 20. Speaker Bootstrap | v1.5 | 3/3 | Complete | 2026-05-21 |
-| 21. Approved Draft Playback | v1.5 | 0/4 | Pending | — |
+| 21. Approved Draft Playback | v1.5 | 4/4 | Complete | 2026-05-21 |
 | 22. Regression Replay | v1.5 | 0/3 | Pending | — |
 
 ## Requirement Coverage

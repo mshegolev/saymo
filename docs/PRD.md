@@ -336,7 +336,7 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 | `saymo meeting-ask -p PROFILE --session SESSION QUESTION` | Answer from cited local transcript evidence |
 | `saymo answer-draft -p PROFILE --session SESSION QUESTION -o DRAFT.json` | Generate a pending answer draft with citations and source diagnostics |
 | `saymo answer-cockpit show --draft-json DRAFT.json` | Show draft, trigger evidence, citations, confidence, and available actions |
-| `saymo answer-cockpit action -p PROFILE --session SESSION --action speak` | Record explicit speak/edit/skip/takeover action; generated drafts do not auto-play |
+| `saymo answer-cockpit action -p PROFILE --session SESSION --action speak` | Approve and play approved draft text through local TTS/playback gates |
 | `saymo answer-audit report -p PROFILE --session SESSION -o REPORT.md` | Export sanitized trigger/draft/action audit evidence |
 | `saymo trigger-samples list -p PROFILE --session SESSION --speaker other --decision accepted` | Filter saved samples for review |
 | `saymo trigger-samples queue -p PROFILE --session SESSION` | Show prioritized post-call samples for review |
