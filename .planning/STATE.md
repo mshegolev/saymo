@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Live Review + Safe Approved Speak
-status: Defining requirements and roadmap for v1.5
-stopped_at: v1.5 Live Review + Safe Approved Speak started from real-call recording gaps.
+status: v1.5 roadmap ready; next phase is 18 Post-call Review Queue
+stopped_at: v1.5 roadmap created; next step is $gsd-plan-phase 18.
 last_updated: "2026-05-21"
-last_activity: "2026-05-21 - started v1.5 Live Review + Safe Approved Speak"
+last_activity: "2026-05-21 - created v1.5 requirements and roadmap"
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 18
   completed_plans: 0
   percent: 0
 ---
@@ -26,20 +26,20 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements and roadmap for v1.5
-Last activity: 2026-05-21 - selected v1.5 scope from the
-`conversation-20260521-1701-20260521-170118` recording: speaker labels are all
-unknown, handoff candidates include likely false positives, and approved drafts
-still need safe playback wiring.
+Phase: 18 - Post-call Review Queue
+Plan: Not started
+Status: Roadmap ready; Phase 18 is next
+Last activity: 2026-05-21 - created v1.5 requirements and roadmap from the
+real-call recording gaps: speaker labels are all unknown, handoff candidates
+include likely false positives, and approved drafts still need safe playback
+wiring.
 
 Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: pending roadmap
+- Total plans planned: 18
 - Plans completed: 0
 - Average duration: pending
 - Total execution time: pending
@@ -53,7 +53,13 @@ Progress: [----------] 0%
 
 **By Phase:**
 
-Pending roadmap creation.
+| Phase | Plans | Total | Status |
+|-------|-------|-------|--------|
+| 18. Post-call Review Queue | 4 | 0/4 | pending |
+| 19. Addressing v2 | 4 | 0/4 | pending |
+| 20. Speaker Bootstrap | 3 | 0/3 | pending |
+| 21. Approved Draft Playback | 4 | 0/4 | pending |
+| 22. Regression Replay | 3 | 0/3 | pending |
 
 **Recent Trend:**
 - v1.3 added optional diarization diagnostics, session sidecars, reviewable
@@ -79,11 +85,14 @@ Recent decisions affecting current work:
 - v1.3: Diarization must be optional, disabled by default, and review-first.
 - v1.4: Generated answer drafts stay pending until explicit cockpit action;
   `speak` records approval but does not auto-play generated speech.
+- v1.5: Real captured sessions should become regression fixtures, but raw
+  audio and transcripts stay local and are not committed.
+- v1.5: Approved generated drafts may play only after an explicit user action
+  and existing playback safety checks pass.
 
 ### Pending Todos
 
-Define v1.5 requirements and roadmap, then start Phase 18 with
-`$gsd-plan-phase 18`.
+Start Phase 18 with `$gsd-plan-phase 18`.
 
 ### Blockers/Concerns
 
@@ -104,5 +113,5 @@ Define v1.5 requirements and roadmap, then start Phase 18 with
 ## Session Continuity
 
 Last session: 2026-05-21
-Stopped at: v1.5 requirements and roadmap creation in progress.
+Stopped at: v1.5 roadmap ready; next step is `$gsd-plan-phase 18`.
 Resume file: None

@@ -2,7 +2,23 @@
 
 ## Current
 
-No active milestone. Start the next cycle with `$gsd-new-milestone`.
+### v1.5 Live Review + Safe Approved Speak
+
+**Started:** 2026-05-21
+**Status:** Active
+
+Focus: make the live loop reliable after real call recordings by improving
+post-call review, handoff detection, speaker bootstrapping, approved draft
+playback, and regression replay.
+
+Planned:
+- Prioritized post-call review queue for handoffs, questions, mentions, and
+  classifier-critical labels.
+- Addressing v2 to separate direct handoffs from incidental name mentions.
+- Speaker bootstrap to reduce `unknown` coverage without required live
+  diarization.
+- Safe playback of explicitly approved generated drafts.
+- Saved-session regression replay and sanitized reliability reports.
 
 ## Completed
 
