@@ -187,6 +187,38 @@ def test_list_trigger_sessions_refreshes_summary(tmp_path):
     assert sessions[0].summary.skipped_silence == 1
 
 
+def test_list_trigger_sessions_ignores_meeting_memory_sidecars(tmp_path):
+    session = start_trigger_session(
+        base_dir=tmp_path,
+        profile="daily",
+        session_name="daily",
+        started_at="2026-05-20T10:00:00",
+    )
+    _write_session_sample(tmp_path, session_id=session.session_id, category="question")
+    finish_trigger_session(
+        base_dir=tmp_path,
+        session=session,
+        ended_at="2026-05-20T10:00:10",
+        status="completed",
+    )
+    sidecar = tmp_path / "daily" / "_sessions" / f"{session.session_id}.transcript.json"
+    sidecar.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "profile": "daily",
+                "session_id": session.session_id,
+                "segments": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    sessions = list_trigger_sessions(tmp_path, profile="daily")
+
+    assert [s.session_id for s in sessions] == [session.session_id]
+
+
 def test_basic_training_readiness_labels():
     assert basic_training_readiness(saved_samples=0, answer_decisions={}) == "empty"
     assert (
