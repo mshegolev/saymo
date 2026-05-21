@@ -1,44 +1,46 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: Live Conversation Memory + Answer Cockpit
-status: Milestone v1.4 archived; no active milestone
-stopped_at: v1.4 Live Conversation Memory + Answer Cockpit archived; next step is $gsd-new-milestone.
-last_updated: "2026-05-20"
-last_activity: "2026-05-20 - archived v1.4 Live Conversation Memory + Answer Cockpit"
+milestone: v1.5
+milestone_name: Live Review + Safe Approved Speak
+status: Defining requirements and roadmap for v1.5
+stopped_at: v1.5 Live Review + Safe Approved Speak started from real-call recording gaps.
+last_updated: "2026-05-21"
+last_activity: "2026-05-21 - started v1.5 Live Review + Safe Approved Speak"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-20)
+See: .planning/PROJECT.md (updated 2026-05-21)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Between milestones.
+**Current focus:** v1.5 Live Review + Safe Approved Speak.
 
 ## Current Position
 
-Phase: Complete
-Plan: Complete
-Status: v1.4 archived; no active roadmap phases
-Last activity: 2026-05-20 - archived roadmap, requirements, and milestone
-audit for v1.4 Live Conversation Memory + Answer Cockpit.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements and roadmap for v1.5
+Last activity: 2026-05-21 - selected v1.5 scope from the
+`conversation-20260521-1701-20260521-170118` recording: speaker labels are all
+unknown, handoff candidates include likely false positives, and approved drafts
+still need safe playback wiring.
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: 15
-- Plans completed: 15
+- Total plans planned: pending roadmap
+- Plans completed: 0
 - Average duration: pending
 - Total execution time: pending
 
@@ -51,12 +53,7 @@ Progress: [##########] 100%
 
 **By Phase:**
 
-| Phase | Plans | Total | Status |
-|-------|-------|-------|--------|
-| 14. Meeting Memory Ledger | 4 | 4/4 | complete |
-| 15. Meeting Ask And Search | 3 | 3/3 | complete |
-| 16. Grounded Answer Drafts | 4 | 4/4 | complete |
-| 17. Answer Cockpit And Audit Trail | 4 | 4/4 | complete |
+Pending roadmap creation.
 
 **Recent Trend:**
 - v1.3 added optional diarization diagnostics, session sidecars, reviewable
@@ -85,7 +82,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Start the next milestone with `$gsd-new-milestone` when a new goal is chosen.
+Define v1.5 requirements and roadmap, then start Phase 18 with
+`$gsd-plan-phase 18`.
 
 ### Blockers/Concerns
 
@@ -94,14 +92,17 @@ Start the next milestone with `$gsd-new-milestone` when a new goal is chosen.
 - Manual speaker labels must stay authoritative over inferred suggestions.
 - Real-time diarization is intentionally out of scope until offline session
   suggestions prove reliable.
-- Provider UI regression checks remain deferred beyond v1.3.
+- Provider UI regression checks remain deferred beyond v1.5 unless they are
+  needed for approved draft playback safety.
 - Answer drafts must not become automatic live speaking without explicit user
-  approval.
+  approval; v1.5 may only play approved text through safety-gated playback.
 - Stored transcripts and summaries must stay local, configurable, and
   sanitizable.
+- The 2026-05-21 session should be treated as a local regression fixture, but
+  raw audio/transcripts must not be committed.
 
 ## Session Continuity
 
-Last session: 2026-05-20
-Stopped at: v1.4 archived; next step is `$gsd-new-milestone`.
+Last session: 2026-05-21
+Stopped at: v1.5 requirements and roadmap creation in progress.
 Resume file: None

@@ -24,10 +24,29 @@ ask questions about those sessions with transcript citations, generate pending
 answer drafts grounded in meeting memory and configured sources, and record
 explicit cockpit actions plus sanitized audit trails.
 
-**Status:** v1.4 archived on 2026-05-20. No active milestone is selected.
+**Status:** v1.5 Live Review + Safe Approved Speak started on 2026-05-21.
 
-**Next milestone:** start with `$gsd-new-milestone` when the next product goal
-is chosen.
+The 2026-05-21 recorded session
+`conversation-20260521-1701-20260521-170118` exposed the next reliability
+gaps: all 507 windows are still `speaker=unknown`, both `asked_to_speak`
+samples look like false positives on a name mention, and approved answer
+drafts are not yet routed into the existing safe playback path.
+
+## Current Milestone: v1.5 Live Review + Safe Approved Speak
+
+**Goal:** Make the live loop reliable after real call recordings by improving
+post-call review, handoff detection, speaker bootstrapping, approved draft
+playback, and regression replay.
+
+**Target features:**
+- Prioritized post-call review queue for handoffs, questions, mentions, and
+  speaker/decision labels.
+- Addressing v2 that separates direct handoffs from incidental name mentions.
+- Speaker bootstrap workflow that reduces `unknown` coverage without requiring
+  always-on diarization.
+- Approved draft playback through existing TTS/playback safety paths.
+- Regression replay over saved sessions with false-positive, missed-handoff,
+  question-noise, and speaker-coverage metrics.
 
 ## Requirements
 
@@ -76,7 +95,17 @@ is chosen.
 
 ### Active
 
-(None — start the next milestone with `$gsd-new-milestone`.)
+- [ ] User can review a completed call through a prioritized queue that moves
+  likely handoffs, questions, name mentions, and unlabeled speaker windows to
+  the top.
+- [ ] User can correct false handoffs where Saymo treats an incidental name
+  mention as a request to speak.
+- [ ] User can bootstrap enough speaker labels from a completed session that
+  classifier readiness can distinguish `me`, `other`, and `unknown`.
+- [ ] User can approve a generated draft and have Saymo play only that approved
+  text through the existing local TTS/playback path with cancel and audit.
+- [ ] User can replay a saved session as a regression fixture and see whether
+  addressing, question detection, and speaker coverage improved.
 
 ### Out of Scope
 
@@ -89,9 +118,9 @@ is chosen.
   diarization engines optional and disabled until configured.
 - Real-time live-call diarization in `saymo auto` — this milestone focuses on
   offline captured sessions so latency and false-positive risk stay bounded.
-- Auto-speaking generated answer drafts without explicit approval — v1.4
-  records approval in the cockpit but does not automatically play generated
-  draft text.
+- Auto-speaking generated answer drafts without explicit approval — v1.5 may
+  play explicitly approved drafts, but unapproved generated text must never
+  reach the call.
 - Native macOS capture without BlackHole — useful future work, but separate
   from the local memory/cockpit loop.
 
@@ -107,6 +136,12 @@ is chosen.
   classified trigger sample capture, session-ledger review, classifier
   readiness, optional offline speaker diarization review, local meeting memory,
   cited meeting ask, answer drafts, and answer-cockpit audit trails.
+- The first long v1.4-era real recording saved 507 transcript windows with
+  complete coverage, but all speaker labels remained `unknown`; classifier
+  readiness reported `not_ready` because no accepted/rejected labels exist.
+- The same recording produced two `asked_to_speak` candidates that are likely
+  false positives: "я еще помогал Миша" and "Первый тест написал Миша
+  Мельникова". These should be regression cases for Addressing v2.
 - GitHub ecosystem review found that local meeting assistants are usually
   strong at transcription, summaries, search, or meeting bots, while Saymo's
   differentiating direction is a local "listen and answer as me" flow with
@@ -137,7 +172,8 @@ is chosen.
 | Require a readiness gate before live classifier assist | Learned behavior should be opt-in and evidence-backed per profile | ✓ Implemented in Phase 10 |
 | Keep diarization optional and review-first | Speaker suggestions are useful only after the user can inspect and correct them locally | ✓ Implemented in v1.3 |
 | Build answer cockpit before autonomous speaking | The user must be able to inspect trigger evidence and approve a draft before Saymo talks in a live call | ✓ Implemented in v1.4 |
-| Keep generated-draft playback approval-only for now | Approval/audit is safer than wiring new generated text directly into live playback before more live testing | — Pending |
+| Use real recorded sessions as regression fixtures | False positives and unknown-speaker coverage are visible only against actual call audio | — Pending in v1.5 |
+| Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | — Pending in v1.5 |
 
 ---
-*Last updated: 2026-05-20 after archiving milestone v1.4*
+*Last updated: 2026-05-21 after starting milestone v1.5*
