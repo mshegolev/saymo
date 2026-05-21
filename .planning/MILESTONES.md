@@ -2,25 +2,39 @@
 
 ## Current
 
+None.
+
+Next step: run `$gsd-new-milestone` when the next milestone goal is ready.
+
+## Completed
+
 ### v1.5 Live Review + Safe Approved Speak
 
 **Started:** 2026-05-21
-**Status:** Active
+**Completed:** 2026-05-21
+**Archived:** 2026-05-21
+**Status:** Complete
 
 Focus: make the live loop reliable after real call recordings by improving
 post-call review, handoff detection, speaker bootstrapping, approved draft
 playback, and regression replay.
 
-Planned:
+Delivered:
 - Prioritized post-call review queue for handoffs, questions, mentions, and
   classifier-critical labels.
-- Addressing v2 to separate direct handoffs from incidental name mentions.
-- Speaker bootstrap to reduce `unknown` coverage without required live
-  diarization.
-- Safe playback of explicitly approved generated drafts.
-- Saved-session regression replay and sanitized reliability reports.
+- Addressing v2 that separates direct handoffs from incidental name mentions
+  and explains why Saymo answers, waits, or skips.
+- Speaker bootstrap workflow to reduce `unknown` coverage without required
+  live diarization.
+- Safe playback of explicitly approved generated drafts through local
+  TTS/playback gates.
+- Saved-session regression replay with sanitized reliability reports.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.5-ROADMAP.md`
+- `.planning/milestones/v1.5-REQUIREMENTS.md`
+- `.planning/milestones/v1.5-MILESTONE-AUDIT.md`
+- `.planning/milestones/v1.5-phases/`
 
 ### v1.4 Live Conversation Memory + Answer Cockpit
 

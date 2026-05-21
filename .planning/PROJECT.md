@@ -18,20 +18,30 @@ enough that the call still feels live.
 
 ## Current State
 
-Saymo has shipped milestone v1.4 Live Conversation Memory + Answer Cockpit. The
+Saymo has shipped milestone v1.5 Live Review + Safe Approved Speak. The
 product can build local transcript ledgers from captured sessions, search and
 ask questions about those sessions with transcript citations, generate pending
-answer drafts grounded in meeting memory and configured sources, and record
-explicit cockpit actions plus sanitized audit trails.
+answer drafts grounded in meeting memory and configured sources, record
+explicit cockpit actions plus sanitized audit trails, review real captured
+sessions, reduce incidental name-handoff false positives, bootstrap speaker
+labels, play only approved generated drafts, and replay saved sessions as local
+regression fixtures.
 
-**Status:** v1.5 Live Review + Safe Approved Speak started on 2026-05-21.
+**Status:** v1.5 Live Review + Safe Approved Speak archived on 2026-05-21.
+No active milestone is defined; the next step is `$gsd-new-milestone`.
 
-The 2026-05-21 recorded session exposed the next reliability gaps: all 507
-windows are still `speaker=unknown`, both `asked_to_speak` samples look like
-false positives on a name mention, and approved answer drafts are not yet
-routed into the existing safe playback path.
+The 2026-05-21 recorded session exposed reliability gaps that v1.5 addressed:
+`speaker=unknown` coverage can now be reviewed and bootstrapped, incidental
+name mentions can be separated from direct handoffs, approved answer drafts can
+use the safe playback path, and saved sessions can be replayed as regression
+fixtures.
 
-## Current Milestone: v1.5 Live Review + Safe Approved Speak
+## Current Milestone: None
+
+No active milestone is currently open. v1.5 is archived under
+`.planning/milestones/`.
+
+## Last Completed Milestone: v1.5 Live Review + Safe Approved Speak
 
 **Goal:** Make the live loop reliable after real call recordings by improving
 post-call review, handoff detection, speaker bootstrapping, approved draft
@@ -110,7 +120,8 @@ playback, and regression replay.
 
 ### Active
 
-No active v1.5 requirements remain.
+No active requirements remain. Define the next requirement set with
+`$gsd-new-milestone`.
 
 ### Out of Scope
 
@@ -182,4 +193,4 @@ No active v1.5 requirements remain.
 | Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | Implemented in v1.5 |
 
 ---
-*Last updated: 2026-05-21 after starting milestone v1.5*
+*Last updated: 2026-05-21 after archiving milestone v1.5*
