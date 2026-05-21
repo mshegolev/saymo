@@ -55,6 +55,34 @@ def test_classifies_name_mention_without_handoff_as_mentioned_me():
     assert sample.addressing == "mentioned_not_addressed"
 
 
+def test_classifies_plain_name_mention_as_mentioned_me():
+    sample = classify_trigger_sample(
+        "I helped John with the review yesterday",
+        trigger_phrases=["John"],
+        rms=0.04,
+        peak=0.4,
+    )
+
+    assert sample.category == "mentioned_me"
+    assert sample.trigger is True
+    assert sample.will_answer is False
+    assert sample.reason == "plain trigger mention without handoff evidence"
+
+
+def test_classifies_full_name_mention_as_mentioned_me():
+    sample = classify_trigger_sample(
+        "John Doe prepared the first draft",
+        trigger_phrases=["John"],
+        rms=0.04,
+        peak=0.4,
+    )
+
+    assert sample.category == "mentioned_me"
+    assert sample.trigger is True
+    assert sample.will_answer is False
+    assert sample.reason == "full-name or surname mention"
+
+
 def test_classifies_floor_handoff_as_asked_to_speak():
     sample = classify_trigger_sample(
         "Спасибо. Словом, Миша.",

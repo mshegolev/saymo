@@ -143,6 +143,13 @@ meetings:
     source: obsidian
     trigger_phrases:
       - "Your Name"
+    # Optional addressing overrides for this profile. Patterns are regular
+    # expressions; use {trigger} where the matched trigger phrase should appear.
+    # addressing:
+    #   handoff_patterns:
+    #     - "\\bпусть\\s+{trigger}\\s+ответит\\b"
+    #   mention_only_patterns:
+    #     - "\\bэскалировали\\s+{trigger}\\b"
     # Optional live tuning just for this profile:
     # live:
     #   chunk_seconds: 3.0

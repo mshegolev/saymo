@@ -313,6 +313,8 @@ saymo answer-cockpit show --draft-json ~/.saymo/trigger_samples/draft.json
 saymo answer-cockpit action -p personal --session daily-2026-05-20 --action speak
 saymo answer-audit report -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/answer-audit.md
 saymo trigger-samples list -p personal --session daily-2026-05-20 --speaker other
+saymo trigger-samples queue -p personal --session daily-2026-05-20
+saymo trigger-samples progress -p personal --session daily-2026-05-20
 saymo trigger-samples list -p personal --classifier-disagreement --model-dir ~/.saymo/models/trigger_classifier
 saymo trigger-samples label ~/.saymo/trigger_samples/personal/question/<sample>.json --speaker other
 saymo trigger-samples speaker-suggestion ~/.saymo/trigger_samples/personal/question/<sample>.json --accept
@@ -351,7 +353,11 @@ text.
 `trigger-sessions list` shows one row per capture run with saved-sample counts,
 skipped silence windows, and a basic readiness hint. `trigger-sessions summary`
 prints category, speaker, and answer-decision counts for one meeting session.
-Use `trigger-samples category` when the automatic bucket is wrong, and
+Use `trigger-samples queue` to see the highest-value handoff, question,
+mention, unknown-speaker, and unlabeled-decision windows first. Use
+`trigger-samples progress` to see unknown speaker counts, accepted/rejected
+labels, and classifier-readiness blockers for one session. Use
+`trigger-samples category` when the automatic bucket is wrong, and
 `trigger-samples review` when you want to walk a filtered queue after a call.
 `trigger-classifier readiness` and `evaluate` must look healthy before enabling
 live assist, and `enable` requires an existing trained classifier artifact.
@@ -359,6 +365,12 @@ Saymo stores a fingerprint of that model and disables live assist if the model
 is missing or changed. Live assist only uses transcript/speaker features and
 can downgrade an already deterministic answer candidate to skip; it cannot
 bypass trigger/addressing checks.
+
+Per-profile addressing can be tuned under `meetings.<profile>.addressing` with
+`handoff_patterns` and `mention_only_patterns`. Patterns are regexes and may
+use `{trigger}` as the matched trigger placeholder. This is useful when local
+phrasing makes a name mention look like a handoff, or when your team uses a
+specific phrase to pass the floor.
 
 `meeting-memory build` creates a full-session local transcript sidecar under
 `~/.saymo/trigger_samples/<profile>/_sessions/`. `meeting-summary`,

@@ -60,8 +60,63 @@ def test_trigger_check_text_reports_addressed_question(tmp_path):
     assert result.exit_code == 0
     assert "trigger: yes" in result.output
     assert "addressing: addressed_to_me" in result.output
+    assert "matched phrase: John" in result.output
+    assert "decision path:" in result.output
+    assert "addressing=addressed_to_me" in result.output
+    assert "action=wait_for_confirmation" in result.output
     assert "question: yes" in result.output
     assert "response:" in result.output
+
+
+def test_trigger_check_uses_profile_addressing_patterns(tmp_path):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        textwrap.dedent(
+            """
+            user:
+              name: "John"
+              name_variants:
+                - "John"
+              language: ru
+            meetings:
+              personal:
+                description: "Personal"
+                provider: glip
+                team: false
+                source: obsidian
+                trigger_phrases:
+                  - "John"
+                addressing:
+                  mention_only_patterns:
+                    - "\\\\bэскалировали\\\\s+{trigger}\\\\b"
+            responses:
+              enabled: true
+              confidence_threshold: 0.6
+              live_fallback: false
+              intent_classifier: false
+              library: {}
+            """
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "trigger-check",
+            "--profile",
+            "personal",
+            "--text",
+            "эскалировали John как владельцу задачи",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "addressing: mentioned_not_addressed" in result.output
+    assert "configured mention-only pattern" in result.output
+    assert "auto action: skip" in result.output
 
 
 def test_diarization_check_reports_disabled_by_default(tmp_path):

@@ -97,11 +97,12 @@ playback, and regression replay.
 - ✓ User can see post-call review progress with unknown speaker counts,
   answer-decision coverage, accepted/rejected labels, and classifier-readiness
   blockers.
+- ✓ User can correct false handoffs where Saymo treats an incidental name
+  mention as a request to speak.
+- ✓ User can tune per-profile handoff and mention-only addressing patterns.
 
 ### Active
 
-- [ ] User can correct false handoffs where Saymo treats an incidental name
-  mention as a request to speak.
 - [ ] User can bootstrap enough speaker labels from a completed session that
   classifier readiness can distinguish `me`, `other`, and `unknown`.
 - [ ] User can approve a generated draft and have Saymo play only that approved
@@ -175,7 +176,7 @@ playback, and regression replay.
 | Require a readiness gate before live classifier assist | Learned behavior should be opt-in and evidence-backed per profile | ✓ Implemented in Phase 10 |
 | Keep diarization optional and review-first | Speaker suggestions are useful only after the user can inspect and correct them locally | ✓ Implemented in v1.3 |
 | Build answer cockpit before autonomous speaking | The user must be able to inspect trigger evidence and approve a draft before Saymo talks in a live call | ✓ Implemented in v1.4 |
-| Use real recorded sessions as regression fixtures | False positives and unknown-speaker coverage are visible only against actual call audio | — Pending in v1.5 |
+| Use real recorded sessions as regression fixtures | False positives and unknown-speaker coverage are visible only against actual call audio | In progress in v1.5 |
 | Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | — Pending in v1.5 |
 
 ---

@@ -211,6 +211,34 @@ def test_load_config_populates_meeting_memory_section(tmp_path):
     assert cfg.meeting_memory.summary_max_items == 3
 
 
+def test_get_meeting_preserves_addressing_patterns(tmp_path):
+    yaml_content = textwrap.dedent("""\
+        meetings:
+          personal:
+            description: "Personal"
+            trigger_phrases:
+              - "John"
+            addressing:
+              handoff_patterns:
+                - "\\\\bпусть\\\\s+{trigger}\\\\s+ответит\\\\b"
+              mention_only_patterns:
+                - "\\\\bэскалировали\\\\s+{trigger}\\\\b"
+    """)
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml_content, encoding="utf-8")
+
+    cfg = load_config(config_path=str(config_path))
+    meeting = cfg.get_meeting("personal")
+
+    assert meeting is not None
+    assert meeting.addressing["handoff_patterns"] == [
+        "\\bпусть\\s+{trigger}\\s+ответит\\b"
+    ]
+    assert meeting.addressing["mention_only_patterns"] == [
+        "\\bэскалировали\\s+{trigger}\\b"
+    ]
+
+
 def test_load_config_resolves_env_vars_in_yaml(tmp_path, monkeypatch):
     monkeypatch.setenv("SAYMO_JIRA_TOKEN", "tok-abc")
     yaml_content = textwrap.dedent("""\

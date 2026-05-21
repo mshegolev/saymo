@@ -18,14 +18,45 @@ from saymo.commands import (
 # auto — listen for name trigger and speak automatically
 # ---------------------------------------------------------------------------
 
-def _classify_trigger_window(config, transcript_window: str, trigger_phrases: list[str]):
+def _classify_trigger_window(
+    config,
+    transcript_window: str,
+    trigger_phrases: list[str],
+    meeting=None,
+):
     from saymo.analysis.addressing import classify_addressing, expand_trigger_phrases
 
     expanded = expand_trigger_phrases(
         trigger_phrases,
         (config.vocabulary or {}).get("fuzzy_expansions"),
     )
-    return classify_addressing(transcript_window, expanded)
+    return classify_addressing(
+        transcript_window,
+        expanded,
+        **_addressing_pattern_options(meeting),
+    )
+
+
+def _addressing_pattern_options(meeting) -> dict[str, tuple[str, ...]]:
+    addressing = getattr(meeting, "addressing", None) if meeting else None
+    if not isinstance(addressing, dict):
+        return {"handoff_patterns": (), "mention_only_patterns": ()}
+    return {
+        "handoff_patterns": _config_pattern_list(addressing.get("handoff_patterns")),
+        "mention_only_patterns": _config_pattern_list(
+            addressing.get("mention_only_patterns")
+        ),
+    }
+
+
+def _config_pattern_list(value) -> tuple[str, ...]:
+    if not value:
+        return ()
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, (list, tuple)):
+        return tuple(str(item) for item in value if str(item).strip())
+    return ()
 
 
 def _should_answer_trigger_window(
@@ -471,7 +502,12 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                 console.print("[dim]Manual speak hotkey: using prepared playback[/]")
             else:
                 addressing_t0 = time.monotonic()
-                addressing = _classify_trigger_window(config, transcript_window, trigger_phrases)
+                addressing = _classify_trigger_window(
+                    config,
+                    transcript_window,
+                    trigger_phrases,
+                    meeting,
+                )
                 addressing_ms = (time.monotonic() - addressing_t0) * 1000
                 if not should_answer_decision(addressing):
                     console.print(

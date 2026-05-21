@@ -338,6 +338,8 @@ Call audio → Multi-Output Device → Headphones (you hear others)
 | `saymo answer-cockpit action -p PROFILE --session SESSION --action speak` | Record explicit speak/edit/skip/takeover action; generated drafts do not auto-play |
 | `saymo answer-audit report -p PROFILE --session SESSION -o REPORT.md` | Export sanitized trigger/draft/action audit evidence |
 | `saymo trigger-samples list -p PROFILE --session SESSION --speaker other --decision accepted` | Filter saved samples for review |
+| `saymo trigger-samples queue -p PROFILE --session SESSION` | Show prioritized post-call samples for review |
+| `saymo trigger-samples progress -p PROFILE --session SESSION` | Show review coverage and classifier-readiness blockers |
 | `saymo trigger-samples speaker-suggestion SAMPLE.json --accept` | Accept/reject/override one sidecar speaker suggestion |
 | `saymo trigger-samples category SAMPLE.json --category mentioned_me` | Correct the stored sample category |
 | `saymo trigger-samples review -p PROFILE --session SESSION` | Replay/relabel a filtered review queue |

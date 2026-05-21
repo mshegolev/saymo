@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Live Review + Safe Approved Speak
-status: Phase 18 complete; next phase is 19 Addressing v2
-stopped_at: Phase 18 complete; next step is Phase 19 Addressing v2.
+status: Phase 19 complete; next phase is 20 Speaker Bootstrap
+stopped_at: Phase 19 complete; next step is Phase 20 Speaker Bootstrap.
 last_updated: "2026-05-21"
-last_activity: "2026-05-21 - completed Phase 18 post-call review queue"
+last_activity: "2026-05-21 - completed Phase 19 Addressing v2"
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 18
-  completed_plans: 4
-  percent: 22
+  completed_plans: 8
+  percent: 44
 ---
 
 # Project State
@@ -26,19 +26,19 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 19 - Addressing v2
+Phase: 20 - Speaker Bootstrap
 Plan: Not started
-Status: Phase 18 complete; Phase 19 is next
-Last activity: 2026-05-21 - added prioritized review queue and progress
-diagnostics for completed trigger-capture sessions.
+Status: Phase 19 complete; Phase 20 is next
+Last activity: 2026-05-21 - added Addressing v2 mention-only heuristics,
+explain output, and per-profile pattern tuning.
 
-Progress: [##--------] 22%
+Progress: [####------] 44%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 18
-- Plans completed: 4
+- Plans completed: 8
 - Average duration: pending
 - Total execution time: pending
 
@@ -54,7 +54,7 @@ Progress: [##--------] 22%
 | Phase | Plans | Total | Status |
 |-------|-------|-------|--------|
 | 18. Post-call Review Queue | 4 | 4/4 | complete |
-| 19. Addressing v2 | 4 | 0/4 | pending |
+| 19. Addressing v2 | 4 | 4/4 | complete |
 | 20. Speaker Bootstrap | 3 | 0/3 | pending |
 | 21. Approved Draft Playback | 4 | 0/4 | pending |
 | 22. Regression Replay | 3 | 0/3 | pending |
@@ -90,7 +90,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-Start Phase 19 Addressing v2.
+Start Phase 20 Speaker Bootstrap.
 
 ### Blockers/Concerns
 
@@ -111,5 +111,5 @@ Start Phase 19 Addressing v2.
 ## Session Continuity
 
 Last session: 2026-05-21
-Stopped at: Phase 18 complete; next step is Phase 19 Addressing v2.
+Stopped at: Phase 19 complete; next step is Phase 20 Speaker Bootstrap.
 Resume file: None

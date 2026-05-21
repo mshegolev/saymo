@@ -20,6 +20,60 @@ def test_direct_question_after_name_is_addressed():
     assert should_answer_decision(decision) is True
 
 
+def test_plain_non_question_name_mention_is_not_handoff():
+    decision = classify_addressing(
+        "I helped John with the review yesterday",
+        trigger_phrases=["John"],
+    )
+
+    assert decision.label == "mentioned_not_addressed"
+    assert decision.reason == "plain trigger mention without handoff evidence"
+    assert should_answer_decision(decision) is False
+
+
+def test_full_name_statement_is_not_handoff():
+    decision = classify_addressing(
+        "John Doe prepared the first draft",
+        trigger_phrases=["John"],
+    )
+
+    assert decision.label == "mentioned_not_addressed"
+    assert decision.reason == "full-name or surname mention"
+    assert should_answer_decision(decision) is False
+
+
+def test_bare_name_call_is_addressed_for_confirmation():
+    decision = classify_addressing("John", trigger_phrases=["John"])
+
+    assert decision.label == "addressed_to_me"
+    assert decision.reason == "bare trigger call"
+    assert should_answer_decision(decision) is True
+
+
+def test_configured_handoff_pattern_is_addressed():
+    decision = classify_addressing(
+        "пусть John ответит по этому вопросу",
+        trigger_phrases=["John"],
+        handoff_patterns=[r"\bпусть\s+{trigger}\s+ответит\b"],
+    )
+
+    assert decision.label == "addressed_to_me"
+    assert decision.reason == "configured handoff pattern"
+    assert should_answer_decision(decision) is True
+
+
+def test_configured_mention_only_pattern_skips():
+    decision = classify_addressing(
+        "эскалировали John как владельцу задачи",
+        trigger_phrases=["John"],
+        mention_only_patterns=[r"\bэскалировали\s+{trigger}\b"],
+    )
+
+    assert decision.label == "mentioned_not_addressed"
+    assert decision.reason == "configured mention-only pattern"
+    assert should_answer_decision(decision) is False
+
+
 def test_narrated_mention_is_not_addressed():
     decision = classify_addressing(
         "как John вчера говорил, надо сначала проверить логи",

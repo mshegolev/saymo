@@ -53,6 +53,8 @@ def classify_trigger_sample(
     rms: float = 0.0,
     peak: float = 0.0,
     silence_peak_threshold: float = 0.001,
+    handoff_patterns: list[str] | tuple[str, ...] | None = None,
+    mention_only_patterns: list[str] | tuple[str, ...] | None = None,
 ) -> TriggerCaptureSample:
     """Classify a transcribed call window for trigger-training review.
 
@@ -87,7 +89,12 @@ def classify_trigger_sample(
         fuzzy_expansions=fuzzy_expansions,
     )
     triggered = detector.check(text) if text else False
-    decision = classify_addressing(text, expanded)
+    decision = classify_addressing(
+        text,
+        expanded,
+        handoff_patterns=handoff_patterns,
+        mention_only_patterns=mention_only_patterns,
+    )
     question = bool(decision.is_question or looks_like_question(text))
     will_answer = bool(triggered and should_answer_decision(decision))
 

@@ -23,16 +23,16 @@ Requirements for milestone v1.5 Live Review + Safe Approved Speak.
 
 ### Addressing v2
 
-- [ ] **INT-02**: User can distinguish direct handoffs from incidental name
+- [x] **INT-02**: User can distinguish direct handoffs from incidental name
   mentions such as "I helped John" or "John Doe" without treating every
   recognized name as `addressed_to_me`.
-- [ ] **INT-03**: User can see an addressing explanation in `trigger-check`
+- [x] **INT-03**: User can see an addressing explanation in `trigger-check`
   that names the matched phrase, surrounding evidence, decision path, and why
   Saymo will answer, wait for confirmation, or skip.
-- [ ] **INT-04**: User can tune addressing behavior per profile with explicit
+- [x] **INT-04**: User can tune addressing behavior per profile with explicit
   patterns for handoff phrases, mention-only contexts, and surname/full-name
   ambiguity without hardcoding private names in source.
-- [ ] **INT-05**: User can replay saved false-positive and true-handoff samples
+- [x] **INT-05**: User can replay saved false-positive and true-handoff samples
   against Addressing v2 and verify that known name-mention false positives are
   skipped.
 
@@ -122,10 +122,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REV-05 | Phase 18 | Complete |
 | REV-06 | Phase 18 | Complete |
 | REV-07 | Phase 18 | Complete |
-| INT-02 | Phase 19 | Pending |
-| INT-03 | Phase 19 | Pending |
-| INT-04 | Phase 19 | Pending |
-| INT-05 | Phase 19 | Pending |
+| INT-02 | Phase 19 | Complete |
+| INT-03 | Phase 19 | Complete |
+| INT-04 | Phase 19 | Complete |
+| INT-05 | Phase 19 | Complete |
 | SPKR-04 | Phase 20 | Pending |
 | SPKR-05 | Phase 20 | Pending |
 | QUAL-04 | Phase 20 | Pending |

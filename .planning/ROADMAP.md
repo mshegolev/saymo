@@ -37,7 +37,7 @@ regression fixtures.
 
 - [x] **Phase 18: Post-call Review Queue** - Prioritize real-session samples
   that most affect handoff, speaker, and classifier quality.
-- [ ] **Phase 19: Addressing v2** - Separate direct handoffs from incidental
+- [x] **Phase 19: Addressing v2** - Separate direct handoffs from incidental
   name mentions and explain the decision path.
 - [ ] **Phase 20: Speaker Bootstrap** - Reduce unknown-speaker coverage for
   completed sessions without requiring live diarization.
@@ -90,10 +90,10 @@ while keeping true handoff detection explainable and tunable.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 19-01: Add addressing evidence model and explainable decision output
-- [ ] 19-02: Add direct-handoff vs mention-only heuristics
-- [ ] 19-03: Add profile-configured handoff and mention-pattern tuning
-- [ ] 19-04: Add saved-sample replay tests for false positives and true handoffs
+- [x] 19-01: Add addressing evidence model and explainable decision output
+- [x] 19-02: Add direct-handoff vs mention-only heuristics
+- [x] 19-03: Add profile-configured handoff and mention-pattern tuning
+- [x] 19-04: Add saved-sample replay tests for false positives and true handoffs
 
 ### Phase 20: Speaker Bootstrap
 **Goal**: Turn completed sessions with `speaker=unknown` into usable
@@ -165,7 +165,7 @@ Phases execute in numeric order: 18 -> 19 -> 20 -> 21 -> 22
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 18. Post-call Review Queue | v1.5 | 4/4 | Complete | 2026-05-21 |
-| 19. Addressing v2 | v1.5 | 0/4 | Pending | — |
+| 19. Addressing v2 | v1.5 | 4/4 | Complete | 2026-05-21 |
 | 20. Speaker Bootstrap | v1.5 | 0/3 | Pending | — |
 | 21. Approved Draft Playback | v1.5 | 0/4 | Pending | — |
 | 22. Regression Replay | v1.5 | 0/3 | Pending | — |

@@ -255,6 +255,10 @@ class MeetingProfile:
     # Optional per-profile overrides for the live call loop. Supported keys
     # mirror LiveConfig below.
     live: dict = field(default_factory=dict)
+    # Optional per-profile addressing regexes. Keys:
+    # `handoff_patterns` and `mention_only_patterns`; each pattern may use the
+    # `{trigger}` placeholder.
+    addressing: dict = field(default_factory=dict)
 
 
 @dataclass

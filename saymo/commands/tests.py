@@ -403,6 +403,29 @@ def _trigger_phrases_for_profile(config, profile: str) -> list[str]:
     return config.user.name_variants or ([config.user.name] if config.user.name else [])
 
 
+def _addressing_pattern_options(config, profile: str) -> dict[str, tuple[str, ...]]:
+    meeting = config.get_meeting(profile)
+    addressing = getattr(meeting, "addressing", None) if meeting else None
+    if not isinstance(addressing, dict):
+        return {"handoff_patterns": (), "mention_only_patterns": ()}
+    return {
+        "handoff_patterns": _config_pattern_list(addressing.get("handoff_patterns")),
+        "mention_only_patterns": _config_pattern_list(
+            addressing.get("mention_only_patterns")
+        ),
+    }
+
+
+def _config_pattern_list(value) -> tuple[str, ...]:
+    if not value:
+        return ()
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, (list, tuple)):
+        return tuple(str(item) for item in value if str(item).strip())
+    return ()
+
+
 def _print_trigger_diagnostics(
     config,
     profile: str,
@@ -432,7 +455,11 @@ def _print_trigger_diagnostics(
         fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
     )
     triggered = detector.check(text)
-    decision = classify_addressing(text, expanded)
+    decision = classify_addressing(
+        text,
+        expanded,
+        **_addressing_pattern_options(config, profile),
+    )
     will_answer = triggered and should_answer_decision(decision)
     confirmation_required = bool(getattr(config.safety, "require_confirmation", False))
     confirmation_timeout = _trigger_confirmation_timeout(config)
@@ -451,10 +478,18 @@ def _print_trigger_diagnostics(
     console.print(f"triggers: {', '.join(trigger_phrases) if trigger_phrases else '(none)'}")
     console.print(f"trigger: {'yes' if triggered else 'no'}")
     console.print(f"addressing: {decision.label} ({decision.reason})")
+    console.print(f"matched phrase: {decision.trigger or '-'}")
+    console.print(f"context: {decision.context or '-'}")
+    console.print(f"evidence: {', '.join(decision.evidence) or '-'}")
     console.print(f"question: {'yes' if decision.is_question else 'no'}")
     console.print(f"will answer: {'yes' if will_answer else 'no'}")
     console.print(f"confirmation: {confirmation}")
     console.print(f"auto action: {auto_action}")
+    console.print(
+        "decision path: "
+        f"trigger={'yes' if triggered else 'no'} -> "
+        f"addressing={decision.label} -> action={auto_action}"
+    )
     if classifier_shadow:
         _print_trigger_check_classifier_shadow(
             profile=profile,
@@ -786,6 +821,7 @@ async def _run_provider_latency_probe(
         transcript,
         trigger_phrases,
         (config.vocabulary or {}).get("fuzzy_expansions") or {},
+        **_addressing_pattern_options(config, profile),
     )
     trigger_ms = (time.monotonic() - trigger_t0) * 1000
     action = "answer" if sample.will_answer else "skip"
@@ -1293,6 +1329,7 @@ def _run_trigger_capture(
                     fuzzy,
                     rms=rms,
                     peak=peak,
+                    **_addressing_pattern_options(config, profile),
                 )
                 if sample.category == "silence" and not save_silence:
                     skipped_silence += 1
@@ -2621,7 +2658,11 @@ async def _answer_draft_async(
         fuzzy_expansions=fuzzy,
     )
     expanded = expand_trigger_phrases(trigger_phrases, fuzzy)
-    decision = classify_addressing(question, expanded)
+    decision = classify_addressing(
+        question,
+        expanded,
+        **_addressing_pattern_options(config, profile),
+    )
     triggered = detector.check(question) if question else False
     will_answer = bool(triggered and should_answer_decision(decision))
     trigger_evidence = build_trigger_evidence(
@@ -3678,6 +3719,7 @@ def _evaluate_trigger_records(
             fuzzy,
             rms=record.rms,
             peak=record.peak,
+            **_addressing_pattern_options(config, profile),
         )
         miss = record.category == "asked_to_speak" and not current.will_answer
         false_positive = record.category != "asked_to_speak" and current.will_answer
