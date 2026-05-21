@@ -140,8 +140,9 @@ playback, and regression replay.
   complete coverage, but all speaker labels remained `unknown`; classifier
   readiness reported `not_ready` because no accepted/rejected labels exist.
 - The same recording produced two `asked_to_speak` candidates that are likely
-  false positives: "я еще помогал Миша" and "Первый тест написал Миша
-  Мельникова". These should be regression cases for Addressing v2.
+  false positives: one incidental first-name mention and one full-name/surname
+  mention. These should be regression cases for Addressing v2 without
+  committing raw transcript text.
 - GitHub ecosystem review found that local meeting assistants are usually
   strong at transcription, summaries, search, or meeting bots, while Saymo's
   differentiating direction is a local "listen and answer as me" flow with

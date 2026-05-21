@@ -24,7 +24,7 @@ Requirements for milestone v1.5 Live Review + Safe Approved Speak.
 ### Addressing v2
 
 - [ ] **INT-02**: User can distinguish direct handoffs from incidental name
-  mentions such as "я помогал Миша" or "Миша Мельников" without treating every
+  mentions such as "I helped John" or "John Doe" without treating every
   recognized name as `addressed_to_me`.
 - [ ] **INT-03**: User can see an addressing explanation in `trigger-check`
   that names the matched phrase, surrounding evidence, decision path, and why
