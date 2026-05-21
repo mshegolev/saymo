@@ -26,11 +26,10 @@ explicit cockpit actions plus sanitized audit trails.
 
 **Status:** v1.5 Live Review + Safe Approved Speak started on 2026-05-21.
 
-The 2026-05-21 recorded session
-`conversation-20260521-1701-20260521-170118` exposed the next reliability
-gaps: all 507 windows are still `speaker=unknown`, both `asked_to_speak`
-samples look like false positives on a name mention, and approved answer
-drafts are not yet routed into the existing safe playback path.
+The 2026-05-21 recorded session exposed the next reliability gaps: all 507
+windows are still `speaker=unknown`, both `asked_to_speak` samples look like
+false positives on a name mention, and approved answer drafts are not yet
+routed into the existing safe playback path.
 
 ## Current Milestone: v1.5 Live Review + Safe Approved Speak
 
