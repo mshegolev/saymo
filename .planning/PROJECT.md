@@ -40,9 +40,28 @@ name mentions can be separated from direct handoffs, approved answer drafts can
 use the safe playback path, and saved sessions can be replayed as regression
 fixtures.
 
-The next milestone is not defined yet. Candidate directions should build on
-the now-closed local live loop: repeated real-call validation, native macOS
-control packaging, richer review UI, or further answer quality improvements.
+**Status:** v1.7 Live Reliability Rehearsal started on 2026-05-22.
+
+The next reliability gap is proving the live loop repeatedly before and after
+real calls: the user needs a guided rehearsal, one reliability scorecard per
+session, actionable remediation hints, and safety soak checks that catch
+regressions before trusting Saymo in another meeting.
+
+## Current Milestone: v1.7 Live Reliability Rehearsal
+
+**Goal:** Turn real and rehearsal sessions into a repeatable reliability loop
+that shows whether Saymo is safe enough for the next call and what to fix when
+it is not.
+
+**Target features:**
+- Guided pre-call rehearsal that exercises capture, triggers, handbrake,
+  playback gates, and local control state without needing a real meeting.
+- Session reliability scorecard that combines trigger, addressing, speaker,
+  playback, latency, and handbrake audit evidence.
+- Remediation hints that turn failed checks into concrete config, permission,
+  audio-device, or review actions.
+- Safety soak/replay checks that can run saved sessions and rehearsals as a
+  regression gate.
 
 ## Last Completed Milestone: v1.6 Live Control Handbrake
 
@@ -142,7 +161,13 @@ playback, and regression replay.
 
 ### Active
 
-- Next milestone requirements are not defined yet.
+- User can run a local pre-call rehearsal that proves capture, trigger,
+  hotkey, handbrake, and playback gates before joining a real call.
+- User can inspect one reliability scorecard for a real or rehearsal session.
+- User can get concrete remediation steps when readiness, reliability, or
+  safety checks fail.
+- User can run a repeatable safety soak/regression gate before trusting Saymo
+  in another meeting.
 
 ### Out of Scope
 
@@ -215,6 +240,7 @@ playback, and regression replay.
 | Use real recorded sessions as regression fixtures | False positives and unknown-speaker coverage are visible only against actual call audio | Implemented in v1.5 |
 | Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | Implemented in v1.5 |
 | Prefer an explicit handbrake over hidden automation | During live calls, the user needs visible control and fast recovery more than another autonomous behavior | Implemented in v1.6 |
+| Prove the live loop before trusting it | The next risk is not missing controls, but not knowing whether the whole loop is reliable for the next meeting | Pending in v1.7 |
 
 ---
-*Last updated: 2026-05-22 after completing milestone v1.6*
+*Last updated: 2026-05-22 after starting milestone v1.7*

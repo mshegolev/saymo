@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-status: no active milestone; v1.6 archived
-stopped_at: milestone v1.6 completed and archived; next step is $gsd-new-milestone.
+milestone: v1.7
+milestone_name: Live Reliability Rehearsal
+status: roadmap ready; next phase 27
+stopped_at: milestone v1.7 roadmap created; next step is $gsd-plan-phase 27.
 last_updated: "2026-05-22"
-last_activity: "2026-05-22 - archived v1.6 Live Control Handbrake"
+last_activity: "2026-05-22 - created milestone v1.7 roadmap"
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 15
   completed_plans: 0
   percent: 0
 ---
@@ -22,21 +22,24 @@ See: .planning/PROJECT.md (updated 2026-05-22)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** no active milestone.
+**Current focus:** v1.7 Live Reliability Rehearsal.
 
 ## Current Position
 
 Phase: None
 Plan: None
-Status: v1.6 archived, no active roadmap
-Last activity: 2026-05-22 - archived v1.6 Live Control Handbrake.
+Status: Roadmap ready
+Last activity: 2026-05-22 - created v1.7 roadmap with phases 27-30.
 
 Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- No active milestone.
+- Total plans planned: 15
+- Plans completed: 0
+- Average duration: pending
+- Total execution time: pending
 
 **Historical Velocity:**
 - v1.0 completed 11 plans across 4 phases.
@@ -46,6 +49,15 @@ Progress: [----------] 0%
 - v1.4 completed 15 plans across 4 phases.
 - v1.5 completed 18 plans across 5 phases.
 - v1.6 completed 16 plans across 4 phases.
+
+**By Phase:**
+
+| Phase | Plans | Total | Status |
+|-------|-------|-------|--------|
+| 27. Pre-call Rehearsal Runner | 4 | 0/4 | pending |
+| 28. Session Reliability Scorecard | 4 | 0/4 | pending |
+| 29. Remediation Advisor | 3 | 0/3 | pending |
+| 30. Safety Soak Regression Gate | 4 | 0/4 | pending |
 
 ## Accumulated Context
 
@@ -63,10 +75,12 @@ Recent decisions affecting future work:
   is off or manual takeover is active, Saymo must not speak automatically.
 - v1.6: Global hotkeys and local button controls share one action catalog and
   audit path instead of separate hidden behavior.
+- v1.7: Reliability work should combine real sessions and rehearsal runs
+  without committing raw audio, transcripts, or local meeting content.
 
 ### Pending Todos
 
-Start the next milestone with `$gsd-new-milestone`.
+Plan Phase 27.
 
 ### Blockers/Concerns
 
@@ -90,5 +104,5 @@ Start the next milestone with `$gsd-new-milestone`.
 ## Session Continuity
 
 Last session: 2026-05-22
-Stopped at: milestone v1.6 archived; next step is `$gsd-new-milestone`.
+Stopped at: milestone v1.7 roadmap created; next step is `$gsd-plan-phase 27`.
 Resume file: None

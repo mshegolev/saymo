@@ -1,0 +1,124 @@
+# Requirements: Saymo v1.7 Live Reliability Rehearsal
+
+**Defined:** 2026-05-22
+**Core Value:** Saymo must reliably catch when the user is expected to answer
+and respond fast enough that the call still feels live.
+
+## v1.7 Requirements
+
+Requirements for milestone v1.7 Live Reliability Rehearsal.
+
+### Pre-call Rehearsal
+
+- [ ] **REH-01**: User can run a local pre-call rehearsal for one profile that
+  exercises capture, trigger matching, addressing, hotkey availability, local
+  control state, and playback safety gates without joining a real meeting.
+- [ ] **REH-02**: User can run rehearsal in dry-run mode where Saymo reports
+  what it would speak or block without sending audio into the call output.
+- [ ] **REH-03**: User can save rehearsal results as a local session artifact
+  that can be compared with real capture sessions and replayed later.
+- [ ] **REH-04**: User can see a concise pass/warn/fail summary before a call,
+  including the exact blocking reason for any failed readiness check.
+
+### Reliability Scorecard
+
+- [ ] **REL-01**: User can generate a session reliability scorecard for a real
+  capture session or rehearsal run.
+- [ ] **REL-02**: Scorecard reports trigger outcomes, addressed-to-me
+  decisions, mention-only skips, question noise, missed/false handoffs,
+  speaker coverage, and classifier-readiness impact.
+- [ ] **REL-03**: Scorecard reports playback and handbrake evidence: approved
+  speak attempts, blocked automatic playback, stop/takeover actions, hard
+  disable events, latency, and max-duration interruptions.
+- [ ] **REL-04**: Scorecard exports sanitized Markdown/JSON that omits raw
+  audio, secrets, and local transcript text unless explicitly requested for
+  local-only debugging.
+
+### Remediation Advisor
+
+- [ ] **FIX-01**: User can get actionable remediation hints for failed
+  rehearsal, scorecard, hotkey doctor, auto-preflight, and takeover checks.
+- [ ] **FIX-02**: Remediation hints identify whether the next action is config
+  editing, macOS permission change, audio-device routing, source-data update,
+  review-labeling work, or retesting.
+- [ ] **FIX-03**: User can rerun only the affected check after applying a fix
+  and see whether the warning or blocker is resolved.
+
+### Safety Soak
+
+- [ ] **SOAK-01**: User can run a repeatable safety soak over saved rehearsal
+  artifacts and captured sessions for one profile.
+- [ ] **SOAK-02**: Safety soak fails when automatic speaking occurs while
+  auto-answer is off, manual takeover is active, hard-disable is active, or a
+  generated draft is unapproved.
+- [ ] **SOAK-03**: Safety soak tracks reliability drift against a prior
+  baseline, including false handoffs, missed handoffs, latency, and speaker
+  coverage.
+- [ ] **SOAK-04**: User can run a single command suitable for pre-merge or
+  pre-call validation that summarizes pass/fail status and points to the
+  scorecard/remediation output.
+
+## Future Requirements
+
+Deferred beyond v1.7.
+
+### Native Control Packaging
+
+- User can run Saymo controls from a native macOS menu bar app or LaunchAgent
+  after the rehearsal and scorecard contracts are stable.
+
+### Voice Command Handbrake
+
+- User can control the handbrake by voice once button and hotkey safety have
+  been proven by repeated soak runs.
+
+### Cross-meeting Reliability Baselines
+
+- User can compare reliability across many recurring meetings after per-session
+  scorecards and remediation reports stabilize.
+
+### Rich Visual Cockpit
+
+- User can use a richer browser/native UI for reliability reports after the CLI
+  report contracts are stable.
+
+## Out of Scope
+
+| Feature | Reason |
+|---------|--------|
+| Auto-speaking during rehearsal dry-run | Rehearsal must be safe to run before a real call. |
+| Required native macOS app packaging | v1.7 proves the reliability data contract before packaging controls. |
+| Cloud telemetry or remote dashboards | Reliability evidence must remain local and privacy-preserving. |
+| Committing raw audio or transcripts as fixtures | Real meeting content must stay local and sanitizable. |
+| Changing the core addressing model without scorecard evidence | v1.7 should measure and surface issues before broader detection rewrites. |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| REH-01 | Phase 27 | Pending |
+| REH-02 | Phase 27 | Pending |
+| REH-03 | Phase 27 | Pending |
+| REH-04 | Phase 27 | Pending |
+| REL-01 | Phase 28 | Pending |
+| REL-02 | Phase 28 | Pending |
+| REL-03 | Phase 28 | Pending |
+| REL-04 | Phase 28 | Pending |
+| FIX-01 | Phase 29 | Pending |
+| FIX-02 | Phase 29 | Pending |
+| FIX-03 | Phase 29 | Pending |
+| SOAK-01 | Phase 30 | Pending |
+| SOAK-02 | Phase 30 | Pending |
+| SOAK-03 | Phase 30 | Pending |
+| SOAK-04 | Phase 30 | Pending |
+
+**Coverage:**
+- v1.7 requirements: 15 total
+- Mapped to phases: 15
+- Unmapped: 0
+
+---
+*Requirements defined: 2026-05-22*
+*Last updated: 2026-05-22 after roadmap creation*
