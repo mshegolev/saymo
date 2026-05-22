@@ -9,7 +9,9 @@ local, controllable assistant for standups, Q&A, and takeover moments without
 cloud voice APIs. It can now turn captured call audio into local meeting
 memory and a reviewable answer cockpit, so the user can see why Saymo thinks
 they were addressed, inspect a grounded draft, and decide whether to speak,
-edit, skip, or take over.
+edit, skip, or take over. It also has a local live-control handbrake with
+documented hotkeys, a terminal control surface, and explicit safety state for
+turning auto-answer off, stopping playback, and taking the microphone back.
 
 ## Core Value
 
@@ -18,7 +20,7 @@ enough that the call still feels live.
 
 ## Current State
 
-Saymo has shipped milestone v1.5 Live Review + Safe Approved Speak. The
+Saymo has shipped milestone v1.6 Live Control Handbrake. The
 product can build local transcript ledgers from captured sessions, search and
 ask questions about those sessions with transcript citations, generate pending
 answer drafts grounded in meeting memory and configured sources, record
@@ -27,7 +29,10 @@ sessions, reduce incidental name-handoff false positives, bootstrap speaker
 labels, play only approved generated drafts, and replay saved sessions as local
 regression fixtures.
 
-**Status:** v1.6 Live Control Handbrake started on 2026-05-22.
+It can now expose an operator handbrake during live calls: guide, hotkey
+doctor, local control panel, scriptable action queue, shared runtime state,
+expanded global hotkeys, and audit events for stop/toggle/takeover/skip/status
+actions.
 
 The 2026-05-21 recorded session exposed reliability gaps that v1.5 addressed:
 `speaker=unknown` coverage can now be reviewed and bootstrapped, incidental
@@ -35,32 +40,24 @@ name mentions can be separated from direct handoffs, approved answer drafts can
 use the safe playback path, and saved sessions can be replayed as regression
 fixtures.
 
-The next reliability gap is operator control during live calls: when something
-goes wrong, the user needs an obvious "handbrake" to disable auto-answering,
-stop playback, take the microphone back, and later safely re-enable Saymo.
+The next milestone is not defined yet. Candidate directions should build on
+the now-closed local live loop: repeated real-call validation, native macOS
+control packaging, richer review UI, or further answer quality improvements.
 
-## Current Milestone: v1.6 Live Control Handbrake
+## Last Completed Milestone: v1.6 Live Control Handbrake
 
-**Goal:** Give the user a clear local handbrake for live calls: buttons and
+**Goal:** Give the user a clear local handbrake for live calls: controls and
 macOS hotkeys that turn auto-answer on/off, stop speech, enter manual takeover,
 and explain exactly what state Saymo is in.
 
-**Target features:**
-- Short operator guide for using Saymo safely in a live meeting.
-- One visible runtime control state for auto-answer on/off, paused, speaking,
-  and manual takeover.
-- Button-based local control surface for speak, stop, auto-answer toggle, and
-  takeover.
-- Expanded button/hotkey catalog for approved-draft speak, skip current
-  candidate, capture marker, cockpit/status display, and hard-disable
-  auto-answer.
-- macOS hotkey setup and diagnostics that explain whether the terminal must be
-  focused, whether the Saymo process is running, and whether Accessibility
-  permission is missing.
-- Safety audit and regression checks proving disabled auto-answer cannot speak
-  unexpectedly.
+**Delivered:**
+- Short operator guide for safe live-call control.
+- Shared live-control state model and local command/audit files.
+- Local handbrake panel plus scriptable `live-control-action`.
+- Expanded configurable macOS hotkeys for primary and optional actions.
+- `hotkey-doctor` diagnostics and focused safety regressions.
 
-## Last Completed Milestone: v1.5 Live Review + Safe Approved Speak
+## Previous Milestone: v1.5 Live Review + Safe Approved Speak
 
 **Goal:** Make the live loop reliable after real call recordings by improving
 post-call review, handoff detection, speaker bootstrapping, approved draft
@@ -136,15 +133,16 @@ playback, and regression replay.
   audit.
 - ✓ User can replay a saved session as a regression fixture and see whether
   addressing, question detection, and speaker coverage improved.
+- ✓ User can use a simple guide to know which button or hotkey to press during
+  a live call emergency.
+- ✓ User can toggle auto-answer on/off without killing the call or losing the
+  ability to answer manually.
+- ✓ User can see the current live-control state before trusting Saymo to speak.
+- ✓ User can verify macOS hotkeys and permissions before joining a call.
 
 ### Active
 
-- User can use a simple guide to know which button or hotkey to press during a
-  live call emergency.
-- User can toggle auto-answer on/off without killing the call or losing the
-  ability to answer manually.
-- User can see the current live-control state before trusting Saymo to speak.
-- User can verify macOS hotkeys and permissions before joining a call.
+- Next milestone requirements are not defined yet.
 
 ### Out of Scope
 
@@ -162,6 +160,8 @@ playback, and regression replay.
   reach the call.
 - Native macOS capture without BlackHole — useful future work, but separate
   from the local memory/cockpit loop.
+- Native menu bar app or LaunchAgent for the handbrake — useful after the
+  local CLI/TUI safety contract is proven across more live meetings.
 
 ## Context
 
@@ -214,7 +214,7 @@ playback, and regression replay.
 | Build answer cockpit before autonomous speaking | The user must be able to inspect trigger evidence and approve a draft before Saymo talks in a live call | ✓ Implemented in v1.4 |
 | Use real recorded sessions as regression fixtures | False positives and unknown-speaker coverage are visible only against actual call audio | Implemented in v1.5 |
 | Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | Implemented in v1.5 |
-| Prefer an explicit handbrake over hidden automation | During live calls, the user needs visible control and fast recovery more than another autonomous behavior | Pending in v1.6 |
+| Prefer an explicit handbrake over hidden automation | During live calls, the user needs visible control and fast recovery more than another autonomous behavior | Implemented in v1.6 |
 
 ---
-*Last updated: 2026-05-22 after starting milestone v1.6*
+*Last updated: 2026-05-22 after completing milestone v1.6*

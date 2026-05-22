@@ -2,29 +2,37 @@
 
 ## Current
 
+No active milestone. Start the next cycle with `$gsd-new-milestone`.
+
+## Completed
+
 ### v1.6 Live Control Handbrake
 
 **Started:** 2026-05-22
-**Status:** Active
+**Completed:** 2026-05-22
+**Archived:** 2026-05-22
+**Status:** Complete
 
 Focus: give the user an obvious live-call handbrake: short operator guidance,
 visible buttons, macOS hotkeys, auto-answer on/off state, manual takeover, and
 verification that Saymo cannot speak unexpectedly while disabled.
 
-Planned:
+Delivered:
 - Short guide for operating Saymo during a live call and emergency recovery.
-- Visible live-control state for auto-answer, paused, speaking, and manual
-  takeover.
-- Local button/control surface for speak, stop, auto-answer toggle, and
-  takeover.
-- Expanded button/hotkey actions for approved draft speak, skip, capture
-  marker, cockpit/status, and hard-disable auto-answer.
-- macOS hotkey setup and diagnostics for focus, process, and Accessibility
-  permission behavior.
-- Safety audit and regression checks for disabled auto-answer and manual
-  takeover.
+- Shared live-control state and command queue consumed by `saymo auto`.
+- Local control surface for speak, stop, auto-answer toggle, takeover, and
+  optional safety actions.
+- Expanded global hotkeys for approved-draft request, skip, capture marker,
+  status, and hard-disable.
+- Hotkey doctor diagnostics for listener, process, Accessibility permission,
+  and effective bindings.
+- Audit and regression checks for disabled auto-answer and manual takeover.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.6-ROADMAP.md`
+- `.planning/milestones/v1.6-REQUIREMENTS.md`
+- `.planning/milestones/v1.6-MILESTONE-AUDIT.md`
+- `.planning/milestones/v1.6-phases/`
 
 ### v1.5 Live Review + Safe Approved Speak
 
