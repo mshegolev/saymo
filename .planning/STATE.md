@@ -9,7 +9,7 @@ last_activity: "2026-05-22 - created milestone v1.6 roadmap"
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 15
+  total_plans: 16
   completed_plans: 0
   percent: 0
 ---
@@ -36,7 +36,7 @@ Progress: [----------] 0%
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: 15
+- Total plans planned: 16
 - Plans completed: 0
 - Average duration: pending
 - Total execution time: pending
@@ -56,7 +56,7 @@ Progress: [----------] 0%
 | 23. Operator Guide And Control Vocabulary | 3 | 0/3 | pending |
 | 24. Runtime Handbrake State | 4 | 0/4 | pending |
 | 25. Local Control Surface | 4 | 0/4 | pending |
-| 26. macOS Hotkey Doctor And Safety Regression | 4 | 0/4 | pending |
+| 26. macOS Hotkey Doctor And Safety Regression | 5 | 0/5 | pending |
 
 ## Accumulated Context
 

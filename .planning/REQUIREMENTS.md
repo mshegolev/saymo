@@ -40,6 +40,9 @@ Requirements for milestone v1.6 Live Control Handbrake.
   whether hotkeys are active.
 - [ ] **UI-03**: User can operate the control surface with keyboard shortcuts
   that mirror the configured macOS hotkeys.
+- [ ] **UI-04**: User can expose additional live controls for approved-draft
+  speak, skip current candidate, capture marker, cockpit/status display, and
+  hard-disable auto-answer without crowding the primary emergency controls.
 
 ### macOS Hotkeys
 
@@ -50,6 +53,9 @@ Requirements for milestone v1.6 Live Control Handbrake.
   available or missing.
 - [ ] **HOT-03**: User can customize hotkeys per config/profile and see the
   effective binding names in preflight, guide, and runtime output.
+- [ ] **HOT-04**: User can configure optional global hotkeys for approved-draft
+  speak, skip current candidate, capture marker, cockpit/status display, and
+  hard-disable auto-answer.
 
 ### Safety And Audit
 
@@ -113,16 +119,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-01 | Phase 25 | Pending |
 | UI-02 | Phase 25 | Pending |
 | UI-03 | Phase 25 | Pending |
+| UI-04 | Phase 25 | Pending |
 | HOT-01 | Phase 26 | Pending |
 | HOT-02 | Phase 26 | Pending |
 | HOT-03 | Phase 26 | Pending |
+| HOT-04 | Phase 26 | Pending |
 | SAFE-02 | Phase 24 | Pending |
 | SAFE-03 | Phase 25 | Pending |
 | SAFE-04 | Phase 26 | Pending |
 
 **Coverage:**
-- v1.6 requirements: 16 total
-- Mapped to phases: 16
+- v1.6 requirements: 18 total
+- Mapped to phases: 18
 - Unmapped: 0
 
 ---

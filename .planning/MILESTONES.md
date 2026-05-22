@@ -17,6 +17,8 @@ Planned:
   takeover.
 - Local button/control surface for speak, stop, auto-answer toggle, and
   takeover.
+- Expanded button/hotkey actions for approved draft speak, skip, capture
+  marker, cockpit/status, and hard-disable auto-answer.
 - macOS hotkey setup and diagnostics for focus, process, and Accessibility
   permission behavior.
 - Safety audit and regression checks for disabled auto-answer and manual

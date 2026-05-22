@@ -51,6 +51,9 @@ and explain exactly what state Saymo is in.
   and manual takeover.
 - Button-based local control surface for speak, stop, auto-answer toggle, and
   takeover.
+- Expanded button/hotkey catalog for approved-draft speak, skip current
+  candidate, capture marker, cockpit/status display, and hard-disable
+  auto-answer.
 - macOS hotkey setup and diagnostics that explain whether the terminal must be
   focused, whether the Saymo process is running, and whether Accessibility
   permission is missing.

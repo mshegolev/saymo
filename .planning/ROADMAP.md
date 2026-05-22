@@ -50,7 +50,7 @@ back, and re-enable Saymo safely during a live call.
 - [ ] **Phase 25: Local Control Surface** - Add buttons/keyboard controls that
   expose the handbrake state without relying on hidden terminal output.
 - [ ] **Phase 26: macOS Hotkey Doctor And Safety Regression** - Make hotkeys
-  installable, diagnosable, customizable, and regression-tested.
+  installable, diagnosable, customizable, expandable, and regression-tested.
 
 ## Phase Details
 
@@ -106,16 +106,19 @@ Plans:
 **Goal**: Provide a local button-oriented surface for operating the handbrake
 without relying on memory of hotkey combinations during a live call.
 **Depends on**: Phase 24, existing `saymo dashboard` TUI
-**Requirements**: UI-01, UI-02, UI-03, SAFE-03
+**Requirements**: UI-01, UI-02, UI-03, UI-04, SAFE-03
 **Success Criteria** (what must be TRUE):
   1. A user can open a local control surface showing Auto Answer, Speak, Stop,
      and Takeover controls.
   2. The surface shows current state: auto-answer on/off, paused, speaking,
      manual takeover, last trigger, and hotkey listener state.
   3. Keyboard controls inside the surface mirror configured macOS hotkeys.
-  4. Handbrake actions record audit events with source, previous state, next
+  4. Additional controls can be shown for approved-draft speak, skip current
+     candidate, capture marker, cockpit/status display, and hard-disable
+     auto-answer without crowding the primary controls.
+  5. Handbrake actions record audit events with source, previous state, next
      state, blocked reason, and mic-switch result.
-  5. Existing `saymo dashboard` prepare/speak behavior remains usable.
+  6. Existing `saymo dashboard` prepare/speak behavior remains usable.
 **Plans**: 4 plans
 
 Plans:
@@ -129,7 +132,7 @@ Plans:
 full handbrake flow.
 **Depends on**: Phases 23-25, existing hotkey install helper and
 `takeover-check`
-**Requirements**: GUIDE-03, HOT-01, HOT-02, HOT-03, SAFE-04
+**Requirements**: GUIDE-03, HOT-01, HOT-02, HOT-03, HOT-04, SAFE-04
 **Success Criteria** (what must be TRUE):
   1. User can install or update default hotkeys without clobbering existing
      config values.
@@ -140,15 +143,18 @@ full handbrake flow.
      Saymo listener process, and effective configured bindings.
   4. Per-profile or config-customized bindings are reflected in docs, preflight,
      runtime output, and control surface labels.
-  5. Focused tests cover stop, toggle, takeover, hotkey diagnostics, and
+  5. Optional hotkeys can cover approved-draft speak, skip current candidate,
+     capture marker, cockpit/status display, and hard-disable auto-answer.
+  6. Focused tests cover stop, toggle, takeover, hotkey diagnostics, and
      disabled auto-answer behavior.
-**Plans**: 4 plans
+**Plans**: 5 plans
 
 Plans:
 - [ ] 26-01: Improve hotkey install/update command and guide snippets
 - [ ] 26-02: Add hotkey doctor/pre-call checklist diagnostics
-- [ ] 26-03: Surface effective customized bindings consistently
-- [ ] 26-04: Add focused handbrake and hotkey regression tests
+- [ ] 26-03: Add expanded optional hotkey action catalog
+- [ ] 26-04: Surface effective customized bindings consistently
+- [ ] 26-05: Add focused handbrake and hotkey regression tests
 
 ## Progress
 
@@ -160,7 +166,7 @@ Phases execute in numeric order: 23 -> 24 -> 25 -> 26
 | 23. Operator Guide And Control Vocabulary | v1.6 | 0/3 | Pending | - |
 | 24. Runtime Handbrake State | v1.6 | 0/4 | Pending | - |
 | 25. Local Control Surface | v1.6 | 0/4 | Pending | - |
-| 26. macOS Hotkey Doctor And Safety Regression | v1.6 | 0/4 | Pending | - |
+| 26. macOS Hotkey Doctor And Safety Regression | v1.6 | 0/5 | Pending | - |
 
 ## Requirement Coverage
 
@@ -176,11 +182,13 @@ Phases execute in numeric order: 23 -> 24 -> 25 -> 26
 | UI-01 | Phase 25 |
 | UI-02 | Phase 25 |
 | UI-03 | Phase 25 |
+| UI-04 | Phase 25 |
 | HOT-01 | Phase 26 |
 | HOT-02 | Phase 26 |
 | HOT-03 | Phase 26 |
+| HOT-04 | Phase 26 |
 | SAFE-02 | Phase 24 |
 | SAFE-03 | Phase 25 |
 | SAFE-04 | Phase 26 |
 
-**Coverage:** 16/16 requirements mapped.
+**Coverage:** 18/18 requirements mapped.
