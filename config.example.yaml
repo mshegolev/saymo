@@ -121,6 +121,11 @@ safety:
   hotkey_stop: "<cmd>+<shift>+x"
   hotkey_toggle: "<cmd>+<shift>+m"
   hotkey_takeover: "<cmd>+<shift>+u"   # manual answer mode: pause auto + best-effort mic switch
+  hotkey_approved_speak: "<cmd>+<shift>+a"
+  hotkey_skip: "<cmd>+<shift>+k"
+  hotkey_capture_marker: "<cmd>+<shift>+c"
+  hotkey_status: "<cmd>+<shift>+i"
+  hotkey_hard_disable: "<cmd>+<shift>+h"
   max_speech_duration: 120
 
 live:

@@ -14,6 +14,11 @@ DEFAULT_HOTKEYS = {
     "hotkey_stop": "<cmd>+<shift>+x",
     "hotkey_toggle": "<cmd>+<shift>+m",
     "hotkey_takeover": "<cmd>+<shift>+u",
+    "hotkey_approved_speak": "<cmd>+<shift>+a",
+    "hotkey_skip": "<cmd>+<shift>+k",
+    "hotkey_capture_marker": "<cmd>+<shift>+c",
+    "hotkey_status": "<cmd>+<shift>+i",
+    "hotkey_hard_disable": "<cmd>+<shift>+h",
 }
 
 
@@ -55,6 +60,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--stop", default=DEFAULT_HOTKEYS["hotkey_stop"])
     parser.add_argument("--toggle", default=DEFAULT_HOTKEYS["hotkey_toggle"])
     parser.add_argument("--takeover", default=DEFAULT_HOTKEYS["hotkey_takeover"])
+    parser.add_argument("--approved-speak", default=DEFAULT_HOTKEYS["hotkey_approved_speak"])
+    parser.add_argument("--skip", default=DEFAULT_HOTKEYS["hotkey_skip"])
+    parser.add_argument("--capture-marker", default=DEFAULT_HOTKEYS["hotkey_capture_marker"])
+    parser.add_argument("--status", default=DEFAULT_HOTKEYS["hotkey_status"])
+    parser.add_argument("--hard-disable", default=DEFAULT_HOTKEYS["hotkey_hard_disable"])
     parser.add_argument(
         "--print-only",
         action="store_true",
@@ -70,6 +80,11 @@ def main() -> int:
         "hotkey_stop": args.stop,
         "hotkey_toggle": args.toggle,
         "hotkey_takeover": args.takeover,
+        "hotkey_approved_speak": args.approved_speak,
+        "hotkey_skip": args.skip,
+        "hotkey_capture_marker": args.capture_marker,
+        "hotkey_status": args.status,
+        "hotkey_hard_disable": args.hard_disable,
     }
 
     if args.print_only:

@@ -281,6 +281,11 @@ class SafetyConfig:
     hotkey_stop: str = "<cmd>+<shift>+x"
     hotkey_toggle: str = "<cmd>+<shift>+m"
     hotkey_takeover: str = "<cmd>+<shift>+u"
+    hotkey_approved_speak: str = "<cmd>+<shift>+a"
+    hotkey_skip: str = "<cmd>+<shift>+k"
+    hotkey_capture_marker: str = "<cmd>+<shift>+c"
+    hotkey_status: str = "<cmd>+<shift>+i"
+    hotkey_hard_disable: str = "<cmd>+<shift>+h"
     max_speech_duration: int = 120
 
 

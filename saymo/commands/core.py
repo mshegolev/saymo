@@ -165,8 +165,48 @@ def _toggle_auto_pause(paused, manual_takeover) -> str:
     return "paused"
 
 
-def _request_manual_speak(triggered, manual_speak, speaking, manual_takeover) -> str:
+def _toggle_auto_answer(auto_answer_enabled, paused, manual_takeover, hard_disabled) -> str:
+    """Toggle the handbrake boundary for automatic answers."""
+    if manual_takeover.is_set():
+        return "manual_takeover_active"
+    if auto_answer_enabled.is_set():
+        auto_answer_enabled.clear()
+        paused.set()
+        return "auto_answer_off"
+    hard_disabled.clear()
+    auto_answer_enabled.set()
+    paused.clear()
+    return "auto_answer_on"
+
+
+def _hard_disable_auto_answer(auto_answer_enabled, paused, stop_playback, hard_disabled) -> str:
+    """Stop playback and keep automatic answers disabled until re-enabled."""
+    auto_answer_enabled.clear()
+    hard_disabled.set()
+    paused.set()
+    stop_playback.set()
+    return "hard_disabled"
+
+
+def _automatic_speaking_allowed(auto_answer_enabled, manual_takeover, hard_disabled) -> bool:
+    """Whether an automatic trigger may proceed to playback."""
+    return (
+        auto_answer_enabled.is_set()
+        and not manual_takeover.is_set()
+        and not hard_disabled.is_set()
+    )
+
+
+def _request_manual_speak(
+    triggered,
+    manual_speak,
+    speaking,
+    manual_takeover,
+    hard_disabled=None,
+) -> str:
     """Queue an explicit hotkey-triggered prepared playback in auto-mode."""
+    if hard_disabled is not None and hard_disabled.is_set():
+        return "hard_disabled"
     if manual_takeover.is_set():
         return "manual_takeover_active"
     if speaking.is_set():
@@ -266,6 +306,16 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
     from saymo.audio.capture import AudioCapture
     from saymo.stt.whisper_local import LocalWhisper
     from saymo.analysis.addressing import should_answer_decision
+    from saymo.analysis.live_control import (
+        LiveControlSnapshot,
+        append_control_audit,
+        command_log_offset,
+        effective_hotkey_bindings,
+        hotkey_listener_bindings,
+        live_control_dir,
+        read_control_commands,
+        write_live_state,
+    )
     from saymo.analysis.turn_detector import TurnDetector
 
     capture = AudioCapture(
@@ -323,8 +373,172 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
     paused = asyncio.Event()
     manual_takeover = asyncio.Event()
     manual_speak = asyncio.Event()
+    auto_answer_enabled = asyncio.Event()
+    auto_answer_enabled.set()
+    hard_disabled = asyncio.Event()
+    skip_current = asyncio.Event()
     pending_confirmation: tuple[float, str] | None = None
     last_catch_timing = CatchTiming()
+    last_trigger_text = ""
+    last_action = "started"
+    hotkeys_active = False
+    control_offset = command_log_offset(profile)
+    control_path = live_control_dir(profile)
+
+    def _snapshot(action: str | None = None) -> LiveControlSnapshot:
+        return LiveControlSnapshot(
+            profile=profile,
+            auto_answer_enabled=auto_answer_enabled.is_set(),
+            paused=paused.is_set(),
+            speaking=speaking.is_set(),
+            manual_takeover=manual_takeover.is_set(),
+            hard_disabled=hard_disabled.is_set(),
+            hotkeys_active=hotkeys_active,
+            last_trigger=last_trigger_text,
+            last_action=action or last_action,
+        )
+
+    def _publish_state(action: str | None = None) -> LiveControlSnapshot:
+        snapshot = _snapshot(action)
+        write_live_state(profile, snapshot)
+        return snapshot
+
+    def _audit_action(
+        action: str,
+        source: str,
+        previous: LiveControlSnapshot,
+        result: str,
+        *,
+        reason: str = "",
+        mic_result: str = "",
+    ) -> None:
+        append_control_audit(
+            profile,
+            action=action,
+            source=source,
+            previous_state=previous,
+            next_state=_snapshot(result),
+            result=result,
+            reason=reason,
+            mic_result=mic_result,
+        )
+
+    _publish_state("started")
+
+    def _apply_control_action(action: str, source: str = "panel") -> str:
+        nonlocal last_action, pending_confirmation
+        previous = _snapshot(last_action)
+        result = "ignored"
+        reason = ""
+        mic_result = ""
+
+        if action == "stop":
+            stop_playback.set()
+            result = "playback_stop_requested"
+            console.print("[bold yellow]STOP — cancelling playback[/]")
+        elif action == "toggle_auto_answer":
+            result = _toggle_auto_answer(
+                auto_answer_enabled,
+                paused,
+                manual_takeover,
+                hard_disabled,
+            )
+            if result == "auto_answer_on":
+                console.print("[bold green]Auto Answer ON — Saymo may answer triggers[/]")
+            elif result == "auto_answer_off":
+                console.print("[bold yellow]Auto Answer OFF — Saymo will not speak automatically[/]")
+            else:
+                console.print("[bold yellow]Manual takeover active — finish takeover before toggling auto-answer[/]")
+        elif action == "speak":
+            result = _request_manual_speak(
+                triggered,
+                manual_speak,
+                speaking,
+                manual_takeover,
+                hard_disabled,
+            )
+            if result == "queued":
+                console.print("[bold green]SPEAK — queued prepared playback[/]")
+            elif result == "hard_disabled":
+                console.print("[bold yellow]Hard disabled — enable Auto Answer before speaking[/]")
+            elif result == "manual_takeover_active":
+                console.print("[bold yellow]Manual takeover active — speak ignored[/]")
+            elif result == "already_queued":
+                console.print("[dim]Speak already queued[/]")
+            else:
+                console.print("[dim]Already speaking — speak ignored[/]")
+        elif action == "takeover":
+            result = _toggle_manual_takeover(
+                paused,
+                stop_playback,
+                manual_takeover,
+                provider=provider,
+                recording_device=config.audio.recording_device,
+            )
+            mic_result = result
+            if result == "active":
+                console.print(
+                    "[bold yellow]Manual takeover active — Saymo paused. "
+                    f"Call mic switched to {config.audio.recording_device}. "
+                    "Answer, then press takeover again.[/]"
+                )
+            elif result in {"active_mic_failed", "active_no_recording_device"}:
+                console.print(
+                    "[bold yellow]Manual takeover active — Saymo paused. "
+                    "Switch the call mic manually, answer, then press takeover again.[/]"
+                )
+            elif result == "resumed_mic_failed":
+                console.print(
+                    "[bold yellow]Manual takeover ended — Saymo resumed, but "
+                    "could not switch mic back to BlackHole 2ch.[/]"
+                )
+            else:
+                console.print("[bold green]Manual takeover ended — Saymo resumed[/]")
+        elif action == "skip_current":
+            skip_current.set()
+            triggered.clear()
+            manual_speak.clear()
+            pending_confirmation = None
+            detector.reset_cooldown()
+            result = "current_candidate_skipped"
+            console.print("[bold yellow]SKIP — current candidate skipped[/]")
+        elif action == "capture_marker":
+            result = "capture_marker_recorded"
+            reason = "operator marker for later review"
+            console.print("[bold blue]Capture marker recorded for later review[/]")
+        elif action == "status":
+            result = "status_printed"
+            snapshot = _snapshot(result)
+            console.print(
+                "[bold blue]status:[/] "
+                f"auto={'on' if snapshot.auto_answer_enabled else 'off'} "
+                f"paused={snapshot.paused} speaking={snapshot.speaking} "
+                f"takeover={snapshot.manual_takeover} hard_disabled={snapshot.hard_disabled}"
+            )
+            console.print(f"[dim]control: {control_path}[/]")
+        elif action == "hard_disable":
+            result = _hard_disable_auto_answer(
+                auto_answer_enabled,
+                paused,
+                stop_playback,
+                hard_disabled,
+            )
+            pending_confirmation = None
+            manual_speak.clear()
+            triggered.clear()
+            console.print("[bold red]HARD DISABLE — playback stopped; auto-answer off[/]")
+        elif action == "approved_speak":
+            result = "approved_speak_requested"
+            reason = "approved draft playback must be executed by answer-cockpit action"
+            console.print(
+                "[bold yellow]Approved draft hotkey recorded. "
+                "Use answer-cockpit action for the current approved draft.[/]"
+            )
+
+        last_action = result
+        _publish_state(result)
+        _audit_action(action, source, previous, result, reason=reason, mic_result=mic_result)
+        return result
 
     # Wire global hotkeys for stop/pause. Failures here (e.g., macOS
     # accessibility permissions missing) shouldn't break auto mode — just
@@ -334,102 +548,53 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
         from pynput import keyboard as _keyboard
         loop = asyncio.get_running_loop()
 
-        def _on_stop():
-            loop.call_soon_threadsafe(stop_playback.set)
-            console.print("[bold yellow]⏹  STOP hotkey — cancelling playback[/]")
+        def _hotkey(action: str):
+            return lambda: loop.call_soon_threadsafe(_apply_control_action, action, "hotkey")
 
-        def _on_toggle():
-            def _apply_toggle():
-                state = _toggle_auto_pause(paused, manual_takeover)
-                if state == "resumed":
-                    console.print("[bold green]▶  RESUMED[/]")
-                elif state == "paused":
-                    console.print("[bold yellow]⏸  PAUSED (hotkey to resume)[/]")
-                else:
-                    console.print(
-                        "[bold yellow]Manual takeover active — press takeover "
-                        "hotkey to switch mic back and resume.[/]"
-                    )
-
-            loop.call_soon_threadsafe(_apply_toggle)
-
-        def _on_speak():
-            def _apply_speak():
-                state = _request_manual_speak(
-                    triggered,
-                    manual_speak,
-                    speaking,
-                    manual_takeover,
-                )
-                if state == "queued":
-                    console.print("[bold green]SPEAK hotkey — queued prepared playback[/]")
-                elif state == "manual_takeover_active":
-                    console.print(
-                        "[bold yellow]Manual takeover active — speak hotkey ignored.[/]"
-                    )
-                elif state == "already_queued":
-                    console.print("[dim]Speak hotkey already queued[/]")
-                else:
-                    console.print("[dim]Already speaking — speak hotkey ignored[/]")
-
-            loop.call_soon_threadsafe(_apply_speak)
-
-        def _on_takeover():
-            def _apply_takeover():
-                state = _toggle_manual_takeover(
-                    paused,
-                    stop_playback,
-                    manual_takeover,
-                    provider=provider,
-                    recording_device=config.audio.recording_device,
-                )
-                if state == "active":
-                    console.print(
-                        "[bold yellow]Manual takeover active — Saymo paused. "
-                        f"Call mic switched to {config.audio.recording_device}. "
-                        "Unmute yourself, answer, then press takeover again.[/]"
-                    )
-                elif state in {"active_mic_failed", "active_no_recording_device"}:
-                    console.print(
-                        "[bold yellow]Manual takeover active — Saymo paused. "
-                        "Switch the call mic to your real microphone manually, "
-                        "answer, then press takeover again.[/]"
-                    )
-                elif state == "resumed_mic_failed":
-                    console.print(
-                        "[bold yellow]Manual takeover ended — Saymo resumed, but "
-                        "could not switch the call mic back to BlackHole 2ch. "
-                        "Switch it manually before relying on Saymo playback.[/]"
-                    )
-                else:
-                    console.print("[bold green]Manual takeover ended — Saymo resumed[/]")
-
-            loop.call_soon_threadsafe(_apply_takeover)
-
-        bindings = {}
-        if config.safety.hotkey_speak:
-            bindings[config.safety.hotkey_speak] = _on_speak
-        if config.safety.hotkey_stop:
-            bindings[config.safety.hotkey_stop] = _on_stop
-        if config.safety.hotkey_toggle:
-            bindings[config.safety.hotkey_toggle] = _on_toggle
-        if config.safety.hotkey_takeover:
-            bindings[config.safety.hotkey_takeover] = _on_takeover
+        bindings = hotkey_listener_bindings(
+            config,
+            {
+                "toggle_auto_answer": _hotkey("toggle_auto_answer"),
+                "speak": _hotkey("speak"),
+                "stop": _hotkey("stop"),
+                "takeover": _hotkey("takeover"),
+                "approved_speak": _hotkey("approved_speak"),
+                "skip_current": _hotkey("skip_current"),
+                "capture_marker": _hotkey("capture_marker"),
+                "status": _hotkey("status"),
+                "hard_disable": _hotkey("hard_disable"),
+            },
+        )
         if bindings:
             hotkey_listener = _keyboard.GlobalHotKeys(bindings)
             hotkey_listener.start()
+            hotkeys_active = True
+            _publish_state("hotkeys_active")
+            effective = effective_hotkey_bindings(config)
             console.print(
-                f"[dim]hotkeys: speak={config.safety.hotkey_speak} "
-                f"stop={config.safety.hotkey_stop} "
-                f"toggle={config.safety.hotkey_toggle} "
-                f"takeover={config.safety.hotkey_takeover}[/]"
+                "[dim]hotkeys: "
+                + " ".join(f"{action}={hotkey}" for action, hotkey in effective.items())
+                + "[/]"
             )
     except Exception as e:
         console.print(f"[dim]hotkeys disabled: {e}[/]")
 
+    async def _control_command_loop():
+        """Apply commands written by `saymo live-control` or scripts."""
+        nonlocal control_offset
+        while True:
+            commands, control_offset = await asyncio.to_thread(
+                read_control_commands,
+                profile,
+                offset=control_offset,
+            )
+            for command in commands:
+                _apply_control_action(command.action, command.source)
+            await asyncio.sleep(0.25)
+
     async def _transcribe_loop():
         """Continuously transcribe audio — runs parallel to capture."""
-        nonlocal last_catch_timing
+        nonlocal last_catch_timing, last_trigger_text
         while True:
             if speaking.is_set() or paused.is_set():
                 # Don't transcribe while we're speaking or paused
@@ -465,6 +630,8 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                     transcription_ms=transcription_ms,
                     trigger_ms=trigger_ms,
                 )
+                last_trigger_text = text
+                _publish_state("trigger_detected")
                 console.print(
                     "[dim]catch latency: "
                     f"capture={capture_ms:.0f}ms "
@@ -496,11 +663,43 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
             if force_speak:
                 manual_speak.clear()
 
+            if skip_current.is_set():
+                skip_current.clear()
+                detector.reset_cooldown()
+                console.print("[dim]Current candidate skipped by control action[/]")
+                console.print("\n[bold yellow]Listening again...[/]\n")
+                continue
+
             if force_speak:
                 transcript_window = ""
                 pending_confirmation = None
                 console.print("[dim]Manual speak hotkey: using prepared playback[/]")
             else:
+                if not _automatic_speaking_allowed(
+                    auto_answer_enabled,
+                    manual_takeover,
+                    hard_disabled,
+                ):
+                    reason = (
+                        "manual takeover active"
+                        if manual_takeover.is_set()
+                        else "hard disabled"
+                        if hard_disabled.is_set()
+                        else "auto-answer off"
+                    )
+                    append_control_audit(
+                        profile,
+                        action="toggle_auto_answer",
+                        source="auto",
+                        previous_state=_snapshot("auto_blocked"),
+                        next_state=_snapshot("auto_blocked"),
+                        result="automatic_speaking_blocked",
+                        reason=reason,
+                    )
+                    detector.reset_cooldown()
+                    console.print(f"[bold yellow]Auto answer blocked:[/] {reason}")
+                    console.print("\n[bold yellow]Listening again...[/]\n")
+                    continue
                 addressing_t0 = time.monotonic()
                 addressing = _classify_trigger_window(
                     config,
@@ -620,7 +819,27 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
             )
             await asyncio.sleep(live_tuning.pre_speak_delay_seconds)
 
+            if not force_speak and not _automatic_speaking_allowed(
+                auto_answer_enabled,
+                manual_takeover,
+                hard_disabled,
+            ):
+                append_control_audit(
+                    profile,
+                    action="toggle_auto_answer",
+                    source="auto",
+                    previous_state=_snapshot("playback_blocked"),
+                    next_state=_snapshot("playback_blocked"),
+                    result="automatic_playback_blocked",
+                    reason="handbrake activated before playback",
+                )
+                detector.reset_cooldown()
+                console.print("[bold yellow]Playback blocked by handbrake[/]")
+                console.print("\n[bold yellow]Listening again...[/]\n")
+                continue
+
             speaking.set()
+            _publish_state("speaking")
             play_t0 = time.monotonic()
             playback_start_ms: float | None = None
             playback_result = None
@@ -681,6 +900,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                     f"{blocked_reason}[/]"
                 )
                 speaking.clear()
+                _publish_state("listening")
                 detector.reset_cooldown()
                 # Clean up live-fallback temp files
                 if audio_to_play != cached_audio:
@@ -695,6 +915,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
     try:
         await asyncio.gather(
+            _control_command_loop(),
             _transcribe_loop(),
             _trigger_loop(),
         )
@@ -708,6 +929,8 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                 hotkey_listener.stop()
             except Exception:
                 pass
+        hotkeys_active = False
+        _publish_state("stopped")
 
 
 # ---------------------------------------------------------------------------
@@ -723,6 +946,49 @@ def dashboard(ctx):
     """
     from saymo.tui import run_tui
     run_tui(ctx.params.get("config_path"))
+
+
+@main.command("live-control")
+@click.option("--profile", "-p", default="standup", help="Meeting profile to control")
+@click.option(
+    "--base-dir",
+    default=None,
+    type=click.Path(),
+    help="Override live-control directory; defaults to ~/.saymo/live_control",
+)
+@click.pass_context
+def live_control(ctx, profile, base_dir):
+    """Open the local handbrake panel for a running `saymo auto`."""
+    from saymo.live_control_tui import run_live_control_tui
+
+    run_live_control_tui(profile, base_dir=base_dir)
+
+
+@main.command("live-control-action")
+@click.option("--profile", "-p", default="standup", help="Meeting profile to control")
+@click.option(
+    "--action",
+    "action_name",
+    required=True,
+    help="Action: toggle_auto_answer, speak, stop, takeover, approved_speak, skip_current, capture_marker, status, hard_disable",
+)
+@click.option(
+    "--base-dir",
+    default=None,
+    type=click.Path(),
+    help="Override live-control directory; defaults to ~/.saymo/live_control",
+)
+def live_control_action(profile, action_name, base_dir):
+    """Queue one live-control action for a running `saymo auto` process."""
+    from saymo.analysis.live_control import append_control_command, normalize_action
+
+    try:
+        action = normalize_action(action_name)
+    except ValueError as e:
+        raise click.ClickException(str(e)) from e
+    path = append_control_command(profile, action, source="cli", base_dir=base_dir)
+    console.print(f"queued: {action}")
+    console.print(f"commands: {path}")
 
 
 # ---------------------------------------------------------------------------

@@ -140,12 +140,14 @@ def test_load_config_populates_takeover_hotkey(tmp_path):
     yaml_content = textwrap.dedent("""\
         safety:
           hotkey_takeover: "<cmd>+<shift>+u"
+          hotkey_skip: "<cmd>+<shift>+k"
     """)
     cfg_file = tmp_path / "config.yaml"
     cfg_file.write_text(yaml_content)
 
     cfg = load_config(config_path=str(cfg_file))
     assert cfg.safety.hotkey_takeover == "<cmd>+<shift>+u"
+    assert cfg.safety.hotkey_skip == "<cmd>+<shift>+k"
 
 
 def test_load_config_populates_confirmation_timeout(tmp_path):

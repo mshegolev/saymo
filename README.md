@@ -100,6 +100,7 @@ saymo dashboard                 # interactive TUI
 
 ```bash
 ./scripts/add_hotkeys.py
+saymo hotkey-doctor -p personal
 saymo takeover-check -p personal
 ```
 
@@ -110,13 +111,25 @@ Default hotkeys:
 | `Cmd+Shift+S` | Speak the prepared cached standup immediately in `saymo auto` |
 | `Cmd+Shift+U` | Manual takeover: stop Saymo playback, pause auto-mode, switch the call mic to your real mic when the provider supports it; press again to return to BlackHole 2ch and resume |
 | `Cmd+Shift+X` | Stop current Saymo playback |
-| `Cmd+Shift+M` | Pause / resume auto-mode |
+| `Cmd+Shift+M` | Toggle Auto Answer on/off |
+| `Cmd+Shift+A` | Optional: approved draft speak request |
+| `Cmd+Shift+K` | Optional: skip current candidate |
+| `Cmd+Shift+C` | Optional: add a capture marker for later review |
+| `Cmd+Shift+I` | Optional: print live-control status |
+| `Cmd+Shift+H` | Optional: hard-disable auto-answer and stop playback |
 
 Mic switching is automatic for providers that implement `switch_mic()`
 (`glip`, `mts_link`). For other providers, Saymo still pauses/resumes; switch
 the call microphone manually in the meeting UI.
 Use `saymo takeover-check -p personal` before a call to verify mic switching
 against the active Chrome tab.
+
+Hotkeys are global after `saymo auto` starts, so the terminal does not need to
+be focused. The Saymo process must still be running, and macOS must allow
+Accessibility access for the terminal app. For a visible button-style panel,
+run `saymo live-control -p personal` in another terminal. See
+`docs/LIVE-CONTROL-HANDBRAKE.md`.
+For scriptable controls, use `saymo live-control-action -p personal --action stop`.
 
 ### Trigger training capture
 

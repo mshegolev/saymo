@@ -1,7 +1,8 @@
 """Diagnostic / info commands: test-devices, test-tts, test-jira, list-plugins,
 test-notes, test-compose, test-ollama, prepare-responses, trigger-check,
 trigger-capture, trigger-learn, trigger-setup, trigger-eval, trigger-samples,
-trigger-sessions, auto-preflight, takeover-check, provider-latency, mic-check."""
+trigger-sessions, auto-preflight, hotkey-doctor, takeover-check,
+provider-latency, mic-check."""
 
 import json
 import re
@@ -563,6 +564,7 @@ def auto_preflight(ctx, profile, provider):
 
 def _collect_auto_preflight(config, profile: str, provider_name: str | None = None) -> list[PreflightCheck]:
     from saymo.audio.devices import find_device
+    from saymo.analysis.live_control import effective_hotkey_bindings
     from saymo.analysis.response_cache import ResponseCache, build_library
     from saymo.commands import _get_cached_audio_path
     from saymo.config import resolve_live_tuning
@@ -681,6 +683,21 @@ def _collect_auto_preflight(config, profile: str, provider_name: str | None = No
             blocking=False,
         )
     )
+    hotkeys = effective_hotkey_bindings(config)
+    primary = ["toggle_auto_answer", "speak", "stop", "takeover"]
+    missing_primary = [action for action in primary if action not in hotkeys]
+    checks.append(
+        PreflightCheck(
+            "hotkeys",
+            not missing_primary,
+            (
+                ", ".join(f"{action}={hotkey}" for action, hotkey in hotkeys.items())
+                if hotkeys
+                else "(none configured)"
+            ),
+            blocking=False,
+        )
+    )
     checks.append(
         PreflightCheck(
             "fallback",
@@ -704,6 +721,21 @@ def _print_auto_preflight(profile: str, checks: list[PreflightCheck]) -> None:
             label = "warn"
         console.print(f"{label}: {check.name}: {check.detail}")
     console.print(f"preflight: {'ready' if ready else 'not ready'}")
+
+
+@main.command("hotkey-doctor")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
+@click.option("--probe/--no-probe", default=True, show_default=True, help="Try to create a global hotkey listener")
+@click.pass_context
+def hotkey_doctor(ctx, profile, probe):
+    """Explain configured global hotkeys and macOS listener assumptions."""
+    from saymo.analysis.live_control import (
+        build_hotkey_doctor_report,
+        render_hotkey_doctor_report,
+    )
+
+    report = build_hotkey_doctor_report(ctx.obj["config"], profile, probe=probe)
+    console.print(render_hotkey_doctor_report(report))
 
 
 @main.command("provider-latency")

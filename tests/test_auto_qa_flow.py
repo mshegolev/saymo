@@ -14,9 +14,12 @@ from saymo.cli import (
 )
 from saymo.config import SaymoConfig
 from saymo.commands.core import (
+    _automatic_speaking_allowed,
+    _hard_disable_auto_answer,
     _request_manual_speak,
     _should_answer_trigger_window,
     _update_trigger_confirmation,
+    _toggle_auto_answer,
     _toggle_auto_pause,
     _toggle_manual_takeover,
 )
@@ -276,6 +279,27 @@ def test_manual_speak_hotkey_ignored_during_takeover():
     assert not manual_speak.is_set()
 
 
+def test_manual_speak_hotkey_ignored_when_hard_disabled():
+    triggered = asyncio.Event()
+    manual_speak = asyncio.Event()
+    speaking = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    hard_disabled = asyncio.Event()
+    hard_disabled.set()
+
+    state = _request_manual_speak(
+        triggered,
+        manual_speak,
+        speaking,
+        manual_takeover,
+        hard_disabled,
+    )
+
+    assert state == "hard_disabled"
+    assert not triggered.is_set()
+    assert not manual_speak.is_set()
+
+
 def test_manual_speak_hotkey_ignored_while_already_speaking():
     triggered = asyncio.Event()
     manual_speak = asyncio.Event()
@@ -288,6 +312,73 @@ def test_manual_speak_hotkey_ignored_while_already_speaking():
     assert state == "already_speaking"
     assert not triggered.is_set()
     assert not manual_speak.is_set()
+
+
+def test_toggle_auto_answer_sets_handbrake_state():
+    auto_answer_enabled = asyncio.Event()
+    auto_answer_enabled.set()
+    paused = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    hard_disabled = asyncio.Event()
+
+    state = _toggle_auto_answer(
+        auto_answer_enabled,
+        paused,
+        manual_takeover,
+        hard_disabled,
+    )
+
+    assert state == "auto_answer_off"
+    assert not auto_answer_enabled.is_set()
+    assert paused.is_set()
+    assert not _automatic_speaking_allowed(
+        auto_answer_enabled,
+        manual_takeover,
+        hard_disabled,
+    )
+
+    state = _toggle_auto_answer(
+        auto_answer_enabled,
+        paused,
+        manual_takeover,
+        hard_disabled,
+    )
+
+    assert state == "auto_answer_on"
+    assert auto_answer_enabled.is_set()
+    assert not paused.is_set()
+    assert _automatic_speaking_allowed(
+        auto_answer_enabled,
+        manual_takeover,
+        hard_disabled,
+    )
+
+
+def test_hard_disable_stops_playback_and_blocks_automatic_speaking():
+    auto_answer_enabled = asyncio.Event()
+    auto_answer_enabled.set()
+    paused = asyncio.Event()
+    stop_playback = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    hard_disabled = asyncio.Event()
+
+    state = _hard_disable_auto_answer(
+        auto_answer_enabled,
+        paused,
+        stop_playback,
+        hard_disabled,
+    )
+
+    assert state == "hard_disabled"
+    assert not auto_answer_enabled.is_set()
+    assert paused.is_set()
+    assert stop_playback.is_set()
+    assert hard_disabled.is_set()
+    assert not _automatic_speaking_allowed(
+        auto_answer_enabled,
+        manual_takeover,
+        hard_disabled,
+    )
 
 
 # ---------------------------------------------------------------------------
