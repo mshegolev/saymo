@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Live Control Handbrake
-status: defining requirements
-stopped_at: starting milestone v1.6; requirements and roadmap in progress.
+status: roadmap ready; next phase 23
+stopped_at: milestone v1.6 roadmap created; next step is $gsd-plan-phase 23.
 last_updated: "2026-05-22"
-last_activity: "2026-05-22 - started milestone v1.6 Live Control Handbrake"
+last_activity: "2026-05-22 - created milestone v1.6 roadmap"
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 15
   completed_plans: 0
-  percent: 100
+  percent: 0
 ---
 
 # Project State
@@ -28,15 +28,18 @@ and respond fast enough that the call still feels live.
 
 Phase: None
 Plan: None
-Status: Defining requirements
-Last activity: 2026-05-22 - started v1.6 Live Control Handbrake.
+Status: Roadmap ready
+Last activity: 2026-05-22 - created v1.6 roadmap with phases 23-26.
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Requirements and roadmap being defined.
+- Total plans planned: 15
+- Plans completed: 0
+- Average duration: pending
+- Total execution time: pending
 
 **Historical Velocity:**
 - v1.0 completed 11 plans across 4 phases.
@@ -45,6 +48,15 @@ Progress: [##########] 100%
 - v1.3 completed 10 plans across 3 phases.
 - v1.4 completed 15 plans across 4 phases.
 - v1.5 completed 18 plans across 5 phases.
+
+**By Phase:**
+
+| Phase | Plans | Total | Status |
+|-------|-------|-------|--------|
+| 23. Operator Guide And Control Vocabulary | 3 | 0/3 | pending |
+| 24. Runtime Handbrake State | 4 | 0/4 | pending |
+| 25. Local Control Surface | 4 | 0/4 | pending |
+| 26. macOS Hotkey Doctor And Safety Regression | 4 | 0/4 | pending |
 
 ## Accumulated Context
 
@@ -58,10 +70,12 @@ Recent decisions affecting future work:
   audio and transcripts stay local and are not committed.
 - v1.5: Approved generated drafts may play only after an explicit user action
   and existing playback safety checks pass.
+- v1.6: The handbrake is an explicit local safety boundary; when auto-answer
+  is off or manual takeover is active, Saymo must not speak automatically.
 
 ### Pending Todos
 
-Define requirements and roadmap for v1.6.
+Plan Phase 23.
 
 ### Blockers/Concerns
 
@@ -72,6 +86,9 @@ Define requirements and roadmap for v1.6.
   prove reliable.
 - Answer drafts must not become automatic live speaking without explicit user
   approval.
+- Global macOS hotkeys require a running local Saymo listener process and
+  Accessibility permission; terminal focus should not be required once the
+  listener is active.
 - Stored transcripts and summaries must stay local, configurable, and
   sanitizable.
 - Real captured sessions can be used as local regression fixtures, but raw
@@ -80,5 +97,5 @@ Define requirements and roadmap for v1.6.
 ## Session Continuity
 
 Last session: 2026-05-21
-Stopped at: starting milestone v1.6; requirements and roadmap in progress.
+Stopped at: milestone v1.6 roadmap created; next step is `$gsd-plan-phase 23`.
 Resume file: None

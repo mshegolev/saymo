@@ -103,28 +103,28 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GUIDE-01 | TBD | Pending |
-| GUIDE-02 | TBD | Pending |
-| GUIDE-03 | TBD | Pending |
-| CTRL-01 | TBD | Pending |
-| CTRL-02 | TBD | Pending |
-| CTRL-03 | TBD | Pending |
-| CTRL-04 | TBD | Pending |
-| UI-01 | TBD | Pending |
-| UI-02 | TBD | Pending |
-| UI-03 | TBD | Pending |
-| HOT-01 | TBD | Pending |
-| HOT-02 | TBD | Pending |
-| HOT-03 | TBD | Pending |
-| SAFE-02 | TBD | Pending |
-| SAFE-03 | TBD | Pending |
-| SAFE-04 | TBD | Pending |
+| GUIDE-01 | Phase 23 | Pending |
+| GUIDE-02 | Phase 23 | Pending |
+| GUIDE-03 | Phase 26 | Pending |
+| CTRL-01 | Phase 24 | Pending |
+| CTRL-02 | Phase 24 | Pending |
+| CTRL-03 | Phase 24 | Pending |
+| CTRL-04 | Phase 24 | Pending |
+| UI-01 | Phase 25 | Pending |
+| UI-02 | Phase 25 | Pending |
+| UI-03 | Phase 25 | Pending |
+| HOT-01 | Phase 26 | Pending |
+| HOT-02 | Phase 26 | Pending |
+| HOT-03 | Phase 26 | Pending |
+| SAFE-02 | Phase 24 | Pending |
+| SAFE-03 | Phase 25 | Pending |
+| SAFE-04 | Phase 26 | Pending |
 
 **Coverage:**
 - v1.6 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16
+- Mapped to phases: 16
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-22*
-*Last updated: 2026-05-22 after initial v1.6 definition*
+*Last updated: 2026-05-22 after roadmap creation*
