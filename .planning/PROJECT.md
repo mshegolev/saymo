@@ -27,8 +27,7 @@ sessions, reduce incidental name-handoff false positives, bootstrap speaker
 labels, play only approved generated drafts, and replay saved sessions as local
 regression fixtures.
 
-**Status:** v1.5 Live Review + Safe Approved Speak archived on 2026-05-21.
-No active milestone is defined; the next step is `$gsd-new-milestone`.
+**Status:** v1.6 Live Control Handbrake started on 2026-05-22.
 
 The 2026-05-21 recorded session exposed reliability gaps that v1.5 addressed:
 `speaker=unknown` coverage can now be reviewed and bootstrapped, incidental
@@ -36,10 +35,27 @@ name mentions can be separated from direct handoffs, approved answer drafts can
 use the safe playback path, and saved sessions can be replayed as regression
 fixtures.
 
-## Current Milestone: None
+The next reliability gap is operator control during live calls: when something
+goes wrong, the user needs an obvious "handbrake" to disable auto-answering,
+stop playback, take the microphone back, and later safely re-enable Saymo.
 
-No active milestone is currently open. v1.5 is archived under
-`.planning/milestones/`.
+## Current Milestone: v1.6 Live Control Handbrake
+
+**Goal:** Give the user a clear local handbrake for live calls: buttons and
+macOS hotkeys that turn auto-answer on/off, stop speech, enter manual takeover,
+and explain exactly what state Saymo is in.
+
+**Target features:**
+- Short operator guide for using Saymo safely in a live meeting.
+- One visible runtime control state for auto-answer on/off, paused, speaking,
+  and manual takeover.
+- Button-based local control surface for speak, stop, auto-answer toggle, and
+  takeover.
+- macOS hotkey setup and diagnostics that explain whether the terminal must be
+  focused, whether the Saymo process is running, and whether Accessibility
+  permission is missing.
+- Safety audit and regression checks proving disabled auto-answer cannot speak
+  unexpectedly.
 
 ## Last Completed Milestone: v1.5 Live Review + Safe Approved Speak
 
@@ -120,8 +136,12 @@ playback, and regression replay.
 
 ### Active
 
-No active requirements remain. Define the next requirement set with
-`$gsd-new-milestone`.
+- User can use a simple guide to know which button or hotkey to press during a
+  live call emergency.
+- User can toggle auto-answer on/off without killing the call or losing the
+  ability to answer manually.
+- User can see the current live-control state before trusting Saymo to speak.
+- User can verify macOS hotkeys and permissions before joining a call.
 
 ### Out of Scope
 
@@ -191,6 +211,7 @@ No active requirements remain. Define the next requirement set with
 | Build answer cockpit before autonomous speaking | The user must be able to inspect trigger evidence and approve a draft before Saymo talks in a live call | ✓ Implemented in v1.4 |
 | Use real recorded sessions as regression fixtures | False positives and unknown-speaker coverage are visible only against actual call audio | Implemented in v1.5 |
 | Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | Implemented in v1.5 |
+| Prefer an explicit handbrake over hidden automation | During live calls, the user needs visible control and fast recovery more than another autonomous behavior | Pending in v1.6 |
 
 ---
-*Last updated: 2026-05-21 after archiving milestone v1.5*
+*Last updated: 2026-05-22 after starting milestone v1.6*

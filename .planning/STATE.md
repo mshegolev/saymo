@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: none
-milestone_name: none
-status: v1.5 archived; no active milestone
-stopped_at: v1.5 archived; next step is $gsd-new-milestone.
-last_updated: "2026-05-21"
-last_activity: "2026-05-21 - archived milestone v1.5"
+milestone: v1.6
+milestone_name: Live Control Handbrake
+status: defining requirements
+stopped_at: starting milestone v1.6; requirements and roadmap in progress.
+last_updated: "2026-05-22"
+last_activity: "2026-05-22 - started milestone v1.6 Live Control Handbrake"
 progress:
   total_phases: 0
   completed_phases: 0
@@ -18,25 +18,25 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-21)
+See: .planning/PROJECT.md (updated 2026-05-22)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** No active milestone.
+**Current focus:** v1.6 Live Control Handbrake.
 
 ## Current Position
 
 Phase: None
 Plan: None
-Status: v1.5 archived; ready for the next milestone
-Last activity: 2026-05-21 - archived v1.5 Live Review + Safe Approved Speak.
+Status: Defining requirements
+Last activity: 2026-05-22 - started v1.6 Live Control Handbrake.
 
 Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- No active milestone.
+- Requirements and roadmap being defined.
 
 **Historical Velocity:**
 - v1.0 completed 11 plans across 4 phases.
@@ -61,7 +61,7 @@ Recent decisions affecting future work:
 
 ### Pending Todos
 
-Start the next milestone with `$gsd-new-milestone`.
+Define requirements and roadmap for v1.6.
 
 ### Blockers/Concerns
 
@@ -80,5 +80,5 @@ Start the next milestone with `$gsd-new-milestone`.
 ## Session Continuity
 
 Last session: 2026-05-21
-Stopped at: v1.5 archived; next step is `$gsd-new-milestone`.
+Stopped at: starting milestone v1.6; requirements and roadmap in progress.
 Resume file: None

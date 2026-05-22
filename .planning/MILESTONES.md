@@ -2,9 +2,25 @@
 
 ## Current
 
-None.
+### v1.6 Live Control Handbrake
 
-Next step: run `$gsd-new-milestone` when the next milestone goal is ready.
+**Started:** 2026-05-22
+**Status:** Active
+
+Focus: give the user an obvious live-call handbrake: short operator guidance,
+visible buttons, macOS hotkeys, auto-answer on/off state, manual takeover, and
+verification that Saymo cannot speak unexpectedly while disabled.
+
+Planned:
+- Short guide for operating Saymo during a live call and emergency recovery.
+- Visible live-control state for auto-answer, paused, speaking, and manual
+  takeover.
+- Local button/control surface for speak, stop, auto-answer toggle, and
+  takeover.
+- macOS hotkey setup and diagnostics for focus, process, and Accessibility
+  permission behavior.
+- Safety audit and regression checks for disabled auto-answer and manual
+  takeover.
 
 ## Completed
 
