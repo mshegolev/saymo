@@ -187,6 +187,7 @@ Before a real call, run a deterministic dry-run:
 
 ```bash
 saymo trigger-check -p personal --text "Your Name, what is the status?"
+saymo rehearsal -p personal --text "Your Name, what is the status?"
 saymo auto-preflight -p personal
 ```
 
@@ -204,6 +205,9 @@ response is ready. It also reports whether auto-mode would answer now, wait for
 confirmation, or skip the phrase. `auto-preflight` checks the prepared standup
 cache, input/output devices, provider tab, configured trigger phrases, response
 cache coverage, fallback mode, and live tuning before you join the call.
+`rehearsal` combines the same dry-run decision path with preflight, hotkey, and
+live-control checks, then saves a sanitized local JSON artifact under
+`~/.saymo/rehearsals/<profile>/`.
 If Whisper consistently hears your name incorrectly, use `trigger-setup` to
 paste the whole transcribed phrase. Saymo extracts the likely name variant,
 saves that spelling into `vocabulary.fuzzy_expansions`, and verifies it

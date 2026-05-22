@@ -10,14 +10,14 @@ Requirements for milestone v1.7 Live Reliability Rehearsal.
 
 ### Pre-call Rehearsal
 
-- [ ] **REH-01**: User can run a local pre-call rehearsal for one profile that
+- [x] **REH-01**: User can run a local pre-call rehearsal for one profile that
   exercises capture, trigger matching, addressing, hotkey availability, local
   control state, and playback safety gates without joining a real meeting.
-- [ ] **REH-02**: User can run rehearsal in dry-run mode where Saymo reports
+- [x] **REH-02**: User can run rehearsal in dry-run mode where Saymo reports
   what it would speak or block without sending audio into the call output.
-- [ ] **REH-03**: User can save rehearsal results as a local session artifact
+- [x] **REH-03**: User can save rehearsal results as a local session artifact
   that can be compared with real capture sessions and replayed later.
-- [ ] **REH-04**: User can see a concise pass/warn/fail summary before a call,
+- [x] **REH-04**: User can see a concise pass/warn/fail summary before a call,
   including the exact blocking reason for any failed readiness check.
 
 ### Reliability Scorecard
@@ -98,10 +98,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REH-01 | Phase 27 | Pending |
-| REH-02 | Phase 27 | Pending |
-| REH-03 | Phase 27 | Pending |
-| REH-04 | Phase 27 | Pending |
+| REH-01 | Phase 27 | Complete |
+| REH-02 | Phase 27 | Complete |
+| REH-03 | Phase 27 | Complete |
+| REH-04 | Phase 27 | Complete |
 | REL-01 | Phase 28 | Pending |
 | REL-02 | Phase 28 | Pending |
 | REL-03 | Phase 28 | Pending |
@@ -121,4 +121,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-22*
-*Last updated: 2026-05-22 after roadmap creation*
+*Last updated: 2026-05-22 after completing Phase 27*

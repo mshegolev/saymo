@@ -48,7 +48,7 @@ remediation hints, and a repeatable safety soak gate.
 - Integer phases (27, 28, 29, 30): Planned milestone work
 - Decimal phases (28.1, 28.2): Urgent insertions if needed
 
-- [ ] **Phase 27: Pre-call Rehearsal Runner** - Add a guided local rehearsal
+- [x] **Phase 27: Pre-call Rehearsal Runner** - Add a guided local rehearsal
   path that checks the full live loop before joining a real meeting.
 - [ ] **Phase 28: Session Reliability Scorecard** - Summarize reliability for
   real and rehearsal sessions with sanitized evidence.
@@ -76,10 +76,10 @@ trigger replay, approved playback gates
 **Plans**: 4 plans
 
 Plans:
-- [ ] 27-01: Define rehearsal artifact model and local storage
-- [ ] 27-02: Add profile-scoped rehearsal command and dry-run path
-- [ ] 27-03: Exercise trigger, handbrake, hotkey, and playback gate checks
-- [ ] 27-04: Add rehearsal summary output and tests
+- [x] 27-01: Define rehearsal artifact model and local storage
+- [x] 27-02: Add profile-scoped rehearsal command and dry-run path
+- [x] 27-03: Exercise trigger, handbrake, hotkey, and playback gate checks
+- [x] 27-04: Add rehearsal summary output and tests
 
 ### Phase 28: Session Reliability Scorecard
 **Goal**: Give the user one sanitized reliability report for a real or
@@ -148,7 +148,7 @@ Phases execute in numeric order: 27 -> 28 -> 29 -> 30
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 27. Pre-call Rehearsal Runner | v1.7 | 0/4 | Pending | - |
+| 27. Pre-call Rehearsal Runner | v1.7 | 4/4 | Complete | 2026-05-22 |
 | 28. Session Reliability Scorecard | v1.7 | 0/4 | Pending | - |
 | 29. Remediation Advisor | v1.7 | 0/3 | Pending | - |
 | 30. Safety Soak Regression Gate | v1.7 | 0/4 | Pending | - |

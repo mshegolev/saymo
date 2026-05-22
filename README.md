@@ -82,6 +82,8 @@ saymo record-voice -d 12           # Record a fresh ~12s voice reference
 # Before the call: prepare text + cached audio
 saymo prepare -p personal
 saymo prepare-responses         # pre-synthesize the Q&A library for live mode
+saymo rehearsal -p personal --text "Your Name, what is the status?"
+                                # safe dry-run: trigger + handbrake + playback gates
 saymo auto-preflight -p personal
 saymo review                    # optional: check generated audio
 
@@ -130,6 +132,11 @@ Accessibility access for the terminal app. For a visible button-style panel,
 run `saymo live-control -p personal` in another terminal. See
 `docs/LIVE-CONTROL-HANDBRAKE.md`.
 For scriptable controls, use `saymo live-control-action -p personal --action stop`.
+
+Before trusting the live loop, run `saymo rehearsal -p personal --text "..."`
+to create a local dry-run artifact under `~/.saymo/rehearsals/<profile>/`.
+The rehearsal reports pass/warn/fail readiness, trigger/addressing action,
+whether Saymo would speak, and why it would block.
 
 ### Trigger training capture
 

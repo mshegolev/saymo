@@ -723,6 +723,235 @@ def _print_auto_preflight(profile: str, checks: list[PreflightCheck]) -> None:
     console.print(f"preflight: {'ready' if ready else 'not ready'}")
 
 
+@main.command("rehearsal")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to rehearse")
+@click.option("--text", default=None, help="Transcript text to rehearse without microphone capture")
+@click.option("--dry-run/--no-dry-run", default=True, show_default=True, help="Do not send audio to call output")
+@click.option("--provider", default=None, help="Override provider from profile")
+@click.option(
+    "--output-dir",
+    default=None,
+    type=click.Path(),
+    help="Override rehearsal artifact root; defaults to ~/.saymo/rehearsals",
+)
+@click.option(
+    "--json-output",
+    default=None,
+    type=click.Path(),
+    help="Also write the rehearsal artifact JSON to this exact path",
+)
+@click.option(
+    "--hotkey-probe/--no-hotkey-probe",
+    default=True,
+    show_default=True,
+    help="Try to create a global hotkey listener during rehearsal",
+)
+@click.pass_context
+def rehearsal(ctx, profile, text, dry_run, provider, output_dir, json_output, hotkey_probe):
+    """Run a local pre-call rehearsal without joining a meeting."""
+    if text is None:
+        text = click.prompt("Transcript text")
+    artifact, path = _run_rehearsal(
+        ctx.obj["config"],
+        profile=profile,
+        text=text,
+        dry_run=dry_run,
+        provider_name=provider,
+        output_dir=output_dir,
+        hotkey_probe=hotkey_probe,
+    )
+    if json_output:
+        from saymo.analysis.rehearsal import rehearsal_artifact_to_json
+
+        out = Path(json_output).expanduser()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            json.dumps(rehearsal_artifact_to_json(artifact), ensure_ascii=False, indent=2)
+            + "\n",
+            encoding="utf-8",
+        )
+    _print_rehearsal(artifact, path)
+
+
+def _run_rehearsal(
+    config,
+    *,
+    profile: str,
+    text: str,
+    dry_run: bool,
+    provider_name: str | None,
+    output_dir: str | None,
+    hotkey_probe: bool,
+):
+    from dataclasses import asdict
+
+    from saymo.analysis.addressing import (
+        classify_addressing,
+        expand_trigger_phrases,
+        should_answer_decision,
+    )
+    from saymo.analysis.live_control import (
+        build_hotkey_doctor_report,
+        load_live_state,
+    )
+    from saymo.analysis.rehearsal import (
+        RehearsalArtifact,
+        RehearsalCheck,
+        RehearsalDecision,
+        overall_status,
+        write_rehearsal_artifact,
+    )
+    from saymo.analysis.turn_detector import TurnDetector
+    from saymo.commands.core import _trigger_confirmation_timeout
+
+    meeting = config.get_meeting(profile)
+    resolved_provider = provider_name or (meeting.provider if meeting else "glip")
+    checks: list[RehearsalCheck] = []
+
+    for check in _collect_auto_preflight(config, profile, provider_name=provider_name):
+        if check.ok:
+            status = "pass"
+        elif check.blocking:
+            status = "fail"
+        else:
+            status = "warn"
+        checks.append(
+            RehearsalCheck(
+                name=f"preflight: {check.name}",
+                status=status,
+                detail=check.detail,
+                blocking=check.blocking,
+            )
+        )
+
+    hotkeys = build_hotkey_doctor_report(config, profile, probe=hotkey_probe)
+    hotkey_status = hotkeys.registration_status
+    hotkey_detail = hotkeys.registration_detail
+    if hotkey_status in {"ok", "skipped"}:
+        checks.append(RehearsalCheck("hotkeys", "pass", hotkey_detail, blocking=False))
+    else:
+        checks.append(RehearsalCheck("hotkeys", "warn", hotkey_detail, blocking=False))
+    if not hotkeys.process_running:
+        checks.append(
+            RehearsalCheck(
+                "saymo auto listener",
+                "warn",
+                "not detected; start `saymo auto` before relying on global hotkeys",
+                blocking=False,
+            )
+        )
+
+    live_state = load_live_state(profile)
+    live_control_state = asdict(live_state) if live_state is not None else {}
+    if live_state is None:
+        checks.append(
+            RehearsalCheck(
+                "live control state",
+                "warn",
+                "no running saymo auto state detected",
+                blocking=False,
+            )
+        )
+
+    trigger_phrases = _trigger_phrases_for_profile(config, profile)
+    expanded = expand_trigger_phrases(
+        trigger_phrases,
+        (config.vocabulary or {}).get("fuzzy_expansions"),
+    )
+    detector = TurnDetector(
+        name_variants=trigger_phrases,
+        cooldown_seconds=0,
+        fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
+    )
+    triggered = detector.check(text)
+    decision = classify_addressing(
+        text,
+        expanded,
+        **_addressing_pattern_options(config, profile),
+    )
+    will_answer = bool(triggered and should_answer_decision(decision))
+    confirmation_required = bool(getattr(config.safety, "require_confirmation", False))
+    if not will_answer:
+        auto_action = "skip"
+        would_speak = False
+        blocked_reason = decision.reason or "not addressed to user"
+    elif confirmation_required:
+        auto_action = "wait_for_confirmation"
+        would_speak = False
+        blocked_reason = f"confirmation required within {_trigger_confirmation_timeout(config):.1f}s"
+    else:
+        auto_action = "answer_now"
+        would_speak = True
+        blocked_reason = ""
+
+    blocking_failures = [check for check in checks if check.status == "fail" and check.blocking]
+    if blocking_failures:
+        would_speak = False
+        blocked_reason = "blocking preflight failure"
+    elif live_state is not None and (
+        not live_state.auto_answer_enabled
+        or live_state.manual_takeover
+        or live_state.hard_disabled
+    ):
+        would_speak = False
+        blocked_reason = "handbrake state blocks automatic speaking"
+
+    if would_speak:
+        gate_status = "pass"
+        gate_detail = "dry-run would speak" if dry_run else "would speak"
+    elif blocking_failures:
+        gate_status = "fail"
+        gate_detail = blocked_reason
+    else:
+        gate_status = "pass"
+        gate_detail = f"would block: {blocked_reason}"
+    checks.append(RehearsalCheck("playback gate", gate_status, gate_detail, blocking=True))
+
+    checks_tuple = tuple(checks)
+    artifact = RehearsalArtifact(
+        profile=profile,
+        provider=resolved_provider,
+        transcript=_transcript_snippet(text),
+        dry_run=dry_run,
+        status=overall_status(checks_tuple),
+        checks=checks_tuple,
+        decision=RehearsalDecision(
+            triggered=triggered,
+            addressing=decision.label,
+            reason=decision.reason,
+            auto_action=auto_action,
+            would_speak=would_speak,
+            blocked_reason=blocked_reason,
+            matched_phrase=decision.trigger,
+            question=decision.is_question,
+        ),
+        live_control_state=live_control_state,
+        hotkey_status=hotkey_status,
+    )
+    path = write_rehearsal_artifact(artifact, base_dir=output_dir)
+    return artifact, path
+
+
+def _print_rehearsal(artifact, path: Path) -> None:
+    console.print(f"profile: {artifact.profile}")
+    console.print(f"rehearsal: {artifact.status}")
+    console.print(f"dry-run: {'yes' if artifact.dry_run else 'no'}")
+    console.print(f"auto action: {artifact.decision.auto_action}")
+    console.print(f"would speak: {'yes' if artifact.decision.would_speak else 'no'}")
+    if artifact.decision.blocked_reason:
+        console.print(f"blocked: {artifact.decision.blocked_reason}")
+    for check in artifact.checks:
+        console.print(f"{check.status}: {check.name}: {check.detail}")
+    console.print(f"artifact: {path}")
+
+
+def _transcript_snippet(text: str, *, limit: int = 240) -> str:
+    cleaned = " ".join(str(text or "").split())
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 1] + "…"
+
+
 @main.command("hotkey-doctor")
 @click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
 @click.option("--probe/--no-probe", default=True, show_default=True, help="Try to create a global hotkey listener")
