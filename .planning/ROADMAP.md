@@ -35,7 +35,7 @@ back, and re-enable Saymo safely during a live call.
 
 ## Active Milestone
 
-- **v1.6 Live Control Handbrake** - Phases 23-26 planned.
+- **v1.6 Live Control Handbrake** - Phases 23-26 complete.
 
 ## Phases
 
@@ -43,13 +43,13 @@ back, and re-enable Saymo safely during a live call.
 - Integer phases (23, 24, 25, 26): Planned milestone work
 - Decimal phases (24.1, 24.2): Urgent insertions if needed
 
-- [ ] **Phase 23: Operator Guide And Control Vocabulary** - Define the live
+- [x] **Phase 23: Operator Guide And Control Vocabulary** - Define the live
   call guide, control names, and expected operator flow before code changes.
-- [ ] **Phase 24: Runtime Handbrake State** - Add one safety state model for
+- [x] **Phase 24: Runtime Handbrake State** - Add one safety state model for
   auto-answer on/off, stop, pause, and manual takeover.
-- [ ] **Phase 25: Local Control Surface** - Add buttons/keyboard controls that
+- [x] **Phase 25: Local Control Surface** - Add buttons/keyboard controls that
   expose the handbrake state without relying on hidden terminal output.
-- [ ] **Phase 26: macOS Hotkey Doctor And Safety Regression** - Make hotkeys
+- [x] **Phase 26: macOS Hotkey Doctor And Safety Regression** - Make hotkeys
   installable, diagnosable, customizable, expandable, and regression-tested.
 
 ## Phase Details
@@ -73,9 +73,9 @@ current `saymo auto` hotkey behavior
 **Plans**: 3 plans
 
 Plans:
-- [ ] 23-01: Write short live-call handbrake guide
-- [ ] 23-02: Define control/state vocabulary and map existing hotkeys
-- [ ] 23-03: Add docs tests or link checks for current behavior claims
+- [x] 23-01: Write short live-call handbrake guide
+- [x] 23-02: Define control/state vocabulary and map existing hotkeys
+- [x] 23-03: Add docs tests or link checks for current behavior claims
 
 ### Phase 24: Runtime Handbrake State
 **Goal**: Make auto-answer on/off and manual takeover an explicit runtime
@@ -97,10 +97,10 @@ approved draft playback gates
 **Plans**: 4 plans
 
 Plans:
-- [ ] 24-01: Add shared live-control state model and transition helpers
-- [ ] 24-02: Wire auto-answer toggle into `saymo auto` response gates
-- [ ] 24-03: Normalize stop and manual takeover recovery behavior
-- [ ] 24-04: Add tests for blocked automatic speaking while handbrake is active
+- [x] 24-01: Add shared live-control state model and transition helpers
+- [x] 24-02: Wire auto-answer toggle into `saymo auto` response gates
+- [x] 24-03: Normalize stop and manual takeover recovery behavior
+- [x] 24-04: Add tests for blocked automatic speaking while handbrake is active
 
 ### Phase 25: Local Control Surface
 **Goal**: Provide a local button-oriented surface for operating the handbrake
@@ -113,19 +113,19 @@ without relying on memory of hotkey combinations during a live call.
   2. The surface shows current state: auto-answer on/off, paused, speaking,
      manual takeover, last trigger, and hotkey listener state.
   3. Keyboard controls inside the surface mirror configured macOS hotkeys.
-  4. Additional controls can be shown for approved-draft speak, skip current
-     candidate, capture marker, cockpit/status display, and hard-disable
-     auto-answer without crowding the primary controls.
+  4. Additional controls can be shown for approved-draft speak request, skip
+     current candidate, capture marker, cockpit/status display, and
+     hard-disable auto-answer without crowding the primary controls.
   5. Handbrake actions record audit events with source, previous state, next
      state, blocked reason, and mic-switch result.
   6. Existing `saymo dashboard` prepare/speak behavior remains usable.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 25-01: Extend or add local dashboard handbrake controls
-- [ ] 25-02: Render live-control state and last-action feedback
-- [ ] 25-03: Add keyboard shortcuts matching configured hotkey actions
-- [ ] 25-04: Record handbrake audit events from button and keyboard actions
+- [x] 25-01: Extend or add local dashboard handbrake controls
+- [x] 25-02: Render live-control state and last-action feedback
+- [x] 25-03: Add keyboard shortcuts matching configured hotkey actions
+- [x] 25-04: Record handbrake audit events from button and keyboard actions
 
 ### Phase 26: macOS Hotkey Doctor And Safety Regression
 **Goal**: Make global hotkeys predictable before a call and regression-test the
@@ -143,18 +143,19 @@ full handbrake flow.
      Saymo listener process, and effective configured bindings.
   4. Per-profile or config-customized bindings are reflected in docs, preflight,
      runtime output, and control surface labels.
-  5. Optional hotkeys can cover approved-draft speak, skip current candidate,
-     capture marker, cockpit/status display, and hard-disable auto-answer.
+  5. Optional hotkeys can cover approved-draft speak request, skip current
+     candidate, capture marker, cockpit/status display, and hard-disable
+     auto-answer.
   6. Focused tests cover stop, toggle, takeover, hotkey diagnostics, and
      disabled auto-answer behavior.
 **Plans**: 5 plans
 
 Plans:
-- [ ] 26-01: Improve hotkey install/update command and guide snippets
-- [ ] 26-02: Add hotkey doctor/pre-call checklist diagnostics
-- [ ] 26-03: Add expanded optional hotkey action catalog
-- [ ] 26-04: Surface effective customized bindings consistently
-- [ ] 26-05: Add focused handbrake and hotkey regression tests
+- [x] 26-01: Improve hotkey install/update command and guide snippets
+- [x] 26-02: Add hotkey doctor/pre-call checklist diagnostics
+- [x] 26-03: Add expanded optional hotkey action catalog
+- [x] 26-04: Surface effective customized bindings consistently
+- [x] 26-05: Add focused handbrake and hotkey regression tests
 
 ## Progress
 
@@ -163,10 +164,10 @@ Phases execute in numeric order: 23 -> 24 -> 25 -> 26
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 23. Operator Guide And Control Vocabulary | v1.6 | 0/3 | Pending | - |
-| 24. Runtime Handbrake State | v1.6 | 0/4 | Pending | - |
-| 25. Local Control Surface | v1.6 | 0/4 | Pending | - |
-| 26. macOS Hotkey Doctor And Safety Regression | v1.6 | 0/5 | Pending | - |
+| 23. Operator Guide And Control Vocabulary | v1.6 | 3/3 | Complete | 2026-05-22 |
+| 24. Runtime Handbrake State | v1.6 | 4/4 | Complete | 2026-05-22 |
+| 25. Local Control Surface | v1.6 | 4/4 | Complete | 2026-05-22 |
+| 26. macOS Hotkey Doctor And Safety Regression | v1.6 | 5/5 | Complete | 2026-05-22 |
 
 ## Requirement Coverage
 

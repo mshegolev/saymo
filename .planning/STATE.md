@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Live Control Handbrake
-status: roadmap ready; next phase 23
-stopped_at: milestone v1.6 roadmap created; next step is $gsd-plan-phase 23.
+status: v1.6 implementation complete; ready for milestone audit
+stopped_at: milestone v1.6 phases complete; next step is $gsd-complete-milestone v1.6.
 last_updated: "2026-05-22"
-last_activity: "2026-05-22 - created milestone v1.6 roadmap"
+last_activity: "2026-05-22 - completed phases 23-26 for v1.6"
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 4
   total_plans: 16
-  completed_plans: 0
-  percent: 0
+  completed_plans: 16
+  percent: 100
 ---
 
 # Project State
@@ -28,18 +28,18 @@ and respond fast enough that the call still feels live.
 
 Phase: None
 Plan: None
-Status: Roadmap ready
-Last activity: 2026-05-22 - created v1.6 roadmap with phases 23-26.
+Status: v1.6 implementation complete
+Last activity: 2026-05-22 - completed v1.6 phases 23-26.
 
-Progress: [----------] 0%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 16
-- Plans completed: 0
-- Average duration: pending
-- Total execution time: pending
+- Plans completed: 16
+- Average duration: same-day execution
+- Total execution time: same-day execution
 
 **Historical Velocity:**
 - v1.0 completed 11 plans across 4 phases.
@@ -53,10 +53,10 @@ Progress: [----------] 0%
 
 | Phase | Plans | Total | Status |
 |-------|-------|-------|--------|
-| 23. Operator Guide And Control Vocabulary | 3 | 0/3 | pending |
-| 24. Runtime Handbrake State | 4 | 0/4 | pending |
-| 25. Local Control Surface | 4 | 0/4 | pending |
-| 26. macOS Hotkey Doctor And Safety Regression | 5 | 0/5 | pending |
+| 23. Operator Guide And Control Vocabulary | 3 | 3/3 | complete |
+| 24. Runtime Handbrake State | 4 | 4/4 | complete |
+| 25. Local Control Surface | 4 | 4/4 | complete |
+| 26. macOS Hotkey Doctor And Safety Regression | 5 | 5/5 | complete |
 
 ## Accumulated Context
 
@@ -75,7 +75,7 @@ Recent decisions affecting future work:
 
 ### Pending Todos
 
-Plan Phase 23.
+Run milestone audit and archive v1.6.
 
 ### Blockers/Concerns
 
@@ -96,6 +96,6 @@ Plan Phase 23.
 
 ## Session Continuity
 
-Last session: 2026-05-21
-Stopped at: milestone v1.6 roadmap created; next step is `$gsd-plan-phase 23`.
+Last session: 2026-05-22
+Stopped at: milestone v1.6 phases complete; next step is `$gsd-complete-milestone v1.6`.
 Resume file: None

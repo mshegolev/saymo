@@ -10,62 +10,63 @@ Requirements for milestone v1.6 Live Control Handbrake.
 
 ### Operator Guide
 
-- [ ] **GUIDE-01**: User can read a short live-call guide that explains when to
+- [x] **GUIDE-01**: User can read a short live-call guide that explains when to
   use speak, stop, auto-answer toggle, and manual takeover controls.
-- [ ] **GUIDE-02**: User can see a clear answer to whether macOS hotkeys need
+- [x] **GUIDE-02**: User can see a clear answer to whether macOS hotkeys need
   the terminal focused, what process must be running, and which macOS
   permission is required.
-- [ ] **GUIDE-03**: User can run a pre-call checklist that confirms profile,
+- [x] **GUIDE-03**: User can run a pre-call checklist that confirms profile,
   provider, audio devices, hotkeys, and manual takeover readiness.
 
 ### Handbrake State
 
-- [ ] **CTRL-01**: User can switch auto-answer off during `saymo auto` so Saymo
+- [x] **CTRL-01**: User can switch auto-answer off during `saymo auto` so Saymo
   keeps the call safe and does not speak automatically while the user answers
   manually.
-- [ ] **CTRL-02**: User can switch auto-answer back on without restarting the
+- [x] **CTRL-02**: User can switch auto-answer back on without restarting the
   call assistant process.
-- [ ] **CTRL-03**: User can stop current Saymo playback immediately without
+- [x] **CTRL-03**: User can stop current Saymo playback immediately without
   also losing the ability to continue listening or recover manually.
-- [ ] **CTRL-04**: User can enter and exit manual takeover mode that pauses
+- [x] **CTRL-04**: User can enter and exit manual takeover mode that pauses
   auto-answer, stops playback, and performs best-effort call microphone
   switching when the provider supports it.
 
 ### Control Surface
 
-- [ ] **UI-01**: User can open a local control surface with obvious controls
+- [x] **UI-01**: User can open a local control surface with obvious controls
   for auto-answer on/off, speak, stop, and manual takeover.
-- [ ] **UI-02**: User can see the current live-control state at a glance:
+- [x] **UI-02**: User can see the current live-control state at a glance:
   auto-answer on/off, paused, speaking, manual takeover, last trigger, and
   whether hotkeys are active.
-- [ ] **UI-03**: User can operate the control surface with keyboard shortcuts
+- [x] **UI-03**: User can operate the control surface with keyboard shortcuts
   that mirror the configured macOS hotkeys.
-- [ ] **UI-04**: User can expose additional live controls for approved-draft
-  speak, skip current candidate, capture marker, cockpit/status display, and
-  hard-disable auto-answer without crowding the primary emergency controls.
+- [x] **UI-04**: User can expose additional live controls for approved-draft
+  speak request, skip current candidate, capture marker, cockpit/status
+  display, and hard-disable auto-answer without crowding the primary emergency
+  controls.
 
 ### macOS Hotkeys
 
-- [ ] **HOT-01**: User can install or update the default Saymo hotkeys from a
+- [x] **HOT-01**: User can install or update the default Saymo hotkeys from a
   documented command without clobbering existing config values.
-- [ ] **HOT-02**: User can verify before a call that global macOS hotkeys are
+- [x] **HOT-02**: User can verify before a call that global macOS hotkeys are
   registered, the Saymo listener is running, and Accessibility permission is
   available or missing.
-- [ ] **HOT-03**: User can customize hotkeys per config/profile and see the
+- [x] **HOT-03**: User can customize hotkeys per config/profile and see the
   effective binding names in preflight, guide, and runtime output.
-- [ ] **HOT-04**: User can configure optional global hotkeys for approved-draft
-  speak, skip current candidate, capture marker, cockpit/status display, and
-  hard-disable auto-answer.
+- [x] **HOT-04**: User can configure optional global hotkeys for approved-draft
+  speak request, skip current candidate, capture marker, cockpit/status
+  display, and hard-disable auto-answer.
 
 ### Safety And Audit
 
-- [ ] **SAFE-02**: Saymo refuses all automatic speaking paths while auto-answer
+- [x] **SAFE-02**: Saymo refuses all automatic speaking paths while auto-answer
   is off or manual takeover is active, including prepared responses and
   approved draft playback.
-- [ ] **SAFE-03**: User can inspect a local audit trail for handbrake actions,
+- [x] **SAFE-03**: User can inspect a local audit trail for handbrake actions,
   including hotkey/button source, previous state, next state, blocked speaking
   reasons, and mic-switch result.
-- [ ] **SAFE-04**: User can run focused regression checks proving stop, toggle,
+- [x] **SAFE-04**: User can run focused regression checks proving stop, toggle,
   manual takeover, hotkey diagnostics, and disabled auto-answer behavior.
 
 ## Future Requirements
@@ -109,24 +110,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GUIDE-01 | Phase 23 | Pending |
-| GUIDE-02 | Phase 23 | Pending |
-| GUIDE-03 | Phase 26 | Pending |
-| CTRL-01 | Phase 24 | Pending |
-| CTRL-02 | Phase 24 | Pending |
-| CTRL-03 | Phase 24 | Pending |
-| CTRL-04 | Phase 24 | Pending |
-| UI-01 | Phase 25 | Pending |
-| UI-02 | Phase 25 | Pending |
-| UI-03 | Phase 25 | Pending |
-| UI-04 | Phase 25 | Pending |
-| HOT-01 | Phase 26 | Pending |
-| HOT-02 | Phase 26 | Pending |
-| HOT-03 | Phase 26 | Pending |
-| HOT-04 | Phase 26 | Pending |
-| SAFE-02 | Phase 24 | Pending |
-| SAFE-03 | Phase 25 | Pending |
-| SAFE-04 | Phase 26 | Pending |
+| GUIDE-01 | Phase 23 | Complete |
+| GUIDE-02 | Phase 23 | Complete |
+| GUIDE-03 | Phase 26 | Complete |
+| CTRL-01 | Phase 24 | Complete |
+| CTRL-02 | Phase 24 | Complete |
+| CTRL-03 | Phase 24 | Complete |
+| CTRL-04 | Phase 24 | Complete |
+| UI-01 | Phase 25 | Complete |
+| UI-02 | Phase 25 | Complete |
+| UI-03 | Phase 25 | Complete |
+| UI-04 | Phase 25 | Complete |
+| HOT-01 | Phase 26 | Complete |
+| HOT-02 | Phase 26 | Complete |
+| HOT-03 | Phase 26 | Complete |
+| HOT-04 | Phase 26 | Complete |
+| SAFE-02 | Phase 24 | Complete |
+| SAFE-03 | Phase 25 | Complete |
+| SAFE-04 | Phase 26 | Complete |
 
 **Coverage:**
 - v1.6 requirements: 18 total
@@ -135,4 +136,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-22*
-*Last updated: 2026-05-22 after roadmap creation*
+*Last updated: 2026-05-22 after v1.6 implementation*
