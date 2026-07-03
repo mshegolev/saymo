@@ -58,6 +58,30 @@ The command prints a run directory under:
 
 Read latency from the run's `manifest.json`; it is not recorded in `blind-review.md`.
 
+## Run Qwen3 Base Challenger
+
+Start with the dry-run gate. This exercises the benchmark path without importing `qwen_tts`, installing packages, or downloading model files:
+
+```bash
+uv run python scripts/voice_clone_benchmark.py --engine qwen3_base --limit 1 --dry-run
+```
+
+After the dry-run passes and an F5 report exists, install the official package in an isolated local environment and run the real challenger:
+
+```bash
+uv run python scripts/voice_clone_benchmark.py --engine qwen3_base
+```
+
+Useful local-only overrides:
+
+- `--voice-sample ~/.saymo/voice_samples/voice_sample.0024.wav`
+- `--ref-text-file ~/.saymo/voice_samples/voice_sample.txt`
+- `--qwen-model Qwen/Qwen3-TTS-12Hz-1.7B-Base`
+- `--qwen-device-map auto`
+- `--qwen-dtype auto`
+
+See [Qwen3 Base Voice Clone Notes](qwen3-base-voice-clone-notes.md) for the current gate decision.
+
 ## Promotion Gate
 
 A challenger can replace F5 only if:

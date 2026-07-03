@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 import importlib.util
 import json
 import sys
@@ -57,6 +58,126 @@ def test_f5_settings_treats_none_ref_text_as_empty():
     settings = benchmark._f5_settings(config, dry_run=True)
 
     assert settings["ref_text_override_chars"] == 0
+
+
+@pytest.mark.anyio
+async def test_generate_qwen3_base_dry_run_writes_manifest_without_importing_qwen(
+    tmp_path, monkeypatch
+):
+    benchmark = _load_benchmark_module()
+    transcript = "TRANSCRIPT_SHOULD_NOT_LEAK"
+    voice_sample = tmp_path / "voice_sample.wav"
+    real_import = builtins.__import__
+
+    def guard_import(name, *args, **kwargs):
+        if name == "qwen_tts" or name.startswith("qwen_tts."):
+            raise AssertionError("qwen_tts must not be imported in dry-run mode")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guard_import)
+
+    records = await benchmark.generate_qwen3_base(
+        tmp_path,
+        limit=2,
+        dry_run=True,
+        model="Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+        device_map="auto",
+        dtype="auto",
+        voice_sample=str(voice_sample),
+        ref_text=transcript,
+    )
+
+    assert [record.phrase_id for record in records] == [1, 2]
+    assert (tmp_path / "qwen3_base-01.wav").read_bytes() == b""
+    assert (tmp_path / "qwen3_base-02.wav").read_bytes() == b""
+    assert (tmp_path / "blind-review.md").exists()
+
+    manifest_text = (tmp_path / "manifest.json").read_text(encoding="utf-8")
+    assert transcript not in manifest_text
+    manifest = json.loads(manifest_text)
+    assert len(manifest["records"]) == 2
+    assert manifest["records"][0]["engine"] == "qwen3_base"
+    assert manifest["records"][0]["text"] == benchmark.PHRASES[0]
+    assert manifest["records"][0]["settings"] == {
+        "dry_run": True,
+        "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+        "device_map": "auto",
+        "dtype": "auto",
+        "voice_sample": str(voice_sample),
+        "ref_text_chars": len(transcript),
+    }
+
+
+@pytest.mark.anyio
+async def test_generate_qwen3_base_missing_package_exits_with_install_instruction(
+    tmp_path, monkeypatch
+):
+    benchmark = _load_benchmark_module()
+    voice_sample = tmp_path / "voice_sample.wav"
+    voice_sample.write_bytes(b"RIFFfake")
+    real_import = builtins.__import__
+
+    def missing_qwen_import(name, *args, **kwargs):
+        if name == "qwen_tts" or name.startswith("qwen_tts."):
+            raise ModuleNotFoundError("No module named 'qwen_tts'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", missing_qwen_import)
+
+    with pytest.raises(SystemExit, match="pip install -U qwen-tts"):
+        await benchmark.generate_qwen3_base(
+            tmp_path,
+            limit=1,
+            dry_run=False,
+            model="Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+            device_map="auto",
+            dtype="auto",
+            voice_sample=str(voice_sample),
+            ref_text="short transcript",
+        )
+
+
+def test_resolve_qwen_ref_text_prefers_explicit_then_sidecar_then_fallback(tmp_path):
+    benchmark = _load_benchmark_module()
+    voice_sample = tmp_path / "voice_sample.wav"
+    voice_sample.write_bytes(b"RIFFfake")
+    sidecar = tmp_path / "voice_sample.txt"
+    sidecar.write_text("sidecar transcript\n", encoding="utf-8")
+    ref_file = tmp_path / "explicit.txt"
+    ref_file.write_text("file transcript\n", encoding="utf-8")
+
+    assert (
+        benchmark._resolve_qwen_ref_text(
+            voice_sample=str(voice_sample),
+            ref_text=" inline transcript ",
+            ref_text_file=None,
+        )
+        == "inline transcript"
+    )
+    assert (
+        benchmark._resolve_qwen_ref_text(
+            voice_sample=str(voice_sample),
+            ref_text=None,
+            ref_text_file=str(ref_file),
+        )
+        == "file transcript"
+    )
+    assert (
+        benchmark._resolve_qwen_ref_text(
+            voice_sample=str(voice_sample),
+            ref_text=None,
+            ref_text_file=None,
+        )
+        == "sidecar transcript"
+    )
+
+    sidecar.unlink()
+
+    assert benchmark._resolve_qwen_ref_text(
+        voice_sample=str(voice_sample),
+        ref_text=None,
+        ref_text_file=None,
+    ) == benchmark.QWEN_FALLBACK_REF_TEXT
 
 
 @pytest.mark.anyio

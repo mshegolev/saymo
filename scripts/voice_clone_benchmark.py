@@ -16,6 +16,12 @@ from typing import Any
 
 from saymo.config import SaymoConfig, load_config
 
+QWEN_DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
+QWEN_DEFAULT_DEVICE_MAP = "auto"
+QWEN_DEFAULT_DTYPE = "auto"
+QWEN_DEFAULT_VOICE_SAMPLE = Path.home() / ".saymo" / "voice_samples" / "voice_sample.wav"
+QWEN_FALLBACK_REF_TEXT = "Это короткий образец русского голоса для проверки клонирования."
+QWEN_LANGUAGE = "Russian"
 
 PHRASES = [
     "Доброе утро, коллеги. Вчера я закрыл проверку релиза.",
@@ -43,12 +49,15 @@ class ClipRecord:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--engine", default="f5tts", choices=["f5tts"])
+    parser.add_argument("--engine", default="f5tts", choices=["f5tts", "qwen3_base"])
     parser.add_argument("--limit", type=int, default=len(PHRASES))
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
         "--voice-sample",
-        help="Reference WAV to use for voice cloning. Defaults to Saymo's F5-TTS default.",
+        help=(
+            "Reference WAV to use for voice cloning. Defaults to Saymo's F5-TTS "
+            "default for F5 and ~/.saymo/voice_samples/voice_sample.wav for Qwen3 Base."
+        ),
     )
     parser.add_argument(
         "--f5-nfe-step",
@@ -66,6 +75,21 @@ def parse_args() -> argparse.Namespace:
         "--f5-device",
         dest="device",
         help="Override F5-TTS device for this benchmark run only, e.g. cpu, mps, cuda.",
+    )
+    parser.add_argument(
+        "--qwen-model",
+        default=QWEN_DEFAULT_MODEL,
+        help="Qwen3 Base model id for benchmark-only generation.",
+    )
+    parser.add_argument(
+        "--qwen-device-map",
+        default=QWEN_DEFAULT_DEVICE_MAP,
+        help="Device map passed to Qwen3TTSModel.from_pretrained.",
+    )
+    parser.add_argument(
+        "--qwen-dtype",
+        default=QWEN_DEFAULT_DTYPE,
+        help="Torch dtype passed to Qwen3TTSModel.from_pretrained.",
     )
     ref_group = parser.add_mutually_exclusive_group()
     ref_group.add_argument(
@@ -111,6 +135,25 @@ def _f5_settings(config: SaymoConfig, *, dry_run: bool) -> dict[str, Any]:
     }
 
 
+def _qwen3_base_settings(
+    *,
+    dry_run: bool,
+    model: str,
+    device_map: str,
+    dtype: str,
+    voice_sample: str,
+    ref_text: str,
+) -> dict[str, Any]:
+    return {
+        "dry_run": dry_run,
+        "model": model,
+        "device_map": device_map,
+        "dtype": dtype,
+        "voice_sample": voice_sample,
+        "ref_text_chars": len(ref_text or ""),
+    }
+
+
 def apply_f5_overrides(
     config: SaymoConfig,
     *,
@@ -151,6 +194,28 @@ def _resolve_ref_text(args: argparse.Namespace) -> str | None:
     if args.ref_text is not None:
         return args.ref_text.strip()
     return None
+
+
+def _resolve_qwen_voice_sample(voice_sample: str | None) -> str:
+    return str(Path(voice_sample).expanduser() if voice_sample else QWEN_DEFAULT_VOICE_SAMPLE)
+
+
+def _resolve_qwen_ref_text(
+    *,
+    voice_sample: str,
+    ref_text: str | None,
+    ref_text_file: str | None,
+) -> str:
+    if ref_text_file:
+        return Path(ref_text_file).expanduser().read_text(encoding="utf-8").strip()
+    if ref_text is not None:
+        return ref_text.strip()
+
+    sidecar = Path(voice_sample).expanduser().with_suffix(".txt")
+    if sidecar.exists():
+        return sidecar.read_text(encoding="utf-8").strip()
+
+    return QWEN_FALLBACK_REF_TEXT
 
 
 async def generate_f5(
@@ -213,6 +278,151 @@ async def generate_f5(
     return records
 
 
+def _load_qwen3_base_model(*, model: str, device_map: str, dtype: str):
+    try:
+        from qwen_tts import Qwen3TTSModel
+    except ModuleNotFoundError as exc:
+        if exc.name == "qwen_tts" or "qwen_tts" in str(exc):
+            raise SystemExit(
+                "qwen_tts is not installed. Install Qwen3 benchmark support with: "
+                "pip install -U qwen-tts"
+            ) from None
+        raise
+
+    factory = getattr(Qwen3TTSModel, "from_pretrained", None)
+    if factory is not None:
+        return factory(model, device_map=device_map, torch_dtype=dtype)
+    return Qwen3TTSModel(model=model, device_map=device_map, dtype=dtype)
+
+
+def _write_qwen_audio_result(result: Any, output: Path) -> None:
+    if result is None and output.exists():
+        return
+    if isinstance(result, (bytes, bytearray)):
+        output.write_bytes(bytes(result))
+        return
+    if isinstance(result, (str, Path)):
+        output.write_bytes(Path(result).expanduser().read_bytes())
+        return
+    if isinstance(result, dict):
+        audio = None
+        for audio_key in ("audio", "wav", "waveform"):
+            if audio_key in result and result[audio_key] is not None:
+                audio = result[audio_key]
+                break
+        sample_rate = result.get("sample_rate") or result.get("sampling_rate") or 24000
+        if audio is not None:
+            _write_audio_array(output, audio, int(sample_rate))
+            return
+    if isinstance(result, tuple) and len(result) == 2:
+        first, second = result
+        if isinstance(first, int):
+            _write_audio_array(output, second, first)
+        else:
+            _write_audio_array(output, first, int(second))
+        return
+    if hasattr(result, "save"):
+        result.save(str(output))
+        return
+    raise TypeError(f"Unsupported Qwen3 voice clone result type: {type(result).__name__}")
+
+
+def _write_audio_array(output: Path, audio: Any, sample_rate: int) -> None:
+    import soundfile as sf
+
+    sf.write(output, audio, sample_rate)
+
+
+def _generate_qwen3_base_wav(
+    *,
+    output: Path,
+    text: str,
+    model: str,
+    device_map: str,
+    dtype: str,
+    voice_sample: str,
+    ref_text: str,
+) -> None:
+    qwen_model = _load_qwen3_base_model(model=model, device_map=device_map, dtype=dtype)
+    if hasattr(qwen_model, "create_voice_clone_prompt"):
+        prompt = qwen_model.create_voice_clone_prompt(
+            ref_audio=voice_sample,
+            ref_text=ref_text,
+        )
+        result = qwen_model.generate_voice_clone(
+            text=text,
+            language=QWEN_LANGUAGE,
+            voice_clone_prompt=prompt,
+        )
+    else:
+        result = qwen_model.generate_voice_clone(
+            text=text,
+            language=QWEN_LANGUAGE,
+            ref_audio=voice_sample,
+            ref_text=ref_text,
+        )
+    _write_qwen_audio_result(result, output)
+
+
+async def generate_qwen3_base(
+    run_dir: Path,
+    limit: int,
+    dry_run: bool,
+    *,
+    model: str,
+    device_map: str,
+    dtype: str,
+    voice_sample: str,
+    ref_text: str,
+) -> list[ClipRecord]:
+    settings = _qwen3_base_settings(
+        dry_run=dry_run,
+        model=model,
+        device_map=device_map,
+        dtype=dtype,
+        voice_sample=voice_sample,
+        ref_text=ref_text,
+    )
+
+    records: list[ClipRecord] = []
+    selected_phrases = _selected_phrases(limit)
+    for index, (phrase_id, text) in enumerate(selected_phrases, start=1):
+        output = run_dir / f"qwen3_base-{phrase_id:02d}.wav"
+        print(f"[{index}/{len(selected_phrases)}] qwen3_base phrase {phrase_id}", flush=True)
+        if dry_run:
+            latency_ms = 0
+            output.write_bytes(b"")
+        else:
+            start = time.perf_counter()
+            await asyncio.to_thread(
+                _generate_qwen3_base_wav,
+                output=output,
+                text=text,
+                model=model,
+                device_map=device_map,
+                dtype=dtype,
+                voice_sample=voice_sample,
+                ref_text=ref_text,
+            )
+            latency_ms = int((time.perf_counter() - start) * 1000)
+
+        records.append(
+            ClipRecord(
+                engine="qwen3_base",
+                phrase_id=phrase_id,
+                text=text,
+                output_wav=str(output),
+                latency_ms=latency_ms,
+                settings=settings,
+            )
+        )
+        write_outputs(run_dir, records)
+
+    if not records:
+        write_outputs(run_dir, records)
+    return records
+
+
 def write_outputs(run_dir: Path, records: list[ClipRecord]) -> None:
     manifest = {
         "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -242,16 +452,33 @@ def write_outputs(run_dir: Path, records: list[ClipRecord]) -> None:
 async def main() -> None:
     args = parse_args()
     run_dir = make_run_dir(args.out_root, args.engine)
-    await generate_f5(
-        run_dir,
-        args.limit,
-        args.dry_run,
-        nfe_step=args.nfe_step,
-        speed=args.speed,
-        device=args.device,
-        voice_sample=args.voice_sample,
-        ref_text=_resolve_ref_text(args),
-    )
+    if args.engine == "f5tts":
+        await generate_f5(
+            run_dir,
+            args.limit,
+            args.dry_run,
+            nfe_step=args.nfe_step,
+            speed=args.speed,
+            device=args.device,
+            voice_sample=args.voice_sample,
+            ref_text=_resolve_ref_text(args),
+        )
+    elif args.engine == "qwen3_base":
+        voice_sample = _resolve_qwen_voice_sample(args.voice_sample)
+        await generate_qwen3_base(
+            run_dir,
+            args.limit,
+            args.dry_run,
+            model=args.qwen_model,
+            device_map=args.qwen_device_map,
+            dtype=args.qwen_dtype,
+            voice_sample=voice_sample,
+            ref_text=_resolve_qwen_ref_text(
+                voice_sample=voice_sample,
+                ref_text=args.ref_text,
+                ref_text_file=args.ref_text_file,
+            ),
+        )
     print(run_dir)
 
 
