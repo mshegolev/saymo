@@ -42,6 +42,7 @@ class F5TTSCloneTTS:
         language: str = "ru",
         f5tts: F5TTSConfig | None = None,
         voice_sample: str | None = None,
+        ref_text: str | None = None,
     ):
         self.language = language
         self.cfg = f5tts or F5TTSConfig()
@@ -69,8 +70,12 @@ class F5TTSCloneTTS:
 
         # Reference transcript: required by F5-TTS so it can align prosody.
         # Look for a sidecar voice_sample.txt; fall back to a generic phrase.
+        configured_ref_text = ref_text if ref_text is not None else self.cfg.ref_text
+        configured_ref_text = configured_ref_text or ""
         ref_txt_path = self.voice_sample.with_suffix(".txt")
-        if ref_txt_path.exists():
+        if configured_ref_text.strip():
+            self._ref_text = configured_ref_text.strip()
+        elif ref_txt_path.exists():
             self._ref_text = ref_txt_path.read_text(encoding="utf-8").strip()
         else:
             # Generic neutral Russian phrase. F5-TTS works best with a real

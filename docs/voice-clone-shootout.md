@@ -27,8 +27,21 @@ For a serious benchmark, record two additional clean references:
 ## Run F5 Baseline
 
 ```bash
-uv run python scripts/voice_clone_benchmark.py --engine f5tts
+uv run python scripts/voice_clone_benchmark.py --engine f5tts --f5-nfe-step 16
 ```
+
+On CPU, start with a smaller smoke run before spending time on the full set:
+
+```bash
+uv run python scripts/voice_clone_benchmark.py --engine f5tts --limit 3 --f5-nfe-step 16
+```
+
+Useful local-only overrides:
+
+- `--voice-sample ~/.saymo/voice_samples/voice_sample.0024.wav`
+- `--ref-text-file ~/.saymo/voice_samples/voice_sample.txt`
+- `--f5-device cpu`
+- `--f5-speed 0.95`
 
 The command prints a run directory under:
 
@@ -36,7 +49,7 @@ The command prints a run directory under:
 ~/.saymo/voice_benchmarks/
 ```
 
-Open `blind-review.md`, listen to each WAV, and score the audio-only review categories:
+`manifest.json` and `blind-review.md` are updated after each successful clip, so a long CPU run keeps completed results even if you interrupt it. Open `blind-review.md`, listen to each WAV, and score the audio-only review categories:
 
 - similarity
 - naturalness

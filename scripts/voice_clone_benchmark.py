@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import copy
 import json
 import random
 import time
@@ -14,7 +15,6 @@ from pathlib import Path
 from typing import Any
 
 from saymo.config import SaymoConfig, load_config
-from saymo.tts.factory import get_tts_engine
 
 
 PHRASES = [
@@ -47,6 +47,36 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=len(PHRASES))
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
+        "--voice-sample",
+        help="Reference WAV to use for voice cloning. Defaults to Saymo's F5-TTS default.",
+    )
+    parser.add_argument(
+        "--f5-nfe-step",
+        dest="nfe_step",
+        type=int,
+        help="Override F5-TTS denoising steps for this benchmark run only.",
+    )
+    parser.add_argument(
+        "--f5-speed",
+        dest="speed",
+        type=float,
+        help="Override F5-TTS speed for this benchmark run only.",
+    )
+    parser.add_argument(
+        "--f5-device",
+        dest="device",
+        help="Override F5-TTS device for this benchmark run only, e.g. cpu, mps, cuda.",
+    )
+    ref_group = parser.add_mutually_exclusive_group()
+    ref_group.add_argument(
+        "--ref-text",
+        help="Transcript override for the reference WAV. Not written to the manifest.",
+    )
+    ref_group.add_argument(
+        "--ref-text-file",
+        help="Read transcript override for the reference WAV from a UTF-8 text file.",
+    )
+    parser.add_argument(
         "--out-root",
         default=str(Path.home() / ".saymo" / "voice_benchmarks"),
         help="Directory where timestamped benchmark runs are created.",
@@ -77,11 +107,70 @@ def _f5_settings(config: SaymoConfig, *, dry_run: bool) -> dict[str, Any]:
         "device": f5tts.device,
         "ckpt_file": f5tts.ckpt_file,
         "vocab_file": f5tts.vocab_file,
+        "ref_text_override_chars": len(f5tts.ref_text or ""),
     }
 
 
-async def generate_f5(run_dir: Path, limit: int, dry_run: bool) -> list[ClipRecord]:
-    config = load_config()
+def apply_f5_overrides(
+    config: SaymoConfig,
+    *,
+    nfe_step: int | None,
+    speed: float | None,
+    device: str | None,
+    ref_text: str | None,
+) -> SaymoConfig:
+    overridden = copy.deepcopy(config)
+    if nfe_step is not None:
+        if nfe_step <= 0:
+            raise SystemExit("--f5-nfe-step must be greater than 0.")
+        overridden.tts.f5tts.nfe_step = nfe_step
+    if speed is not None:
+        if speed <= 0:
+            raise SystemExit("--f5-speed must be greater than 0.")
+        overridden.tts.f5tts.speed = speed
+    if device:
+        overridden.tts.f5tts.device = device
+    if ref_text is not None:
+        overridden.tts.f5tts.ref_text = ref_text.strip()
+    return overridden
+
+
+def _build_f5_engine(config: SaymoConfig, *, voice_sample: str | None):
+    from saymo.tts.f5tts import F5TTSCloneTTS
+
+    return F5TTSCloneTTS(
+        language=config.speech.language,
+        f5tts=config.tts.f5tts,
+        voice_sample=voice_sample,
+    )
+
+
+def _resolve_ref_text(args: argparse.Namespace) -> str | None:
+    if args.ref_text_file:
+        return Path(args.ref_text_file).expanduser().read_text(encoding="utf-8").strip()
+    if args.ref_text is not None:
+        return args.ref_text.strip()
+    return None
+
+
+async def generate_f5(
+    run_dir: Path,
+    limit: int,
+    dry_run: bool,
+    *,
+    nfe_step: int | None,
+    speed: float | None,
+    device: str | None,
+    voice_sample: str | None,
+    ref_text: str | None,
+) -> list[ClipRecord]:
+    config = apply_f5_overrides(
+        load_config(),
+        nfe_step=nfe_step,
+        speed=speed,
+        device=device,
+        ref_text=ref_text,
+    )
     settings = _f5_settings(config, dry_run=dry_run)
 
     engine = None
@@ -91,11 +180,13 @@ async def generate_f5(run_dir: Path, limit: int, dry_run: bool) -> list[ClipReco
                 f"Current config tts.engine is {config.tts.engine!r}; "
                 "expected 'f5tts_clone' for real F5 generation."
             )
-        engine = get_tts_engine(config)
+        engine = _build_f5_engine(config, voice_sample=voice_sample)
 
     records: list[ClipRecord] = []
-    for phrase_id, text in _selected_phrases(limit):
+    selected_phrases = _selected_phrases(limit)
+    for index, (phrase_id, text) in enumerate(selected_phrases, start=1):
         output = run_dir / f"f5tts-{phrase_id:02d}.wav"
+        print(f"[{index}/{len(selected_phrases)}] f5tts phrase {phrase_id}", flush=True)
         if dry_run:
             latency_ms = 0
             output.write_bytes(b"")
@@ -115,7 +206,10 @@ async def generate_f5(run_dir: Path, limit: int, dry_run: bool) -> list[ClipReco
                 settings=settings,
             )
         )
+        write_outputs(run_dir, records)
 
+    if not records:
+        write_outputs(run_dir, records)
     return records
 
 
@@ -148,8 +242,16 @@ def write_outputs(run_dir: Path, records: list[ClipRecord]) -> None:
 async def main() -> None:
     args = parse_args()
     run_dir = make_run_dir(args.out_root, args.engine)
-    records = await generate_f5(run_dir, args.limit, args.dry_run)
-    write_outputs(run_dir, records)
+    await generate_f5(
+        run_dir,
+        args.limit,
+        args.dry_run,
+        nfe_step=args.nfe_step,
+        speed=args.speed,
+        device=args.device,
+        voice_sample=args.voice_sample,
+        ref_text=_resolve_ref_text(args),
+    )
     print(run_dir)
 
 

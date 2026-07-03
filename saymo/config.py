@@ -165,6 +165,7 @@ class F5TTSConfig:
     nfe_step: int = 32                 # denoising steps; 16 fast, 32 default, 64 highest quality
     speed: float = 1.0                 # 0.5-2.0; 1.0 = natural
     device: str = "cpu"                # cpu | mps | cuda; mps may have issues, default to cpu
+    ref_text: str = ""                 # optional transcript override for the reference WAV
 
 
 @dataclass

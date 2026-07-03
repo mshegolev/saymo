@@ -57,6 +57,7 @@ tts:
     nfe_step: 32          # 16 быстро, 32 баланс, 64 высокое качество
     speed: 1.0            # 0.8-1.2 для естественной речи
     device: cpu           # mps имеет регрессии в macOS 26 — стартуй с CPU
+    ref_text: ""          # опционально: transcript override вместо voice_sample.txt
 ```
 
 ## Step 3: Записать референс
@@ -100,6 +101,7 @@ saymo speak -p standup --provider glip
 | `nfe_step` | Шагов денойзинга | 16 для real-time / Q&A; 32 дефолт; 64 для prepare-режима |
 | `speed` | Темп речи | 0.95-1.05 для естественной интонации |
 | `device` | Бэкенд | `cpu` всегда работает; `mps` быстрее но может крэшнуть на macOS 26 |
+| `ref_text` | Transcript reference WAV | Обычно оставь пустым и используй `voice_sample.txt`; удобно для benchmark overrides |
 | Ручные ударения в gen_text | `молок+о`, `позвон+ит` — F5-TTS_RUSSIAN распознаёт `+` как маркер ударения |
 
 Если темп речи отличается от твоего обычного — поменяй `speed`. F5-TTS не учит твой темп из reference (только тембр и общий характер интонаций).
