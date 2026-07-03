@@ -36,13 +36,14 @@ The command prints a run directory under:
 ~/.saymo/voice_benchmarks/
 ```
 
-Open `blind-review.md`, listen to each WAV, and score:
+Open `blind-review.md`, listen to each WAV, and score the audio-only review categories:
 
 - similarity
 - naturalness
 - Russian pronunciation
 - artifacts
-- latency
+
+Read latency from the run's `manifest.json`; it is not recorded in `blind-review.md`.
 
 ## Promotion Gate
 

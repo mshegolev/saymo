@@ -119,7 +119,7 @@ saymo speak -p standup --provider glip
 
 - F5-TTS official: https://github.com/SWivid/F5-TTS
 - Russian fine-tune: https://huggingface.co/Misha24-10/F5-TTS_RUSSIAN
-- Демо/сравнения: https://misha24-10.github.io/
+- F5-TTS demo: https://swivid.github.io/F5-TTS/
 
 ## Лицензия
 
