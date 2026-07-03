@@ -124,3 +124,7 @@ saymo speak -p standup --provider glip
 ## Лицензия
 
 F5-TTS базовая модель — CC-BY-NC 4.0 (некоммерческое использование). Для личного voice assistant'а — OK. Для коммерческого использования сверь условия с автором русского форка.
+
+## Benchmark Policy
+
+F5-TTS Russian is the current Saymo baseline. Before replacing it with another engine, run the voice clone shootout in [docs/voice-clone-shootout.md](voice-clone-shootout.md) and keep the generated report under `~/.saymo/voice_benchmarks/`.
