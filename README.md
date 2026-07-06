@@ -137,6 +137,13 @@ Before trusting the live loop, run `saymo rehearsal -p personal --text "..."`
 to create a local dry-run artifact under `~/.saymo/rehearsals/<profile>/`.
 The rehearsal reports pass/warn/fail readiness, trigger/addressing action,
 whether Saymo would speak, and why it would block.
+After a rehearsal or captured trigger session, run `saymo session-scorecard`
+to export a sanitized reliability summary without raw transcript text or audio:
+
+```bash
+saymo session-scorecard -p personal --rehearsal ~/.saymo/rehearsals/personal/2026-05-22T10-00-00-00-00.json
+saymo session-scorecard -p personal --session daily-2026-05-20 --json-output ~/.saymo/trigger_samples/scorecard.json
+```
 
 ### Trigger training capture
 

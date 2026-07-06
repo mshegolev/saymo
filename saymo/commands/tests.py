@@ -952,6 +952,96 @@ def _transcript_snippet(text: str, *, limit: int = 240) -> str:
     return cleaned[: limit - 1] + "…"
 
 
+@main.command("session-scorecard")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to score")
+@click.option(
+    "--rehearsal",
+    default=None,
+    type=click.Path(exists=True),
+    help="Saved rehearsal artifact JSON",
+)
+@click.option(
+    "--session",
+    "session_source",
+    default=None,
+    help="Trigger session id/prefix or sanitized regression metrics JSON",
+)
+@click.option(
+    "--samples-dir",
+    default=None,
+    type=click.Path(),
+    help="Directory with trigger samples when --session is a session id",
+)
+@click.option(
+    "--audit-root",
+    default=None,
+    type=click.Path(),
+    help="Live-control root containing <profile>/audit.jsonl",
+)
+@click.option("--output", "-o", default=None, type=click.Path(), help="Markdown output path")
+@click.option("--json-output", default=None, type=click.Path(), help="Sanitized JSON output path")
+@click.pass_context
+def session_scorecard(
+    ctx,
+    profile,
+    rehearsal,
+    session_source,
+    samples_dir,
+    audit_root,
+    output,
+    json_output,
+):
+    """Generate a sanitized reliability scorecard for a rehearsal or session."""
+    from saymo.analysis.session_scorecard import (
+        build_scorecard_from_regression,
+        build_scorecard_from_rehearsal,
+        render_scorecard_markdown,
+        write_scorecard_json,
+    )
+
+    if bool(rehearsal) == bool(session_source):
+        raise click.ClickException("Provide exactly one of --rehearsal or --session")
+
+    if rehearsal:
+        scorecard = build_scorecard_from_rehearsal(rehearsal, audit_root=audit_root)
+    else:
+        from saymo.analysis.regression_replay import load_regression_json
+
+        session_path = Path(session_source).expanduser()
+        if session_path.exists():
+            metrics = load_regression_json(session_path)
+        else:
+            from saymo.analysis.regression_replay import build_regression_metrics
+            from saymo.analysis.trigger_review import TriggerReviewFilters
+
+            base_dir = _samples_base_dir(samples_dir)
+            resolved_session = _resolve_trigger_session_id(base_dir, profile, session_source)
+            records = _filter_review_rows_or_fail(
+                list(_iter_trigger_sample_records(base_dir, profile=profile)),
+                TriggerReviewFilters(session=resolved_session),
+            )
+            if not records:
+                raise click.ClickException(f"No samples found for session: {resolved_session}")
+            rows = _evaluate_trigger_records(ctx.obj["config"], profile, records)
+            metrics = build_regression_metrics(
+                rows,
+                profile=profile,
+                session_id=resolved_session,
+            )
+        scorecard = build_scorecard_from_regression(metrics, audit_root=audit_root)
+
+    rendered = render_scorecard_markdown(scorecard)
+    console.print(rendered)
+    if output:
+        out_path = Path(output).expanduser()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered, encoding="utf-8")
+        console.print(f"scorecard markdown: {out_path}")
+    if json_output:
+        json_path = write_scorecard_json(json_output, scorecard)
+        console.print(f"scorecard json: {json_path}")
+
+
 @main.command("hotkey-doctor")
 @click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
 @click.option("--probe/--no-probe", default=True, show_default=True, help="Try to create a global hotkey listener")

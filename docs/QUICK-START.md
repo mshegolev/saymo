@@ -208,6 +208,13 @@ cache coverage, fallback mode, and live tuning before you join the call.
 `rehearsal` combines the same dry-run decision path with preflight, hotkey, and
 live-control checks, then saves a sanitized local JSON artifact under
 `~/.saymo/rehearsals/<profile>/`.
+Use `session-scorecard` on that artifact to summarize trigger, playback, and
+handbrake evidence without exporting raw transcript text:
+
+```bash
+saymo session-scorecard -p personal --rehearsal ~/.saymo/rehearsals/personal/2026-05-22T10-00-00-00-00.json
+```
+
 If Whisper consistently hears your name incorrectly, use `trigger-setup` to
 paste the whole transcribed phrase. Saymo extracts the likely name variant,
 saves that spelling into `vocabulary.fuzzy_expansions`, and verifies it
@@ -311,6 +318,7 @@ saymo trigger-sessions speaker-bootstrap -p personal --session daily-2026-05-20 
 saymo trigger-sessions speaker-bootstrap -p personal --session daily-2026-05-20 --from-suggestions --apply
 saymo trigger-sessions speaker-report -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/speaker-report.md
 saymo trigger-sessions replay -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/regression.md --json-output ~/.saymo/trigger_samples/regression.json
+saymo session-scorecard -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/scorecard.md --json-output ~/.saymo/trigger_samples/scorecard.json
 saymo meeting-memory build -p personal --session daily-2026-05-20
 saymo meeting-summary -p personal --session daily-2026-05-20
 saymo meeting-search -p personal --session daily-2026-05-20 --keyword "status"
