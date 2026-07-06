@@ -101,3 +101,9 @@ A challenger can replace F5 only if:
 4. GPT-SoVITS fine-tune only if zero-shot candidates fail.
 
 Do not install the next candidate until the previous candidate has a report.
+
+Next gates:
+
+- [Qwen3 Base Voice Clone Notes](qwen3-base-voice-clone-notes.md)
+- [CosyVoice Voice Clone Notes](cosyvoice-voice-clone-notes.md)
+- [Voice Clone Fine-Tune Decision](voice-clone-finetune-decision.md)
