@@ -6,9 +6,12 @@ import builtins
 import importlib.util
 import json
 import sys
+import types
 from pathlib import Path
 
+import numpy as np
 import pytest
+import soundfile as sf
 
 from saymo.config import SaymoConfig
 
@@ -137,7 +140,7 @@ async def test_generate_qwen3_base_missing_package_exits_with_install_instructio
         )
 
 
-def test_resolve_qwen_ref_text_prefers_explicit_then_sidecar_then_fallback(tmp_path):
+def test_resolve_qwen_ref_text_prefers_explicit_then_sidecar_then_empty_dry_run(tmp_path):
     benchmark = _load_benchmark_module()
     voice_sample = tmp_path / "voice_sample.wav"
     voice_sample.write_bytes(b"RIFFfake")
@@ -177,7 +180,98 @@ def test_resolve_qwen_ref_text_prefers_explicit_then_sidecar_then_fallback(tmp_p
         voice_sample=str(voice_sample),
         ref_text=None,
         ref_text_file=None,
-    ) == benchmark.QWEN_FALLBACK_REF_TEXT
+    ) == ""
+
+
+def test_resolve_qwen_ref_text_requires_transcript_for_real_generation(tmp_path):
+    benchmark = _load_benchmark_module()
+    voice_sample = tmp_path / "voice_sample.wav"
+    voice_sample.write_bytes(b"RIFFfake")
+
+    with pytest.raises(SystemExit, match="--ref-text"):
+        benchmark._resolve_qwen_ref_text(
+            voice_sample=str(voice_sample),
+            ref_text=None,
+            ref_text_file=None,
+            require_transcript=True,
+        )
+
+
+@pytest.mark.anyio
+async def test_generate_qwen3_base_reuses_model_prompt_and_writes_official_tuple(
+    tmp_path, monkeypatch
+):
+    benchmark = _load_benchmark_module()
+    voice_sample = tmp_path / "voice_sample.wav"
+    voice_sample.write_bytes(b"RIFFfake")
+    load_calls = []
+    prompt_calls = []
+    generate_calls = []
+    audio = np.array([0.0, 0.25, -0.25, 0.0], dtype=np.float32)
+
+    class FakeQwenModel:
+        def create_voice_clone_prompt(self, *, ref_audio: str, ref_text: str):
+            prompt_calls.append({"ref_audio": ref_audio, "ref_text": ref_text})
+            return {"prompt_id": "prompt-1"}
+
+        def generate_voice_clone(self, *, text: str, language: str, voice_clone_prompt):
+            generate_calls.append(
+                {
+                    "text": text,
+                    "language": language,
+                    "voice_clone_prompt": voice_clone_prompt,
+                }
+            )
+            return [audio], 16000
+
+    class FakeQwen3TTSModel:
+        @classmethod
+        def from_pretrained(cls, model: str, *, device_map: str, dtype: str):
+            load_calls.append(
+                {"model": model, "device_map": device_map, "dtype": dtype}
+            )
+            return FakeQwenModel()
+
+    fake_module = types.SimpleNamespace(Qwen3TTSModel=FakeQwen3TTSModel)
+    monkeypatch.setitem(sys.modules, "qwen_tts", fake_module)
+
+    records = await benchmark.generate_qwen3_base(
+        tmp_path,
+        limit=2,
+        dry_run=False,
+        model="Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+        device_map="cpu",
+        dtype="float16",
+        voice_sample=str(voice_sample),
+        ref_text="reference transcript",
+    )
+
+    assert load_calls == [
+        {
+            "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+            "device_map": "cpu",
+            "dtype": "float16",
+        }
+    ]
+    assert prompt_calls == [
+        {"ref_audio": str(voice_sample), "ref_text": "reference transcript"}
+    ]
+    assert [call["text"] for call in generate_calls] == benchmark.PHRASES[:2]
+    assert {id(call["voice_clone_prompt"]) for call in generate_calls} == {
+        id(generate_calls[0]["voice_clone_prompt"])
+    }
+    assert all(call["language"] == benchmark.QWEN_LANGUAGE for call in generate_calls)
+
+    generated_audio, sample_rate = sf.read(records[0].output_wav)
+    assert sample_rate == 16000
+    assert generated_audio.shape == audio.shape
+
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert len(manifest["records"]) == 2
+    assert manifest["records"][0]["settings"]["dtype"] == "float16"
+    assert "reference transcript" not in (tmp_path / "manifest.json").read_text(
+        encoding="utf-8"
+    )
 
 
 @pytest.mark.anyio

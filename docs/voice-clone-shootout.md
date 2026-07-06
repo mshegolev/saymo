@@ -66,10 +66,10 @@ Start with the dry-run gate. This exercises the benchmark path without importing
 uv run python scripts/voice_clone_benchmark.py --engine qwen3_base --limit 1 --dry-run
 ```
 
-After the dry-run passes and an F5 report exists, install the official package in an isolated local environment and run the real challenger:
+After the dry-run passes and an F5 report exists, install the official package into the Python environment that runs this script, then run the real challenger with an exact transcript for the reference WAV:
 
 ```bash
-uv run python scripts/voice_clone_benchmark.py --engine qwen3_base
+uv run python scripts/voice_clone_benchmark.py --engine qwen3_base --ref-text-file ~/.saymo/voice_samples/voice_sample.txt
 ```
 
 Useful local-only overrides:
@@ -79,6 +79,8 @@ Useful local-only overrides:
 - `--qwen-model Qwen/Qwen3-TTS-12Hz-1.7B-Base`
 - `--qwen-device-map auto`
 - `--qwen-dtype auto`
+
+Real Qwen3 generation fails fast if no transcript is provided through `--ref-text`, `--ref-text-file`, or a sidecar `.txt` next to the reference WAV. Dry-runs do not require Qwen packages, model files, or a transcript.
 
 See [Qwen3 Base Voice Clone Notes](qwen3-base-voice-clone-notes.md) for the current gate decision.
 

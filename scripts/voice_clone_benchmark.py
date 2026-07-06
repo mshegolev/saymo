@@ -20,7 +20,6 @@ QWEN_DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
 QWEN_DEFAULT_DEVICE_MAP = "auto"
 QWEN_DEFAULT_DTYPE = "auto"
 QWEN_DEFAULT_VOICE_SAMPLE = Path.home() / ".saymo" / "voice_samples" / "voice_sample.wav"
-QWEN_FALLBACK_REF_TEXT = "Это короткий образец русского голоса для проверки клонирования."
 QWEN_LANGUAGE = "Russian"
 
 PHRASES = [
@@ -205,6 +204,7 @@ def _resolve_qwen_ref_text(
     voice_sample: str,
     ref_text: str | None,
     ref_text_file: str | None,
+    require_transcript: bool = False,
 ) -> str:
     if ref_text_file:
         return Path(ref_text_file).expanduser().read_text(encoding="utf-8").strip()
@@ -215,7 +215,12 @@ def _resolve_qwen_ref_text(
     if sidecar.exists():
         return sidecar.read_text(encoding="utf-8").strip()
 
-    return QWEN_FALLBACK_REF_TEXT
+    if require_transcript:
+        raise SystemExit(
+            "Qwen3 real generation requires a transcript for the reference WAV. "
+            "Pass --ref-text, --ref-text-file, or create a sidecar .txt next to --voice-sample."
+        )
+    return ""
 
 
 async def generate_f5(
@@ -291,7 +296,7 @@ def _load_qwen3_base_model(*, model: str, device_map: str, dtype: str):
 
     factory = getattr(Qwen3TTSModel, "from_pretrained", None)
     if factory is not None:
-        return factory(model, device_map=device_map, torch_dtype=dtype)
+        return factory(model, device_map=device_map, dtype=dtype)
     return Qwen3TTSModel(model=model, device_map=device_map, dtype=dtype)
 
 
@@ -318,6 +323,8 @@ def _write_qwen_audio_result(result: Any, output: Path) -> None:
         first, second = result
         if isinstance(first, int):
             _write_audio_array(output, second, first)
+        elif isinstance(first, list) and first:
+            _write_audio_array(output, first[0], int(second))
         else:
             _write_audio_array(output, first, int(second))
         return
@@ -337,31 +344,38 @@ def _generate_qwen3_base_wav(
     *,
     output: Path,
     text: str,
+    qwen_model: Any,
+    voice_clone_prompt: Any,
+) -> None:
+    result = qwen_model.generate_voice_clone(
+        text=text,
+        language=QWEN_LANGUAGE,
+        voice_clone_prompt=voice_clone_prompt,
+    )
+    _write_qwen_audio_result(result, output)
+
+
+def _prepare_qwen3_base(
+    *,
     model: str,
     device_map: str,
     dtype: str,
     voice_sample: str,
     ref_text: str,
-) -> None:
+) -> tuple[Any, Any, int]:
+    start = time.perf_counter()
     qwen_model = _load_qwen3_base_model(model=model, device_map=device_map, dtype=dtype)
-    if hasattr(qwen_model, "create_voice_clone_prompt"):
-        prompt = qwen_model.create_voice_clone_prompt(
-            ref_audio=voice_sample,
-            ref_text=ref_text,
+    if not hasattr(qwen_model, "create_voice_clone_prompt"):
+        raise SystemExit(
+            "Installed qwen_tts package does not expose create_voice_clone_prompt; "
+            "upgrade Qwen3 benchmark support with: pip install -U qwen-tts"
         )
-        result = qwen_model.generate_voice_clone(
-            text=text,
-            language=QWEN_LANGUAGE,
-            voice_clone_prompt=prompt,
-        )
-    else:
-        result = qwen_model.generate_voice_clone(
-            text=text,
-            language=QWEN_LANGUAGE,
-            ref_audio=voice_sample,
-            ref_text=ref_text,
-        )
-    _write_qwen_audio_result(result, output)
+    voice_clone_prompt = qwen_model.create_voice_clone_prompt(
+        ref_audio=voice_sample,
+        ref_text=ref_text,
+    )
+    setup_latency_ms = int((time.perf_counter() - start) * 1000)
+    return qwen_model, voice_clone_prompt, setup_latency_ms
 
 
 async def generate_qwen3_base(
@@ -384,6 +398,19 @@ async def generate_qwen3_base(
         ref_text=ref_text,
     )
 
+    qwen_model = None
+    voice_clone_prompt = None
+    if not dry_run:
+        qwen_model, voice_clone_prompt, setup_latency_ms = await asyncio.to_thread(
+            _prepare_qwen3_base,
+            model=model,
+            device_map=device_map,
+            dtype=dtype,
+            voice_sample=voice_sample,
+            ref_text=ref_text,
+        )
+        settings = {**settings, "setup_latency_ms": setup_latency_ms}
+
     records: list[ClipRecord] = []
     selected_phrases = _selected_phrases(limit)
     for index, (phrase_id, text) in enumerate(selected_phrases, start=1):
@@ -398,11 +425,8 @@ async def generate_qwen3_base(
                 _generate_qwen3_base_wav,
                 output=output,
                 text=text,
-                model=model,
-                device_map=device_map,
-                dtype=dtype,
-                voice_sample=voice_sample,
-                ref_text=ref_text,
+                qwen_model=qwen_model,
+                voice_clone_prompt=voice_clone_prompt,
             )
             latency_ms = int((time.perf_counter() - start) * 1000)
 
@@ -477,6 +501,7 @@ async def main() -> None:
                 voice_sample=voice_sample,
                 ref_text=args.ref_text,
                 ref_text_file=args.ref_text_file,
+                require_transcript=not args.dry_run,
             ),
         )
     print(run_dir)
