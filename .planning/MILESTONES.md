@@ -2,26 +2,42 @@
 
 ## Current
 
+No active milestone. Start the next milestone with `$gsd-new-milestone`.
+
+## Completed
+
 ### v1.8 Call-ready Voice Clone
 
 **Started:** 2026-07-07
-**Status:** Active
+**Completed:** 2026-07-07
+**Archived:** 2026-07-07
+**Status:** Complete
 
 Focus: make Saymo's cloned voice usable for the real live-call path through a
 local, auditable voice pipeline with model inventory, repeatable benchmarks,
 safe fallback behavior, and preview/approval before real-call use.
 
-Planned:
-- Local inventory of voice clone models, checkpoints, caches, datasets, and
-  protected assets.
-- Voice identity profile setup from existing local samples/datasets without
-  destructive training-data changes.
-- Candidate-engine benchmark shootout with artifacts, latency, and quality
-  evidence.
-- Call-ready engine/fallback configuration wired into prepare/speak/rehearsal.
-- Preview and A/B evaluation flow before enabling cloned voice output.
+Delivered:
+- Read-only voice inventory and protected profile manifests for existing local
+  voice samples, transcripts, training datasets, and F5 runtime assets.
+- F5 benchmark artifacts with WAV clips, manifest, blind review template,
+  review scoring file, and score report.
+- Candidate gates that keep Qwen3 Base and heavier engines behind baseline,
+  transcript, isolated install, and no-runtime-promotion boundaries.
+- Runtime voice selector and cache metadata that block stale, unapproved, or
+  non-cloned live-call output by default.
+- Preview, approval, preflight, rehearsal, scorecard, and safety-soak gates for
+  call-ready voice use.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.8-ROADMAP.md`
+- `.planning/milestones/v1.8-REQUIREMENTS.md`
+- `.planning/milestones/v1.8-MILESTONE-AUDIT.md`
+- `.planning/phases/31-voice-asset-inventory-and-profile-setup/`
+- `.planning/phases/32-benchmark-scoring-and-f5-baseline/`
+- `.planning/phases/33-candidate-shootout-gates/`
+- `.planning/phases/34-call-ready-engine-selector-and-fallback-chain/`
+- `.planning/phases/35-preview-a-b-approval-and-safety-soak/`
 
 ### v1.7 Live Reliability Rehearsal
 

@@ -9,6 +9,10 @@ engine/fallback selection, and preview/A-B/safety-soak gates.
 
 ## Completed Milestones
 
+- ✅ **v1.8 Call-ready Voice Clone** - Phases 31-35 shipped 2026-07-07.
+  Archives: `.planning/milestones/v1.8-ROADMAP.md`,
+  `.planning/milestones/v1.8-REQUIREMENTS.md`,
+  `.planning/milestones/v1.8-MILESTONE-AUDIT.md`
 - ✅ **v1.7 Live Reliability Rehearsal** - Phases 27-30 shipped 2026-07-07.
   Archives: `.planning/milestones/v1.7-ROADMAP.md`,
   `.planning/milestones/v1.7-REQUIREMENTS.md`,
@@ -31,7 +35,7 @@ engine/fallback selection, and preview/A-B/safety-soak gates.
 
 ## Active Milestone
 
-- **v1.8 Call-ready Voice Clone** - Phases 31-35 planned.
+No active milestone. Start the next milestone with `$gsd-new-milestone`.
 
 ## Phases
 

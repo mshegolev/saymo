@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Call-ready Voice Clone
-status: milestone audit passed
-stopped_at: Milestone v1.8 audit passed; next step is real local benchmark and profile approval.
+status: milestone archived; runtime benchmark pending user scoring
+stopped_at: v1.8 archived; F5 benchmark run 20260707-210741-f5tts generated; next step is fill review.json and approve if quality passes.
 last_updated: "2026-07-07"
-last_activity: "2026-07-07 - audited milestone v1.8 call-ready voice clone"
+last_activity: "2026-07-07 - archived v1.8 and generated F5 benchmark clips"
 progress:
   total_phases: 5
   completed_phases: 5
@@ -22,14 +22,16 @@ See: .planning/PROJECT.md (updated 2026-05-22)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.8 Call-ready Voice Clone.
+**Current focus:** Planning next milestone; v1.8 runtime voice approval awaits
+local A/B scoring.
 
 ## Current Position
 
 Phase: v1.8 complete
 Plan: None
-Status: Milestone v1.8 audit passed; next step is real local benchmark and profile approval.
-Last activity: 2026-07-07 - audited milestone v1.8 call-ready voice clone.
+Status: Milestone v1.8 archived; real F5 benchmark artifacts generated and
+waiting for user scoring.
+Last activity: 2026-07-07 - archived v1.8 and generated F5 benchmark clips.
 
 Progress: [##########] 100%
 
@@ -99,8 +101,10 @@ Recent decisions affecting future work:
 
 ### Pending Todos
 
-Run a real local F5 benchmark, fill `review.json`, then approve the profile if
-the score gate passes.
+Fill
+`~/.saymo/voice_benchmarks/20260707-210741-f5tts/review.json`, regenerate the
+score report if needed, then approve the `personal` voice profile if the score
+gate passes.
 
 ### Blockers/Concerns
 
@@ -124,6 +128,6 @@ the score gate passes.
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: Milestone v1.8 audit passed; next step is real local benchmark and
-profile approval.
+Stopped at: v1.8 archived; F5 benchmark run
+`20260707-210741-f5tts` is complete but unscored.
 Resume file: None
