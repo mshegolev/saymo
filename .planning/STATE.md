@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Call-ready Voice Clone
-status: milestone implementation complete
-stopped_at: Phase 35 complete; next step is audit milestone v1.8.
+status: milestone audit passed
+stopped_at: Milestone v1.8 audit passed; next step is real local benchmark and profile approval.
 last_updated: "2026-07-07"
-last_activity: "2026-07-07 - completed Phase 35 preview approval and safety soak"
+last_activity: "2026-07-07 - audited milestone v1.8 call-ready voice clone"
 progress:
   total_phases: 5
   completed_phases: 5
@@ -26,10 +26,10 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: milestone audit
+Phase: v1.8 complete
 Plan: None
-Status: Phase 35 complete; next step is auditing milestone v1.8.
-Last activity: 2026-07-07 - completed Phase 35 preview approval and safety soak.
+Status: Milestone v1.8 audit passed; next step is real local benchmark and profile approval.
+Last activity: 2026-07-07 - audited milestone v1.8 call-ready voice clone.
 
 Progress: [##########] 100%
 
@@ -99,7 +99,8 @@ Recent decisions affecting future work:
 
 ### Pending Todos
 
-Audit milestone v1.8 completion before archiving.
+Run a real local F5 benchmark, fill `review.json`, then approve the profile if
+the score gate passes.
 
 ### Blockers/Concerns
 
@@ -123,5 +124,6 @@ Audit milestone v1.8 completion before archiving.
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: Phase 35 complete; next step is audit milestone v1.8.
+Stopped at: Milestone v1.8 audit passed; next step is real local benchmark and
+profile approval.
 Resume file: None
