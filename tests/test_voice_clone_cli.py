@@ -167,3 +167,116 @@ def test_voice_profile_cli_dry_run_apply_show_and_check(tmp_path):
     )
     assert check.exit_code == 0
     assert "ready" in check.output.lower()
+
+
+def test_voice_profile_cli_approve_reject_and_preview_dry_run(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    sample = saymo_home / "voice_samples" / "voice_sample.wav"
+    _write_wav(sample)
+    transcript = sample.with_suffix(".txt")
+    transcript.write_text("PRIVATE PROFILE CLI TRANSCRIPT", encoding="utf-8")
+    profiles_dir = tmp_path / "profiles"
+    score_report = tmp_path / "score-report.md"
+    score_report.write_text(
+        "\n".join(
+            [
+                "# Voice Benchmark Score Report",
+                "",
+                "run status: complete",
+                "score status: scored",
+                "decision: approved",
+                "promotion ready: yes",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    init = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "voice-profile",
+            "init",
+            "--profile",
+            "personal",
+            "--voice-sample",
+            str(sample),
+            "--ref-text-file",
+            str(transcript),
+            "--engine",
+            "f5tts_clone",
+            "--profiles-dir",
+            str(profiles_dir),
+            "--apply",
+        ],
+    )
+    assert init.exit_code == 0
+
+    approve = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "voice-profile",
+            "approve",
+            "--profile",
+            "personal",
+            "--profiles-dir",
+            str(profiles_dir),
+            "--score-report",
+            str(score_report),
+            "--similarity",
+            "8",
+            "--artifacts",
+            "8",
+            "--call-readiness",
+            "8",
+            "--apply",
+        ],
+    )
+    assert approve.exit_code == 0
+    assert "approved for calls: yes" in approve.output.lower()
+
+    preview = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "voice-preview",
+            "--profile",
+            "personal",
+            "--profiles-dir",
+            str(profiles_dir),
+            "--text",
+            "PRIVATE PREVIEW TEXT",
+            "--dry-run",
+        ],
+    )
+    assert preview.exit_code == 0
+    assert "preview-only audit" in preview.output.lower()
+    assert "PRIVATE PREVIEW TEXT" not in preview.output
+
+    reject = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "voice-profile",
+            "reject",
+            "--profile",
+            "personal",
+            "--profiles-dir",
+            str(profiles_dir),
+            "--score-report",
+            str(score_report),
+            "--reason",
+            "too metallic",
+            "--apply",
+        ],
+    )
+    assert reject.exit_code == 0
+    assert "approved for calls: no" in reject.output.lower()

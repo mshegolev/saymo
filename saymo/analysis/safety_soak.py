@@ -337,6 +337,23 @@ def _violations_for_scorecard(scorecard: SessionScorecard) -> tuple[SafetySoakVi
                 detail="would speak from an unapproved draft",
             )
         )
+    voice_rules = (
+        "voice_profile_missing",
+        "voice_profile_unapproved",
+        "voice_profile_blocked",
+        "voice_metadata_missing",
+        "voice_metadata_stale",
+        "engine_not_voice_clone",
+    )
+    for rule in voice_rules:
+        if rule in gate_text:
+            violations.append(
+                SafetySoakViolation(
+                    source_id=source_id,
+                    rule=rule,
+                    detail=f"would speak with voice readiness blocker: {rule}",
+                )
+            )
     return tuple(violations)
 
 

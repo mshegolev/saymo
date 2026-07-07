@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Call-ready Voice Clone
-status: phase 34 complete
-stopped_at: Phase 34 complete; next step is plan Phase 35.
+status: milestone implementation complete
+stopped_at: Phase 35 complete; next step is audit milestone v1.8.
 last_updated: "2026-07-07"
-last_activity: "2026-07-07 - completed Phase 34 call-ready engine selector and fallback chain"
+last_activity: "2026-07-07 - completed Phase 35 preview approval and safety soak"
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 22
-  completed_plans: 17
-  percent: 80
+  completed_plans: 22
+  percent: 100
 ---
 
 # Project State
@@ -26,18 +26,18 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 35 - Preview, A/B Approval, and Safety Soak
+Phase: milestone audit
 Plan: None
-Status: Phase 34 complete; next step is planning Phase 35.
-Last activity: 2026-07-07 - completed Phase 34 call-ready engine selector and fallback chain.
+Status: Phase 35 complete; next step is auditing milestone v1.8.
+Last activity: 2026-07-07 - completed Phase 35 preview approval and safety soak.
 
-Progress: [########--] 80%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 17
+- Plans completed: 22
 - Average duration: same-day execution
 - Total execution time: same-day execution
 
@@ -58,7 +58,7 @@ Progress: [########--] 80%
 | 32. Benchmark Scoring and F5 Baseline | Complete | 4/4 |
 | 33. Candidate Shootout Gates | Complete | 4/4 |
 | 34. Call-ready Engine Selector and Fallback Chain | Complete | 5/5 |
-| 35. Preview, A/B Approval, and Safety Soak | Pending | 0/5 |
+| 35. Preview, A/B Approval, and Safety Soak | Complete | 5/5 |
 
 ## Accumulated Context
 
@@ -93,10 +93,13 @@ Recent decisions affecting future work:
   decisions; live-call output blocks missing/unapproved profiles and
   non-cloned engines by default, and prepared/response-cache WAVs use
   privacy-safe metadata sidecars to detect stale voice/engine state.
+- v1.8 Phase 35: Voice profiles can be approved/rejected only from completed
+  scored benchmark evidence; preview audits are preview-only and text-safe;
+  safety-soak fails on voice profile/cache/non-cloned live-call blockers.
 
 ### Pending Todos
 
-Plan Phase 35: Preview, A/B Approval, and Safety Soak.
+Audit milestone v1.8 completion before archiving.
 
 ### Blockers/Concerns
 
@@ -120,5 +123,5 @@ Plan Phase 35: Preview, A/B Approval, and Safety Soak.
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: Phase 34 complete; next step is plan Phase 35.
+Stopped at: Phase 35 complete; next step is audit milestone v1.8.
 Resume file: None

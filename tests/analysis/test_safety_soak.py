@@ -151,6 +151,30 @@ def test_safety_soak_fails_real_session_unsafe_playback_without_would_speak():
     ]
 
 
+def test_safety_soak_fails_voice_readiness_blockers():
+    scorecard = _scorecard(would_speak=True)
+    scorecard = SessionScorecard(
+        **{
+            **scorecard.__dict__,
+            "playback_metrics": PlaybackScorecardMetrics(
+                playback_gate_status="blocked",
+                playback_gate_detail="voice_profile_unapproved voice_metadata_stale engine_not_voice_clone",
+                approved_speak_attempts=1,
+                blocked_automatic_playback=0,
+                unsafe_automatic_playback=0,
+            ),
+        }
+    )
+
+    report = build_safety_soak_report(profile="personal", scorecards=(scorecard,))
+    rules = {violation.rule for violation in report.violations}
+
+    assert report.status == "fail"
+    assert "voice_profile_unapproved" in rules
+    assert "voice_metadata_stale" in rules
+    assert "engine_not_voice_clone" in rules
+
+
 def test_safety_soak_fails_only_worsened_baseline_metrics():
     baseline = build_safety_soak_report(
         profile="personal",

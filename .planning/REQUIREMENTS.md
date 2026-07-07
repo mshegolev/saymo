@@ -175,11 +175,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RUN-03 | Phase 34 | Complete |
 | RUN-04 | Phase 34 | Complete |
 | RUN-05 | Phase 34 | Complete |
-| SAFE-01 | Phase 35 | Pending |
-| SAFE-02 | Phase 35 | Pending |
-| SAFE-03 | Phase 35 | Pending |
-| SAFE-04 | Phase 35 | Pending |
-| SAFE-05 | Phase 35 | Pending |
+| SAFE-01 | Phase 35 | Complete |
+| SAFE-02 | Phase 35 | Complete |
+| SAFE-03 | Phase 35 | Complete |
+| SAFE-04 | Phase 35 | Complete |
+| SAFE-05 | Phase 35 | Complete |
 
 **Coverage:**
 - v1.8 requirements: 28 total
@@ -188,4 +188,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-07-07*
-*Last updated: 2026-07-07 after completing Phase 34*
+*Last updated: 2026-07-07 after completing Phase 35*

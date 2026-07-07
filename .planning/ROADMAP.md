@@ -48,7 +48,7 @@ engine/fallback selection, and preview/A-B/safety-soak gates.
 - [x] **Phase 34: Call-ready Engine Selector and Fallback Chain** - Wire
   approved engine/fallback resolution into prepare/live synthesis without
   bypassing existing safety paths.
-- [ ] **Phase 35: Preview, A/B Approval, and Safety Soak** - Enforce local
+- [x] **Phase 35: Preview, A/B Approval, and Safety Soak** - Enforce local
   preview, benchmark-backed approval, and voice-readiness safety gates before
   real call use.
 
@@ -172,11 +172,11 @@ answer cockpit approval gates
 **Plans**: 5 plans
 
 Plans:
-- [ ] 35-01: Add preview command/path and monitor-route audit metadata
-- [ ] 35-02: Add A/B approval artifacts and profile approval commands
-- [ ] 35-03: Block real call output on missing or stale voice approval
-- [ ] 35-04: Extend preflight, rehearsal, and scorecard with voice readiness
-- [ ] 35-05: Extend safety-soak with voice readiness failure invariants
+- [x] 35-01: Add preview command/path and monitor-route audit metadata
+- [x] 35-02: Add A/B approval artifacts and profile approval commands
+- [x] 35-03: Block real call output on missing or stale voice approval
+- [x] 35-04: Extend preflight, rehearsal, and scorecard with voice readiness
+- [x] 35-05: Extend safety-soak with voice readiness failure invariants
 
 ## Progress
 
@@ -189,7 +189,7 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35
 | 32. Benchmark Scoring and F5 Baseline | v1.8 | 4/4 | Complete | 2026-07-07 |
 | 33. Candidate Shootout Gates | v1.8 | 4/4 | Complete | 2026-07-07 |
 | 34. Call-ready Engine Selector and Fallback Chain | v1.8 | 5/5 | Complete | 2026-07-07 |
-| 35. Preview, A/B Approval, and Safety Soak | v1.8 | 0/5 | Pending | — |
+| 35. Preview, A/B Approval, and Safety Soak | v1.8 | 5/5 | Complete | 2026-07-07 |
 
 ## Requirement Coverage
 

@@ -222,6 +222,53 @@ voice_selector:
       - f5tts_clone
 ```
 
+## Preview and Approval
+
+Preview locally before approving a voice for calls:
+
+```bash
+saymo voice-preview \
+  --profile personal \
+  --text "Проверяю голос перед звонком." \
+  --dry-run
+```
+
+Dry-run writes a preview-only audit JSON under the profile directory without
+synthesizing. A real preview omits `--dry-run` and plays locally through the
+configured preview route. Audit metadata stores only selector data and a text
+hash; it does not store preview text.
+
+Approve a profile only after a completed/scored benchmark report:
+
+```bash
+saymo voice-profile approve \
+  --profile personal \
+  --score-report ~/.saymo/voice_benchmarks/<run>/score-report.md \
+  --similarity 8 \
+  --artifacts 8 \
+  --call-readiness 8 \
+  --apply
+```
+
+The approval gate requires:
+
+- completed and scored `score-report.md`,
+- `promotion ready: yes`,
+- similarity >= 7,
+- artifacts >= 7,
+- call-readiness >= 7.
+
+If you intentionally accept a lower score, pass `--override-reason` so the
+profile records the exception. Rejecting clears call approval:
+
+```bash
+saymo voice-profile reject \
+  --profile personal \
+  --score-report ~/.saymo/voice_benchmarks/<run>/score-report.md \
+  --reason "metallic artifacts in short answers" \
+  --apply
+```
+
 ## Promotion Gate
 
 A challenger can replace F5 only if:
