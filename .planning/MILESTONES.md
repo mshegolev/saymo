@@ -2,16 +2,22 @@
 
 ## Current
 
+No active milestone. Start the next milestone with `$gsd-new-milestone`.
+
+## Completed
+
 ### v1.7 Live Reliability Rehearsal
 
 **Started:** 2026-05-22
-**Status:** Active
+**Completed:** 2026-07-07
+**Archived:** 2026-07-07
+**Status:** Complete
 
 Focus: turn real and rehearsal sessions into a repeatable reliability loop that
 shows whether Saymo is safe enough for the next call and what to fix when it is
 not.
 
-Planned:
+Delivered:
 - Guided pre-call rehearsal for capture, triggers, handbrake, playback gates,
   and local control state.
 - Session reliability scorecard for trigger, addressing, speaker, playback,
@@ -21,7 +27,11 @@ Planned:
 - Safety soak/replay checks that run saved sessions and rehearsals as a local
   regression gate.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.7-ROADMAP.md`
+- `.planning/milestones/v1.7-REQUIREMENTS.md`
+- `.planning/milestones/v1.7-MILESTONE-AUDIT.md`
+- `.planning/milestones/v1.7-phases/`
 
 ### v1.6 Live Control Handbrake
 

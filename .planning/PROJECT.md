@@ -11,7 +11,10 @@ memory and a reviewable answer cockpit, so the user can see why Saymo thinks
 they were addressed, inspect a grounded draft, and decide whether to speak,
 edit, skip, or take over. It also has a local live-control handbrake with
 documented hotkeys, a terminal control surface, and explicit safety state for
-turning auto-answer off, stopping playback, and taking the microphone back.
+turning auto-answer off, stopping playback, and taking the microphone back. It
+can now rehearse the live loop before a call, produce sanitized session
+scorecards, show targeted remediation, and run a local safety soak gate before
+trusting auto-answer again.
 
 ## Core Value
 
@@ -20,7 +23,7 @@ enough that the call still feels live.
 
 ## Current State
 
-Saymo has shipped milestone v1.6 Live Control Handbrake. The
+Saymo has shipped milestone v1.7 Live Reliability Rehearsal. The
 product can build local transcript ledgers from captured sessions, search and
 ask questions about those sessions with transcript citations, generate pending
 answer drafts grounded in meeting memory and configured sources, record
@@ -34,36 +37,43 @@ doctor, local control panel, scriptable action queue, shared runtime state,
 expanded global hotkeys, and audit events for stop/toggle/takeover/skip/status
 actions.
 
+It can also prove the live loop repeatedly: `saymo rehearsal` performs a
+pre-call dry run, `saymo session-scorecard` exports sanitized reliability
+evidence, remediation hints explain the next action, and `saymo safety-soak`
+turns rehearsal/scorecard artifacts into a local pass/fail gate with baseline
+drift checks.
+
 The 2026-05-21 recorded session exposed reliability gaps that v1.5 addressed:
 `speaker=unknown` coverage can now be reviewed and bootstrapped, incidental
 name mentions can be separated from direct handoffs, approved answer drafts can
 use the safe playback path, and saved sessions can be replayed as regression
 fixtures.
 
-**Status:** v1.7 Live Reliability Rehearsal started on 2026-05-22.
+**Status:** v1.7 Live Reliability Rehearsal shipped on 2026-07-07.
 
-The next reliability gap is proving the live loop repeatedly before and after
-real calls: the user needs a guided rehearsal, one reliability scorecard per
-session, actionable remediation hints, and safety soak checks that catch
-regressions before trusting Saymo in another meeting.
+The next milestone is not defined yet. Start it with `$gsd-new-milestone`.
 
-## Current Milestone: v1.7 Live Reliability Rehearsal
+## Current Milestone
+
+None active.
+
+## Last Completed Milestone: v1.7 Live Reliability Rehearsal
 
 **Goal:** Turn real and rehearsal sessions into a repeatable reliability loop
 that shows whether Saymo is safe enough for the next call and what to fix when
 it is not.
 
-**Target features:**
+**Delivered:**
 - Guided pre-call rehearsal that exercises capture, triggers, handbrake,
   playback gates, and local control state without needing a real meeting.
 - Session reliability scorecard that combines trigger, addressing, speaker,
   playback, latency, and handbrake audit evidence.
 - Remediation hints that turn failed checks into concrete config, permission,
-  audio-device, or review actions.
-- Safety soak/replay checks that can run saved sessions and rehearsals as a
-  regression gate.
+  audio-device, review, and retest actions.
+- Safety soak/replay gate over saved rehearsals and scorecards with baseline
+  drift checks and nonzero failure exit.
 
-## Last Completed Milestone: v1.6 Live Control Handbrake
+## Previous Milestone: v1.6 Live Control Handbrake
 
 **Goal:** Give the user a clear local handbrake for live calls: controls and
 macOS hotkeys that turn auto-answer on/off, stop speech, enter manual takeover,
@@ -158,16 +168,17 @@ playback, and regression replay.
   ability to answer manually.
 - ✓ User can see the current live-control state before trusting Saymo to speak.
 - ✓ User can verify macOS hotkeys and permissions before joining a call.
+- ✓ User can run a local pre-call rehearsal that proves capture, trigger,
+  hotkey, handbrake, and playback gates before joining a real call.
+- ✓ User can inspect one reliability scorecard for a real or rehearsal session.
+- ✓ User can get concrete remediation steps when readiness, reliability, or
+  safety checks fail.
+- ✓ User can run a repeatable safety soak/regression gate before trusting
+  Saymo in another meeting.
 
 ### Active
 
-- User can run a local pre-call rehearsal that proves capture, trigger,
-  hotkey, handbrake, and playback gates before joining a real call.
-- User can inspect one reliability scorecard for a real or rehearsal session.
-- User can get concrete remediation steps when readiness, reliability, or
-  safety checks fail.
-- User can run a repeatable safety soak/regression gate before trusting Saymo
-  in another meeting.
+No active requirements. Define the next milestone with `$gsd-new-milestone`.
 
 ### Out of Scope
 
@@ -240,7 +251,7 @@ playback, and regression replay.
 | Use real recorded sessions as regression fixtures | False positives and unknown-speaker coverage are visible only against actual call audio | Implemented in v1.5 |
 | Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | Implemented in v1.5 |
 | Prefer an explicit handbrake over hidden automation | During live calls, the user needs visible control and fast recovery more than another autonomous behavior | Implemented in v1.6 |
-| Prove the live loop before trusting it | The next risk is not missing controls, but not knowing whether the whole loop is reliable for the next meeting | Pending in v1.7 |
+| Prove the live loop before trusting it | The next risk is not missing controls, but not knowing whether the whole loop is reliable for the next meeting | Implemented in v1.7 |
 
 ---
-*Last updated: 2026-05-22 after starting milestone v1.7*
+*Last updated: 2026-07-07 after shipping milestone v1.7*

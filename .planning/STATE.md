@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Live Reliability Rehearsal
-status: phase 30 complete; milestone ready for audit
-stopped_at: Phase 30 completed; next step is $gsd-audit-milestone.
+status: v1.7 archived; no active milestone
+stopped_at: v1.7 archived; next step is $gsd-new-milestone.
 last_updated: "2026-07-07"
-last_activity: "2026-07-07 - completed Phase 30 safety soak regression gate"
+last_activity: "2026-07-07 - archived v1.7 Live Reliability Rehearsal"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -28,8 +28,8 @@ and respond fast enough that the call still feels live.
 
 Phase: None
 Plan: None
-Status: Phase 30 complete
-Last activity: 2026-07-07 - completed safety soak regression gate.
+Status: v1.7 archived; no active milestone.
+Last activity: 2026-07-07 - archived Live Reliability Rehearsal.
 
 Progress: [##########] 100%
 
@@ -80,7 +80,7 @@ Recent decisions affecting future work:
 
 ### Pending Todos
 
-Audit and archive milestone v1.7.
+Start the next milestone with `$gsd-new-milestone`.
 
 ### Blockers/Concerns
 
@@ -104,5 +104,5 @@ Audit and archive milestone v1.7.
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: Phase 30 complete; next step is `$gsd-audit-milestone`.
+Stopped at: v1.7 archived; next step is `$gsd-new-milestone`.
 Resume file: None
