@@ -22,15 +22,15 @@ Requirements for milestone v1.7 Live Reliability Rehearsal.
 
 ### Reliability Scorecard
 
-- [ ] **REL-01**: User can generate a session reliability scorecard for a real
+- [x] **REL-01**: User can generate a session reliability scorecard for a real
   capture session or rehearsal run.
-- [ ] **REL-02**: Scorecard reports trigger outcomes, addressed-to-me
+- [x] **REL-02**: Scorecard reports trigger outcomes, addressed-to-me
   decisions, mention-only skips, question noise, missed/false handoffs,
   speaker coverage, and classifier-readiness impact.
-- [ ] **REL-03**: Scorecard reports playback and handbrake evidence: approved
+- [x] **REL-03**: Scorecard reports playback and handbrake evidence: approved
   speak attempts, blocked automatic playback, stop/takeover actions, hard
   disable events, latency, and max-duration interruptions.
-- [ ] **REL-04**: Scorecard exports sanitized Markdown/JSON that omits raw
+- [x] **REL-04**: Scorecard exports sanitized Markdown/JSON that omits raw
   audio, secrets, and local transcript text unless explicitly requested for
   local-only debugging.
 
@@ -102,10 +102,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REH-02 | Phase 27 | Complete |
 | REH-03 | Phase 27 | Complete |
 | REH-04 | Phase 27 | Complete |
-| REL-01 | Phase 28 | Pending |
-| REL-02 | Phase 28 | Pending |
-| REL-03 | Phase 28 | Pending |
-| REL-04 | Phase 28 | Pending |
+| REL-01 | Phase 28 | Complete |
+| REL-02 | Phase 28 | Complete |
+| REL-03 | Phase 28 | Complete |
+| REL-04 | Phase 28 | Complete |
 | FIX-01 | Phase 29 | Pending |
 | FIX-02 | Phase 29 | Pending |
 | FIX-03 | Phase 29 | Pending |
@@ -121,4 +121,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-22*
-*Last updated: 2026-05-22 after completing Phase 27*
+*Last updated: 2026-07-06 after completing Phase 28*

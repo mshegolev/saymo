@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Live Reliability Rehearsal
-status: phase 27 complete; next phase 28
-stopped_at: Phase 27 completed; next step is $gsd-plan-phase 28.
-last_updated: "2026-05-22"
-last_activity: "2026-05-22 - completed Phase 27 pre-call rehearsal runner"
+status: phase 28 complete; next phase 29
+stopped_at: Phase 28 completed; next step is $gsd-plan-phase 29.
+last_updated: "2026-07-06"
+last_activity: "2026-07-06 - completed Phase 28 session reliability scorecard"
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 15
-  completed_plans: 4
-  percent: 27
+  completed_plans: 8
+  percent: 53
 ---
 
 # Project State
@@ -28,10 +28,10 @@ and respond fast enough that the call still feels live.
 
 Phase: None
 Plan: None
-Status: Phase 27 complete
-Last activity: 2026-05-22 - completed pre-call rehearsal runner.
+Status: Phase 28 complete
+Last activity: 2026-07-06 - completed session reliability scorecard.
 
-Progress: [###-------] 27%
+Progress: [#####-----] 53%
 
 ## Performance Metrics
 
@@ -55,7 +55,7 @@ Progress: [###-------] 27%
 | Phase | Plans | Total | Status |
 |-------|-------|-------|--------|
 | 27. Pre-call Rehearsal Runner | 4 | 4/4 | complete |
-| 28. Session Reliability Scorecard | 4 | 0/4 | pending |
+| 28. Session Reliability Scorecard | 4 | 4/4 | complete |
 | 29. Remediation Advisor | 3 | 0/3 | pending |
 | 30. Safety Soak Regression Gate | 4 | 0/4 | pending |
 
@@ -80,7 +80,7 @@ Recent decisions affecting future work:
 
 ### Pending Todos
 
-Plan Phase 28.
+Plan Phase 29.
 
 ### Blockers/Concerns
 
@@ -104,5 +104,5 @@ Plan Phase 28.
 ## Session Continuity
 
 Last session: 2026-05-22
-Stopped at: Phase 27 complete; next step is `$gsd-plan-phase 28`.
+Stopped at: Phase 28 complete; next step is `$gsd-plan-phase 29`.
 Resume file: None
