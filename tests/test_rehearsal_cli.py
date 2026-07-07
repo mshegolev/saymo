@@ -72,6 +72,9 @@ def test_rehearsal_dry_run_writes_pass_artifact(tmp_path, monkeypatch):
     assert "auto action: answer_now" in result.output
     assert "would speak: yes" in result.output
     assert "warn: preflight: response cache" in result.output
+    assert "remediation:" in result.output
+    assert "[source-data] Prepare response cache" in result.output
+    assert "rerun: saymo rehearsal -p personal" in result.output
     artifact_path = tmp_path / "rehearsals" / "personal"
     artifacts = list(artifact_path.glob("*.json"))
     assert len(artifacts) == 1
@@ -113,4 +116,5 @@ def test_rehearsal_reports_blocking_preflight_failure(tmp_path, monkeypatch):
     assert "fail: preflight: capture input: missing BlackHole 16ch" in result.output
     assert "would speak: no" in result.output
     assert "blocked: blocking preflight failure" in result.output
-
+    assert "remediation:" in result.output
+    assert "[audio-device] Fix capture input" in result.output

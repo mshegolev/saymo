@@ -710,6 +710,11 @@ def _collect_auto_preflight(config, profile: str, provider_name: str | None = No
 
 
 def _print_auto_preflight(profile: str, checks: list[PreflightCheck]) -> None:
+    from saymo.analysis.remediation import (
+        hints_from_preflight_checks,
+        render_remediation_hints,
+    )
+
     ready = all(check.ok or not check.blocking for check in checks)
     console.print(f"profile: {profile}")
     for check in checks:
@@ -721,6 +726,7 @@ def _print_auto_preflight(profile: str, checks: list[PreflightCheck]) -> None:
             label = "warn"
         console.print(f"{label}: {check.name}: {check.detail}")
     console.print(f"preflight: {'ready' if ready else 'not ready'}")
+    console.print(render_remediation_hints(hints_from_preflight_checks(profile, checks)), markup=False)
 
 
 @main.command("rehearsal")
@@ -933,6 +939,8 @@ def _run_rehearsal(
 
 
 def _print_rehearsal(artifact, path: Path) -> None:
+    from saymo.analysis.remediation import hints_from_rehearsal, render_remediation_hints
+
     console.print(f"profile: {artifact.profile}")
     console.print(f"rehearsal: {artifact.status}")
     console.print(f"dry-run: {'yes' if artifact.dry_run else 'no'}")
@@ -943,6 +951,7 @@ def _print_rehearsal(artifact, path: Path) -> None:
     for check in artifact.checks:
         console.print(f"{check.status}: {check.name}: {check.detail}")
     console.print(f"artifact: {path}")
+    console.print(render_remediation_hints(hints_from_rehearsal(artifact)), markup=False)
 
 
 def _transcript_snippet(text: str, *, limit: int = 240) -> str:
@@ -998,6 +1007,7 @@ def session_scorecard(
         render_scorecard_markdown,
         write_scorecard_json,
     )
+    from saymo.analysis.remediation import hints_from_scorecard, render_remediation_hints
 
     if bool(rehearsal) == bool(session_source):
         raise click.ClickException("Provide exactly one of --rehearsal or --session")
@@ -1032,6 +1042,7 @@ def session_scorecard(
 
     rendered = render_scorecard_markdown(scorecard)
     console.print(rendered)
+    console.print(render_remediation_hints(hints_from_scorecard(scorecard)), markup=False)
     if output:
         out_path = Path(output).expanduser()
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1052,9 +1063,11 @@ def hotkey_doctor(ctx, profile, probe):
         build_hotkey_doctor_report,
         render_hotkey_doctor_report,
     )
+    from saymo.analysis.remediation import hints_from_hotkey_doctor, render_remediation_hints
 
     report = build_hotkey_doctor_report(ctx.obj["config"], profile, probe=probe)
     console.print(render_hotkey_doctor_report(report))
+    console.print(render_remediation_hints(hints_from_hotkey_doctor(report, probe=probe)), markup=False)
 
 
 @main.command("provider-latency")
@@ -4669,8 +4682,15 @@ def _print_takeover_diagnostics(
     console.print(f"saymo mic: {saymo_device}")
 
     if not real_mic:
+        from saymo.analysis.remediation import hint_for_takeover_failure, render_remediation_hints
+
         console.print("takeover: not ready")
-        console.print("reason: audio.recording_device is not configured")
+        reason = "audio.recording_device is not configured"
+        console.print(f"reason: {reason}")
+        console.print(
+            render_remediation_hints([hint_for_takeover_failure(profile, reason)]),
+            markup=False,
+        )
         return
 
     provider = get_provider(resolved_provider)
@@ -4679,33 +4699,69 @@ def _print_takeover_diagnostics(
     if status.tab_info:
         console.print(f"tab: window {status.tab_info[0]}, tab {status.tab_info[1]}")
     if not status.meeting_found:
+        from saymo.analysis.remediation import hint_for_takeover_failure, render_remediation_hints
+
         console.print("takeover: not ready")
-        console.print(f"reason: {provider.name} tab not found in Chrome")
+        reason = f"{provider.name} tab not found in Chrome"
+        console.print(f"reason: {reason}")
+        console.print(
+            render_remediation_hints(
+                [hint_for_takeover_failure(profile, reason, provider=provider.name)]
+            ),
+            markup=False,
+        )
         return
 
     try:
         to_real = provider.switch_mic(real_mic)
     except Exception as e:
+        from saymo.analysis.remediation import hint_for_takeover_failure, render_remediation_hints
+
         console.print("switch to recording mic: no")
-        console.print(f"reason: {e}")
+        reason = str(e)
+        console.print(f"reason: {reason}")
         console.print("takeover: not ready")
+        console.print(
+            render_remediation_hints(
+                [hint_for_takeover_failure(profile, reason, provider=provider.name)]
+            ),
+            markup=False,
+        )
         return
     console.print(f"switch to recording mic: {'yes' if to_real else 'no'}")
 
     try:
         to_saymo = provider.switch_mic(saymo_device)
     except Exception as e:
+        from saymo.analysis.remediation import hint_for_takeover_failure, render_remediation_hints
+
         console.print("switch back to Saymo mic: no")
-        console.print(f"reason: {e}")
+        reason = str(e)
+        console.print(f"reason: {reason}")
         console.print("takeover: not ready")
+        console.print(
+            render_remediation_hints(
+                [hint_for_takeover_failure(profile, reason, provider=provider.name)]
+            ),
+            markup=False,
+        )
         return
     console.print(f"switch back to Saymo mic: {'yes' if to_saymo else 'no'}")
 
     if to_real and to_saymo:
         console.print("takeover: ready")
     else:
+        from saymo.analysis.remediation import hint_for_takeover_failure, render_remediation_hints
+
         console.print("takeover: not ready")
-        console.print("reason: provider could not switch one or both microphones")
+        reason = "provider could not switch one or both microphones"
+        console.print(f"reason: {reason}")
+        console.print(
+            render_remediation_hints(
+                [hint_for_takeover_failure(profile, reason, provider=provider.name)]
+            ),
+            markup=False,
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -145,6 +145,9 @@ saymo session-scorecard -p personal --rehearsal ~/.saymo/rehearsals/personal/202
 saymo session-scorecard -p personal --session daily-2026-05-20 --json-output ~/.saymo/trigger_samples/scorecard.json
 ```
 
+Read the `remediation:` block on preflight, rehearsal, hotkey, takeover, and
+scorecard output for the next targeted fix and rerun command.
+
 ### Trigger training capture
 
 Use `trigger-capture` when you want to collect real call phrases for improving

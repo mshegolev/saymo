@@ -103,6 +103,8 @@ def test_session_scorecard_cli_generates_sanitized_rehearsal_exports(tmp_path):
     assert "would speak: yes" in result.output
     assert "scorecard markdown:" in result.output
     assert "scorecard json:" in result.output
+    assert "remediation:" in result.output
+    assert "rerun: saymo session-scorecard -p personal --rehearsal artifact.json" in result.output
 
     markdown = markdown_path.read_text(encoding="utf-8")
     payload = json.loads(json_path.read_text(encoding="utf-8"))
@@ -114,4 +116,3 @@ def test_session_scorecard_cli_generates_sanitized_rehearsal_exports(tmp_path):
     assert "Alice, share" not in combined
     assert "private project secret" not in combined
     assert "last_trigger" not in combined
-

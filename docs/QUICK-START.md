@@ -215,6 +215,10 @@ handbrake evidence without exporting raw transcript text:
 saymo session-scorecard -p personal --rehearsal ~/.saymo/rehearsals/personal/2026-05-22T10-00-00-00-00.json
 ```
 
+When any of these diagnostics warns or fails, check the `remediation:` section.
+Each hint is labeled by next-action type and includes the smallest rerun command
+for that check.
+
 If Whisper consistently hears your name incorrectly, use `trigger-setup` to
 paste the whole transcribed phrase. Saymo extracts the likely name variant,
 saves that spelling into `vocabulary.fuzzy_expansions`, and verifies it

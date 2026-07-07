@@ -36,12 +36,12 @@ Requirements for milestone v1.7 Live Reliability Rehearsal.
 
 ### Remediation Advisor
 
-- [ ] **FIX-01**: User can get actionable remediation hints for failed
+- [x] **FIX-01**: User can get actionable remediation hints for failed
   rehearsal, scorecard, hotkey doctor, auto-preflight, and takeover checks.
-- [ ] **FIX-02**: Remediation hints identify whether the next action is config
+- [x] **FIX-02**: Remediation hints identify whether the next action is config
   editing, macOS permission change, audio-device routing, source-data update,
   review-labeling work, or retesting.
-- [ ] **FIX-03**: User can rerun only the affected check after applying a fix
+- [x] **FIX-03**: User can rerun only the affected check after applying a fix
   and see whether the warning or blocker is resolved.
 
 ### Safety Soak
@@ -106,9 +106,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REL-02 | Phase 28 | Complete |
 | REL-03 | Phase 28 | Complete |
 | REL-04 | Phase 28 | Complete |
-| FIX-01 | Phase 29 | Pending |
-| FIX-02 | Phase 29 | Pending |
-| FIX-03 | Phase 29 | Pending |
+| FIX-01 | Phase 29 | Complete |
+| FIX-02 | Phase 29 | Complete |
+| FIX-03 | Phase 29 | Complete |
 | SOAK-01 | Phase 30 | Pending |
 | SOAK-02 | Phase 30 | Pending |
 | SOAK-03 | Phase 30 | Pending |
@@ -121,4 +121,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-22*
-*Last updated: 2026-07-06 after completing Phase 28*
+*Last updated: 2026-07-06 after completing Phase 29*

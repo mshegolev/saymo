@@ -45,3 +45,6 @@ def test_hotkey_doctor_reports_bindings_without_probe(tmp_path):
     assert "terminal focus: not required" in result.output
     assert "toggle_auto_answer: <cmd>+<shift>+m" in result.output
     assert "hard_disable: <cmd>+<shift>+h" in result.output
+    assert "remediation:" in result.output
+    assert "[retest] Start Saymo auto listener" in result.output
+    assert "rerun: saymo hotkey-doctor -p personal --no-probe" in result.output

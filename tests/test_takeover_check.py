@@ -83,6 +83,9 @@ def test_takeover_check_reports_missing_recording_device(tmp_path, monkeypatch):
     assert result.exit_code == 0
     assert "recording mic: (not configured)" in result.output
     assert "takeover: not ready" in result.output
+    assert "remediation:" in result.output
+    assert "[config] Configure recording microphone" in result.output
+    assert "rerun: saymo takeover-check -p personal" in result.output
     get_provider.assert_not_called()
 
 
@@ -111,4 +114,6 @@ def test_takeover_check_reports_missing_meeting_tab(tmp_path, monkeypatch):
     assert result.exit_code == 0
     assert "meeting: no" in result.output
     assert "takeover: not ready" in result.output
+    assert "remediation:" in result.output
+    assert "[retest] Open provider meeting tab" in result.output
     provider.switch_mic.assert_not_called()

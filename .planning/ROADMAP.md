@@ -52,7 +52,7 @@ remediation hints, and a repeatable safety soak gate.
   path that checks the full live loop before joining a real meeting.
 - [x] **Phase 28: Session Reliability Scorecard** - Summarize reliability for
   real and rehearsal sessions with sanitized evidence.
-- [ ] **Phase 29: Remediation Advisor** - Turn failed readiness and reliability
+- [x] **Phase 29: Remediation Advisor** - Turn failed readiness and reliability
   checks into concrete next actions.
 - [ ] **Phase 30: Safety Soak Regression Gate** - Run saved sessions and
   rehearsals as a repeatable safety gate.
@@ -117,9 +117,9 @@ the user to interpret raw diagnostics.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 29-01: Add remediation taxonomy and hint renderer
-- [ ] 29-02: Wire hints into rehearsal, scorecard, and doctor/preflight checks
-- [ ] 29-03: Add targeted rerun commands and remediation tests
+- [x] 29-01: Add remediation taxonomy and hint renderer
+- [x] 29-02: Wire hints into rehearsal, scorecard, and doctor/preflight checks
+- [x] 29-03: Add targeted rerun commands and remediation tests
 
 ### Phase 30: Safety Soak Regression Gate
 **Goal**: Make saved sessions and rehearsals a repeatable gate before merge or
@@ -150,7 +150,7 @@ Phases execute in numeric order: 27 -> 28 -> 29 -> 30
 |-------|-----------|----------------|--------|-----------|
 | 27. Pre-call Rehearsal Runner | v1.7 | 4/4 | Complete | 2026-05-22 |
 | 28. Session Reliability Scorecard | v1.7 | 4/4 | Complete | 2026-07-06 |
-| 29. Remediation Advisor | v1.7 | 0/3 | Pending | - |
+| 29. Remediation Advisor | v1.7 | 3/3 | Complete | 2026-07-06 |
 | 30. Safety Soak Regression Gate | v1.7 | 0/4 | Pending | - |
 
 ## Requirement Coverage
