@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Call-ready Voice Clone
-status: defining requirements
-stopped_at: v1.8 started; next step is define requirements and roadmap.
+status: roadmap ready
+stopped_at: v1.8 roadmap created; next step is plan Phase 31.
 last_updated: "2026-07-07"
-last_activity: "2026-07-07 - started v1.8 Call-ready Voice Clone"
+last_activity: "2026-07-07 - created v1.8 requirements and roadmap"
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 22
   completed_plans: 0
   percent: 0
 ---
@@ -26,17 +26,17 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: None
+Phase: 31 - Voice Asset Inventory and Profile Setup
 Plan: None
-Status: Defining requirements.
-Last activity: 2026-07-07 - started Call-ready Voice Clone.
+Status: Roadmap ready; next step is planning Phase 31.
+Last activity: 2026-07-07 - created v1.8 requirements and roadmap.
 
 Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: 0
+- Total plans planned: 22
 - Plans completed: 0
 - Average duration: same-day execution
 - Total execution time: same-day execution
@@ -52,7 +52,13 @@ Progress: [----------] 0%
 
 **By Phase:**
 
-No phases defined yet.
+| Phase | Status | Plans |
+|-------|--------|-------|
+| 31. Voice Asset Inventory and Profile Setup | Pending | 0/4 |
+| 32. Benchmark Scoring and F5 Baseline | Pending | 0/4 |
+| 33. Candidate Shootout Gates | Pending | 0/4 |
+| 34. Call-ready Engine Selector and Fallback Chain | Pending | 0/5 |
+| 35. Preview, A/B Approval, and Safety Soak | Pending | 0/5 |
 
 ## Accumulated Context
 
@@ -77,7 +83,7 @@ Recent decisions affecting future work:
 
 ### Pending Todos
 
-Define v1.8 requirements and roadmap.
+Plan Phase 31: Voice Asset Inventory and Profile Setup.
 
 ### Blockers/Concerns
 
@@ -101,5 +107,5 @@ Define v1.8 requirements and roadmap.
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: v1.8 started; next step is requirements and roadmap.
+Stopped at: v1.8 roadmap created; next step is plan Phase 31.
 Resume file: None
