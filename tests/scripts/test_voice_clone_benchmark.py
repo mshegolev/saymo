@@ -94,10 +94,14 @@ async def test_generate_qwen3_base_dry_run_writes_manifest_without_importing_qwe
     assert (tmp_path / "qwen3_base-01.wav").read_bytes() == b""
     assert (tmp_path / "qwen3_base-02.wav").read_bytes() == b""
     assert (tmp_path / "blind-review.md").exists()
+    assert (tmp_path / "review.json").exists()
+    assert (tmp_path / "score-report.md").exists()
 
     manifest_text = (tmp_path / "manifest.json").read_text(encoding="utf-8")
     assert transcript not in manifest_text
     manifest = json.loads(manifest_text)
+    assert manifest["expected_clips"] == 2
+    assert manifest["run_status"] == "dry-run"
     assert len(manifest["records"]) == 2
     assert manifest["records"][0]["engine"] == "qwen3_base"
     assert manifest["records"][0]["text"] == benchmark.PHRASES[0]
@@ -307,4 +311,10 @@ async def test_generate_f5_writes_manifest_after_each_successful_clip(tmp_path, 
 
     manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
     assert [record["phrase_id"] for record in manifest["records"]] == [1]
+    assert manifest["expected_clips"] == 2
+    assert manifest["run_status"] == "partial"
     assert (tmp_path / "blind-review.md").exists()
+    assert (tmp_path / "review.json").exists()
+    assert "run status: partial" in (tmp_path / "score-report.md").read_text(
+        encoding="utf-8"
+    )

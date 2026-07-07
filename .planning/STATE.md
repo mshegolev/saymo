@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Call-ready Voice Clone
-status: phase 31 complete
-stopped_at: Phase 31 complete; next step is plan Phase 32.
+status: phase 32 complete
+stopped_at: Phase 32 complete; next step is plan Phase 33.
 last_updated: "2026-07-07"
-last_activity: "2026-07-07 - completed Phase 31 voice asset inventory and profile setup"
+last_activity: "2026-07-07 - completed Phase 32 benchmark scoring and F5 baseline"
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 22
-  completed_plans: 4
-  percent: 20
+  completed_plans: 8
+  percent: 40
 ---
 
 # Project State
@@ -26,18 +26,18 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 32 - Benchmark Scoring and F5 Baseline
+Phase: 33 - Candidate Shootout Gates
 Plan: None
-Status: Phase 31 complete; next step is planning Phase 32.
-Last activity: 2026-07-07 - completed Phase 31 voice asset inventory and profile setup.
+Status: Phase 32 complete; next step is planning Phase 33.
+Last activity: 2026-07-07 - completed Phase 32 benchmark scoring and F5 baseline.
 
-Progress: [##--------] 20%
+Progress: [####------] 40%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 4
+- Plans completed: 8
 - Average duration: same-day execution
 - Total execution time: same-day execution
 
@@ -55,7 +55,7 @@ Progress: [##--------] 20%
 | Phase | Status | Plans |
 |-------|--------|-------|
 | 31. Voice Asset Inventory and Profile Setup | Complete | 4/4 |
-| 32. Benchmark Scoring and F5 Baseline | Pending | 0/4 |
+| 32. Benchmark Scoring and F5 Baseline | Complete | 4/4 |
 | 33. Candidate Shootout Gates | Pending | 0/4 |
 | 34. Call-ready Engine Selector and Fallback Chain | Pending | 0/5 |
 | 35. Preview, A/B Approval, and Safety Soak | Pending | 0/5 |
@@ -83,10 +83,12 @@ Recent decisions affecting future work:
 - v1.8 Phase 31: Voice inventory/profile commands are read-only by default,
   profile writes require explicit `--apply`, and transcript text is not emitted
   in JSON/Markdown/profile manifests.
+- v1.8 Phase 32: Every benchmark run writes `review.json` and
+  `score-report.md`; partial or unscored runs are not promotion-ready.
 
 ### Pending Todos
 
-Plan Phase 32: Benchmark Scoring and F5 Baseline.
+Plan Phase 33: Candidate Shootout Gates.
 
 ### Blockers/Concerns
 
@@ -110,5 +112,5 @@ Plan Phase 32: Benchmark Scoring and F5 Baseline.
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: Phase 31 complete; next step is plan Phase 32.
+Stopped at: Phase 32 complete; next step is plan Phase 33.
 Resume file: None

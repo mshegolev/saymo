@@ -41,7 +41,7 @@ engine/fallback selection, and preview/A-B/safety-soak gates.
 
 - [x] **Phase 31: Voice Asset Inventory and Profile Setup** - Add read-only
   inventory and protected voice profile/reference manifests.
-- [ ] **Phase 32: Benchmark Scoring and F5 Baseline** - Turn the existing
+- [x] **Phase 32: Benchmark Scoring and F5 Baseline** - Turn the existing
   shootout harness into scored, comparable F5 baseline evidence.
 - [ ] **Phase 33: Candidate Shootout Gates** - Gate Qwen3 Base and later
   challengers behind dry-run, transcript, score-report, and install boundaries.
@@ -186,7 +186,7 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 31. Voice Asset Inventory and Profile Setup | v1.8 | 4/4 | Complete | 2026-07-07 |
-| 32. Benchmark Scoring and F5 Baseline | v1.8 | 0/4 | Pending | — |
+| 32. Benchmark Scoring and F5 Baseline | v1.8 | 4/4 | Complete | 2026-07-07 |
 | 33. Candidate Shootout Gates | v1.8 | 0/4 | Pending | — |
 | 34. Call-ready Engine Selector and Fallback Chain | v1.8 | 0/5 | Pending | — |
 | 35. Preview, A/B Approval, and Safety Soak | v1.8 | 0/5 | Pending | — |

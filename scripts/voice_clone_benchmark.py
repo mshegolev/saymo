@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from saymo.analysis.voice_benchmark import write_benchmark_artifacts
 from saymo.config import SaymoConfig, load_config
 
 QWEN_DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
@@ -276,10 +277,10 @@ async def generate_f5(
                 settings=settings,
             )
         )
-        write_outputs(run_dir, records)
+        write_outputs(run_dir, records, expected_clips=len(selected_phrases))
 
     if not records:
-        write_outputs(run_dir, records)
+        write_outputs(run_dir, records, expected_clips=len(selected_phrases))
     return records
 
 
@@ -440,16 +441,29 @@ async def generate_qwen3_base(
                 settings=settings,
             )
         )
-        write_outputs(run_dir, records)
+        write_outputs(run_dir, records, expected_clips=len(selected_phrases))
 
     if not records:
-        write_outputs(run_dir, records)
+        write_outputs(run_dir, records, expected_clips=len(selected_phrases))
     return records
 
 
-def write_outputs(run_dir: Path, records: list[ClipRecord]) -> None:
+def write_outputs(
+    run_dir: Path,
+    records: list[ClipRecord],
+    *,
+    expected_clips: int | None = None,
+) -> None:
+    expected = len(records) if expected_clips is None else expected_clips
+    write_benchmark_artifacts(
+        run_dir,
+        [asdict(record) for record in records],
+        expected_clips=expected,
+    )
     manifest = {
         "created_at": datetime.now().isoformat(timespec="seconds"),
+        "expected_clips": expected,
+        "run_status": _run_status(records, expected),
         "records": [asdict(record) for record in records],
     }
     (run_dir / "manifest.json").write_text(
@@ -471,6 +485,14 @@ def write_outputs(run_dir: Path, records: list[ClipRecord]) -> None:
         "\n".join(review_lines) + "\n",
         encoding="utf-8",
     )
+
+
+def _run_status(records: list[ClipRecord], expected_clips: int) -> str:
+    if records and all(record.settings.get("dry_run") for record in records):
+        return "dry-run"
+    if len(records) >= expected_clips:
+        return "complete"
+    return "partial"
 
 
 async def main() -> None:

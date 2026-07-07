@@ -89,14 +89,30 @@ The command prints a run directory under:
 ~/.saymo/voice_benchmarks/
 ```
 
-`manifest.json` and `blind-review.md` are updated after each successful clip, so a long CPU run keeps completed results even if you interrupt it. Open `blind-review.md`, listen to each WAV, and score the audio-only review categories:
+The benchmark writes:
+
+- `manifest.json` — generated clips, engine settings, expected clip count,
+  run status, and latency.
+- `blind-review.md` — randomized listening order.
+- `review.json` — human-fillable scoring template.
+- `score-report.md` — run status, score status, latency summary, and promotion
+  readiness.
+
+These artifacts are updated after each successful clip, so a long CPU run keeps
+completed results even if you interrupt it. Open `blind-review.md`, listen to
+each WAV, then fill scores in `review.json`:
 
 - similarity
 - naturalness
 - Russian pronunciation
 - artifacts
+- call readiness
 
-Read latency from the run's `manifest.json`; it is not recorded in `blind-review.md`.
+Re-run the benchmark command or future scoring command after filling
+`review.json` to regenerate `score-report.md`. A complete unscored run is not
+promotion-ready; `score-report.md` must say `score status: scored` and
+`promotion ready: yes` before a baseline or challenger can be used for an
+approval decision.
 
 ## Run Qwen3 Base Challenger
 
