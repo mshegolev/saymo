@@ -4,7 +4,7 @@ CosyVoice is a future challenger gate only. Do not install CosyVoice packages, d
 
 ## Current Status
 
-Blocked until a Qwen3 Base score report exists under `~/.saymo/voice_benchmarks/<run_id>/score-report.md` and shows that Qwen3 Base was blocked or did not beat F5.
+Blocked until a Qwen3 Base score report exists under `~/.saymo/voice_benchmarks/<run_id>/score-report.md` and shows that Qwen3 Base was blocked or did not beat F5. A dry-run-only Qwen report is not enough to open this gate.
 
 ## Gate
 

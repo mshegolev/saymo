@@ -98,3 +98,26 @@ def test_score_report_marks_approved_complete_scored_run(tmp_path):
     assert "score status: scored" in report
     assert "decision: approved" in report
     assert "promotion ready: yes" in report
+
+
+def test_require_completed_score_report_rejects_missing_or_unscored_report(tmp_path):
+    from saymo.analysis.voice_benchmark import (
+        require_completed_score_report,
+        write_benchmark_artifacts,
+    )
+
+    missing = tmp_path / "missing-score-report.md"
+    try:
+        require_completed_score_report(missing, label="F5 baseline")
+    except ValueError as exc:
+        assert "F5 baseline score report not found" in str(exc)
+    else:
+        raise AssertionError("missing score report should fail")
+
+    write_benchmark_artifacts(tmp_path, _records(tmp_path), expected_clips=2)
+    try:
+        require_completed_score_report(tmp_path / "score-report.md", label="F5 baseline")
+    except ValueError as exc:
+        assert "score status: scored" in str(exc)
+    else:
+        raise AssertionError("unscored report should fail")

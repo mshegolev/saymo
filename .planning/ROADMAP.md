@@ -43,7 +43,7 @@ engine/fallback selection, and preview/A-B/safety-soak gates.
   inventory and protected voice profile/reference manifests.
 - [x] **Phase 32: Benchmark Scoring and F5 Baseline** - Turn the existing
   shootout harness into scored, comparable F5 baseline evidence.
-- [ ] **Phase 33: Candidate Shootout Gates** - Gate Qwen3 Base and later
+- [x] **Phase 33: Candidate Shootout Gates** - Gate Qwen3 Base and later
   challengers behind dry-run, transcript, score-report, and install boundaries.
 - [ ] **Phase 34: Call-ready Engine Selector and Fallback Chain** - Wire
   approved engine/fallback resolution into prepare/live synthesis without
@@ -123,10 +123,10 @@ internal Nexus PyPI install convention
 **Plans**: 4 plans
 
 Plans:
-- [ ] 33-01: Harden Qwen3 Base dry-run and real-run prerequisite gates
-- [ ] 33-02: Add candidate-gate checks against baseline and Qwen score reports
-- [ ] 33-03: Document isolated runtime install flow with internal PyPI preference
-- [ ] 33-04: Add tests/docs separating Qwen3 Base benchmark from `qwen3_clone`
+- [x] 33-01: Harden Qwen3 Base dry-run and real-run prerequisite gates
+- [x] 33-02: Add candidate-gate checks against baseline and Qwen score reports
+- [x] 33-03: Document isolated runtime install flow with internal PyPI preference
+- [x] 33-04: Add tests/docs separating Qwen3 Base benchmark from `qwen3_clone`
 
 ### Phase 34: Call-ready Engine Selector and Fallback Chain
 **Goal**: Let runtime synthesis use only approved voice profile engines and
@@ -187,7 +187,7 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35
 |-------|-----------|----------------|--------|-----------|
 | 31. Voice Asset Inventory and Profile Setup | v1.8 | 4/4 | Complete | 2026-07-07 |
 | 32. Benchmark Scoring and F5 Baseline | v1.8 | 4/4 | Complete | 2026-07-07 |
-| 33. Candidate Shootout Gates | v1.8 | 0/4 | Pending | — |
+| 33. Candidate Shootout Gates | v1.8 | 4/4 | Complete | 2026-07-07 |
 | 34. Call-ready Engine Selector and Fallback Chain | v1.8 | 0/5 | Pending | — |
 | 35. Preview, A/B Approval, and Safety Soak | v1.8 | 0/5 | Pending | — |
 

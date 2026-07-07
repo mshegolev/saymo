@@ -105,6 +105,25 @@ def render_score_report(manifest: Mapping[str, Any], review: Mapping[str, Any]) 
     return "\n".join(lines) + "\n"
 
 
+def require_completed_score_report(path: str | Path, *, label: str) -> None:
+    """Fail unless a score report is complete and scored.
+
+    This is intentionally text-based so benchmark gates can validate reports
+    produced by older helper versions without importing private run state.
+    """
+    report = Path(path).expanduser()
+    if not report.exists():
+        raise ValueError(f"{label} score report not found: {report}")
+    text = report.read_text(encoding="utf-8")
+    required = (
+        "run status: complete",
+        "score status: scored",
+    )
+    for marker in required:
+        if marker not in text:
+            raise ValueError(f"{label} score report must include `{marker}`: {report}")
+
+
 def _run_status(records: list[Mapping[str, Any]], expected_clips: int) -> str:
     if records and all(record.get("settings", {}).get("dry_run") for record in records):
         return "dry-run"

@@ -122,21 +122,52 @@ Start with the dry-run gate. This exercises the benchmark path without importing
 uv run python scripts/voice_clone_benchmark.py --engine qwen3_base --limit 1 --dry-run
 ```
 
-After the dry-run passes and an F5 report exists, install the official package into the Python environment that runs this script, then run the real challenger with an exact transcript for the reference WAV:
+After the dry-run passes and an F5 baseline has a completed and scored
+`score-report.md`, install the official package into an isolated Python
+environment, then run the real challenger with the exact transcript and
+baseline report:
 
 ```bash
-uv run python scripts/voice_clone_benchmark.py --engine qwen3_base --ref-text-file ~/.saymo/voice_samples/voice_sample.txt
+uv run python scripts/voice_clone_benchmark.py \
+  --engine qwen3_base \
+  --ref-text-file ~/.saymo/voice_samples/voice_sample.txt \
+  --baseline-report ~/.saymo/voice_benchmarks/<f5-run>/score-report.md
 ```
 
 Useful local-only overrides:
 
 - `--voice-sample ~/.saymo/voice_samples/voice_sample.0024.wav`
 - `--ref-text-file ~/.saymo/voice_samples/voice_sample.txt`
+- `--baseline-report ~/.saymo/voice_benchmarks/<f5-run>/score-report.md`
 - `--qwen-model Qwen/Qwen3-TTS-12Hz-1.7B-Base`
 - `--qwen-device-map auto`
 - `--qwen-dtype auto`
 
-Real Qwen3 generation fails fast if no transcript is provided through `--ref-text`, `--ref-text-file`, or a sidecar `.txt` next to the reference WAV. Dry-runs do not require Qwen packages, model files, or a transcript.
+Real Qwen3 generation fails fast if no transcript is provided through
+`--ref-text`, `--ref-text-file`, or a sidecar `.txt` next to the reference WAV.
+It also fails fast until `--baseline-report` points at a completed and scored
+F5 `score-report.md`. Dry-runs do not require Qwen packages, model files,
+transcripts, or baseline reports.
+
+The Qwen3 Base benchmark uses the official `qwen_tts` Base path and records
+`benchmark_path: official_qwen_tts_base` plus
+`runtime_engine: not_qwen3_clone` in settings. That benchmark does not prove the
+existing Saymo `qwen3_clone` MLX runtime is call-ready.
+
+For approved local installs in this environment, prefer an isolated runtime and
+the internal Nexus3 PyPI mirror when public PyPI is slow. Keep the mirror URL in
+local shell config or operator notes, not in package metadata:
+
+```bash
+UV_HTTP_TIMEOUT=120 UV_CONCURRENT_DOWNLOADS=1 \
+  uv pip install \
+  --index-url <internal-nexus3-pypi-simple-url> \
+  qwen-tts
+```
+
+Do not hardcode this mirror in committed project config or package files, and
+do not use PyPI mirrors for model weights. Model weights remain explicit
+Hugging Face or ModelScope assets.
 
 See [Qwen3 Base Voice Clone Notes](qwen3-base-voice-clone-notes.md) for the current gate decision.
 
@@ -156,7 +187,8 @@ A challenger can replace F5 only if:
 3. CosyVoice 3 zero-shot.
 4. GPT-SoVITS fine-tune only if zero-shot candidates fail.
 
-Do not install the next candidate until the previous candidate has a report.
+Do not install the next candidate until the previous candidate has a completed
+score report that justifies opening the next gate.
 
 Next gates:
 

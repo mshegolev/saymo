@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Call-ready Voice Clone
-status: phase 32 complete
-stopped_at: Phase 32 complete; next step is plan Phase 33.
+status: phase 33 complete
+stopped_at: Phase 33 complete; next step is plan Phase 34.
 last_updated: "2026-07-07"
-last_activity: "2026-07-07 - completed Phase 32 benchmark scoring and F5 baseline"
+last_activity: "2026-07-07 - completed Phase 33 candidate shootout gates"
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 22
-  completed_plans: 8
-  percent: 40
+  completed_plans: 12
+  percent: 60
 ---
 
 # Project State
@@ -26,12 +26,12 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 33 - Candidate Shootout Gates
+Phase: 34 - Call-ready Engine Selector and Fallback Chain
 Plan: None
-Status: Phase 32 complete; next step is planning Phase 33.
-Last activity: 2026-07-07 - completed Phase 32 benchmark scoring and F5 baseline.
+Status: Phase 33 complete; next step is planning Phase 34.
+Last activity: 2026-07-07 - completed Phase 33 candidate shootout gates.
 
-Progress: [####------] 40%
+Progress: [######----] 60%
 
 ## Performance Metrics
 
@@ -85,10 +85,14 @@ Recent decisions affecting future work:
   in JSON/Markdown/profile manifests.
 - v1.8 Phase 32: Every benchmark run writes `review.json` and
   `score-report.md`; partial or unscored runs are not promotion-ready.
+- v1.8 Phase 33: Real Qwen3 Base generation requires a completed/scored F5
+  baseline report before importing `qwen_tts`; dry-run remains import-free and
+  official Base benchmark artifacts stay separate from production
+  `qwen3_clone`.
 
 ### Pending Todos
 
-Plan Phase 33: Candidate Shootout Gates.
+Plan Phase 34: Call-ready Engine Selector and Fallback Chain.
 
 ### Blockers/Concerns
 

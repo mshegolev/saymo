@@ -9,3 +9,5 @@ Qwen3-TTS Base is the first challenger because it is the Qwen3 variant intended 
 - Do not switch production `tts.engine` or local Saymo runtime config.
 - Do not install `qwen-tts` or download model files until the benchmark adapter dry-run passes.
 - Real generation should use the official `qwen_tts.Qwen3TTSModel` voice-clone API with reference audio and transcript text, while the manifest records only transcript length.
+- Real generation also requires `--baseline-report` pointing at a completed and scored F5 `score-report.md`.
+- Qwen3 Base benchmark output is not evidence that Saymo's production `qwen3_clone` MLX runtime is call-ready; that runtime needs its own Phase 34/35 readiness proof before promotion.

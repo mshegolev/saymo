@@ -14,7 +14,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from saymo.analysis.voice_benchmark import write_benchmark_artifacts
+from saymo.analysis.voice_benchmark import (
+    require_completed_score_report,
+    write_benchmark_artifacts,
+)
 from saymo.config import SaymoConfig, load_config
 
 QWEN_DEFAULT_MODEL = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
@@ -91,6 +94,13 @@ def parse_args() -> argparse.Namespace:
         default=QWEN_DEFAULT_DTYPE,
         help="Torch dtype passed to Qwen3TTSModel.from_pretrained.",
     )
+    parser.add_argument(
+        "--baseline-report",
+        help=(
+            "Completed and scored F5 baseline score-report.md required before "
+            "real Qwen3 Base generation. Not needed for --dry-run."
+        ),
+    )
     ref_group = parser.add_mutually_exclusive_group()
     ref_group.add_argument(
         "--ref-text",
@@ -143,6 +153,7 @@ def _qwen3_base_settings(
     dtype: str,
     voice_sample: str,
     ref_text: str,
+    baseline_report: str | None = None,
 ) -> dict[str, Any]:
     return {
         "dry_run": dry_run,
@@ -151,6 +162,9 @@ def _qwen3_base_settings(
         "dtype": dtype,
         "voice_sample": voice_sample,
         "ref_text_chars": len(ref_text or ""),
+        "baseline_report": baseline_report or "",
+        "benchmark_path": "official_qwen_tts_base",
+        "runtime_engine": "not_qwen3_clone",
     }
 
 
@@ -389,6 +403,7 @@ async def generate_qwen3_base(
     dtype: str,
     voice_sample: str,
     ref_text: str,
+    baseline_report: str | None = None,
 ) -> list[ClipRecord]:
     settings = _qwen3_base_settings(
         dry_run=dry_run,
@@ -397,11 +412,21 @@ async def generate_qwen3_base(
         dtype=dtype,
         voice_sample=voice_sample,
         ref_text=ref_text,
+        baseline_report=baseline_report,
     )
 
     qwen_model = None
     voice_clone_prompt = None
     if not dry_run:
+        if not baseline_report:
+            raise SystemExit(
+                "Real Qwen3 Base generation requires a completed F5 baseline score report. "
+                "Pass --baseline-report ~/.saymo/voice_benchmarks/<f5-run>/score-report.md."
+            )
+        try:
+            require_completed_score_report(baseline_report, label="F5 baseline")
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from None
         qwen_model, voice_clone_prompt, setup_latency_ms = await asyncio.to_thread(
             _prepare_qwen3_base,
             model=model,
@@ -525,6 +550,7 @@ async def main() -> None:
                 ref_text_file=args.ref_text_file,
                 require_transcript=not args.dry_run,
             ),
+            baseline_report=args.baseline_report,
         )
     print(run_dir)
 

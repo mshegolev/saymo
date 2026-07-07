@@ -16,6 +16,24 @@ import soundfile as sf
 from saymo.config import SaymoConfig
 
 
+def _write_completed_score_report(path: Path) -> Path:
+    path.write_text(
+        "\n".join(
+            [
+                "# Voice Benchmark Score Report",
+                "",
+                "run status: complete",
+                "score status: scored",
+                "decision: approved",
+                "promotion ready: yes",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 def _load_benchmark_module():
     script = Path(__file__).resolve().parents[2] / "scripts" / "voice_clone_benchmark.py"
     spec = importlib.util.spec_from_file_location("voice_clone_benchmark", script)
@@ -112,6 +130,9 @@ async def test_generate_qwen3_base_dry_run_writes_manifest_without_importing_qwe
         "dtype": "auto",
         "voice_sample": str(voice_sample),
         "ref_text_chars": len(transcript),
+        "baseline_report": "",
+        "benchmark_path": "official_qwen_tts_base",
+        "runtime_engine": "not_qwen3_clone",
     }
 
 
@@ -130,6 +151,7 @@ async def test_generate_qwen3_base_missing_package_exits_with_install_instructio
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", missing_qwen_import)
+    baseline_report = _write_completed_score_report(tmp_path / "score-report.md")
 
     with pytest.raises(SystemExit, match="pip install -U qwen-tts"):
         await benchmark.generate_qwen3_base(
@@ -141,6 +163,37 @@ async def test_generate_qwen3_base_missing_package_exits_with_install_instructio
             dtype="auto",
             voice_sample=str(voice_sample),
             ref_text="short transcript",
+            baseline_report=str(baseline_report),
+        )
+
+
+@pytest.mark.anyio
+async def test_generate_qwen3_base_real_run_requires_completed_baseline_report(
+    tmp_path, monkeypatch
+):
+    benchmark = _load_benchmark_module()
+    voice_sample = tmp_path / "voice_sample.wav"
+    voice_sample.write_bytes(b"RIFFfake")
+    real_import = builtins.__import__
+
+    def guard_import(name, *args, **kwargs):
+        if name == "qwen_tts" or name.startswith("qwen_tts."):
+            raise AssertionError("qwen_tts must not import before baseline gate passes")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guard_import)
+
+    with pytest.raises(SystemExit, match="F5 baseline score report"):
+        await benchmark.generate_qwen3_base(
+            tmp_path,
+            limit=1,
+            dry_run=False,
+            model="Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+            device_map="auto",
+            dtype="auto",
+            voice_sample=str(voice_sample),
+            ref_text="short transcript",
+            baseline_report=str(tmp_path / "missing-score-report.md"),
         )
 
 
@@ -238,6 +291,7 @@ async def test_generate_qwen3_base_reuses_model_prompt_and_writes_official_tuple
 
     fake_module = types.SimpleNamespace(Qwen3TTSModel=FakeQwen3TTSModel)
     monkeypatch.setitem(sys.modules, "qwen_tts", fake_module)
+    baseline_report = _write_completed_score_report(tmp_path / "score-report.md")
 
     records = await benchmark.generate_qwen3_base(
         tmp_path,
@@ -248,6 +302,7 @@ async def test_generate_qwen3_base_reuses_model_prompt_and_writes_official_tuple
         dtype="float16",
         voice_sample=str(voice_sample),
         ref_text="reference transcript",
+        baseline_report=str(baseline_report),
     )
 
     assert load_calls == [
