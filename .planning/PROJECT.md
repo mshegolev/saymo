@@ -49,13 +49,30 @@ name mentions can be separated from direct handoffs, approved answer drafts can
 use the safe playback path, and saved sessions can be replayed as regression
 fixtures.
 
-**Status:** v1.7 Live Reliability Rehearsal shipped on 2026-07-07.
+**Status:** v1.8 Call-ready Voice Clone started on 2026-07-07.
 
-The next milestone is not defined yet. Start it with `$gsd-new-milestone`.
+The next milestone focuses on making the cloned voice itself reliable enough
+for the live-call path: auditable local model inventory, repeatable voice
+quality benchmarks, a chosen engine/fallback chain, and safety gates before
+any cloned voice reaches a call.
 
-## Current Milestone
+## Current Milestone: v1.8 Call-ready Voice Clone
 
-None active.
+**Goal:** Make Saymo speak in the user's cloned voice through a reproducible,
+local, call-ready pipeline with clear quality, latency, fallback, and safety
+evidence.
+
+**Target features:**
+- Local voice model inventory that explains which engines, checkpoints,
+  datasets, and caches exist without deleting or mutating training data.
+- Voice reference/profile setup that can use existing local samples and
+  datasets read-only unless the user explicitly starts training.
+- Benchmark shootout for candidate engines such as Qwen3-TTS, F5-TTS, XTTS,
+  Piper/macOS fallback, with latency, quality notes, and artifact manifests.
+- A call-ready engine selector and fallback chain wired into Saymo config,
+  rehearsal, response-cache preparation, and safety-soak checks.
+- Preview/A-B evaluation commands so the user can decide whether the cloned
+  voice is good enough before enabling it in a real call.
 
 ## Last Completed Milestone: v1.7 Live Reliability Rehearsal
 
@@ -178,7 +195,16 @@ playback, and regression replay.
 
 ### Active
 
-No active requirements. Define the next milestone with `$gsd-new-milestone`.
+- User can see exactly which local voice clone assets are usable, stale,
+  duplicated, or dangerous to delete.
+- User can create a voice identity profile from existing local samples and
+  datasets without accidentally rewriting training data.
+- User can benchmark candidate voice engines with consistent text prompts,
+  reference audio, manifests, and latency/quality evidence.
+- User can configure a default call-ready cloned voice engine plus fallback
+  behavior for `prepare`, `speak`, rehearsal, and safety-soak.
+- User can preview and approve cloned voice outputs before trusting them in a
+  real call.
 
 ### Out of Scope
 
@@ -198,6 +224,9 @@ No active requirements. Define the next milestone with `$gsd-new-milestone`.
   from the local memory/cockpit loop.
 - Native menu bar app or LaunchAgent for the handbrake — useful after the
   local CLI/TUI safety contract is proven across more live meetings.
+- Using real call recordings as voice-clone training data — call audio is for
+  trigger/reliability review, not voice identity training, unless explicitly
+  exported by the user in a future milestone.
 
 ## Context
 
@@ -229,6 +258,9 @@ No active requirements. Define the next milestone with `$gsd-new-milestone`.
   routing model and provider abstractions should stay intact.
 - **Privacy:** Captured samples and metadata stay local under `~/.saymo/`; real
   config and recordings must not be committed.
+- **Training data safety:** Existing `.saymo` training datasets and model
+  checkpoints are expensive to recreate; audit and read them by default, mutate
+  only behind explicit user commands.
 - **Latency:** Optimizations must preserve answer gating quality; faster false
   positives are worse than slower correct skips.
 - **Configurability:** Profile-specific knobs belong in `config.yaml` or
@@ -252,6 +284,7 @@ No active requirements. Define the next milestone with `$gsd-new-milestone`.
 | Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | Implemented in v1.5 |
 | Prefer an explicit handbrake over hidden automation | During live calls, the user needs visible control and fast recovery more than another autonomous behavior | Implemented in v1.6 |
 | Prove the live loop before trusting it | The next risk is not missing controls, but not knowing whether the whole loop is reliable for the next meeting | Implemented in v1.7 |
+| Treat voice-clone assets as protected local state | Model checkpoints and training datasets are costly to redownload or retrain, so cleanup/training must be explicit and auditable | Pending in v1.8 |
 
 ---
-*Last updated: 2026-07-07 after shipping milestone v1.7*
+*Last updated: 2026-07-07 after starting milestone v1.8*

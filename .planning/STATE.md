@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.7
-milestone_name: Live Reliability Rehearsal
-status: v1.7 archived; no active milestone
-stopped_at: v1.7 archived; next step is $gsd-new-milestone.
+milestone: v1.8
+milestone_name: Call-ready Voice Clone
+status: defining requirements
+stopped_at: v1.8 started; next step is define requirements and roadmap.
 last_updated: "2026-07-07"
-last_activity: "2026-07-07 - archived v1.7 Live Reliability Rehearsal"
+last_activity: "2026-07-07 - started v1.8 Call-ready Voice Clone"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -22,22 +22,22 @@ See: .planning/PROJECT.md (updated 2026-05-22)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.7 Live Reliability Rehearsal.
+**Current focus:** v1.8 Call-ready Voice Clone.
 
 ## Current Position
 
 Phase: None
 Plan: None
-Status: v1.7 archived; no active milestone.
-Last activity: 2026-07-07 - archived Live Reliability Rehearsal.
+Status: Defining requirements.
+Last activity: 2026-07-07 - started Call-ready Voice Clone.
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: 15
-- Plans completed: 15
+- Total plans planned: 0
+- Plans completed: 0
 - Average duration: same-day execution
 - Total execution time: same-day execution
 
@@ -52,12 +52,7 @@ Progress: [##########] 100%
 
 **By Phase:**
 
-| Phase | Plans | Total | Status |
-|-------|-------|-------|--------|
-| 27. Pre-call Rehearsal Runner | 4 | 4/4 | complete |
-| 28. Session Reliability Scorecard | 4 | 4/4 | complete |
-| 29. Remediation Advisor | 3 | 3/3 | complete |
-| 30. Safety Soak Regression Gate | 4 | 4/4 | complete |
+No phases defined yet.
 
 ## Accumulated Context
 
@@ -77,10 +72,12 @@ Recent decisions affecting future work:
   audit path instead of separate hidden behavior.
 - v1.7: Reliability work should combine real sessions and rehearsal runs
   without committing raw audio, transcripts, or local meeting content.
+- v1.8: Voice-clone assets and training datasets are protected local state;
+  default work should inventory and benchmark them without destructive changes.
 
 ### Pending Todos
 
-Start the next milestone with `$gsd-new-milestone`.
+Define v1.8 requirements and roadmap.
 
 ### Blockers/Concerns
 
@@ -104,5 +101,5 @@ Start the next milestone with `$gsd-new-milestone`.
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: v1.7 archived; next step is `$gsd-new-milestone`.
+Stopped at: v1.8 started; next step is requirements and roadmap.
 Resume file: None

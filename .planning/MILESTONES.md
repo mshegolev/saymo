@@ -2,7 +2,24 @@
 
 ## Current
 
-No active milestone. Start the next milestone with `$gsd-new-milestone`.
+### v1.8 Call-ready Voice Clone
+
+**Started:** 2026-07-07
+**Status:** Active
+
+Focus: make Saymo's cloned voice usable for the real live-call path through a
+local, auditable voice pipeline with model inventory, repeatable benchmarks,
+safe fallback behavior, and preview/approval before real-call use.
+
+Planned:
+- Local inventory of voice clone models, checkpoints, caches, datasets, and
+  protected assets.
+- Voice identity profile setup from existing local samples/datasets without
+  destructive training-data changes.
+- Candidate-engine benchmark shootout with artifacts, latency, and quality
+  evidence.
+- Call-ready engine/fallback configuration wired into prepare/speak/rehearsal.
+- Preview and A/B evaluation flow before enabling cloned voice output.
 
 ## Completed
 
