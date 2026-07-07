@@ -17,7 +17,7 @@ def test_rehearsal_artifact_round_trip_is_sanitized(tmp_path):
     artifact = RehearsalArtifact(
         profile="personal",
         provider="glip",
-        transcript="John, status?",
+        transcript="John, share TOKEN-123 status?",
         dry_run=True,
         status="pass",
         checks=(
@@ -32,7 +32,11 @@ def test_rehearsal_artifact_round_trip_is_sanitized(tmp_path):
             would_speak=True,
             blocked_reason="",
         ),
-        live_control_state={"auto_answer_enabled": True},
+        live_control_state={
+            "auto_answer_enabled": True,
+            "manual_takeover": False,
+            "last_trigger": "John, share TOKEN-123 status?",
+        },
         hotkey_status="ok",
         created_at="2026-05-22T10:00:00+00:00",
     )
@@ -41,13 +45,20 @@ def test_rehearsal_artifact_round_trip_is_sanitized(tmp_path):
     text = json.dumps(payload, ensure_ascii=False)
 
     assert payload["profile"] == "personal"
+    assert payload["transcript"] == ""
     assert payload["decision"]["auto_action"] == "answer_now"
     assert payload["decision"]["would_speak"] is True
+    assert payload["live_control_state"] == {
+        "auto_answer_enabled": True,
+        "manual_takeover": False,
+    }
     assert "raw_audio" not in text
-    assert "secret" not in text.lower()
+    assert "TOKEN-123" not in text
+    assert "last_trigger" not in text
 
     loaded = rehearsal_artifact_from_json(payload)
-    assert loaded == artifact
+    assert loaded.transcript == ""
+    assert loaded.live_control_state == {"auto_answer_enabled": True, "manual_takeover": False}
 
 
 def test_write_rehearsal_artifact_uses_profile_directory(tmp_path):
@@ -75,5 +86,7 @@ def test_write_rehearsal_artifact_uses_profile_directory(tmp_path):
 
     assert path.parent == default_rehearsal_dir("daily", base_dir=tmp_path)
     assert path.name.endswith(".json")
-    assert rehearsal_artifact_from_json(json.loads(path.read_text(encoding="utf-8"))) == artifact
-
+    loaded = rehearsal_artifact_from_json(json.loads(path.read_text(encoding="utf-8")))
+    assert loaded.profile == artifact.profile
+    assert loaded.decision == artifact.decision
+    assert loaded.transcript == ""

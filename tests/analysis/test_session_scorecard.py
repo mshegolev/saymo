@@ -161,9 +161,52 @@ def test_scorecard_counts_live_control_audit_and_skips_malformed_rows(tmp_path):
 
     assert payload["playback_metrics"]["approved_speak_attempts"] == 1
     assert payload["playback_metrics"]["blocked_automatic_playback"] == 1
+    assert payload["playback_metrics"]["unsafe_automatic_playback"] == 0
     assert payload["safety_metrics"]["stop_events"] == 1
     assert payload["safety_metrics"]["takeover_events"] == 1
     assert payload["safety_metrics"]["hard_disable_events"] == 1
     assert payload["safety_metrics"]["cancellation_events"] == 2
     assert "skipped 2 malformed audit rows" in payload["warnings"]
 
+
+def test_scorecard_counts_unsafe_automatic_playback_from_audit(tmp_path):
+    metrics = RegressionMetrics(
+        profile="personal",
+        session_id="daily-sync",
+        total=1,
+        false_handoffs=0,
+        missed_handoffs=0,
+        question_noise=0,
+        known_speakers=1,
+        unknown_speakers=0,
+        labeled_decisions=1,
+        unlabeled_decisions=0,
+        readiness="ready",
+        readiness_missing=(),
+        speaker_counts={"me": 1},
+        category_counts={"asked_to_speak": 1},
+        decision_counts={"accepted": 1},
+        samples=(),
+    )
+    audit_root = tmp_path / "live_control"
+    audit_dir = audit_root / "personal"
+    audit_dir.mkdir(parents=True)
+    (audit_dir / "audit.jsonl").write_text(
+        json.dumps(
+            {
+                "action": "speak",
+                "source": "auto",
+                "result": "automatic_playback_played",
+                "previous_state": {"auto_answer_enabled": False},
+                "next_state": {"auto_answer_enabled": False},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    scorecard = build_scorecard_from_regression(metrics, audit_root=audit_root)
+    payload = scorecard_to_json(scorecard)
+
+    assert payload["playback_metrics"]["unsafe_automatic_playback"] == 1
+    assert payload["safety_metrics"]["auto_answer_enabled"] is False

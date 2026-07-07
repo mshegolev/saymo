@@ -213,7 +213,14 @@ handbrake evidence without exporting raw transcript text:
 
 ```bash
 saymo session-scorecard -p personal --rehearsal ~/.saymo/rehearsals/personal/2026-05-22T10-00-00-00-00.json
+saymo safety-soak -p personal --rehearsal ~/.saymo/rehearsals/personal/2026-05-22T10-00-00-00-00.json --json-output ~/.saymo/trigger_samples/soak.json
 ```
+
+`safety-soak` is the pre-call gate for auto-answer. It fails if a scorecard says
+Saymo would speak while auto-answer is off, manual takeover is active, or
+hard-disable is active. Add `--baseline-json` from a prior soak to fail on
+worsened false handoffs, missed handoffs, question noise, unknown speakers, or
+max latency.
 
 When any of these diagnostics warns or fails, check the `remediation:` section.
 Each hint is labeled by next-action type and includes the smallest rerun command
@@ -323,6 +330,7 @@ saymo trigger-sessions speaker-bootstrap -p personal --session daily-2026-05-20 
 saymo trigger-sessions speaker-report -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/speaker-report.md
 saymo trigger-sessions replay -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/regression.md --json-output ~/.saymo/trigger_samples/regression.json
 saymo session-scorecard -p personal --session daily-2026-05-20 -o ~/.saymo/trigger_samples/scorecard.md --json-output ~/.saymo/trigger_samples/scorecard.json
+saymo safety-soak -p personal --scorecard-json ~/.saymo/trigger_samples/scorecard.json --baseline-json ~/.saymo/trigger_samples/soak.json
 saymo meeting-memory build -p personal --session daily-2026-05-20
 saymo meeting-summary -p personal --session daily-2026-05-20
 saymo meeting-search -p personal --session daily-2026-05-20 --keyword "status"

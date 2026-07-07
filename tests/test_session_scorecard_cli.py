@@ -104,7 +104,8 @@ def test_session_scorecard_cli_generates_sanitized_rehearsal_exports(tmp_path):
     assert "scorecard markdown:" in result.output
     assert "scorecard json:" in result.output
     assert "remediation:" in result.output
-    assert "rerun: saymo session-scorecard -p personal --rehearsal artifact.json" in result.output
+    assert "rerun: saymo session-scorecard -p personal --rehearsal" in result.output
+    assert rehearsal_path.name in result.output
 
     markdown = markdown_path.read_text(encoding="utf-8")
     payload = json.loads(json_path.read_text(encoding="utf-8"))

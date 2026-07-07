@@ -62,8 +62,10 @@ def default_rehearsal_dir(profile: str, *, base_dir: str | Path | None = None) -
 def rehearsal_artifact_to_json(artifact: RehearsalArtifact) -> dict[str, Any]:
     """Serialize a rehearsal artifact to sanitized JSON-compatible data."""
     data = asdict(artifact)
+    data["transcript"] = ""
     data["checks"] = [asdict(check) for check in artifact.checks]
     data["decision"] = asdict(artifact.decision)
+    data["live_control_state"] = _sanitized_live_control_state(artifact.live_control_state)
     return data
 
 
@@ -137,6 +139,21 @@ def _safe_timestamp(value: str) -> str:
     return "".join(ch if ch.isalnum() or ch in {"-", "_", "."} else "-" for ch in text)
 
 
+def _sanitized_live_control_state(state: Mapping[str, Any]) -> dict[str, bool]:
+    allowed = (
+        "auto_answer_enabled",
+        "manual_takeover",
+        "hard_disabled",
+        "paused",
+        "speaking",
+        "hotkeys_active",
+    )
+    return {
+        key: bool(state[key])
+        for key in allowed
+        if key in state and isinstance(state[key], bool)
+    }
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
-

@@ -46,15 +46,15 @@ Requirements for milestone v1.7 Live Reliability Rehearsal.
 
 ### Safety Soak
 
-- [ ] **SOAK-01**: User can run a repeatable safety soak over saved rehearsal
+- [x] **SOAK-01**: User can run a repeatable safety soak over saved rehearsal
   artifacts and captured sessions for one profile.
-- [ ] **SOAK-02**: Safety soak fails when automatic speaking occurs while
+- [x] **SOAK-02**: Safety soak fails when automatic speaking occurs while
   auto-answer is off, manual takeover is active, hard-disable is active, or a
   generated draft is unapproved.
-- [ ] **SOAK-03**: Safety soak tracks reliability drift against a prior
+- [x] **SOAK-03**: Safety soak tracks reliability drift against a prior
   baseline, including false handoffs, missed handoffs, latency, and speaker
   coverage.
-- [ ] **SOAK-04**: User can run a single command suitable for pre-merge or
+- [x] **SOAK-04**: User can run a single command suitable for pre-merge or
   pre-call validation that summarizes pass/fail status and points to the
   scorecard/remediation output.
 
@@ -109,10 +109,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FIX-01 | Phase 29 | Complete |
 | FIX-02 | Phase 29 | Complete |
 | FIX-03 | Phase 29 | Complete |
-| SOAK-01 | Phase 30 | Pending |
-| SOAK-02 | Phase 30 | Pending |
-| SOAK-03 | Phase 30 | Pending |
-| SOAK-04 | Phase 30 | Pending |
+| SOAK-01 | Phase 30 | Complete |
+| SOAK-02 | Phase 30 | Complete |
+| SOAK-03 | Phase 30 | Complete |
+| SOAK-04 | Phase 30 | Complete |
 
 **Coverage:**
 - v1.7 requirements: 15 total
@@ -121,4 +121,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-05-22*
-*Last updated: 2026-07-06 after completing Phase 29*
+*Last updated: 2026-07-07 after completing Phase 30*

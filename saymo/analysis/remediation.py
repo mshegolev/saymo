@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,7 +38,7 @@ def render_remediation_hints(hints: Iterable[RemediationHint]) -> str:
         if hint.action:
             lines.append(f"  action: {_sanitize(hint.action)}")
         if hint.rerun:
-            lines.append(f"  rerun: {_sanitize(hint.rerun)}")
+            lines.append(f"  rerun: {_sanitize_rerun(hint.rerun)}")
     return "\n".join(lines)
 
 
@@ -157,6 +158,44 @@ def hints_from_scorecard(scorecard: SessionScorecard) -> list[RemediationHint]:
     return _dedupe(hints)
 
 
+def hints_from_safety_soak(report: Any) -> list[RemediationHint]:
+    """Return remediation hints for a safety soak gate report."""
+    profile = _safe_profile(getattr(report, "profile", "personal"))
+    rerun = f"saymo safety-soak -p {profile}"
+    hints: list[RemediationHint] = []
+    for violation in getattr(report, "violations", ()) or ():
+        hints.append(
+            RemediationHint(
+                category="retest",
+                title="Resolve safety soak violation",
+                detail=f"{getattr(violation, 'source_id', 'unknown')}: {getattr(violation, 'rule', 'unknown')}",
+                action=(
+                    "Inspect the listed rehearsal or scorecard remediation output, "
+                    "then rerun safety-soak with the same inputs."
+                ),
+                rerun=rerun,
+            )
+        )
+    for metric in getattr(report, "drift", ()) or ():
+        if not bool(getattr(metric, "worsened", False)):
+            continue
+        hints.append(
+            RemediationHint(
+                category="review-labeling",
+                title="Fix worsened soak drift",
+                detail=(
+                    f"{getattr(metric, 'name', 'unknown')} delta="
+                    f"{getattr(metric, 'delta', 'unknown')}"
+                ),
+                action="Review the source scorecards before accepting a new baseline.",
+                rerun=rerun,
+            )
+        )
+    for warning in getattr(report, "warnings", ()) or ():
+        hints.append(_hint_for_warning(str(warning), rerun=rerun))
+    return _dedupe(hints)
+
+
 def hints_from_hotkey_doctor(report: Any, *, probe: bool) -> list[RemediationHint]:
     """Return remediation hints for a hotkey doctor report."""
     profile = _safe_profile(getattr(report, "profile", "personal"))
@@ -265,7 +304,8 @@ def _hint_for_warning(warning: str, *, rerun: str) -> RemediationHint:
 
 def _scorecard_source_ref(scorecard: SessionScorecard) -> str:
     if scorecard.source_type == "rehearsal":
-        return f"--rehearsal {_safe_label(scorecard.source_id)}"
+        source = scorecard.source_path or f"~/.saymo/rehearsals/{_safe_profile(scorecard.profile)}/{_safe_label(scorecard.source_id)}"
+        return f"--rehearsal {shlex.quote(source)}"
     return f"--session {_safe_label(scorecard.source_id)}"
 
 
@@ -288,6 +328,13 @@ def _sanitize(value: Any) -> str:
     return text
 
 
+def _sanitize_rerun(value: Any) -> str:
+    text = " ".join(str(value or "").split())
+    text = re.sub(r"\b[A-Z0-9_]*SECRET[A-Z0-9_=-]*\b", "[redacted]", text, flags=re.IGNORECASE)
+    text = re.sub(r"\b[A-Z0-9_]*TOKEN[A-Z0-9_=-]*\b", "[redacted]", text, flags=re.IGNORECASE)
+    return text
+
+
 def _safe_label(value: Any) -> str:
     text = " ".join(str(value or "").split())
     text = re.sub(r"(?:[A-Za-z]:)?/(?:[^\s/]+/)*[^\s/]+", lambda m: Path(m.group()).name, text)
@@ -297,4 +344,3 @@ def _safe_label(value: Any) -> str:
 def _safe_profile(profile: str) -> str:
     safe = "".join(ch if ch.isalnum() or ch in {"-", "_", "."} else "_" for ch in profile)
     return safe or "default"
-

@@ -40,7 +40,8 @@ remediation hints, and a repeatable safety soak gate.
 
 ## Active Milestone
 
-- **v1.7 Live Reliability Rehearsal** - Phases 27-30 planned.
+- **v1.7 Live Reliability Rehearsal** - Phases 27-30 complete; ready for
+  milestone audit.
 
 ## Phases
 
@@ -54,7 +55,7 @@ remediation hints, and a repeatable safety soak gate.
   real and rehearsal sessions with sanitized evidence.
 - [x] **Phase 29: Remediation Advisor** - Turn failed readiness and reliability
   checks into concrete next actions.
-- [ ] **Phase 30: Safety Soak Regression Gate** - Run saved sessions and
+- [x] **Phase 30: Safety Soak Regression Gate** - Run saved sessions and
   rehearsals as a repeatable safety gate.
 
 ## Phase Details
@@ -136,10 +137,10 @@ before trusting Saymo in another meeting.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 30-01: Add soak runner over saved rehearsal and session artifacts
-- [ ] 30-02: Add safety invariants for handbrake and approval gates
-- [ ] 30-03: Add baseline comparison for reliability drift
-- [ ] 30-04: Add single-command gate output, docs, and tests
+- [x] 30-01: Add soak runner over saved rehearsal and session artifacts
+- [x] 30-02: Add safety invariants for handbrake and approval gates
+- [x] 30-03: Add baseline comparison for reliability drift
+- [x] 30-04: Add single-command gate output, docs, and tests
 
 ## Progress
 
@@ -151,7 +152,7 @@ Phases execute in numeric order: 27 -> 28 -> 29 -> 30
 | 27. Pre-call Rehearsal Runner | v1.7 | 4/4 | Complete | 2026-05-22 |
 | 28. Session Reliability Scorecard | v1.7 | 4/4 | Complete | 2026-07-06 |
 | 29. Remediation Advisor | v1.7 | 3/3 | Complete | 2026-07-06 |
-| 30. Safety Soak Regression Gate | v1.7 | 0/4 | Pending | - |
+| 30. Safety Soak Regression Gate | v1.7 | 4/4 | Complete | 2026-07-07 |
 
 ## Requirement Coverage
 

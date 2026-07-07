@@ -1053,6 +1053,90 @@ def session_scorecard(
         console.print(f"scorecard json: {json_path}")
 
 
+@main.command("safety-soak")
+@click.option("--profile", "-p", default="personal", help="Meeting profile to gate")
+@click.option(
+    "--rehearsal",
+    multiple=True,
+    type=click.Path(exists=True),
+    help="Saved rehearsal artifact JSON; may be provided multiple times",
+)
+@click.option(
+    "--scorecard-json",
+    multiple=True,
+    type=click.Path(exists=True),
+    help="Saved session-scorecard JSON; may be provided multiple times",
+)
+@click.option(
+    "--baseline-json",
+    default=None,
+    type=click.Path(exists=True),
+    help="Prior safety-soak JSON used for drift comparison",
+)
+@click.option(
+    "--audit-root",
+    default=None,
+    type=click.Path(),
+    help="Live-control root containing <profile>/audit.jsonl",
+)
+@click.option("--output", "-o", default=None, type=click.Path(), help="Markdown output path")
+@click.option("--json-output", default=None, type=click.Path(), help="Sanitized JSON output path")
+@click.pass_context
+def safety_soak(
+    ctx,
+    profile,
+    rehearsal,
+    scorecard_json,
+    baseline_json,
+    audit_root,
+    output,
+    json_output,
+):
+    """Run a local safety soak gate over rehearsal and scorecard artifacts."""
+    from saymo.analysis.safety_soak import (
+        build_safety_soak_report,
+        load_safety_soak_json,
+        render_safety_soak_markdown,
+        write_safety_soak_json,
+    )
+    from saymo.analysis.session_scorecard import (
+        build_scorecard_from_rehearsal,
+        scorecard_from_json,
+    )
+    from saymo.analysis.remediation import hints_from_safety_soak, render_remediation_hints
+
+    if not rehearsal and not scorecard_json:
+        raise click.ClickException("Provide at least one --rehearsal or --scorecard-json")
+
+    scorecards = [
+        build_scorecard_from_rehearsal(path, audit_root=audit_root)
+        for path in rehearsal
+    ]
+    for path in scorecard_json:
+        scorecards.append(scorecard_from_json(json.loads(Path(path).expanduser().read_text(encoding="utf-8"))))
+
+    baseline = load_safety_soak_json(baseline_json) if baseline_json else None
+    report = build_safety_soak_report(
+        profile=profile,
+        scorecards=scorecards,
+        baseline=baseline,
+    )
+
+    rendered = render_safety_soak_markdown(report)
+    console.print(rendered)
+    console.print(render_remediation_hints(hints_from_safety_soak(report)), markup=False)
+    if output:
+        out_path = Path(output).expanduser()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(rendered, encoding="utf-8")
+        console.print(f"soak markdown: {out_path}")
+    if json_output:
+        json_path = write_safety_soak_json(json_output, report)
+        console.print(f"soak json: {json_path}")
+    if report.status == "fail":
+        raise click.exceptions.Exit(1)
+
+
 @main.command("hotkey-doctor")
 @click.option("--profile", "-p", default="personal", help="Meeting profile to inspect")
 @click.option("--probe/--no-probe", default=True, show_default=True, help="Try to create a global hotkey listener")

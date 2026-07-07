@@ -145,6 +145,16 @@ saymo session-scorecard -p personal --rehearsal ~/.saymo/rehearsals/personal/202
 saymo session-scorecard -p personal --session daily-2026-05-20 --json-output ~/.saymo/trigger_samples/scorecard.json
 ```
 
+Before using auto-answer on a real call, run the safety soak gate across one or
+more rehearsal/scorecard artifacts. It exits nonzero if Saymo would speak while
+auto-answer is off, manual takeover is active, hard-disable is active, or a
+tracked metric regresses against a prior soak JSON:
+
+```bash
+saymo safety-soak -p personal --rehearsal ~/.saymo/rehearsals/personal/2026-05-22T10-00-00-00-00.json --json-output ~/.saymo/trigger_samples/soak.json
+saymo safety-soak -p personal --scorecard-json ~/.saymo/trigger_samples/scorecard.json --baseline-json ~/.saymo/trigger_samples/soak.json
+```
+
 Read the `remediation:` block on preflight, rehearsal, hotkey, takeover, and
 scorecard output for the next targeted fix and rerun command.
 
