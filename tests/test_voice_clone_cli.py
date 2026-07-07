@@ -1,0 +1,169 @@
+"""CLI tests for voice clone inventory and profile commands."""
+
+from __future__ import annotations
+
+import json
+import textwrap
+from pathlib import Path
+
+import soundfile as sf
+from click.testing import CliRunner
+
+from saymo.commands import main
+
+
+def _write_wav(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(path, [0.0, 0.1, -0.1, 0.0], 16000)
+
+
+def _write_config(tmp_path: Path, saymo_home: Path, f5_root: Path) -> Path:
+    ckpt = f5_root / "models" / "ru" / "model_last.pt"
+    vocab = f5_root / "models" / "ru" / "vocab.txt"
+    ckpt.parent.mkdir(parents=True, exist_ok=True)
+    ckpt.write_bytes(b"checkpoint")
+    vocab.write_text("vocab", encoding="utf-8")
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        textwrap.dedent(
+            f"""
+            speech:
+              language: ru
+            tts:
+              engine: f5tts_clone
+              realtime_engine: qwen3_clone
+              f5tts:
+                ckpt_file: "{ckpt}"
+                vocab_file: "{vocab}"
+            """
+        ),
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def test_voice_inventory_cli_writes_sanitized_json(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    sample = saymo_home / "voice_samples" / "voice_sample.wav"
+    _write_wav(sample)
+    sample.with_suffix(".txt").write_text("PRIVATE CLI TRANSCRIPT", encoding="utf-8")
+    output = tmp_path / "inventory.json"
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "voice-inventory",
+            "--saymo-home",
+            str(saymo_home),
+            "--f5-root",
+            str(f5_root),
+            "--json-output",
+            str(output),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "voice inventory" in result.output.lower()
+    assert "f5tts_clone" in result.output
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["active_engine"] == "f5tts_clone"
+    assert "PRIVATE CLI TRANSCRIPT" not in output.read_text(encoding="utf-8")
+
+
+def test_voice_profile_cli_dry_run_apply_show_and_check(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    sample = saymo_home / "voice_samples" / "voice_sample.wav"
+    _write_wav(sample)
+    transcript = sample.with_suffix(".txt")
+    transcript.write_text("PRIVATE PROFILE CLI TRANSCRIPT", encoding="utf-8")
+    profiles_dir = tmp_path / "profiles"
+
+    dry = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "voice-profile",
+            "init",
+            "--profile",
+            "personal",
+            "--voice-sample",
+            str(sample),
+            "--ref-text-file",
+            str(transcript),
+            "--engine",
+            "f5tts_clone",
+            "--profiles-dir",
+            str(profiles_dir),
+            "--dry-run",
+        ],
+    )
+
+    assert dry.exit_code == 0
+    assert "dry-run" in dry.output.lower()
+    assert not (profiles_dir / "personal" / "profile.json").exists()
+
+    apply = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "voice-profile",
+            "init",
+            "--profile",
+            "personal",
+            "--voice-sample",
+            str(sample),
+            "--ref-text-file",
+            str(transcript),
+            "--engine",
+            "f5tts_clone",
+            "--profiles-dir",
+            str(profiles_dir),
+            "--apply",
+        ],
+    )
+
+    assert apply.exit_code == 0
+    profile_path = profiles_dir / "personal" / "profile.json"
+    assert profile_path.exists()
+    assert "PRIVATE PROFILE CLI TRANSCRIPT" not in profile_path.read_text(encoding="utf-8")
+
+    show = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "voice-profile",
+            "show",
+            "--profile",
+            "personal",
+            "--profiles-dir",
+            str(profiles_dir),
+        ],
+    )
+    assert show.exit_code == 0
+    assert "personal" in show.output
+    assert "approved for calls: no" in show.output.lower()
+
+    check = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "voice-profile",
+            "check",
+            "--profile",
+            "personal",
+            "--profiles-dir",
+            str(profiles_dir),
+        ],
+    )
+    assert check.exit_code == 0
+    assert "ready" in check.output.lower()

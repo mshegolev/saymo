@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Call-ready Voice Clone
-status: roadmap ready
-stopped_at: v1.8 roadmap created; next step is plan Phase 31.
+status: phase 31 complete
+stopped_at: Phase 31 complete; next step is plan Phase 32.
 last_updated: "2026-07-07"
-last_activity: "2026-07-07 - created v1.8 requirements and roadmap"
+last_activity: "2026-07-07 - completed Phase 31 voice asset inventory and profile setup"
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 22
-  completed_plans: 0
-  percent: 0
+  completed_plans: 4
+  percent: 20
 ---
 
 # Project State
@@ -26,18 +26,18 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 31 - Voice Asset Inventory and Profile Setup
+Phase: 32 - Benchmark Scoring and F5 Baseline
 Plan: None
-Status: Roadmap ready; next step is planning Phase 31.
-Last activity: 2026-07-07 - created v1.8 requirements and roadmap.
+Status: Phase 31 complete; next step is planning Phase 32.
+Last activity: 2026-07-07 - completed Phase 31 voice asset inventory and profile setup.
 
-Progress: [----------] 0%
+Progress: [##--------] 20%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 0
+- Plans completed: 4
 - Average duration: same-day execution
 - Total execution time: same-day execution
 
@@ -54,7 +54,7 @@ Progress: [----------] 0%
 
 | Phase | Status | Plans |
 |-------|--------|-------|
-| 31. Voice Asset Inventory and Profile Setup | Pending | 0/4 |
+| 31. Voice Asset Inventory and Profile Setup | Complete | 4/4 |
 | 32. Benchmark Scoring and F5 Baseline | Pending | 0/4 |
 | 33. Candidate Shootout Gates | Pending | 0/4 |
 | 34. Call-ready Engine Selector and Fallback Chain | Pending | 0/5 |
@@ -80,10 +80,13 @@ Recent decisions affecting future work:
   without committing raw audio, transcripts, or local meeting content.
 - v1.8: Voice-clone assets and training datasets are protected local state;
   default work should inventory and benchmark them without destructive changes.
+- v1.8 Phase 31: Voice inventory/profile commands are read-only by default,
+  profile writes require explicit `--apply`, and transcript text is not emitted
+  in JSON/Markdown/profile manifests.
 
 ### Pending Todos
 
-Plan Phase 31: Voice Asset Inventory and Profile Setup.
+Plan Phase 32: Benchmark Scoring and F5 Baseline.
 
 ### Blockers/Concerns
 
@@ -107,5 +110,5 @@ Plan Phase 31: Voice Asset Inventory and Profile Setup.
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: v1.8 roadmap created; next step is plan Phase 31.
+Stopped at: Phase 31 complete; next step is plan Phase 32.
 Resume file: None

@@ -24,6 +24,46 @@ For a serious benchmark, record two additional clean references:
 - 15 seconds: normal standup voice
 - 45-60 seconds: statement, question, list, mild emphasis
 
+## Inventory and Voice Profile
+
+Before benchmarking, inspect local voice state without changing it:
+
+```bash
+saymo voice-inventory
+saymo voice-inventory --json-output ~/.saymo/voice_inventory.json
+```
+
+The inventory is read-only. It reports active engines, known local model paths,
+reference samples, transcript sidecars, datasets, audio caches, and benchmark
+runs. It must not delete files, rewrite samples, start training, install
+packages, or download model weights.
+
+Create a profile manifest that references existing local files:
+
+```bash
+saymo voice-profile init \
+  --profile personal \
+  --voice-sample ~/.saymo/voice_samples/voice_sample.wav \
+  --ref-text-file ~/.saymo/voice_samples/voice_sample.txt \
+  --engine f5tts_clone \
+  --dry-run
+
+saymo voice-profile init \
+  --profile personal \
+  --voice-sample ~/.saymo/voice_samples/voice_sample.wav \
+  --ref-text-file ~/.saymo/voice_samples/voice_sample.txt \
+  --engine f5tts_clone \
+  --apply
+
+saymo voice-profile show --profile personal
+saymo voice-profile check --profile personal
+```
+
+The profile stores paths, hashes, audio metadata, transcript character count,
+engine, language, and approval state. It references the WAV/TXT files; it does
+not copy or modify them. New profiles start with `approved_for_calls=false` and
+cannot be treated as call-ready until later benchmark approval gates pass.
+
 ## Run F5 Baseline
 
 ```bash
