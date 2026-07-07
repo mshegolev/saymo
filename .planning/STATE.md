@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.8
 milestone_name: Call-ready Voice Clone
-status: phase 33 complete
-stopped_at: Phase 33 complete; next step is plan Phase 34.
+status: phase 34 complete
+stopped_at: Phase 34 complete; next step is plan Phase 35.
 last_updated: "2026-07-07"
-last_activity: "2026-07-07 - completed Phase 33 candidate shootout gates"
+last_activity: "2026-07-07 - completed Phase 34 call-ready engine selector and fallback chain"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 22
-  completed_plans: 12
-  percent: 60
+  completed_plans: 17
+  percent: 80
 ---
 
 # Project State
@@ -26,18 +26,18 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: 34 - Call-ready Engine Selector and Fallback Chain
+Phase: 35 - Preview, A/B Approval, and Safety Soak
 Plan: None
-Status: Phase 33 complete; next step is planning Phase 34.
-Last activity: 2026-07-07 - completed Phase 33 candidate shootout gates.
+Status: Phase 34 complete; next step is planning Phase 35.
+Last activity: 2026-07-07 - completed Phase 34 call-ready engine selector and fallback chain.
 
-Progress: [######----] 60%
+Progress: [########--] 80%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 8
+- Plans completed: 17
 - Average duration: same-day execution
 - Total execution time: same-day execution
 
@@ -56,8 +56,8 @@ Progress: [######----] 60%
 |-------|--------|-------|
 | 31. Voice Asset Inventory and Profile Setup | Complete | 4/4 |
 | 32. Benchmark Scoring and F5 Baseline | Complete | 4/4 |
-| 33. Candidate Shootout Gates | Pending | 0/4 |
-| 34. Call-ready Engine Selector and Fallback Chain | Pending | 0/5 |
+| 33. Candidate Shootout Gates | Complete | 4/4 |
+| 34. Call-ready Engine Selector and Fallback Chain | Complete | 5/5 |
 | 35. Preview, A/B Approval, and Safety Soak | Pending | 0/5 |
 
 ## Accumulated Context
@@ -89,10 +89,14 @@ Recent decisions affecting future work:
   baseline report before importing `qwen_tts`; dry-run remains import-free and
   official Base benchmark artifacts stay separate from production
   `qwen3_clone`.
+- v1.8 Phase 34: Runtime synthesis now has purpose-specific selector
+  decisions; live-call output blocks missing/unapproved profiles and
+  non-cloned engines by default, and prepared/response-cache WAVs use
+  privacy-safe metadata sidecars to detect stale voice/engine state.
 
 ### Pending Todos
 
-Plan Phase 34: Call-ready Engine Selector and Fallback Chain.
+Plan Phase 35: Preview, A/B Approval, and Safety Soak.
 
 ### Blockers/Concerns
 
@@ -116,5 +120,5 @@ Plan Phase 34: Call-ready Engine Selector and Fallback Chain.
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: Phase 32 complete; next step is plan Phase 33.
+Stopped at: Phase 34 complete; next step is plan Phase 35.
 Resume file: None

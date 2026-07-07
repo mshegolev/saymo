@@ -164,6 +164,32 @@ def test_load_config_populates_confirmation_timeout(tmp_path):
     assert cfg.safety.confirmation_timeout_seconds == 2.5
 
 
+def test_load_config_populates_voice_selector_section(tmp_path):
+    yaml_content = textwrap.dedent("""\
+        voice_selector:
+          default_profile: personal
+          profiles_dir: /tmp/saymo-profiles
+          live_call:
+            engine: f5tts_clone
+            fallbacks:
+              - macos_say
+            allow_non_cloned: true
+          realtime:
+            engine: qwen3_clone
+    """)
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(yaml_content)
+
+    cfg = load_config(config_path=str(cfg_file))
+
+    assert cfg.voice_selector.default_profile == "personal"
+    assert cfg.voice_selector.profiles_dir == "/tmp/saymo-profiles"
+    assert cfg.voice_selector.live_call.engine == "f5tts_clone"
+    assert cfg.voice_selector.live_call.fallbacks == ["macos_say"]
+    assert cfg.voice_selector.live_call.allow_non_cloned is True
+    assert cfg.voice_selector.realtime.engine == "qwen3_clone"
+
+
 def test_load_config_populates_diarization_section(tmp_path, monkeypatch):
     monkeypatch.setenv("SAYMO_DIAR_TOKEN", "hf-secret")
     yaml_content = textwrap.dedent("""\

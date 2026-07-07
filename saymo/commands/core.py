@@ -1035,9 +1035,12 @@ async def _speak(config, provider_name: str | None = None, team_mode: bool = Fal
     # Step 0: Check for pre-generated audio cache (instant playback)
     cached_audio = _get_cached_audio_path(team=team_mode)
     if cached_audio.exists():
-        console.print(f"[green]Using cached audio from prepare ({cached_audio.stat().st_size // 1024} KB)[/]")
-        await _play_cached_audio(config, cached_audio, provider_name)
-        return
+        ready, reason = _call_ready_cached_audio(config, cached_audio)
+        if ready:
+            console.print(f"[green]Using cached audio from prepare ({cached_audio.stat().st_size // 1024} KB)[/]")
+            await _play_cached_audio(config, cached_audio, provider_name)
+            return
+        console.print(f"[yellow]Cached audio ignored: {reason}[/]")
 
     # Step 0b: Check if today's text summary exists in Obsidian
     standup_text = _load_cached_summary(config)
@@ -1094,11 +1097,11 @@ async def _speak(config, provider_name: str | None = None, team_mode: bool = Fal
         await _aio.sleep(0.5)
         console.print(f"[bold blue]{provider.name}: Unmute → Speak → Mute[/]")
 
-        await provider.unmute_speak_mute(_speak_text, config, standup_text)
+        await provider.unmute_speak_mute(_speak_text, config, standup_text, "live_call")
         return
 
     # Step 4: Speak without call automation
-    await _speak_text(config, standup_text)
+    await _speak_text(config, standup_text, "live_call")
 
 
 async def _get_standup_content(config) -> dict | None:
@@ -1174,7 +1177,7 @@ async def _compose_text(config, notes: dict) -> str | None:
         return None
 
 
-async def _speak_text(config, text: str) -> None:
+async def _speak_text(config, text: str, purpose: str = "preview") -> None:
     """Synthesize and play speech. Plays to monitor device too if configured."""
     from saymo.tts.text_normalizer import normalize_for_tts
 
@@ -1197,7 +1200,7 @@ async def _speak_text(config, text: str) -> None:
 
     try:
         # Step 1: Synthesize to bytes
-        audio_bytes = await _synthesize(config, text)
+        audio_bytes = await _synthesize(config, text, purpose=purpose)
         if audio_bytes is None:
             return
 
@@ -1220,17 +1223,44 @@ async def _speak_text(config, text: str) -> None:
             console.print(f"[bold red]Fallback also failed:[/] {e2}")
 
 
-async def _synthesize(config, text: str) -> bytes | None:
+async def _synthesize(config, text: str, *, purpose: str = "prepare") -> bytes | None:
     """Synthesize text to audio bytes using configured TTS engine."""
-    from saymo.tts.factory import get_tts_engine, UnsupportedTTSEngine
+    from saymo.tts.factory import UnsupportedTTSEngine
+    from saymo.tts.selector import VoiceSelectorBlocked, get_selected_tts_engine
     try:
-        return await get_tts_engine(config).synthesize(text)
+        selected = get_selected_tts_engine(config, purpose=purpose)
+        return await selected.synthesize(text)
+    except VoiceSelectorBlocked as e:
+        console.print(
+            f"[bold red]Voice selector blocked {purpose}:[/] "
+            f"{e.decision.blocked_reason}"
+        )
+        return None
     except UnsupportedTTSEngine as e:
         console.print(f"[bold red]{e}[/]")
         return None
     except Exception as e:
         console.print(f"[bold red]TTS synthesis failed:[/] {e}")
         return None
+
+
+def _call_ready_cached_audio(config, audio_path) -> tuple[bool, str]:
+    """Check cached prepare audio before treating it as live-call ready."""
+    from saymo.analysis.cache_metadata import (
+        build_voice_cache_metadata,
+        check_voice_cache_metadata,
+    )
+    from saymo.tts.selector import resolve_voice_selector
+
+    live_decision = resolve_voice_selector(config, purpose="live_call")
+    if not live_decision.allowed:
+        return False, live_decision.blocked_reason
+
+    expected = build_voice_cache_metadata(config, purpose="prepare")
+    metadata_check = check_voice_cache_metadata(audio_path, expected)
+    if not metadata_check.valid:
+        return False, metadata_check.blocked_reason
+    return True, ""
 
 
 # ---------------------------------------------------------------------------
@@ -1396,11 +1426,19 @@ async def _prepare(config, save: bool):
     console.print("\n[bold blue]Pre-generating audio...[/]")
     from saymo.tts.text_normalizer import normalize_for_tts
     normalized = normalize_for_tts(text)
-    audio_bytes = await _synthesize(config, normalized)
+    audio_bytes = await _synthesize(config, normalized, purpose="prepare")
     if audio_bytes:
         audio_path = _get_cached_audio_path()
         audio_path.parent.mkdir(parents=True, exist_ok=True)
         audio_path.write_bytes(audio_bytes)
+        from saymo.analysis.cache_metadata import (
+            build_voice_cache_metadata,
+            write_voice_cache_metadata,
+        )
+        write_voice_cache_metadata(
+            audio_path,
+            build_voice_cache_metadata(config, purpose="prepare", text=normalized),
+        )
         console.print(f"[green]Audio cached: {audio_path} ({len(audio_bytes) // 1024} KB)[/]")
     else:
         console.print("[yellow]Audio pre-generation failed, will generate on speak[/]")
@@ -1482,11 +1520,19 @@ async def _prepare_team(config, save: bool):
     console.print("\n[bold blue]Pre-generating team audio...[/]")
     from saymo.tts.text_normalizer import normalize_for_tts
     normalized = normalize_for_tts(text)
-    audio_bytes = await _synthesize(config, normalized)
+    audio_bytes = await _synthesize(config, normalized, purpose="prepare")
     if audio_bytes:
         audio_path = _get_cached_audio_path(team=True)
         audio_path.parent.mkdir(parents=True, exist_ok=True)
         audio_path.write_bytes(audio_bytes)
+        from saymo.analysis.cache_metadata import (
+            build_voice_cache_metadata,
+            write_voice_cache_metadata,
+        )
+        write_voice_cache_metadata(
+            audio_path,
+            build_voice_cache_metadata(config, purpose="prepare", text=normalized),
+        )
         console.print(f"[green]Audio cached: {audio_path} ({len(audio_bytes) // 1024} KB)[/]")
 
     console.print("\n[dim]Run 'saymo speak --team' for instant playback![/]")

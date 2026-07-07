@@ -45,7 +45,7 @@ engine/fallback selection, and preview/A-B/safety-soak gates.
   shootout harness into scored, comparable F5 baseline evidence.
 - [x] **Phase 33: Candidate Shootout Gates** - Gate Qwen3 Base and later
   challengers behind dry-run, transcript, score-report, and install boundaries.
-- [ ] **Phase 34: Call-ready Engine Selector and Fallback Chain** - Wire
+- [x] **Phase 34: Call-ready Engine Selector and Fallback Chain** - Wire
   approved engine/fallback resolution into prepare/live synthesis without
   bypassing existing safety paths.
 - [ ] **Phase 35: Preview, A/B Approval, and Safety Soak** - Enforce local
@@ -147,11 +147,11 @@ paths
 **Plans**: 5 plans
 
 Plans:
-- [ ] 34-01: Add selector config and engine/fallback resolution contracts
-- [ ] 34-02: Route prepare and response-cache synthesis through the selector
-- [ ] 34-03: Route approved live synthesis through readiness and selector checks
-- [ ] 34-04: Add cache voice-fingerprint metadata and stale-cache blockers
-- [ ] 34-05: Add fallback audit metadata and non-cloned fallback safeguards
+- [x] 34-01: Add selector config and engine/fallback resolution contracts
+- [x] 34-02: Route prepare and response-cache synthesis through the selector
+- [x] 34-03: Route approved live synthesis through readiness and selector checks
+- [x] 34-04: Add cache voice-fingerprint metadata and stale-cache blockers
+- [x] 34-05: Add fallback audit metadata and non-cloned fallback safeguards
 
 ### Phase 35: Preview, A/B Approval, and Safety Soak
 **Goal**: Prove that cloned voice output is previewed, approved, and covered by
@@ -188,7 +188,7 @@ Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35
 | 31. Voice Asset Inventory and Profile Setup | v1.8 | 4/4 | Complete | 2026-07-07 |
 | 32. Benchmark Scoring and F5 Baseline | v1.8 | 4/4 | Complete | 2026-07-07 |
 | 33. Candidate Shootout Gates | v1.8 | 4/4 | Complete | 2026-07-07 |
-| 34. Call-ready Engine Selector and Fallback Chain | v1.8 | 0/5 | Pending | — |
+| 34. Call-ready Engine Selector and Fallback Chain | v1.8 | 5/5 | Complete | 2026-07-07 |
 | 35. Preview, A/B Approval, and Safety Soak | v1.8 | 0/5 | Pending | — |
 
 ## Requirement Coverage

@@ -144,6 +144,37 @@ def test_build_is_idempotent(tiny_library, tmp_cache_dir):
     assert len(calls) == 3
 
 
+def test_build_regenerates_when_voice_metadata_is_stale(tiny_library, tmp_cache_dir):
+    from saymo.analysis.cache_metadata import VoiceCacheMetadata
+
+    cache = ResponseCache(library=tiny_library, cache_dir=tmp_cache_dir)
+    calls: list[str] = []
+
+    async def counting_synth(text: str) -> bytes:
+        calls.append(text)
+        return b"wav"
+
+    first_meta = VoiceCacheMetadata(
+        purpose="response_cache",
+        selected_engine="f5tts_clone",
+        attempted_engines=("f5tts_clone",),
+        fingerprint="old",
+    )
+    second_meta = VoiceCacheMetadata(
+        purpose="response_cache",
+        selected_engine="qwen3_clone",
+        attempted_engines=("qwen3_clone",),
+        fingerprint="new",
+    )
+
+    first = asyncio.run(cache.build(counting_synth, voice_metadata=first_meta))
+    second = asyncio.run(cache.build(counting_synth, voice_metadata=second_meta))
+
+    assert len(first) == 3
+    assert len(second) == 3
+    assert len(calls) == 6
+
+
 def test_build_force_regenerates(tiny_library, tmp_cache_dir):
     """`force=True` ignores existing files and calls synth for every variant."""
     cache = ResponseCache(library=tiny_library, cache_dir=tmp_cache_dir)

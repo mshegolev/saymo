@@ -37,6 +37,15 @@ def get_tts_engine(config: SaymoConfig, *, realtime: bool = False):
         if override:
             engine = override
 
+    return get_tts_engine_by_name(config, engine)
+
+
+def get_tts_engine_by_name(config: SaymoConfig, engine: str):
+    """Instantiate a concrete TTS engine by key.
+
+    Selector code uses this to resolve explicit fallback chains while keeping
+    backend imports in the factory.
+    """
     if engine == "coqui_clone":
         from saymo.tts.coqui_clone import CoquiCloneTTS
         return CoquiCloneTTS(language=config.speech.language)

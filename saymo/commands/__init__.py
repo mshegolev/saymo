@@ -280,7 +280,7 @@ async def _resolve_auto_response_decision(
             console.print("[yellow]Cache miss — generating live answer via Ollama...[/]")
             try:
                 from saymo.speech.ollama_composer import answer_question
-                from saymo.tts.factory import get_tts_engine
+                from saymo.tts.selector import VoiceSelectorBlocked, get_selected_tts_engine
                 import tempfile
 
                 answer = await answer_question(
@@ -294,7 +294,11 @@ async def _resolve_auto_response_decision(
                 )
                 if answer:
                     console.print(f"[green]Live answer:[/] {answer}")
-                    audio = await get_tts_engine(config, realtime=True).synthesize(answer)
+                    try:
+                        selected = get_selected_tts_engine(config, purpose="live_call")
+                    except VoiceSelectorBlocked as e:
+                        raise RuntimeError(e.decision.blocked_reason) from e
+                    audio = await selected.synthesize(answer)
                     fd, tmp_name = tempfile.mkstemp(suffix=".wav", prefix="saymo_live_")
                     os.close(fd)
                     tmp_path = Path(tmp_name)

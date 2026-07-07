@@ -473,7 +473,7 @@ def test_cache_miss_with_live_fallback_invokes_ollama(monkeypatch):
     """Question + cache miss + live_fallback=True → Ollama + TTS + temp WAV."""
     config = SaymoConfig()
     config.responses.live_fallback = True
-    config.tts.engine = "macos_say"
+    config.tts.engine = "f5tts_clone"
 
     cache = MagicMock()
     cache.lookup.return_value = None
@@ -485,8 +485,13 @@ def test_cache_miss_with_live_fallback_invokes_ollama(monkeypatch):
 
     mock_engine = MagicMock()
     mock_engine.synthesize = AsyncMock(return_value=b"RIFF....fake wav bytes")
+    class FakeSelectedEngine:
+        async def synthesize(self, text):
+            return await mock_engine.synthesize(text)
+
     monkeypatch.setattr(
-        "saymo.tts.factory.get_tts_engine", lambda cfg, **kw: mock_engine
+        "saymo.tts.selector.get_selected_tts_engine",
+        lambda cfg, **kw: FakeSelectedEngine(),
     )
 
     fallback = Path("/tmp/standup.wav")
@@ -501,6 +506,30 @@ def test_cache_miss_with_live_fallback_invokes_ollama(monkeypatch):
     mock_engine.synthesize.assert_awaited_once_with("Готово, работаю над задачей")
 
     result.unlink()
+
+
+def test_cache_miss_with_live_fallback_returns_standup_when_selector_blocks(monkeypatch):
+    """Live fallback respects call-ready selector gates."""
+    config = SaymoConfig()
+    config.responses.live_fallback = True
+    config.tts.engine = "macos_say"
+
+    cache = MagicMock()
+    cache.lookup.return_value = None
+
+    mock_answer = AsyncMock(return_value="Готово, работаю над задачей")
+    monkeypatch.setattr(
+        "saymo.speech.ollama_composer.answer_question",
+        mock_answer,
+    )
+
+    fallback = Path("/tmp/standup.wav")
+    result = _run(_resolve_auto_response(
+        config, "какой у тебя план?", cache, "вчера закрыл тикет", fallback
+    ))
+
+    assert result == fallback
+    mock_answer.assert_awaited_once()
 
 
 def test_intent_classifier_hit_returns_cached_audio(monkeypatch, tmp_path):

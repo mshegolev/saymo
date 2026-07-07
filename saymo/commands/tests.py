@@ -312,6 +312,7 @@ def prepare_responses(ctx, force):
 async def _prepare_responses(config, force: bool = False) -> int:
     from pathlib import Path
     from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
+    from saymo.analysis.cache_metadata import build_voice_cache_metadata
     from saymo.analysis.response_cache import ResponseCache, build_library
     from saymo.commands.core import _synthesize
 
@@ -326,6 +327,7 @@ async def _prepare_responses(config, force: bool = False) -> int:
         library=library,
         cache_dir=cache_dir,
         confidence_threshold=config.responses.confidence_threshold,
+        voice_metadata=build_voice_cache_metadata(config, purpose="response_cache"),
     )
 
     total_variants = sum(len(e.variants) for e in library.values())
@@ -335,7 +337,7 @@ async def _prepare_responses(config, force: bool = False) -> int:
     )
 
     async def synth(text: str) -> bytes:
-        audio = await _synthesize(config, text)
+        audio = await _synthesize(config, text, purpose="response_cache")
         if audio is None:
             raise RuntimeError(f"TTS returned no audio for: {text[:60]}")
         return audio
@@ -564,11 +566,14 @@ def auto_preflight(ctx, profile, provider):
 
 def _collect_auto_preflight(config, profile: str, provider_name: str | None = None) -> list[PreflightCheck]:
     from saymo.audio.devices import find_device
+    from saymo.analysis.cache_metadata import build_voice_cache_metadata
     from saymo.analysis.live_control import effective_hotkey_bindings
     from saymo.analysis.response_cache import ResponseCache, build_library
     from saymo.commands import _get_cached_audio_path
+    from saymo.commands.core import _call_ready_cached_audio
     from saymo.config import resolve_live_tuning
     from saymo.providers.factory import get_provider
+    from saymo.tts.selector import resolve_voice_selector
 
     meeting = config.get_meeting(profile)
     team_mode = bool(meeting.team) if meeting else False
@@ -576,11 +581,35 @@ def _collect_auto_preflight(config, profile: str, provider_name: str | None = No
     checks: list[PreflightCheck] = []
 
     cached_audio = _get_cached_audio_path(team=team_mode)
+    cached_audio_ready = cached_audio.exists()
+    prepared_detail = str(cached_audio)
+    if cached_audio_ready:
+        cached_audio_ready, cached_reason = _call_ready_cached_audio(config, cached_audio)
+        if not cached_audio_ready:
+            prepared_detail = f"{cached_audio} ({cached_reason})"
     checks.append(
         PreflightCheck(
             "prepared standup",
-            cached_audio.exists(),
-            str(cached_audio),
+            cached_audio_ready,
+            prepared_detail,
+        )
+    )
+
+    voice_decision = resolve_voice_selector(config, purpose="live_call")
+    checks.append(
+        PreflightCheck(
+            "voice selector",
+            voice_decision.allowed,
+            (
+                f"{voice_decision.selected_engine}; "
+                f"profile={voice_decision.profile or '(none)'}; "
+                f"cloned={'yes' if voice_decision.is_voice_clone else 'no'}"
+                if voice_decision.allowed
+                else (
+                    f"{voice_decision.selected_engine}; "
+                    f"blocked={voice_decision.blocked_reason}"
+                )
+            ),
         )
     )
 
@@ -643,13 +672,14 @@ def _collect_auto_preflight(config, profile: str, provider_name: str | None = No
             library=library,
             cache_dir=cache_dir,
             confidence_threshold=config.responses.confidence_threshold,
+            voice_metadata=build_voice_cache_metadata(config, purpose="response_cache"),
         )
         total_variants = sum(len(entry.variants) for entry in library.values())
         cached_variants = sum(
             1
             for entry in library.values()
             for idx, text in enumerate(entry.variants)
-            if cache._variant_path(entry.key, idx, text).exists()
+            if cache._variant_ready(cache._variant_path(entry.key, idx, text))
         )
         checks.append(
             PreflightCheck(
@@ -3480,9 +3510,10 @@ async def _play_approved_draft_text(
     from datetime import datetime, timezone
 
     from saymo.analysis.answer_cockpit import ApprovedPlaybackResult
-    from saymo.tts.factory import UnsupportedTTSEngine, get_tts_engine
+    from saymo.tts.selector import VoiceSelectorBlocked, get_selected_tts_engine
 
     normalized = " ".join((text or "").split())
+    selector_purpose = "preview" if preview else "live_call"
     engine_name = getattr(config.tts, "realtime_engine", "") or config.tts.engine
     output = config.audio.playback_device or "BlackHole 2ch"
     monitor_device = config.audio.monitor_device or ""
@@ -3538,9 +3569,10 @@ async def _play_approved_draft_text(
 
     async def synthesize_and_play():
         try:
-            tts = get_tts_engine(config, realtime=True)
-        except UnsupportedTTSEngine as e:
-            raise RuntimeError(str(e)) from e
+            selected = get_selected_tts_engine(config, purpose=selector_purpose)
+        except VoiceSelectorBlocked as e:
+            raise RuntimeError(e.decision.blocked_reason) from e
+        tts = selected.engine
         audio_bytes = await tts.synthesize(normalized)
         if len(route_devices) > 1:
             from saymo.audio.multi_play import play_bytes_to_devices

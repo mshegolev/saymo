@@ -170,11 +170,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CAND-03 | Phase 33 | Complete |
 | CAND-04 | Phase 33 | Complete |
 | CAND-05 | Phase 33 | Complete |
-| RUN-01 | Phase 34 | Pending |
-| RUN-02 | Phase 34 | Pending |
-| RUN-03 | Phase 34 | Pending |
-| RUN-04 | Phase 34 | Pending |
-| RUN-05 | Phase 34 | Pending |
+| RUN-01 | Phase 34 | Complete |
+| RUN-02 | Phase 34 | Complete |
+| RUN-03 | Phase 34 | Complete |
+| RUN-04 | Phase 34 | Complete |
+| RUN-05 | Phase 34 | Complete |
 | SAFE-01 | Phase 35 | Pending |
 | SAFE-02 | Phase 35 | Pending |
 | SAFE-03 | Phase 35 | Pending |
@@ -188,4 +188,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-07-07*
-*Last updated: 2026-07-07 after completing Phase 33*
+*Last updated: 2026-07-07 after completing Phase 34*

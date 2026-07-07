@@ -23,6 +23,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Awaitable, Callable
 
+from saymo.analysis.cache_metadata import (
+    VoiceCacheMetadata,
+    check_voice_cache_metadata,
+    write_voice_cache_metadata,
+)
+
 logger = logging.getLogger("saymo.analysis.response_cache")
 
 DEFAULT_CACHE_DIR = Path.home() / ".saymo" / "audio_cache" / "responses"
@@ -362,10 +368,12 @@ class ResponseCache:
         library: dict[str, ResponseEntry] | None = None,
         cache_dir: Path | None = None,
         confidence_threshold: float = 0.6,
+        voice_metadata: VoiceCacheMetadata | None = None,
     ):
         self.library = library if library is not None else dict(DEFAULT_RESPONSE_LIBRARY)
         self.cache_dir = Path(cache_dir) if cache_dir else DEFAULT_CACHE_DIR
         self.confidence_threshold = confidence_threshold
+        self.voice_metadata = voice_metadata
 
         self._indexed: list[_IndexedEntry] = [
             _IndexedEntry(
@@ -384,6 +392,7 @@ class ResponseCache:
         synth_fn: Callable[[str], Awaitable[bytes]],
         progress: Callable[[str, int, int], None] | None = None,
         force: bool = False,
+        voice_metadata: VoiceCacheMetadata | None = None,
     ) -> list[Path]:
         """Synthesise every variant of every entry and write WAV files.
 
@@ -403,6 +412,7 @@ class ResponseCache:
         """
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         written: list[Path] = []
+        metadata = voice_metadata or self.voice_metadata
 
         total = sum(len(e.variants) for e in self.library.values())
         seen = 0
@@ -413,8 +423,16 @@ class ResponseCache:
                 if progress:
                     progress(entry.key, seen, total)
                 if path.exists() and not force:
-                    logger.debug(f"cache hit: {path.name}")
-                    continue
+                    if metadata is None:
+                        logger.debug(f"cache hit: {path.name}")
+                        continue
+                    cache_check = check_voice_cache_metadata(path, metadata)
+                    if cache_check.valid:
+                        logger.debug(f"cache hit: {path.name}")
+                        continue
+                    logger.info(
+                        f"cache stale: {path.name} ({cache_check.blocked_reason})"
+                    )
                 try:
                     audio = await synth_fn(text)
                 except Exception as e:
@@ -424,6 +442,8 @@ class ResponseCache:
                     logger.warning(f"empty audio for '{entry.key}' variant {variant_idx}")
                     continue
                 path.write_bytes(audio)
+                if metadata is not None:
+                    write_voice_cache_metadata(path, metadata)
                 written.append(path)
                 logger.info(f"cached: {path.name} ({len(audio) // 1024} KB)")
 
@@ -452,7 +472,7 @@ class ResponseCache:
         candidates: list[tuple[int, str, Path]] = []
         for idx, text in enumerate(entry.variants):
             path = self._variant_path(entry.key, idx, text)
-            if path.exists():
+            if self._variant_ready(path):
                 candidates.append((idx, text, path))
         if not candidates:
             logger.info(
@@ -501,7 +521,7 @@ class ResponseCache:
         candidates: list[tuple[int, str, Path]] = []
         for idx, text in enumerate(best_entry.variants):
             path = self._variant_path(best_entry.key, idx, text)
-            if path.exists():
+            if self._variant_ready(path):
                 candidates.append((idx, text, path))
         if not candidates:
             logger.info(
@@ -520,3 +540,10 @@ class ResponseCache:
             text=text,
             confidence=best_score,
         )
+
+    def _variant_ready(self, path: Path) -> bool:
+        if not path.exists():
+            return False
+        if self.voice_metadata is None:
+            return True
+        return check_voice_cache_metadata(path, self.voice_metadata).valid

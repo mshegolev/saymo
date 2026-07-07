@@ -2886,17 +2886,59 @@ def test_trigger_check_shows_classifier_shadow_diagnostics(tmp_path):
 
 
 def test_auto_preflight_reports_ready_with_nonblocking_cache_warning(tmp_path, monkeypatch):
+    from dataclasses import replace
     from datetime import date
     import yaml
+    import soundfile as sf
+    from saymo.analysis.cache_metadata import (
+        build_voice_cache_metadata,
+        write_voice_cache_metadata,
+    )
+    from saymo.analysis.voice_profile import (
+        build_voice_profile_manifest,
+        write_voice_profile_manifest,
+    )
+    from saymo.config import load_config
 
     config_path = _write_config(tmp_path)
     data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     data["responses"]["cache_dir"] = str(tmp_path / "empty_responses")
+    data["tts"] = {"engine": "f5tts_clone"}
+    data["voice_selector"] = {
+        "default_profile": "personal",
+        "profiles_dir": str(tmp_path / "profiles"),
+    }
     config_path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
+
+    voice_sample = tmp_path / "voice_sample.wav"
+    transcript = tmp_path / "voice_sample.txt"
+    sf.write(voice_sample, [0.0, 0.1, -0.1, 0.0], 16000)
+    transcript.write_text("reference transcript", encoding="utf-8")
+    manifest = build_voice_profile_manifest(
+        profile="personal",
+        voice_sample=voice_sample,
+        ref_text_file=transcript,
+        engine="f5tts_clone",
+        language="ru",
+    )
+    write_voice_profile_manifest(
+        replace(
+            manifest,
+            approved_for_calls=True,
+            approved_benchmark_run="run-001",
+        ),
+        profiles_dir=tmp_path / "profiles",
+    )
+
     cache_dir = tmp_path / ".saymo" / "audio_cache"
     cache_dir.mkdir(parents=True)
     cached = cache_dir / f"{date.today().isoformat()}.wav"
     cached.write_bytes(b"wav")
+    config = load_config(config_path=str(config_path))
+    write_voice_cache_metadata(
+        cached,
+        build_voice_cache_metadata(config, purpose="prepare", text="standup"),
+    )
 
     monkeypatch.setattr("saymo.commands._get_cached_audio_path", lambda team=False: cached)
     monkeypatch.setattr(

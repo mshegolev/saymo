@@ -171,6 +171,57 @@ Hugging Face or ModelScope assets.
 
 See [Qwen3 Base Voice Clone Notes](qwen3-base-voice-clone-notes.md) for the current gate decision.
 
+## Call-ready Selector
+
+Runtime synthesis now has a purpose-aware selector:
+
+- `preview`
+- `prepare`
+- `response_cache`
+- `realtime`
+- `live_call`
+
+`prepare`, `prepare-responses`, cache-miss `speak`, approved draft playback,
+and auto live fallback route through selector checks before instantiating a TTS
+backend. Existing handbrake, confirmation, provider mute, stop, takeover, and
+max-duration gates stay outside the selector and still run in the same order.
+
+Default live-call behavior is fail-closed:
+
+- missing voice profile → `voice_profile_missing`
+- changed/missing reference WAV → `voice_profile_blocked`
+- unapproved profile → `voice_profile_unapproved`
+- non-cloned engine such as Piper/macOS `say` → `engine_not_voice_clone`
+- stale/missing cache sidecar → `voice_metadata_stale` or
+  `voice_metadata_missing`
+
+Generated WAV caches now get sidecars next to the audio:
+
+```text
+~/.saymo/audio_cache/2026-07-07.wav.meta.json
+~/.saymo/audio_cache/responses/status_generic_0_<hash>.wav.meta.json
+```
+
+The sidecar stores selector metadata, selected engine, attempted fallback
+chain, cloned/non-cloned state, profile id, approval flag, and reference
+hashes. It does not store transcript text or generated answer text.
+
+Example selector override:
+
+```yaml
+voice_selector:
+  default_profile: personal
+  live_call:
+    engine: f5tts_clone
+    fallbacks: []
+    allow_non_cloned: false
+    require_approved_profile: true
+  realtime:
+    engine: qwen3_clone
+    fallbacks:
+      - f5tts_clone
+```
+
 ## Promotion Gate
 
 A challenger can replace F5 only if:

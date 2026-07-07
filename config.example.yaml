@@ -75,6 +75,8 @@ tts:
   # Voice-cloning engines (primary — speak in the user's voice):
   #   `coqui_clone`  — XTTS v2, zero-shot or fine-tuned
   #   `qwen3_clone`  — Qwen3-TTS 12Hz with LoRA adapter (Apple Silicon)
+  #   `f5tts_clone`  — F5-TTS via isolated ~/F5TTS runtime
+  #   `xtts_rvc_clone` — XTTS plus optional local RVC post-processor
   # Fallback engines (do NOT sound like the user):
   #   `piper`        — ~60 MB download, offline
   #   `macos_say`    — built-in, zero install
@@ -89,6 +91,31 @@ tts:
     model_path: ""
   macos_say:
     voice: Milena
+
+voice_selector:
+  # Call-ready engine/fallback policy. `live_call` is intentionally stricter
+  # than preview/prepare: it requires an approved voice profile and blocks
+  # non-cloned engines unless you explicitly set allow_non_cloned=true.
+  default_profile: personal
+  profiles_dir: ""            # empty → ~/.saymo/voice_profiles/
+  preview:
+    engine: ""
+    fallbacks: []
+    allow_non_cloned: true
+  prepare:
+    engine: ""                # empty → tts.engine
+    fallbacks: []
+  response_cache:
+    engine: ""                # empty → tts.engine
+    fallbacks: []
+  realtime:
+    engine: ""                # empty → tts.realtime_engine, then tts.engine
+    fallbacks: []
+  live_call:
+    engine: ""                # empty → tts.realtime_engine, then tts.engine
+    fallbacks: []
+    allow_non_cloned: false
+    require_approved_profile: true
 
 obsidian:
   vault_path: ""              # e.g. "~/Documents/Obsidian Vault"

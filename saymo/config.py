@@ -215,6 +215,41 @@ class TTSConfig:
 
 
 @dataclass
+class VoiceSelectorPurposeConfig:
+    """Purpose-specific voice engine selection policy."""
+
+    engine: str = ""
+    fallbacks: list[str] = field(default_factory=list)
+    voice_profile: str = ""
+    allow_non_cloned: bool = False
+    require_approved_profile: bool = False
+
+
+@dataclass
+class VoiceSelectorConfig:
+    """Call-ready voice selector configuration.
+
+    The selector is passive unless call-ready purposes such as `live_call`
+    explicitly need approval checks. Existing `tts.engine` and
+    `tts.realtime_engine` remain the source of defaults.
+    """
+
+    enabled: bool = True
+    default_profile: str = "personal"
+    profiles_dir: str = ""
+    preview: VoiceSelectorPurposeConfig = field(default_factory=VoiceSelectorPurposeConfig)
+    prepare: VoiceSelectorPurposeConfig = field(default_factory=VoiceSelectorPurposeConfig)
+    response_cache: VoiceSelectorPurposeConfig = field(default_factory=VoiceSelectorPurposeConfig)
+    realtime: VoiceSelectorPurposeConfig = field(default_factory=VoiceSelectorPurposeConfig)
+    live_call: VoiceSelectorPurposeConfig = field(
+        default_factory=lambda: VoiceSelectorPurposeConfig(
+            require_approved_profile=True,
+            allow_non_cloned=False,
+        )
+    )
+
+
+@dataclass
 class JiraConfig:
     url: str = ""
     token: str = ""
@@ -323,6 +358,7 @@ class SaymoConfig:
     meeting_memory: MeetingMemoryConfig = field(default_factory=MeetingMemoryConfig)
     analysis: AnalysisConfig = field(default_factory=AnalysisConfig)
     tts: TTSConfig = field(default_factory=TTSConfig)
+    voice_selector: VoiceSelectorConfig = field(default_factory=VoiceSelectorConfig)
     jira: JiraConfig = field(default_factory=JiraConfig)
     obsidian: ObsidianConfig = field(default_factory=ObsidianConfig)
     ollama: OllamaConfig = field(default_factory=OllamaConfig)
