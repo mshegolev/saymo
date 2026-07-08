@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import textwrap
 from pathlib import Path
+from unittest.mock import MagicMock
 
 from click.testing import CliRunner
 
@@ -46,11 +47,12 @@ warn:
   why: voice_profile_unapproved
   action: Approve a cloned voice profile for live calls
   rerun: saymo call-ready -p standup --provider glip
-info:
-- [retest] provider audio basic scope
-  why: deferred_to_phase_37
-  action: Run Phase 37 provider/audio readiness
+- [provider] provider capabilities
+  why: mic_switch_unsupported
+  action: Use saymo takeover-check before relying on automated microphone switching for this provider.
   rerun: saymo call-ready -p standup --provider glip
+info:
+- none
 """.strip()
 
 
@@ -123,6 +125,74 @@ def _assert_no_private_text(output: str) -> None:
 
 def _top_level_result_lines(output: str) -> list[str]:
     return [line for line in output.splitlines() if line.startswith("call-ready: ")]
+
+
+def _patch_ready_phase36(monkeypatch):
+    from saymo.analysis import launch_cache, launch_sources
+    from saymo.analysis.launch_readiness import LaunchReadinessCheck
+
+    monkeypatch.setattr(
+        launch_sources,
+        "collect_daily_note_checks",
+        lambda config, profile, *, provider_name, prepare: (
+            LaunchReadinessCheck(
+                key="daily_note_present",
+                label="daily note present",
+                severity="block",
+                ok=True,
+                metadata={"source_sha256": "ignored"},
+            ),
+            LaunchReadinessCheck(
+                key="daily_note_source_ready",
+                label="daily note source ready",
+                severity="block",
+                ok=True,
+                metadata={"source_sha256": "abc123"},
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        launch_sources,
+        "collect_prepared_audio_check",
+        lambda config, profile, *, provider_name, team_mode, source_sha256: LaunchReadinessCheck(
+            key="prepared_standup_audio",
+            label="prepared standup audio",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_response_cache_check",
+        lambda config, *, profile, provider_name: LaunchReadinessCheck(
+            key="response_cache_coverage",
+            label="response cache coverage",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_voice_metadata_check",
+        lambda config, *, profile, provider_name: LaunchReadinessCheck(
+            key="cloned_voice_metadata",
+            label="cloned voice metadata",
+            severity="block",
+            ok=True,
+        ),
+    )
+
+
+def _audio_device(name: str):
+    from saymo.audio.devices import AudioDevice
+
+    return AudioDevice(
+        index=1,
+        name=name,
+        max_input_channels=2,
+        max_output_channels=2,
+        default_samplerate=48000.0,
+    )
 
 
 def test_call_ready_prints_top_level_result(tmp_path, monkeypatch):
@@ -298,33 +368,131 @@ def test_call_ready_includes_provider_tab_readiness(tmp_path, monkeypatch):
     _assert_no_private_text(human_result.output)
 
 
-def test_call_ready_writes_output_artifact_in_human_mode(tmp_path, monkeypatch):
-    import saymo.commands.call_ready as call_ready_module
-    from saymo.analysis.launch_readiness import LaunchReadinessCheck, LaunchReadinessReport
+def test_call_ready_provider_audio_checks_are_non_destructive(tmp_path, monkeypatch):
+    from saymo.analysis.live_control import HotkeyDoctorReport
+    import saymo.analysis.live_control as live_control
+    import saymo.audio.devices as audio_devices
+    import saymo.audio.macos_audio as macos_audio
+    import saymo.audio.multi_play as multi_play
+    import saymo.audio.playback as playback
+    import saymo.commands.tests as command_tests
+    import saymo.providers.factory as provider_factory
+    import sounddevice as sd
+    import subprocess
+    from saymo.providers.base import MeetingStatus
+
+    config_path = _write_config(tmp_path)
+    _patch_ready_phase36(monkeypatch)
+    provider = MagicMock()
+    provider.name = "glip"
+    provider.url_pattern = "app.glip.com"
+    provider.check_ready.return_value = MeetingStatus(
+        app_running=True,
+        meeting_found=True,
+        tab_info=(1, 2),
+    )
+    forbidden = MagicMock(
+        side_effect=AssertionError("call-ready provider/audio checks must be read-only")
+    )
+    subprocess_run = MagicMock(
+        side_effect=AssertionError("call-ready must not run Chrome kill commands")
+    )
+    find_calls = []
+
+    def fake_find_device(name, kind="input"):
+        find_calls.append((name, kind))
+        return _audio_device(name)
+
+    monkeypatch.setattr(provider_factory, "get_provider", lambda name: provider)
+    monkeypatch.setattr(audio_devices, "find_device", fake_find_device)
+    monkeypatch.setattr(
+        live_control,
+        "build_hotkey_doctor_report",
+        lambda config, profile, *, probe=True: HotkeyDoctorReport(
+            profile=profile,
+            bindings={},
+            process_running=False,
+            registration_status="no_bindings",
+            registration_detail="",
+        ),
+    )
+    monkeypatch.setattr(playback, "play_audio_bytes", forbidden)
+    monkeypatch.setattr(multi_play, "play_bytes_to_devices", forbidden)
+    monkeypatch.setattr(sd, "rec", forbidden)
+    monkeypatch.setattr(macos_audio, "set_input_volume", forbidden)
+    monkeypatch.setattr(macos_audio, "bump_input_volume", forbidden)
+    monkeypatch.setattr(command_tests, "_write_audio_settings_to_user_config", forbidden)
+    monkeypatch.setattr(subprocess, "run", subprocess_run)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "call-ready",
+            "-p",
+            "standup",
+            "--provider",
+            "glip",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert _top_level_result_lines(result.output) == ["call-ready: ready"]
+    provider.check_ready.assert_called_once_with()
+    provider.activate_meeting.assert_not_called()
+    provider.toggle_mute.assert_not_called()
+    provider.switch_mic.assert_not_called()
+    provider.get_previous_app.assert_not_called()
+    provider.activate_app.assert_not_called()
+    provider.leave_meeting.assert_not_called()
+    forbidden.assert_not_called()
+    subprocess_run.assert_not_called()
+    assert find_calls == [
+        ("BlackHole 16ch", "input"),
+        ("BlackHole 2ch", "output"),
+        ("BlackHole 2ch", "output"),
+        ("BlackHole 16ch", "input"),
+        ("MacBook Pro Microphone", "input"),
+    ]
+    _assert_no_private_text(result.output)
+
+
+def test_call_ready_output_artifact_includes_provider_audio_checks(
+    tmp_path,
+    monkeypatch,
+):
+    from saymo.analysis.live_control import HotkeyDoctorReport
+    import saymo.analysis.launch_readiness as launch_readiness
+    import saymo.analysis.live_control as live_control
+    import saymo.audio.devices as audio_devices
+    import saymo.providers.factory as provider_factory
 
     config_path = _write_config(tmp_path)
     output_path = tmp_path / "call-ready.json"
-    report = LaunchReadinessReport(
-        profile="standup",
-        provider="glip",
-        checks=(
-            LaunchReadinessCheck(
-                key="provider_audio_basic_scope",
-                label="provider audio basic scope",
-                severity="info",
-                ok=True,
-                detail="deferred_to_phase_37",
-                metadata={
-                    "deferred_to_phase": "37",
-                    "scope": "basic_provider_audio_placeholder",
-                },
-            ),
-        ),
+    _patch_ready_phase36(monkeypatch)
+    provider = MagicMock()
+    provider.name = "glip"
+    provider.url_pattern = "PRIVATE_TRANSCRIPT.example"
+    provider.check_ready.side_effect = RuntimeError(
+        "Google Chrome Automation denied PRIVATE_DAILY_NOTE SECRET_TOKEN"
+    )
+    monkeypatch.setattr(provider_factory, "get_provider", lambda name: provider)
+    monkeypatch.setattr(
+        audio_devices,
+        "find_device",
+        lambda name, kind="input": _audio_device(name),
     )
     monkeypatch.setattr(
-        call_ready_module,
-        "collect_launch_readiness",
-        lambda config, *, profile, provider_name, prepare: report,
+        live_control,
+        "build_hotkey_doctor_report",
+        lambda config, profile, *, probe=True: HotkeyDoctorReport(
+            profile=profile,
+            bindings={},
+            process_running=False,
+            registration_status="no_bindings",
+            registration_detail="",
+        ),
     )
 
     result = CliRunner().invoke(
@@ -342,12 +510,37 @@ def test_call_ready_writes_output_artifact_in_human_mode(tmp_path, monkeypatch):
         ],
     )
 
-    assert result.exit_code == 0
-    assert _top_level_result_lines(result.output) == ["call-ready: ready"]
+    assert result.exit_code == 1
+    assert _top_level_result_lines(result.output) == ["call-ready: not ready"]
     assert f"artifact: {output_path}" in result.output
     payload = json.loads(output_path.read_text(encoding="utf-8"))
-    assert payload["checks"][0]["key"] == "provider_audio_basic_scope"
-    assert payload["checks"][0]["detail"] == "deferred_to_phase_37"
+    keys = [check["key"] for check in payload["checks"]]
+    assert {
+        "provider_meeting_tab",
+        "capture_input_device",
+        "playback_output_device",
+        "provider_output_blackhole",
+        "recording_microphone_input",
+        "provider_capabilities",
+    }.issubset(keys)
+    old_placeholder_key = "provider" + "_audio_basic_scope"
+    assert old_placeholder_key not in keys
+    assert any(key.endswith("_permission") for key in keys)
+    assert payload == json.loads(output_path.read_text(encoding="utf-8"))
+    expected_phase37_order = (
+        "provider_meeting_tab",
+        "capture_input_device",
+        "playback_output_device",
+        "provider_output_blackhole",
+        "capture_route_blackhole",
+        "recording_microphone_input",
+        "provider_capabilities",
+    )
+    cloned_voice_index = keys.index("cloned_voice_metadata")
+    assert tuple(keys[cloned_voice_index + 1 : cloned_voice_index + 8]) == (
+        expected_phase37_order
+    )
+    assert expected_phase37_order == launch_readiness._LAUNCH_CHECK_ORDER[5:12]
     _assert_no_private_text(result.output)
     _assert_no_private_text(json.dumps(payload, ensure_ascii=False))
 
@@ -504,12 +697,15 @@ def test_call_ready_groups_remediation_with_rerun_commands(tmp_path, monkeypatch
                 rerun="saymo call-ready -p standup --provider glip",
             ),
             LaunchReadinessCheck(
-                key="provider_audio_basic_scope",
-                label="provider audio basic scope",
-                severity="info",
+                key="provider_capabilities",
+                label="provider capabilities",
+                severity="warn",
                 ok=False,
-                detail="deferred_to_phase_37",
-                action="Run Phase 37 provider/audio readiness",
+                detail="mic_switch_unsupported",
+                action=(
+                    "Use saymo takeover-check before relying on automated "
+                    "microphone switching for this provider."
+                ),
                 rerun="saymo call-ready -p standup --provider glip",
             ),
         ),

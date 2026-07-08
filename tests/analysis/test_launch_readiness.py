@@ -253,6 +253,7 @@ def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
 
 def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch):
     from saymo.analysis import launch_cache, launch_sources, provider_audio_readiness
+    import saymo.analysis.launch_readiness as launch_readiness
     from saymo.analysis.launch_readiness import (
         LaunchReadinessCheck,
         collect_launch_readiness,
@@ -326,20 +327,73 @@ def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch
                 ok=True,
                 detail="meeting_found",
             ),
+            LaunchReadinessCheck(
+                key="capture_input_device",
+                label="capture input device",
+                severity="block",
+                ok=True,
+            ),
+            LaunchReadinessCheck(
+                key="playback_output_device",
+                label="playback output device",
+                severity="block",
+                ok=True,
+            ),
+            LaunchReadinessCheck(
+                key="provider_output_blackhole",
+                label="provider output BlackHole",
+                severity="block",
+                ok=True,
+            ),
+            LaunchReadinessCheck(
+                key="capture_route_blackhole",
+                label="capture route BlackHole",
+                severity="block",
+                ok=True,
+            ),
+            LaunchReadinessCheck(
+                key="recording_microphone_input",
+                label="recording microphone input",
+                severity="block",
+                ok=True,
+            ),
+            LaunchReadinessCheck(
+                key="provider_capabilities",
+                label="provider capabilities",
+                severity="info",
+                ok=True,
+            ),
+            LaunchReadinessCheck(
+                key="hotkey_accessibility_permission",
+                label="hotkey Accessibility permission",
+                severity="block",
+                ok=True,
+            ),
         ),
     )
 
     report = collect_launch_readiness(config, profile="standup", provider_name=None)
 
     assert report.provider == "glip"
-    assert [check.key for check in report.checks] == [
+    expected_order = [
         "daily_note_present",
         "daily_note_source_ready",
         "prepared_standup_audio",
         "response_cache_coverage",
         "cloned_voice_metadata",
         "provider_meeting_tab",
+        "capture_input_device",
+        "playback_output_device",
+        "provider_output_blackhole",
+        "capture_route_blackhole",
+        "recording_microphone_input",
+        "provider_capabilities",
+        "hotkey_accessibility_permission",
     ]
+    assert [check.key for check in report.checks] == expected_order
+    assert launch_readiness._LAUNCH_CHECK_ORDER == tuple(expected_order)
+    old_placeholder_key = "provider" + "_audio_basic_scope"
+    assert old_placeholder_key not in expected_order
     provider_tab = _check_by_key(report, "provider_meeting_tab")
     assert provider_tab.severity == "block"
     assert provider_tab.ok is True
