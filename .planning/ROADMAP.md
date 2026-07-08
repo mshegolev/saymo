@@ -166,11 +166,11 @@ voice selector metadata, provider runtime checks, live-control state
 **Plans**: 5 plans
 
 Plans:
-- [ ] 39-01: Wrap `saymo auto` and any realtime alias in the shared launch gate
-- [ ] 39-02: Enforce fail-closed response-cache and cloned-voice metadata policy
-- [ ] 39-03: Block playback on provider loss, takeover, hard-disable, and disabled auto-answer
-- [ ] 39-04: Preserve explicit manual standup playback without automatic cache-miss fallback
-- [ ] 39-05: Emit sanitized realtime decision events and add regression tests
+- [ ] 39-01-PLAN.md — Wrap `saymo auto` and any realtime alias in the shared launch gate
+- [ ] 39-02-PLAN.md — Enforce fail-closed response-cache and cloned-voice metadata policy
+- [ ] 39-03-PLAN.md — Block playback on provider loss, takeover, hard-disable, and disabled auto-answer
+- [ ] 39-04-PLAN.md — Preserve explicit manual standup playback without automatic cache-miss fallback
+- [ ] 39-05-PLAN.md — Emit sanitized realtime decision events and add regression tests
 
 ### Phase 40: Launch and Realtime Evidence Feedback
 **Goal**: User can inspect sanitized launch and realtime evidence, see health
