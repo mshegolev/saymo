@@ -44,7 +44,7 @@ safety-soak.
 - Integer phases (36, 37, 38, 39, 40): Planned milestone work
 - Decimal phases (38.1, 38.2): Urgent insertions if needed
 
-- [ ] **Phase 36: Call-Ready Preflight and Cache Gate** - Create one
+- [x] **Phase 36: Call-Ready Preflight and Cache Gate** - Create one (completed 2026-07-08)
   ready/not-ready launch gate for daily notes, prepared standup audio,
   response-cache coverage, cloned-voice metadata, and actionable remediation.
 - [ ] **Phase 37: Provider and Audio Remediation** - Verify provider tab,
@@ -82,10 +82,10 @@ workflow, response cache, existing preflight/remediation patterns
 **Plans**: 4 plans
 
 Plans:
-- [ ] 36-01: Add shared launch-readiness contracts and `call-ready` command shell
-- [ ] 36-02: Integrate daily-note source and prepared standup audio checks
-- [ ] 36-03: Add response-cache coverage and cloned-voice metadata blockers
-- [ ] 36-04: Add grouped remediation output, artifacts, and launch-gate tests
+- [x] 36-01: Add shared launch-readiness contracts and `call-ready` command shell
+- [x] 36-02: Integrate daily-note source and prepared standup audio checks
+- [x] 36-03: Add response-cache coverage and cloned-voice metadata blockers
+- [x] 36-04: Add grouped remediation output, artifacts, and launch-gate tests
 
 ### Phase 37: Provider and Audio Remediation
 **Goal**: User can verify provider, Chrome tab, BlackHole routing, microphone
@@ -209,7 +209,7 @@ Phases execute in numeric order: 36 -> 37 -> 38 -> 39 -> 40
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 36. Call-Ready Preflight and Cache Gate | v1.9 | 3/4 | In Progress | - |
+| 36. Call-Ready Preflight and Cache Gate | v1.9 | 4/4 | Complete | 2026-07-08 |
 | 37. Provider and Audio Remediation | v1.9 | 0/4 | Not started | - |
 | 38. Local Call-Control Daemon and LaunchAgent | v1.9 | 0/5 | Not started | - |
 | 39. Fail-Closed Realtime Meeting Loop | v1.9 | 0/5 | Not started | - |

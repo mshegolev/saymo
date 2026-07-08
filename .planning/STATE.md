@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Call Launch Readiness
 current_plan: 4
-status: in progress
-stopped_at: Completed 36-02-PLAN.md; 36-03 already complete
-last_updated: "2026-07-08T13:10:52.228Z"
-last_activity: 2026-07-08 - completed 36-02 daily-source and prepared-audio checks; 36-03 already complete.
+status: ready_for_verification
+stopped_at: Completed 36-04-PLAN.md
+last_updated: "2026-07-08T13:22:16.000Z"
+last_activity: 2026-07-08
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -32,18 +32,18 @@ Phase: 36 (1 of 5) - Call-Ready Preflight and Cache Gate
 Current Plan: 4
 Total Plans in Phase: 4
 Plan: 4 of 4 planned
-Status: Ready to execute 36-04.
-Last activity: 2026-07-08 - completed 36-02 daily-source and prepared-audio checks; 36-03 already complete.
+Status: Phase 36 complete; ready for verification.
+Last activity: 2026-07-08 - completed 36-04 full call-ready gate, grouped remediation, and validation evidence.
 
-Progress: [████████░░] 75%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 3
-- Average duration: 5 min
-- Total execution time: 16 min
+- Plans completed: 4
+- Average duration: 6 min
+- Total execution time: 23 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -57,12 +57,13 @@ Progress: [████████░░] 75%
 | 36-01 | 6 min | 2 | 7 |
 | 36-02 | 6 min | 2 | 8 |
 | 36-03 | 4 min | 2 | 3 |
+| 36-04 | 7 min | 3 | 6 |
 
 **By Phase:**
 
 | Phase | Status | Plans |
 |-------|--------|-------|
-| 36. Call-Ready Preflight and Cache Gate | In Progress | 3/4 |
+| 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
 | 37. Provider and Audio Remediation | Not started | 0/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Not started | 0/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
@@ -95,10 +96,13 @@ Recent decisions affecting current work:
 - [Phase 36-02]: Daily-note file existence and usable standup source readiness are separate blocking checks.
 - [Phase 36-02]: Prepared standup audio freshness uses source SHA-256 metadata, not raw note or generated answer text.
 - [Phase 36-02]: Check-only launch readiness never creates notes or synthesizes audio; creation remains behind --prepare.
+- [Phase 36-04]: Provider/audio readiness remains an info-only Phase 37 placeholder in Phase 36.
+- [Phase 36-04]: Call-ready artifacts are sanitized JSON and never mix artifact path text into JSON stdout.
+- [Phase 36-04]: Grouped launch remediation uses check labels, details, actions, and rerun commands by severity section.
 
 ### Pending Todos
 
-Execute Plan 36-04 from `.planning/phases/36-call-ready-preflight-and-cache-gate/36-04-PLAN.md`.
+Run Phase 36 verification or continue to Phase 37 planning.
 
 ### Blockers/Concerns
 
@@ -111,6 +115,6 @@ Execute Plan 36-04 from `.planning/phases/36-call-ready-preflight-and-cache-gate
 
 ## Session Continuity
 
-Last session: 2026-07-08T13:10:52.225Z
-Stopped at: Completed 36-02-PLAN.md; 36-03 already complete
+Last session: 2026-07-08T13:22:15.998Z
+Stopped at: Completed 36-04-PLAN.md
 Resume file: None
