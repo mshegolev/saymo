@@ -5,6 +5,10 @@ import json
 
 import click
 
+from saymo.analysis.realtime_events import (
+    RealtimeDecisionEvent,
+    append_realtime_decision_event,
+)
 from saymo.analysis.realtime_gate import (
     RealtimePlaybackBlock,
     automatic_handbrake_block,
@@ -27,6 +31,53 @@ from saymo.commands import (
     main,
     run_async,
 )
+
+
+def _emit_realtime_event(profile: str, event: RealtimeDecisionEvent) -> None:
+    """Best-effort realtime event append; never block the live loop."""
+    try:
+        append_realtime_decision_event(profile, event)
+    except Exception as e:
+        console.print(f"[dim]realtime event skipped: {type(e).__name__}[/]")
+
+
+def _realtime_block_event(
+    *,
+    profile: str,
+    provider: str,
+    label: str,
+    source: str,
+    detail: str = "",
+    automatic: bool = True,
+) -> RealtimeDecisionEvent:
+    return RealtimeDecisionEvent(
+        profile=profile,
+        provider=provider,
+        outcome="blocked",
+        label=label,
+        source=source,
+        automatic=automatic,
+        detail=detail,
+    )
+
+
+def _realtime_skip_event(
+    *,
+    profile: str,
+    provider: str,
+    label: str,
+    source: str,
+    detail: str = "",
+) -> RealtimeDecisionEvent:
+    return RealtimeDecisionEvent(
+        profile=profile,
+        provider=provider,
+        outcome="skipped",
+        label=label,
+        source=source,
+        automatic=True,
+        detail=detail,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -359,6 +410,16 @@ async def _auto(
         provider_name=provider_name,
     )
     if not launch_gate.allowed:
+        _emit_realtime_event(
+            profile,
+            _realtime_block_event(
+                profile=profile,
+                provider=launch_gate.provider,
+                label=launch_gate.reason,
+                source="launch_readiness",
+                detail=launch_gate.reason,
+            ),
+        )
         console.print(
             render_realtime_launch_block(launch_gate),
             markup=False,
@@ -782,6 +843,16 @@ async def _auto(
                     hard_disabled,
                 )
                 if handbrake_block is not None:
+                    _emit_realtime_event(
+                        profile,
+                        _realtime_block_event(
+                            profile=profile,
+                            provider=provider_name,
+                            label=handbrake_block.label,
+                            source="live_control",
+                            detail=handbrake_block.reason,
+                        ),
+                    )
                     append_control_audit(
                         profile,
                         action="toggle_auto_answer",
@@ -807,6 +878,16 @@ async def _auto(
                 )
                 addressing_ms = (time.monotonic() - addressing_t0) * 1000
                 if not should_answer_decision(addressing):
+                    _emit_realtime_event(
+                        profile,
+                        _realtime_skip_event(
+                            profile=profile,
+                            provider=provider_name,
+                            label="addressing-skip",
+                            source="deterministic",
+                            detail=f"{addressing.label}: {addressing.reason}",
+                        ),
+                    )
                     console.print(
                         f"[dim]decision latency: addressing={addressing_ms:.0f}ms "
                         "action=skip[/]"
@@ -882,6 +963,16 @@ async def _auto(
                             f"action={assist_decision.final_action}[/]"
                         )
                         if assist_decision.final_action == "skip":
+                            _emit_realtime_event(
+                                profile,
+                                _realtime_skip_event(
+                                    profile=profile,
+                                    provider=provider_name,
+                                    label="addressing-skip",
+                                    source="live_assist",
+                                    detail=prediction.label,
+                                ),
+                            )
                             detector.reset_cooldown()
                             console.print("\n[bold yellow]Listening again...[/]\n")
                             continue
@@ -914,6 +1005,10 @@ async def _auto(
                 )
             resolve_ms = (time.monotonic() - resolve_t0) * 1000
 
+            _emit_realtime_event(
+                profile,
+                response_decision.to_event(profile=profile, provider=provider_name),
+            )
             console.print(
                 f"[dim]response route: {response_decision.source} "
                 f"({response_decision.label}: {response_decision.reason})[/]"
@@ -938,6 +1033,17 @@ async def _auto(
                 )
             )
             if handbrake_block is not None:
+                _emit_realtime_event(
+                    profile,
+                    _realtime_block_event(
+                        profile=profile,
+                        provider=provider_name,
+                        label=handbrake_block.label,
+                        source="live_control",
+                        detail=handbrake_block.reason,
+                        automatic=not force_speak,
+                    ),
+                )
                 append_control_audit(
                     profile,
                     action="toggle_auto_answer",
@@ -957,6 +1063,16 @@ async def _auto(
 
             provider_block = None if force_speak else provider_playback_block(provider)
             if provider_block is not None:
+                _emit_realtime_event(
+                    profile,
+                    _realtime_block_event(
+                        profile=profile,
+                        provider=provider_name,
+                        label=provider_block.label,
+                        source="provider",
+                        detail=provider_block.reason,
+                    ),
+                )
                 append_control_audit(
                     profile,
                     action="status",
@@ -1029,6 +1145,22 @@ async def _auto(
                 blocked_reason = ""
                 if playback_result is not None and not playback_result.success:
                     blocked_reason = f" blocked={playback_result.reason}"
+                    label = (
+                        "provider-blocked"
+                        if "provider" in playback_result.reason
+                        else "fallback-blocked"
+                    )
+                    _emit_realtime_event(
+                        profile,
+                        _realtime_block_event(
+                            profile=profile,
+                            provider=provider_name,
+                            label=label,
+                            source="playback",
+                            detail=playback_result.reason,
+                            automatic=response_decision.automatic,
+                        ),
+                    )
                 console.print(
                     f"[dim]latency: resolve={resolve_ms:.0f}ms "
                     f"play_start={playback_label} play={play_ms:.0f}ms "

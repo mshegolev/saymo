@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 from saymo.analysis.cache_metadata import build_voice_cache_metadata
+from saymo.analysis.realtime_events import RealtimeDecisionEvent
 from saymo.analysis.realtime_gate import RealtimePlaybackBlock
 from saymo.analysis.response_cache import (
     CachedResponse,
@@ -27,6 +28,26 @@ class RealtimeResponseDecision:
     confidence: float | None = None
     automatic: bool = True
     cleanup_path: bool = False
+
+    def to_event(self, *, profile: str, provider: str) -> RealtimeDecisionEvent:
+        """Convert a response decision to a sanitized local event payload."""
+        outcome = {
+            "speak": "spoke",
+            "block": "blocked",
+            "skip": "skipped",
+        }[self.outcome]
+        return RealtimeDecisionEvent(
+            profile=profile,
+            provider=provider,
+            outcome=outcome,
+            label=self.label,
+            source=self.source,
+            automatic=self.automatic,
+            intent_key=self.intent_key,
+            confidence=self.confidence,
+            audio_path=str(self.audio_path or ""),
+            detail=self.reason,
+        )
 
 
 def build_realtime_response_cache(config) -> ResponseCache | None:
