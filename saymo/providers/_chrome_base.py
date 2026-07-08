@@ -36,7 +36,7 @@ class ChromeCallProvider:
             end repeat
         end tell
         return "not_found"
-        ''')
+        ''', raise_on_error=True)
         found = bool(result and result != "not_found")
         tab = None
         if found:

@@ -268,6 +268,7 @@ def test_call_ready_includes_provider_tab_readiness(tmp_path, monkeypatch):
     from saymo.audio.devices import AudioDevice
     import saymo.audio.devices as audio_devices
     import saymo.providers.factory as provider_factory
+    import sounddevice as sd
     from saymo.providers.base import MeetingStatus
 
     config_path = _write_config(tmp_path)
@@ -288,6 +289,8 @@ def test_call_ready_includes_provider_tab_readiness(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(provider_factory, "get_provider", lambda name: provider)
     monkeypatch.setattr(audio_devices, "find_device", lambda name, kind="input": audio_device)
+    monkeypatch.setattr(sd, "check_input_settings", lambda **kwargs: None)
+    monkeypatch.setattr(sd, "check_output_settings", lambda **kwargs: None)
     monkeypatch.setattr(
         launch_sources,
         "collect_daily_note_checks",
@@ -418,6 +421,8 @@ def test_call_ready_provider_audio_checks_are_non_destructive(tmp_path, monkeypa
     )
     monkeypatch.setattr(playback, "play_audio_bytes", forbidden)
     monkeypatch.setattr(multi_play, "play_bytes_to_devices", forbidden)
+    monkeypatch.setattr(sd, "check_input_settings", lambda **kwargs: None)
+    monkeypatch.setattr(sd, "check_output_settings", lambda **kwargs: None)
     monkeypatch.setattr(sd, "rec", forbidden)
     monkeypatch.setattr(macos_audio, "set_input_volume", forbidden)
     monkeypatch.setattr(macos_audio, "bump_input_volume", forbidden)
@@ -467,6 +472,7 @@ def test_call_ready_output_artifact_includes_provider_audio_checks(
     import saymo.analysis.live_control as live_control
     import saymo.audio.devices as audio_devices
     import saymo.providers.factory as provider_factory
+    import sounddevice as sd
 
     config_path = _write_config(tmp_path)
     output_path = tmp_path / "call-ready.json"
@@ -483,6 +489,8 @@ def test_call_ready_output_artifact_includes_provider_audio_checks(
         "find_device",
         lambda name, kind="input": _audio_device(name),
     )
+    monkeypatch.setattr(sd, "check_input_settings", lambda **kwargs: None)
+    monkeypatch.setattr(sd, "check_output_settings", lambda **kwargs: None)
     monkeypatch.setattr(
         live_control,
         "build_hotkey_doctor_report",

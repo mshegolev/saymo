@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import sounddevice as sd
+
 from saymo.analysis.launch_readiness import LaunchReadinessCheck
 from saymo.analysis import live_control
 from saymo.audio import devices as audio_devices
@@ -41,13 +43,14 @@ def collect_provider_audio_checks(
         profile=profile,
         provider_name=provider_name,
     )
+    audio_route_checks = collect_audio_route_checks(
+        config,
+        profile=profile,
+        provider_name=provider_name,
+    )
     return (
         provider_tab,
-        *collect_audio_route_checks(
-            config,
-            profile=profile,
-            provider_name=provider_name,
-        ),
+        *audio_route_checks,
         *collect_provider_capability_checks(
             config,
             profile=profile,
@@ -59,6 +62,7 @@ def collect_provider_audio_checks(
             profile=profile,
             provider_name=provider_name,
             provider_error=provider_error,
+            audio_route_checks=audio_route_checks,
         ),
     )
 
@@ -259,6 +263,7 @@ def collect_permission_checks(
     provider_error: str = "",
     microphone_permission_blocked: bool = False,
     audio_routing_permission_blocked: bool = False,
+    audio_route_checks: tuple[LaunchReadinessCheck, ...] | None = None,
 ) -> tuple[LaunchReadinessCheck, ...]:
     """Collect non-destructive macOS permission remediation rows."""
     checks: list[LaunchReadinessCheck] = []
@@ -298,7 +303,16 @@ def collect_permission_checks(
             )
         )
 
-    if microphone_permission_blocked or _microphone_permission_blocked(config):
+    audio_blocked = audio_routing_permission_blocked or _audio_routing_permission_blocked(
+        config,
+        audio_route_checks=audio_route_checks,
+    )
+    microphone_blocked = microphone_permission_blocked or _microphone_permission_blocked(
+        config,
+        audio_route_checks=audio_route_checks,
+    )
+
+    if microphone_blocked:
         checks.append(
             _permission_check(
                 key="microphone_capture_permission",
@@ -313,7 +327,7 @@ def collect_permission_checks(
             )
         )
 
-    if audio_routing_permission_blocked or _audio_routing_permission_blocked(config):
+    if audio_blocked:
         checks.append(
             _permission_check(
                 key="audio_routing_permission",
@@ -604,13 +618,140 @@ def _looks_like_chrome_permission_error(provider_error: str) -> bool:
     return bool(lower) and any(marker in lower for marker in _CHROME_PERMISSION_MARKERS)
 
 
-def _microphone_permission_blocked(config: Any) -> bool:
-    del config
-    return False
+def _microphone_permission_blocked(
+    config: Any,
+    *,
+    audio_route_checks: tuple[LaunchReadinessCheck, ...] | None = None,
+) -> bool:
+    check = _route_check(audio_route_checks, "recording_microphone_input")
+    if check is not None:
+        return _check_device_settings_blocked(check)
+
+    audio_config = getattr(config, "audio", None)
+    device_name = _config_text(audio_config, "recording_device")
+    if not device_name:
+        return False
+    device = audio_devices.find_device(device_name, kind="input")
+    if device is None:
+        return False
+    return _check_device_settings_blocked(
+        _audio_route_check(
+            key="recording_microphone_input",
+            label="recording microphone input",
+            device_name=device_name,
+            kind="input",
+            device=device,
+            action="",
+            rerun="",
+        )
+    )
 
 
-def _audio_routing_permission_blocked(config: Any) -> bool:
-    del config
+def _audio_routing_permission_blocked(
+    config: Any,
+    *,
+    audio_route_checks: tuple[LaunchReadinessCheck, ...] | None = None,
+) -> bool:
+    checks = audio_route_checks
+    if checks is None:
+        checks = _fallback_audio_route_checks(config)
+    route_keys = (
+        "capture_input_device",
+        "playback_output_device",
+        "provider_output_blackhole",
+        "capture_route_blackhole",
+    )
+    blocked = False
+    for key in route_keys:
+        check = _route_check(checks, key)
+        if check is not None:
+            blocked = _check_device_settings_blocked(check) or blocked
+    return blocked
+
+
+def _fallback_audio_route_checks(config: Any) -> tuple[LaunchReadinessCheck, ...]:
+    audio_config = getattr(config, "audio", None)
+    capture_name = _config_text(audio_config, "capture_device")
+    playback_name = _config_text(audio_config, "playback_device")
+    return (
+        _audio_route_check(
+            key="capture_input_device",
+            label="capture input device",
+            device_name=capture_name,
+            kind="input",
+            device=(
+                audio_devices.find_device(capture_name, kind="input")
+                if capture_name
+                else None
+            ),
+            action="",
+            rerun="",
+        ),
+        _audio_route_check(
+            key="playback_output_device",
+            label="playback output device",
+            device_name=playback_name,
+            kind="output",
+            device=(
+                audio_devices.find_device(playback_name, kind="output")
+                if playback_name
+                else None
+            ),
+            action="",
+            rerun="",
+        ),
+        _audio_route_check(
+            key="provider_output_blackhole",
+            label="provider output BlackHole",
+            device_name=_PROVIDER_OUTPUT_DEVICE,
+            kind="output",
+            device=audio_devices.find_device(_PROVIDER_OUTPUT_DEVICE, kind="output"),
+            action="",
+            rerun="",
+        ),
+        _audio_route_check(
+            key="capture_route_blackhole",
+            label="capture route BlackHole",
+            device_name=_CAPTURE_ROUTE_DEVICE,
+            kind="input",
+            device=audio_devices.find_device(_CAPTURE_ROUTE_DEVICE, kind="input"),
+            action="",
+            rerun="",
+        ),
+    )
+
+
+def _route_check(
+    checks: tuple[LaunchReadinessCheck, ...] | None,
+    key: str,
+) -> LaunchReadinessCheck | None:
+    for check in checks or ():
+        if check.key == key:
+            return check
+    return None
+
+
+def _check_device_settings_blocked(check: LaunchReadinessCheck) -> bool:
+    if not check.ok:
+        return False
+    metadata = dict(check.metadata or {})
+    device = metadata.get("device")
+    if not isinstance(device, dict):
+        return False
+    index = device.get("index")
+    if index is None:
+        return False
+    samplerate = device.get("default_samplerate")
+    kwargs = {"device": index}
+    if samplerate:
+        kwargs["samplerate"] = samplerate
+    try:
+        if metadata.get("kind") == "output":
+            sd.check_output_settings(**kwargs)
+        else:
+            sd.check_input_settings(**kwargs)
+    except Exception:
+        return True
     return False
 
 

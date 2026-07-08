@@ -21,14 +21,32 @@ import subprocess
 logger = logging.getLogger("saymo.glip")
 
 
-def _run_applescript(script: str) -> str:
+class AppleScriptError(RuntimeError):
+    """Non-zero ``osascript`` result."""
+
+    def __init__(self, *, returncode: int, stderr: str, stdout: str = "") -> None:
+        self.returncode = returncode
+        self.stderr = stderr.strip()
+        self.stdout = stdout.strip()
+        message = self.stderr or self.stdout or f"osascript exited {returncode}"
+        super().__init__(message)
+
+
+def _run_applescript(script: str, *, raise_on_error: bool = False) -> str:
     """Execute AppleScript and return stdout."""
     result = subprocess.run(
         ["osascript", "-e", script],
         capture_output=True, text=True, timeout=10,
     )
     if result.returncode != 0:
-        logger.warning(f"AppleScript error: {result.stderr.strip()}")
+        stderr = result.stderr.strip()
+        logger.warning(f"AppleScript error: {stderr}")
+        if raise_on_error:
+            raise AppleScriptError(
+                returncode=result.returncode,
+                stderr=result.stderr,
+                stdout=result.stdout,
+            )
     return result.stdout.strip()
 
 
