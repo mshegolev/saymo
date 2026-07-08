@@ -12,6 +12,7 @@ from saymo.analysis.cache_metadata import VoiceCacheMetadata, write_voice_cache_
 from saymo.analysis.response_cache import ResponseCache, ResponseEntry
 from saymo.analysis.realtime_gate import RealtimePlaybackBlock
 from saymo.analysis.realtime_policy import (
+    RealtimeResponseDecision,
     build_realtime_response_cache,
     resolve_realtime_response_decision,
 )
@@ -359,3 +360,52 @@ def test_deterministic_skip_prevents_cache_classifier_llm_and_tts(monkeypatch):
     assert decision.audio_path is None
     classify.assert_not_called()
     answer.assert_not_called()
+
+
+def test_realtime_response_decision_to_event_maps_outcomes_and_sanitizes():
+    cases = [
+        (
+            RealtimeResponseDecision(
+                outcome="speak",
+                label="response-cache-hit",
+                source="response_cache",
+                reason="prepared cached response selected token=secret-value",
+                audio_path=Path("/tmp/status-ready.wav"),
+                intent_key="status_ready",
+                confidence=0.91,
+            ),
+            "spoke",
+        ),
+        (
+            RealtimeResponseDecision(
+                outcome="block",
+                label="cache-miss-blocked",
+                source="response_cache",
+                reason="raw transcript says PRIVATE_SENTINEL",
+            ),
+            "blocked",
+        ),
+        (
+            RealtimeResponseDecision(
+                outcome="skip",
+                label="deterministic-skip",
+                source="deterministic",
+                reason="deterministic addressing skipped",
+            ),
+            "skipped",
+        ),
+    ]
+
+    for decision, expected_outcome in cases:
+        event = decision.to_event(profile="standup", provider="glip")
+        payload = event.to_dict()
+        serialized = str(payload)
+
+        assert payload["profile"] == "standup"
+        assert payload["provider"] == "glip"
+        assert payload["outcome"] == expected_outcome
+        assert payload["label"] == decision.label
+        assert payload["source"] == decision.source
+        assert "transcript_window" not in payload
+        assert "secret-value" not in serialized
+        assert "PRIVATE_SENTINEL" not in serialized

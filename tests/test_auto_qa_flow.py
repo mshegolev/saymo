@@ -693,6 +693,13 @@ def test_auto_launch_gate_blocks_before_realtime_setup(monkeypatch, capsys):
         raising=False,
     )
     monkeypatch.setattr(core, "_get_cached_audio_path", forbidden)
+    events = []
+    monkeypatch.setattr(
+        core,
+        "append_realtime_decision_event",
+        lambda profile, event, **kwargs: events.append(event.to_dict()),
+        raising=False,
+    )
 
     _run(core._auto(config, "tiny", "standup"))
 
@@ -700,6 +707,21 @@ def test_auto_launch_gate_blocks_before_realtime_setup(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert "call-ready: not ready" in output
     assert "launch-readiness-blocked" in output
+    assert events == [
+        {
+            "created_at": events[0]["created_at"],
+            "profile": "standup",
+            "provider": "glip",
+            "outcome": "blocked",
+            "label": "launch-readiness-blocked",
+            "source": "launch_readiness",
+            "automatic": True,
+            "intent_key": "",
+            "confidence": None,
+            "audio_path": "",
+            "detail": "launch-readiness-blocked",
+        }
+    ]
 
 
 def test_realtime_alias_delegates_to_same_auto_path(tmp_path, monkeypatch):
@@ -774,6 +796,7 @@ def test_auto_trigger_loop_blocks_handbrake_before_response_resolution(
         config, audio_path = _auto_loop_config(tmp_path)
         blocked = asyncio.Event()
         audits = []
+        events = []
         provider = MagicMock()
         provider.name = "FakeMeet"
         provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
@@ -816,6 +839,12 @@ def test_auto_trigger_loop_blocks_handbrake_before_response_resolution(
             "saymo.analysis.live_control.append_control_audit",
             fake_append_control_audit,
         )
+        monkeypatch.setattr(
+            core,
+            "append_realtime_decision_event",
+            lambda profile, event, **kwargs: events.append(event.to_dict()),
+            raising=False,
+        )
 
         await _run_auto_until(
             blocked,
@@ -824,6 +853,12 @@ def test_auto_trigger_loop_blocks_handbrake_before_response_resolution(
 
         resolver.assert_not_called()
         assert any(expected_reason in audit.get("reason", "") for audit in audits)
+        assert any(
+            event["label"] == "handbrake-blocked"
+            and event["outcome"] == "blocked"
+            and event["detail"] == expected_reason
+            for event in events
+        )
 
     _run(scenario())
 
@@ -837,6 +872,7 @@ def test_auto_force_speak_uses_manual_standup_decision_without_automatic_paths(
 
         config, audio_path = _auto_loop_config(tmp_path)
         playback_started = asyncio.Event()
+        events = []
         provider = MagicMock()
         provider.name = "FakeMeet"
         provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
@@ -931,6 +967,12 @@ def test_auto_force_speak_uses_manual_standup_decision_without_automatic_paths(
             )
 
         monkeypatch.setattr(core, "_play_cached_audio", fake_play_cached_audio)
+        monkeypatch.setattr(
+            core,
+            "append_realtime_decision_event",
+            lambda profile, event, **kwargs: events.append(event.to_dict()),
+            raising=False,
+        )
 
         await _run_auto_until(
             playback_started,
@@ -945,6 +987,12 @@ def test_auto_force_speak_uses_manual_standup_decision_without_automatic_paths(
         forbidden_cache.lookup.assert_not_called()
         forbidden_cache.get_variant_by_key.assert_not_called()
         forbidden_cache.library_keys.assert_not_called()
+        assert any(
+            event["label"] == "manual-standup-requested"
+            and event["outcome"] == "spoke"
+            and event["automatic"] is False
+            for event in events
+        )
 
     _run(scenario())
 
@@ -960,6 +1008,7 @@ def test_auto_trigger_loop_checks_provider_before_automatic_playback(
         config, audio_path = _auto_loop_config(tmp_path)
         provider_rechecked = asyncio.Event()
         playback_calls = []
+        events = []
 
         class Provider:
             name = "FakeMeet"
@@ -1004,6 +1053,12 @@ def test_auto_trigger_loop_checks_provider_before_automatic_playback(
             return await original_play_cached_audio(*args, **kwargs)
 
         monkeypatch.setattr(core, "_play_cached_audio", wrapped_play_cached_audio)
+        monkeypatch.setattr(
+            core,
+            "append_realtime_decision_event",
+            lambda profile, event, **kwargs: events.append(event.to_dict()),
+            raising=False,
+        )
 
         await _run_auto_until(
             provider_rechecked,
@@ -1011,6 +1066,211 @@ def test_auto_trigger_loop_checks_provider_before_automatic_playback(
         )
 
         assert playback_calls == []
+        assert [event["label"] for event in events] == [
+            "response-cache-hit",
+            "provider-blocked",
+        ]
+        assert events[0]["outcome"] == "spoke"
+        assert events[1]["outcome"] == "blocked"
+
+    _run(scenario())
+
+
+def test_auto_trigger_loop_emits_cache_miss_block_event(tmp_path, monkeypatch):
+    async def scenario():
+        import saymo.commands.core as core_module
+
+        config, audio_path = _auto_loop_config(tmp_path)
+        blocked = asyncio.Event()
+        events = []
+        provider = MagicMock()
+        provider.name = "FakeMeet"
+        provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
+        provider.switch_mic.return_value = True
+
+        core, _detector = _install_auto_loop_fakes(
+            monkeypatch,
+            tmp_path,
+            provider=provider,
+            cached_audio=audio_path,
+        )
+        monkeypatch.setattr(
+            core,
+            "resolve_realtime_response_decision",
+            AsyncMock(
+                return_value=core.RealtimeResponseDecision(
+                    outcome="block",
+                    label="cache-miss-blocked",
+                    source="response_cache",
+                    reason="no prepared response-cache hit",
+                )
+            ),
+        )
+
+        def fake_append(profile, event, **kwargs):
+            payload = event.to_dict()
+            events.append(payload)
+            if payload["label"] == "cache-miss-blocked":
+                blocked.set()
+
+        monkeypatch.setattr(
+            core,
+            "append_realtime_decision_event",
+            fake_append,
+            raising=False,
+        )
+
+        await _run_auto_until(
+            blocked,
+            core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
+        )
+
+        assert events[-1]["outcome"] == "blocked"
+        assert events[-1]["label"] == "cache-miss-blocked"
+        assert events[-1]["source"] == "response_cache"
+
+    _run(scenario())
+
+
+def test_auto_trigger_loop_emits_addressing_skip_before_live_assist(
+    tmp_path,
+    monkeypatch,
+):
+    async def scenario():
+        import saymo.commands.core as core_module
+
+        config, audio_path = _auto_loop_config(tmp_path)
+        skipped = asyncio.Event()
+        events = []
+        provider = MagicMock()
+        provider.name = "FakeMeet"
+        provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
+        provider.switch_mic.return_value = True
+
+        core, _detector = _install_auto_loop_fakes(
+            monkeypatch,
+            tmp_path,
+            provider=provider,
+            cached_audio=audio_path,
+        )
+        monkeypatch.setattr(
+            core,
+            "_classify_trigger_window",
+            lambda *args, **kwargs: SimpleNamespace(
+                label="mention-only",
+                reason="not addressed",
+            ),
+        )
+        monkeypatch.setattr(
+            "saymo.analysis.addressing.should_answer_decision",
+            lambda decision: False,
+        )
+        monkeypatch.setattr(
+            core,
+            "resolve_realtime_response_decision",
+            AsyncMock(side_effect=AssertionError("skip must not resolve response")),
+        )
+
+        def fake_append(profile, event, **kwargs):
+            payload = event.to_dict()
+            events.append(payload)
+            if payload["label"] == "addressing-skip":
+                skipped.set()
+
+        monkeypatch.setattr(
+            core,
+            "append_realtime_decision_event",
+            fake_append,
+            raising=False,
+        )
+
+        await _run_auto_until(
+            skipped,
+            core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
+        )
+
+        assert events[-1]["outcome"] == "skipped"
+        assert events[-1]["label"] == "addressing-skip"
+        assert events[-1]["source"] == "deterministic"
+
+    _run(scenario())
+
+
+def test_live_assist_can_skip_addressed_candidate_without_speaking(
+    tmp_path,
+    monkeypatch,
+):
+    async def scenario():
+        import saymo.commands.core as core_module
+
+        config, audio_path = _auto_loop_config(tmp_path)
+        skipped = asyncio.Event()
+        events = []
+        model_path = tmp_path / "live-assist-model.json"
+        model_path.write_text("{}", encoding="utf-8")
+        provider = MagicMock()
+        provider.name = "FakeMeet"
+        provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
+        provider.switch_mic.return_value = True
+
+        core, _detector = _install_auto_loop_fakes(
+            monkeypatch,
+            tmp_path,
+            provider=provider,
+            cached_audio=audio_path,
+        )
+        monkeypatch.setattr(
+            "saymo.analysis.trigger_readiness.live_assist_status",
+            lambda profile: SimpleNamespace(enabled=True),
+        )
+        monkeypatch.setattr(
+            "saymo.analysis.trigger_classifier.classifier_model_path",
+            lambda profile: model_path,
+        )
+        monkeypatch.setattr(
+            "saymo.analysis.trigger_classifier.load_model",
+            lambda path: object(),
+        )
+        monkeypatch.setattr(
+            "saymo.analysis.trigger_classifier.predict_live_assist",
+            lambda model, sample: SimpleNamespace(label="reject", confidence=0.96),
+        )
+
+        def fake_apply_live_assist_decision(*, deterministic_will_answer, classifier_prediction):
+            assert deterministic_will_answer is True
+            return SimpleNamespace(final_action="skip")
+
+        monkeypatch.setattr(
+            "saymo.analysis.trigger_readiness.apply_live_assist_decision",
+            fake_apply_live_assist_decision,
+        )
+        monkeypatch.setattr(
+            core,
+            "resolve_realtime_response_decision",
+            AsyncMock(side_effect=AssertionError("live assist skip must not speak")),
+        )
+
+        def fake_append(profile, event, **kwargs):
+            payload = event.to_dict()
+            events.append(payload)
+            if payload["source"] == "live_assist":
+                skipped.set()
+
+        monkeypatch.setattr(
+            core,
+            "append_realtime_decision_event",
+            fake_append,
+            raising=False,
+        )
+
+        await _run_auto_until(
+            skipped,
+            core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
+        )
+
+        assert events[-1]["outcome"] == "skipped"
+        assert events[-1]["label"] == "addressing-skip"
+        assert events[-1]["source"] == "live_assist"
 
     _run(scenario())
 
