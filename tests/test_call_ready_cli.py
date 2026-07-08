@@ -52,6 +52,10 @@ def _write_config(tmp_path, *, vault_path: Path | None = None) -> Path:
               name: "John"
               name_variants:
                 - "John"
+            audio:
+              capture_device: "BlackHole 16ch"
+              playback_device: "BlackHole 2ch"
+              recording_device: "MacBook Pro Microphone"
             speech:
               source: obsidian
             obsidian:
@@ -179,6 +183,8 @@ def test_call_ready_includes_provider_tab_readiness(tmp_path, monkeypatch):
 
     from saymo.analysis import launch_cache, launch_sources
     from saymo.analysis.launch_readiness import LaunchReadinessCheck
+    from saymo.audio.devices import AudioDevice
+    import saymo.audio.devices as audio_devices
     import saymo.providers.factory as provider_factory
     from saymo.providers.base import MeetingStatus
 
@@ -191,7 +197,15 @@ def test_call_ready_includes_provider_tab_readiness(tmp_path, monkeypatch):
         meeting_found=True,
         tab_info=(1, 2),
     )
+    audio_device = AudioDevice(
+        index=1,
+        name="available test device",
+        max_input_channels=2,
+        max_output_channels=2,
+        default_samplerate=48000.0,
+    )
     monkeypatch.setattr(provider_factory, "get_provider", lambda name: provider)
+    monkeypatch.setattr(audio_devices, "find_device", lambda name, kind="input": audio_device)
     monkeypatch.setattr(
         launch_sources,
         "collect_daily_note_checks",
