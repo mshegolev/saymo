@@ -1,159 +1,163 @@
 # Phase 39 Plan Check: Fail-Closed Realtime Meeting Loop
 
 **Checked:** 2026-07-08
-**Verdict:** BLOCK
+**Verdict:** PASS
 **Plans checked:** 39-01, 39-02, 39-03, 39-04, 39-05
 
 ## Summary
 
-The five plans are mostly goal-backward complete: every REAL-01..REAL-06
-requirement has test ownership and implementation ownership, the plans are
-sequentially dependent, scopes do not duplicate in a conflicting way, and the
-locked Phase 39 decisions are reflected in the plan tasks.
+The revised Phase 39 plans are goal-backward complete and ready for execution.
+REAL-01 through REAL-06 all have explicit plan ownership, the five plans run in
+a valid sequential dependency chain, each plan stays inside a small scope, every
+task has automated RED/GREEN validation, and the locked Phase 39 decisions are
+preserved.
 
-Execution should not start yet because the final validation design is
-self-contradictory. Plan 39-02 requires `realtime_policy.py` to expose a
-`transcript_window` parameter, while Plan 39-05 and `39-VALIDATION.md` require a
-static privacy guard that fails if the literal string `transcript_window` exists
-in `realtime_policy.py`. A correct implementation cannot satisfy both.
+The previous blocker is resolved. The source-text privacy guards no longer ban
+the required `transcript_window` policy input parameter. The revised validation
+and Plan 39-05 now require privacy at the serialized decision/event boundary:
+tests must prove no event or decision payload contains a `transcript_window` key,
+raw transcript value, generated answer text, daily-note content, audio bytes, or
+secrets.
 
 ## Source Context Read
 
 - `.planning/ROADMAP.md` Phase 39 section
 - `.planning/REQUIREMENTS.md` REAL-01..REAL-06
-- `.planning/PROJECT.md`
 - `.planning/phases/39-fail-closed-realtime-meeting-loop/39-CONTEXT.md`
 - `.planning/phases/39-fail-closed-realtime-meeting-loop/39-RESEARCH.md`
 - `.planning/phases/39-fail-closed-realtime-meeting-loop/39-VALIDATION.md`
 - all five `39-0*-PLAN.md` files
-- relevant current seams in `saymo/commands/core.py`,
-  `saymo/commands/__init__.py`, `saymo/analysis/launch_readiness.py`,
-  `saymo/analysis/launch_cache.py`, `saymo/analysis/response_cache.py`,
-  `saymo/analysis/live_control.py`, and `tests/test_auto_qa_flow.py`
+- previous `.planning/phases/39-fail-closed-realtime-meeting-loop/39-PLAN-CHECK.md`
+- repo guidance in `CLAUDE.md`
+
+## Previous Blocker Resolution
+
+| Check | Result |
+|-------|--------|
+| Plan 39-02 still requires `resolve_realtime_response_decision(..., transcript_window: str, ...)` | PASS |
+| `39-VALIDATION.md` static privacy guard omits `transcript_window` from source-text bans | PASS |
+| Plan 39-05 validation commands omit `transcript_window` from source-text bans | PASS |
+| Plan 39-05 tests require serialized event payloads to exclude a `transcript_window` key and raw transcript values | PASS |
+| Plan 39-05/validation still ban unsafe serialized/source fields such as `raw_transcript`, `generated_answer`, `answer_text`, `audio_bytes`, and `PRIVATE_` | PASS |
+
+Concrete resolution evidence:
+
+- `39-VALIDATION.md` states the policy helper may still use
+  `transcript_window` as an input parameter name.
+- `39-VALIDATION.md` requires privacy tests proving no serialized decision or
+  event payload contains a `transcript_window` key or raw transcript value.
+- Plan 39-05 carries the same scoped privacy policy and final automated guards.
 
 ## Requirement Coverage
 
-| Requirement | Plans | Concrete tests | Implementation ownership | Status |
-|-------------|-------|----------------|--------------------------|--------|
-| REAL-01 | 39-01 | RED launch gate tests prove blocked readiness exits before cached audio stat, device lookup, provider lookup, capture, STT, hotkeys, and command loops. | `saymo/analysis/realtime_gate.py`, `saymo/commands/core.py` | Covered |
-| REAL-02 | 39-01 | RED CLI/auto tests prove `saymo auto` and any realtime alias share the same gate and no unsafe bypass option appears. | `saymo/commands/core.py` alias and `_auto` integration | Covered |
-| REAL-03 | 39-02, 39-03 | Cache hit/miss/stale/fallback tests plus provider and handbrake blocker tests. | `saymo/analysis/realtime_policy.py`, `saymo/analysis/realtime_gate.py`, `saymo/commands/core.py`, `saymo/commands/__init__.py` | Covered |
-| REAL-04 | 39-04 | Manual standup separation tests prove explicit manual playback and automatic cache-miss blocking. | `saymo/analysis/realtime_policy.py`, `saymo/commands/core.py` | Covered |
-| REAL-05 | 39-05 | Sanitized event tests and static privacy/scope guards are planned. | `saymo/analysis/realtime_events.py`, `saymo/analysis/realtime_policy.py`, `saymo/commands/core.py` | Covered, but final validation is blocked |
-| REAL-06 | 39-02, 39-05 | Deterministic skip tests, classifier boundary tests, and handbrake boundary tests are planned. | `saymo/analysis/realtime_policy.py`, `saymo/commands/core.py` | Covered |
+| Requirement | Plans | Covering tasks | Status |
+|-------------|-------|----------------|--------|
+| REAL-01 | 39-01 | Launch gate RED tests; shared realtime launch gate implementation | Covered |
+| REAL-02 | 39-01 | Alias/shared `_auto()` path tests; no unsafe bypass guard | Covered |
+| REAL-03 | 39-02, 39-03 | Cache-only automatic policy; provider and handbrake pre-play blockers | Covered |
+| REAL-04 | 39-04 | Manual standup route and automatic cache-miss separation | Covered |
+| REAL-05 | 39-05 | Sanitized event schema, event emission, static privacy guards | Covered |
+| REAL-06 | 39-02, 39-05 | Deterministic skip before cache/classifier; handbrake boundary regressions | Covered |
 
-## Plan Dependency and Scope Check
+No relevant Phase 39 requirement from `.planning/REQUIREMENTS.md` is missing from
+plan frontmatter.
 
-| Plan | Wave | Depends on | Tasks | Files | Scope status |
-|------|------|------------|-------|-------|--------------|
-| 39-01 | 1 | none | 2 | 4 | OK |
-| 39-02 | 2 | 39-01 | 2 | 4 | OK |
-| 39-03 | 3 | 39-02 | 2 | 5 | OK |
-| 39-04 | 4 | 39-03 | 2 | 4 | OK |
-| 39-05 | 5 | 39-04 | 2 | 7 | OK |
+## Plan Summary
 
-Dependencies are linear and acyclic: 39-01 -> 39-02 -> 39-03 -> 39-04 ->
-39-05. No plan references a missing or future dependency.
+| Plan | Wave | Depends on | Tasks | Files | Status |
+|------|------|------------|-------|-------|--------|
+| 39-01 | 1 | none | 2 | 4 | Valid |
+| 39-02 | 2 | 39-01 | 2 | 4 | Valid |
+| 39-03 | 3 | 39-02 | 2 | 5 | Valid |
+| 39-04 | 4 | 39-03 | 2 | 4 | Valid |
+| 39-05 | 5 | 39-04 | 2 | 7 | Valid |
+
+Dependencies are linear and acyclic:
+
+`39-01 -> 39-02 -> 39-03 -> 39-04 -> 39-05`
+
+The file overlap is intentional and sequential. Ownership is split by behavior:
+startup gate, cache-only policy, runtime provider/handbrake blockers, manual
+standup separation, then sanitized events/final guards.
+
+## Specific Re-checks
+
+| Area | Result |
+|------|--------|
+| Sequential ownership/no conflict | PASS |
+| TDD commands | PASS |
+| Strict launch gate/no bypass | PASS |
+| Fail-closed automatic cache miss | PASS |
+| Fail-closed live fallback | PASS |
+| Fail-closed standup fallback | PASS |
+| Explicit manual standup separation | PASS |
+| Provider rechecks before playback | PASS |
+| Handbrake rechecks before resolution and playback | PASS |
+| Sanitized events without Phase 40 reporting | PASS |
+
+## Key Links Planned
+
+- `saymo/commands/core.py` runs the realtime launch gate before realtime setup.
+- `saymo/analysis/realtime_gate.py` delegates startup readiness to
+  `collect_launch_readiness()` and remediation rendering to
+  `render_launch_readiness()`.
+- `saymo/commands/core.py` routes automatic answers through
+  `resolve_realtime_response_decision()`.
+- `saymo/analysis/realtime_policy.py` builds `ResponseCache` with cloned-voice
+  metadata and blocks cache miss, stale metadata, disabled cache, live fallback,
+  and deterministic skip paths.
+- `saymo/commands/core.py` runs provider and handbrake blockers before
+  automatic playback with strict provider fallback disabled.
+- `saymo/commands/core.py` routes explicit manual speak through
+  `resolve_manual_standup_decision()` and keeps it separate from automatic
+  cache-miss handling.
+- `saymo/commands/core.py` appends sanitized realtime decision events without
+  importing or implementing Phase 40 scorecards, safety-soak, or reporting.
+
+## Nyquist Compliance
+
+`workflow.nyquist_validation` is enabled, `39-RESEARCH.md` contains a Validation
+Architecture section, and `39-VALIDATION.md` exists. Dimension 8 applies.
+
+| Task | Plan | Wave | Automated command | Status |
+|------|------|------|-------------------|--------|
+| 1 | 39-01 | 1 | RED pytest for launch gate and auto flow | PASS |
+| 2 | 39-01 | 1 | Focused pytest, call-ready regression, no-bypass guard, mutation guard | PASS |
+| 1 | 39-02 | 2 | RED pytest for realtime policy and auto flow | PASS |
+| 2 | 39-02 | 2 | Focused pytest, launch regression, fail-closed guard, privacy guard | PASS |
+| 1 | 39-03 | 3 | RED pytest for provider and handbrake blockers | PASS |
+| 2 | 39-03 | 3 | Focused pytest, policy/call-ready/live-control regression, mutation guard | PASS |
+| 1 | 39-04 | 4 | RED pytest for manual standup separation | PASS |
+| 2 | 39-04 | 4 | Focused pytest, gate/call-ready/live-control regression, standup separation guard | PASS |
+| 1 | 39-05 | 5 | RED pytest for events, policy, auto flow, static guards | PASS |
+| 2 | 39-05 | 5 | Focused suite, safety regression suite, full pytest, static guards | PASS |
+
+Sampling continuity passes: every implementation task has automated validation,
+and no task relies on watch mode, browser E2E suites, or delay-based validation.
+No `MISSING` automated commands or Wave 0 gaps remain in the executable plans.
 
 ## Context Compliance
 
-- Strict launch gate: honored by 39-01 through default `collect_launch_readiness()`
-  integration and no-bypass tests.
+- Strict launch gate: honored by 39-01 through default
+  `collect_launch_readiness()` integration and no-bypass tests.
 - Cache-only automatic answers: honored by 39-02 through metadata-aware
   `ResponseCache` construction and blocked cache-miss/live-fallback tests.
 - Manual standup stays explicit: honored by 39-04 through
   `manual-standup-requested` routing and cache-miss separation.
 - Provider and handbrake rechecks before playback: honored by 39-03 through
   pre-resolution, pre-play, and strict provider fallback tests.
-- Sanitized evidence without Phase 40 scorecards/safety-soak: intended by
-  39-05, but blocked by the validation-command contradiction below.
+- Sanitized evidence without Phase 40 reporting: honored by 39-05 through
+  minimal realtime events plus static Phase 40 scope guards.
 - Deferred ideas excluded: no plan implements guarded live LLM/TTS fallback,
   automatic provider repair, scorecards, safety-soak gates, or Phase 40
   reporting.
 
-## Blocking Issue
-
-### 1. Final privacy guard cannot pass if Plan 39-02 is implemented as written
-
-**Dimension:** verification_feasibility / nyquist_compliance
-**Severity:** blocker
-**Plan:** 39-05
-**Task:** 2
-
-Evidence:
-
-- Plan 39-02 defines the new policy interface with
-  `transcript_window: str` in `resolve_realtime_response_decision()`:
-  `.planning/phases/39-fail-closed-realtime-meeting-loop/39-02-PLAN.md:124`.
-- Plan 39-02 tells the executor to implement `saymo.analysis.realtime_policy`
-  with that contract:
-  `.planning/phases/39-fail-closed-realtime-meeting-loop/39-02-PLAN.md:187`.
-- Plan 39-05 final verification rejects the literal string
-  `transcript_window` in `saymo/analysis/realtime_policy.py`:
-  `.planning/phases/39-fail-closed-realtime-meeting-loop/39-05-PLAN.md:195`.
-- `39-VALIDATION.md` carries the same static privacy guard:
-  `.planning/phases/39-fail-closed-realtime-meeting-loop/39-VALIDATION.md:73`.
-
-Why this blocks execution:
-
-The privacy goal is correct, but the static guard is too broad. It scans source
-text for a parameter name that the earlier plan requires. An executor can either
-follow the Plan 39-02 interface or pass the Plan 39-05 final guard, but not both.
-
-Required fix:
-
-Revise Plan 39-05 and `39-VALIDATION.md` so the privacy guard checks serialized
-decision/event payloads rather than banning `transcript_window` as a source-code
-identifier. Recommended fix:
-
-- Keep tests that prove `RealtimeDecisionEvent.to_dict()` and
-  `RealtimeResponseDecision.to_event()` never emit `raw_transcript`,
-  `transcript_window`, `generated_answer`, `answer_text`, `daily_note`,
-  `audio_bytes`, `PRIVATE_`, secrets, raw cached text, or generated answers.
-- Keep static guards for clearly unsafe output field names such as
-  `raw_transcript`, `generated_answer`, `answer_text`, `audio_bytes`, and
-  `PRIVATE_`.
-- Remove `transcript_window` from the broad source-text guard, or scope it only
-  to event payload keys/serialization tests.
-- Alternatively, rename the Plan 39-02 interface away from `transcript_window`
-  everywhere, but that is more churn and does not improve privacy by itself.
-
-## Nyquist Compliance
-
-`workflow.nyquist_validation` is enabled, `39-RESEARCH.md` has a Validation
-Architecture section, and `39-VALIDATION.md` exists, so this dimension applies.
-
-| Plan | Task | RED/GREEN automated verify present | Status |
-|------|------|------------------------------------|--------|
-| 39-01 | 1 | RED pytest command with expected nonzero exit | PASS |
-| 39-01 | 2 | Focused pytest, call-ready regression, no-bypass guard, mutation guard | PASS |
-| 39-02 | 1 | RED pytest command with expected nonzero exit | PASS |
-| 39-02 | 2 | Focused pytest, launch regression, fail-closed guard, privacy guard | PASS |
-| 39-03 | 1 | RED pytest command with expected nonzero exit | PASS |
-| 39-03 | 2 | Focused pytest, policy/call-ready/live-control regression, mutation guard | PASS |
-| 39-04 | 1 | RED pytest command with expected nonzero exit | PASS |
-| 39-04 | 2 | Focused pytest, gate/call-ready/live-control regression, standup separation guard | PASS |
-| 39-05 | 1 | RED pytest command with expected nonzero exit | PASS |
-| 39-05 | 2 | Focused suite, safety regression suite, full pytest, static guards | FAIL - one static guard is infeasible |
-
-Sampling continuity is otherwise good: every implementation task has automated
-validation, and each wave has at least two automated checks across its two tasks.
-No watch-mode, Playwright/Cypress/Selenium, or delay-based validation was found.
-
 ## Structured Issues
 
 ```yaml
-issues:
-  - plan: "39-05"
-    dimension: "verification_feasibility"
-    severity: "blocker"
-    task: 2
-    description: "Final privacy guard rejects `transcript_window` in `saymo/analysis/realtime_policy.py`, but Plan 39-02 requires `resolve_realtime_response_decision(..., transcript_window: str, ...)` in that same file."
-    fix_hint: "Revise 39-05 and 39-VALIDATION so privacy validation checks serialized event/decision payloads, or remove `transcript_window` from the broad source-text guard. Keep tests proving raw transcript windows are not emitted."
+issues: []
 ```
 
 ## Recommendation
 
-Return to the planner for one revision. After the privacy guard is scoped so it
-does not contradict the required policy interface, Phase 39 plans should be
-ready for execution.
+Plans verified. Run `/gsd:execute-phase 39` to proceed.
