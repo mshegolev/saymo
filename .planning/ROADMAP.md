@@ -47,7 +47,7 @@ safety-soak.
 - [x] **Phase 36: Call-Ready Preflight and Cache Gate** - Create one (completed 2026-07-08)
   ready/not-ready launch gate for daily notes, prepared standup audio,
   response-cache coverage, cloned-voice metadata, and actionable remediation.
-- [ ] **Phase 37: Provider and Audio Remediation** - Verify provider tab,
+- [x] **Phase 37: Provider and Audio Remediation** - Verify provider tab, (completed 2026-07-08)
   Chrome capability, BlackHole routing, microphone takeover, permissions, and
   non-destructive remediation before realtime starts.
 - [ ] **Phase 38: Local Call-Control Daemon and LaunchAgent** - Keep hotkeys,
@@ -210,7 +210,7 @@ Phases execute in numeric order: 36 -> 37 -> 38 -> 39 -> 40
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 36. Call-Ready Preflight and Cache Gate | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
-| 37. Provider and Audio Remediation | 3/4 | In Progress|  | - |
+| 37. Provider and Audio Remediation | v1.9 | 4/4 | Complete | 2026-07-08 |
 | 38. Local Call-Control Daemon and LaunchAgent | v1.9 | 0/5 | Not started | - |
 | 39. Fail-Closed Realtime Meeting Loop | v1.9 | 0/5 | Not started | - |
 | 40. Launch and Realtime Evidence Feedback | v1.9 | 0/4 | Not started | - |

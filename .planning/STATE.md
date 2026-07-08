@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
 current_plan: 4
-status: executing
-stopped_at: Completed 37-03-PLAN.md
-last_updated: "2026-07-08T14:37:58.367Z"
+status: ready_for_verification
+stopped_at: Completed 37-04-PLAN.md
+last_updated: "2026-07-08T14:54:32.640Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -23,27 +23,27 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.9 Call Launch Readiness, currently Phase 37:
-Provider and Audio Remediation.
+**Current focus:** v1.9 Call Launch Readiness, Phase 37 complete and ready
+for verification before Phase 38: Local Call-Control Daemon and LaunchAgent.
 
 ## Current Position
 
 Phase: 37 (2 of 5) - Provider and Audio Remediation
 Current Plan: 4
 Total Plans in Phase: 4
-Plan: 3 of 4 completed; next plan is 37-04
-Status: Phase 37 in progress; Plan 37-03 complete.
+Plan: 4 of 4 completed.
+Status: Phase 37 complete; ready for verification before Phase 38.
 Last activity: 2026-07-08
 
-Progress: [█████████░] 88%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 7
+- Plans completed: 8
 - Average duration: 6 min
-- Total execution time: 39 min
+- Total execution time: 50 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -61,13 +61,14 @@ Progress: [█████████░] 88%
 | 37-01 | 5 min | 2 | 6 |
 | 37-02 | 4 min | 2 | 4 |
 | 37-03 | 7 min | 2 | 7 |
+| 37-04 | 11 min | 2 | 4 |
 
 **By Phase:**
 
 | Phase | Status | Plans |
 |-------|--------|-------|
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
-| 37. Provider and Audio Remediation | In Progress | 3/4 |
+| 37. Provider and Audio Remediation | Complete | 4/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Not started | 0/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
@@ -111,10 +112,13 @@ Recent decisions affecting current work:
 - [Phase 37]: Provider capability checks are metadata-only; they never call activate_meeting, toggle_mute, switch_mic, focus restore, playback, recording, or route mutation helpers.
 - [Phase 37]: Glip and MTS Link microphone switching support is detected from provider class/override structure; generic Chrome-style providers surface mic_switch_unsupported as a warning row.
 - [Phase 37]: Missing hotkey bindings are not treated as a macOS permission blocker; hotkey Accessibility rows are reserved for blocked or unavailable registration probes.
+- [Phase 37]: Default call-ready provider/audio behavior is now asserted at the CLI boundary with mocked provider, audio, and permission helpers.
+- [Phase 37]: The static launch order tracks the fixed provider/audio sequence after cloned_voice_metadata; permission rows remain conditional and follow that sequence when emitted.
+- [Phase 37]: Call-ready --output artifacts continue to use sanitized LaunchReadinessReport.to_dict output instead of a separate artifact renderer.
 
 ### Pending Todos
 
-Continue to Phase 37 Plan 37-04 for provider/audio integration validation.
+Run Phase 37 verification, then continue to Phase 38 planning/execution.
 
 ### Blockers/Concerns
 
@@ -127,6 +131,6 @@ Continue to Phase 37 Plan 37-04 for provider/audio integration validation.
 
 ## Session Continuity
 
-Last session: 2026-07-08T14:37:58.364Z
-Stopped at: Completed 37-03-PLAN.md
+Last session: 2026-07-08T14:54:32.637Z
+Stopped at: Completed 37-04-PLAN.md
 Resume file: None
