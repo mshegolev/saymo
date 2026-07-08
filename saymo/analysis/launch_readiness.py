@@ -150,8 +150,15 @@ def _collect_injected_checks(
     provider_name: str,
     prepare: bool,
 ) -> tuple[LaunchReadinessCheck, ...]:
-    """Test hook for adding checks without changing the command wrapper."""
-    return ()
+    """Collect launch-source checks without changing the command wrapper."""
+    from saymo.analysis.launch_sources import collect_daily_note_checks
+
+    return collect_daily_note_checks(
+        config,
+        profile,
+        provider_name=provider_name,
+        prepare=prepare,
+    )
 
 
 def _sanitize_value(value: Any) -> Any:
