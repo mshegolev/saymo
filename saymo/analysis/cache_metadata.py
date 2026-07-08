@@ -24,6 +24,9 @@ class VoiceCacheMetadata:
     blocked_reason: str = ""
     profile: str = ""
     profile_approved: bool = False
+    source_kind: str = ""
+    source_profile: str = ""
+    source_sha256: str = ""
     reference_audio_sha256: str = ""
     reference_text_sha256: str = ""
     non_cloned_allowed: bool = False
@@ -43,10 +46,16 @@ def build_voice_cache_metadata(
     *,
     purpose: str,
     text: str = "",
+    source_kind: str = "",
+    source_profile: str = "",
+    source_sha256: str = "",
 ) -> VoiceCacheMetadata:
     payload = selector_fingerprint_payload(config, purpose=purpose)
     selector = payload["selector"]
     fingerprint = _sha256_json(payload)
+    resolved_source_sha256 = source_sha256
+    if not resolved_source_sha256 and text:
+        resolved_source_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
     return VoiceCacheMetadata(
         purpose=purpose,
         selected_engine=selector["selected_engine"],
@@ -57,6 +66,9 @@ def build_voice_cache_metadata(
         blocked_reason=selector["blocked_reason"],
         profile=selector["profile"],
         profile_approved=selector["profile_approved"],
+        source_kind=source_kind,
+        source_profile=source_profile,
+        source_sha256=resolved_source_sha256,
         reference_audio_sha256=selector["reference_audio_sha256"],
         reference_text_sha256=selector["reference_text_sha256"],
         non_cloned_allowed=selector["non_cloned_allowed"],
@@ -97,6 +109,8 @@ def check_voice_cache_metadata(
     current = read_voice_cache_metadata(audio_path)
     if current.fingerprint != expected.fingerprint:
         return VoiceCacheMetadataCheck(False, "voice_metadata_stale", current)
+    if expected.source_sha256 and current.source_sha256 != expected.source_sha256:
+        return VoiceCacheMetadataCheck(False, "source_metadata_stale", current)
     return VoiceCacheMetadataCheck(True, metadata=current)
 
 
@@ -117,6 +131,9 @@ def _metadata_from_json(data: dict[str, Any]) -> VoiceCacheMetadata:
         blocked_reason=str(data.get("blocked_reason") or ""),
         profile=str(data.get("profile") or ""),
         profile_approved=bool(data.get("profile_approved", False)),
+        source_kind=str(data.get("source_kind") or ""),
+        source_profile=str(data.get("source_profile") or ""),
+        source_sha256=str(data.get("source_sha256") or ""),
         reference_audio_sha256=str(data.get("reference_audio_sha256") or ""),
         reference_text_sha256=str(data.get("reference_text_sha256") or ""),
         non_cloned_allowed=bool(data.get("non_cloned_allowed", False)),
@@ -128,6 +145,7 @@ def _metadata_from_json(data: dict[str, Any]) -> VoiceCacheMetadata:
 def _sha256_json(payload: dict[str, Any]) -> str:
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")

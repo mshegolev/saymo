@@ -151,14 +151,34 @@ def _collect_injected_checks(
     prepare: bool,
 ) -> tuple[LaunchReadinessCheck, ...]:
     """Collect launch-source checks without changing the command wrapper."""
-    from saymo.analysis.launch_sources import collect_daily_note_checks
+    from saymo.analysis.launch_sources import (
+        collect_daily_note_checks,
+        collect_prepared_audio_check,
+    )
 
-    return collect_daily_note_checks(
+    checks = list(collect_daily_note_checks(
         config,
         profile,
         provider_name=provider_name,
         prepare=prepare,
+    ))
+    source_sha256 = ""
+    for check in checks:
+        if check.key == "daily_note_source_ready":
+            source_sha256 = str(check.metadata.get("source_sha256") or "")
+            break
+    meeting = config.get_meeting(profile)
+    team_mode = bool(meeting.team) if meeting else False
+    checks.append(
+        collect_prepared_audio_check(
+            config,
+            profile,
+            provider_name=provider_name,
+            team_mode=team_mode,
+            source_sha256=source_sha256,
+        )
     )
+    return tuple(checks)
 
 
 def _sanitize_value(value: Any) -> Any:

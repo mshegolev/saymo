@@ -1,5 +1,8 @@
 """Core user-flow commands: auto, speak, quick, prepare, review, dashboard."""
 
+import hashlib
+import json
+
 import click
 
 from saymo.commands import (
@@ -1354,6 +1357,7 @@ def prepare(ctx, profile, source, save, team, skip_responses):
     for common stand-up follow-ups). Pass --skip-responses to disable.
     """
     config = ctx.obj["config"]
+    profile_name = profile or "standup"
     if profile:
         meeting = config.get_meeting(profile)
         if not meeting:
@@ -1367,20 +1371,26 @@ def prepare(ctx, profile, source, save, team, skip_responses):
     if source:
         config.speech.source = source
     if team:
-        run_async(_prepare_team(config, save))
+        run_async(_prepare_team(config, save, profile_name=profile_name))
     else:
-        run_async(_prepare(config, save))
+        run_async(_prepare(config, save, profile_name=profile_name))
     if not skip_responses and config.responses.enabled:
         console.print("")
         from saymo.commands.tests import _prepare_responses
         run_async(_prepare_responses(config, force=False))
 
 
-async def _prepare(config, save: bool):
+def _source_notes_sha256(notes: dict) -> str:
+    source_digest_material = json.dumps(notes, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(source_digest_material.encode("utf-8")).hexdigest()
+
+
+async def _prepare(config, save: bool, *, profile_name: str = "standup"):
     _rotate_audio_cache()
     notes = await _get_standup_content(config)
     if notes is None:
         return
+    source_sha256 = _source_notes_sha256(notes)
 
     text = await _compose_text(config, notes)
     if text is None:
@@ -1437,7 +1447,14 @@ async def _prepare(config, save: bool):
         )
         write_voice_cache_metadata(
             audio_path,
-            build_voice_cache_metadata(config, purpose="prepare", text=normalized),
+            build_voice_cache_metadata(
+                config,
+                purpose="prepare",
+                text=normalized,
+                source_kind=config.speech.source,
+                source_profile=profile_name,
+                source_sha256=source_sha256,
+            ),
         )
         console.print(f"[green]Audio cached: {audio_path} ({len(audio_bytes) // 1024} KB)[/]")
     else:
@@ -1446,7 +1463,7 @@ async def _prepare(config, save: bool):
     console.print("\n[dim]Run 'saymo speak' — instant playback from cache![/]")
 
 
-async def _prepare_team(config, save: bool):
+async def _prepare_team(config, save: bool, *, profile_name: str = "standup"):
     """Prepare team scrum report (your team)."""
     _rotate_audio_cache()
     from saymo.jira_source.confluence_tasks import fetch_team_tasks, team_tasks_to_notes
@@ -1466,6 +1483,7 @@ async def _prepare_team(config, save: bool):
             console.print(f"  {t.key}: {t.summary} [{t.status}]")
 
     notes = team_tasks_to_notes(team)
+    source_sha256 = _source_notes_sha256(notes)
 
     if not notes.get("yesterday") and not notes.get("today"):
         console.print("[yellow]No team tasks found.[/]")
@@ -1531,7 +1549,14 @@ async def _prepare_team(config, save: bool):
         )
         write_voice_cache_metadata(
             audio_path,
-            build_voice_cache_metadata(config, purpose="prepare", text=normalized),
+            build_voice_cache_metadata(
+                config,
+                purpose="prepare",
+                text=normalized,
+                source_kind=config.speech.source,
+                source_profile=profile_name,
+                source_sha256=source_sha256,
+            ),
         )
         console.print(f"[green]Audio cached: {audio_path} ({len(audio_bytes) // 1024} KB)[/]")
 
