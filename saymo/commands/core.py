@@ -5,6 +5,10 @@ import json
 
 import click
 
+from saymo.analysis.realtime_gate import (
+    evaluate_realtime_launch_gate,
+    render_realtime_launch_block,
+)
 from saymo.commands import (
     _get_cached_audio_path,
     _load_cached_summary,
@@ -279,6 +283,21 @@ def auto(ctx, profile, model, mic):
     Use --mic to listen from your microphone (for testing).
     Requires: prepare (run beforehand to cache audio).
     """
+    _run_auto_start(ctx, profile, model, mic)
+
+
+@main.command("realtime")
+@click.option("--profile", "-p", default="standup", help="Meeting profile: standup, scrum, retro")
+@click.option("--model", "-m", default="small", help="Whisper model: tiny, small, medium")
+@click.option("--mic", is_flag=True, help="Listen from microphone (for testing)")
+@click.pass_context
+def realtime(ctx, profile, model, mic):
+    """Start the realtime meeting loop through the same path as auto."""
+    _run_auto_start(ctx, profile, model, mic)
+
+
+def _run_auto_start(ctx, profile, model, mic):
+    """Resolve CLI options shared by auto/realtime before entering _auto."""
     config = ctx.obj["config"]
     meeting = config.get_meeting(profile)
     if meeting:
@@ -301,9 +320,23 @@ async def _auto(
 
     # Get meeting profile for trigger phrases
     meeting = config.get_meeting(profile)
+    provider_name = meeting.provider if meeting else "glip"
     is_team = meeting.team if meeting else False
     from saymo.config import resolve_live_tuning
     live_tuning = resolve_live_tuning(config, meeting)
+
+    launch_gate = evaluate_realtime_launch_gate(
+        config,
+        profile=profile,
+        provider_name=provider_name,
+    )
+    if not launch_gate.allowed:
+        console.print(
+            render_realtime_launch_block(launch_gate),
+            markup=False,
+            soft_wrap=True,
+        )
+        return
 
     @dataclass
     class CatchTiming:
@@ -330,7 +363,6 @@ async def _auto(
         return
 
     from saymo.providers.factory import get_provider
-    provider_name = meeting.provider if meeting else "glip"
     provider = get_provider(provider_name)
     status = provider.check_ready()
     if not status.meeting_found:
