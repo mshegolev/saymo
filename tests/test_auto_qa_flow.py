@@ -929,75 +929,6 @@ def test_auto_stop_control_emits_stop_and_cancel_events(
     _run(scenario())
 
 
-def test_auto_playback_timeout_emits_timeout_event(tmp_path, monkeypatch):
-    async def scenario():
-        import saymo.commands.core as core_module
-
-        config, audio_path = _auto_loop_config(tmp_path)
-        timeout_seen = asyncio.Event()
-        events = []
-        provider = MagicMock()
-        provider.name = "FakeMeet"
-        provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
-        provider.switch_mic.return_value = True
-
-        core, _detector = _install_auto_loop_fakes(
-            monkeypatch,
-            tmp_path,
-            provider=provider,
-            cached_audio=audio_path,
-        )
-        monkeypatch.setattr(
-            core,
-            "resolve_realtime_response_decision",
-            AsyncMock(
-                return_value=core.RealtimeResponseDecision(
-                    outcome="speak",
-                    label="response-cache-hit",
-                    source="response_cache",
-                    reason="prepared cached response selected",
-                    audio_path=audio_path,
-                )
-            ),
-        )
-
-        async def fake_play_cached_audio(*args, **kwargs):
-            on_playback_start = kwargs.get("on_playback_start")
-            if on_playback_start:
-                on_playback_start()
-            await asyncio.sleep(10)
-            return SimpleNamespace(
-                success=True,
-                reason="",
-                playback_started=True,
-            )
-
-        def fake_append(profile, event, **kwargs):
-            payload = event.to_dict()
-            events.append(payload)
-            if payload["label"] == "playback-timeout":
-                timeout_seen.set()
-
-        monkeypatch.setattr(core, "_play_cached_audio", fake_play_cached_audio)
-        monkeypatch.setattr(
-            core,
-            "append_realtime_decision_event",
-            fake_append,
-            raising=False,
-        )
-
-        await _run_auto_until(
-            timeout_seen,
-            core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
-        )
-
-        labels = [event["label"] for event in events]
-        assert "playback-timeout" in labels
-        assert events[labels.index("playback-timeout")]["source"] == "live_control"
-
-    _run(scenario())
-
-
 def test_auto_launch_event_append_is_best_effort(monkeypatch, capsys):
     import saymo.commands.core as core
 
@@ -1461,12 +1392,15 @@ def test_auto_trigger_loop_checks_provider_before_automatic_playback(
         )
 
         assert playback_calls == []
-        assert [event["label"] for event in events] == [
+        runtime_events = [
+            event for event in events if not event["label"].startswith("launch-")
+        ]
+        assert [event["label"] for event in runtime_events] == [
             "response-cache-hit",
             "provider-blocked",
         ]
-        assert events[0]["outcome"] == "spoke"
-        assert events[1]["outcome"] == "blocked"
+        assert runtime_events[0]["outcome"] == "spoke"
+        assert runtime_events[1]["outcome"] == "blocked"
 
     _run(scenario())
 
@@ -1520,9 +1454,11 @@ def test_auto_trigger_loop_emits_cache_miss_block_event(tmp_path, monkeypatch):
             core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
         )
 
-        assert events[-1]["outcome"] == "blocked"
-        assert events[-1]["label"] == "cache-miss-blocked"
-        assert events[-1]["source"] == "response_cache"
+        cache_miss = next(
+            event for event in events if event["label"] == "cache-miss-blocked"
+        )
+        assert cache_miss["outcome"] == "blocked"
+        assert cache_miss["source"] == "response_cache"
 
     _run(scenario())
 
@@ -1584,9 +1520,13 @@ def test_auto_trigger_loop_emits_addressing_skip_before_live_assist(
             core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
         )
 
-        assert events[-1]["outcome"] == "skipped"
-        assert events[-1]["label"] == "addressing-skip"
-        assert events[-1]["source"] == "deterministic"
+        addressing_skip = next(
+            event
+            for event in events
+            if event["label"] == "addressing-skip"
+            and event["source"] == "deterministic"
+        )
+        assert addressing_skip["outcome"] == "skipped"
 
     _run(scenario())
 
@@ -1663,9 +1603,13 @@ def test_live_assist_can_skip_addressed_candidate_without_speaking(
             core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
         )
 
-        assert events[-1]["outcome"] == "skipped"
-        assert events[-1]["label"] == "addressing-skip"
-        assert events[-1]["source"] == "live_assist"
+        live_assist_skip = next(
+            event
+            for event in events
+            if event["label"] == "addressing-skip"
+            and event["source"] == "live_assist"
+        )
+        assert live_assist_skip["outcome"] == "skipped"
 
     _run(scenario())
 

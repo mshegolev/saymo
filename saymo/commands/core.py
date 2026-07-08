@@ -80,6 +80,44 @@ def _realtime_skip_event(
     )
 
 
+def _realtime_launch_event(
+    *,
+    profile: str,
+    provider: str,
+    label: str,
+    detail: str,
+) -> RealtimeDecisionEvent:
+    return RealtimeDecisionEvent(
+        profile=profile,
+        provider=provider,
+        outcome="skipped",
+        label=label,
+        source="launch_readiness",
+        automatic=True,
+        detail=detail,
+    )
+
+
+def _realtime_playback_attempt_event(
+    *,
+    profile: str,
+    provider: str,
+    response_decision: RealtimeResponseDecision,
+) -> RealtimeDecisionEvent:
+    return RealtimeDecisionEvent(
+        profile=profile,
+        provider=provider,
+        outcome="spoke",
+        label="playback-attempted",
+        source="playback",
+        automatic=response_decision.automatic,
+        intent_key=response_decision.intent_key,
+        confidence=response_decision.confidence,
+        audio_path=str(response_decision.audio_path or ""),
+        detail=response_decision.label,
+    )
+
+
 # ---------------------------------------------------------------------------
 # auto — listen for name trigger and speak automatically
 # ---------------------------------------------------------------------------
@@ -403,12 +441,39 @@ async def _auto(
     is_team = meeting.team if meeting else False
     from saymo.config import resolve_live_tuning
     live_tuning = resolve_live_tuning(config, meeting)
+    launch_end_emitted = False
+
+    def _emit_launch_end(detail: str) -> None:
+        nonlocal launch_end_emitted
+        if launch_end_emitted:
+            return
+        launch_end_emitted = True
+        _emit_realtime_event(
+            profile,
+            _realtime_launch_event(
+                profile=profile,
+                provider=provider_name,
+                label="launch-end",
+                detail=detail,
+            ),
+        )
+
+    _emit_realtime_event(
+        profile,
+        _realtime_launch_event(
+            profile=profile,
+            provider=provider_name,
+            label="launch-start",
+            detail="realtime launch starting",
+        ),
+    )
 
     launch_gate = evaluate_realtime_launch_gate(
         config,
         profile=profile,
         provider_name=provider_name,
     )
+    provider_name = getattr(launch_gate, "provider", provider_name) or provider_name
     if not launch_gate.allowed:
         _emit_realtime_event(
             profile,
@@ -425,6 +490,7 @@ async def _auto(
             markup=False,
             soft_wrap=True,
         )
+        _emit_launch_end(launch_gate.reason)
         return
 
     @dataclass
@@ -442,6 +508,7 @@ async def _auto(
     if not cached_audio.exists():
         label = f"'saymo prepare --profile {profile}'" if meeting else "'saymo prepare'"
         console.print(f"[bold red]No cached audio! Run {label} first.[/]")
+        _emit_launch_end("cached-audio-missing")
         return
 
     from saymo.audio.devices import find_device
@@ -449,6 +516,7 @@ async def _auto(
     if not capture_dev:
         console.print(f"[bold red]Capture device not found: {config.audio.capture_device}[/]")
         console.print("[dim]Need BlackHole 16ch for capturing Glip audio[/]")
+        _emit_launch_end("capture-device-missing")
         return
 
     from saymo.providers.factory import get_provider
@@ -456,6 +524,7 @@ async def _auto(
     status = provider.check_ready()
     if not status.meeting_found:
         console.print(f"[bold red]{provider.name} tab not found in Chrome![/]")
+        _emit_launch_end("provider-meeting-missing")
         return
 
     # Determine trigger phrases from meeting profile or user config
@@ -583,6 +652,17 @@ async def _auto(
         if action == "stop":
             stop_playback.set()
             result = "playback_stop_requested"
+            _emit_realtime_event(
+                profile,
+                _realtime_block_event(
+                    profile=profile,
+                    provider=provider_name,
+                    label="stop-requested",
+                    source="live_control",
+                    detail="stop control action",
+                    automatic=False,
+                ),
+            )
             console.print("[bold yellow]STOP — cancelling playback[/]")
         elif action == "toggle_auto_answer":
             result = _toggle_auto_answer(
@@ -1090,6 +1170,14 @@ async def _auto(
                 console.print("\n[bold yellow]Listening again...[/]\n")
                 continue
 
+            _emit_realtime_event(
+                profile,
+                _realtime_playback_attempt_event(
+                    profile=profile,
+                    provider=provider_name,
+                    response_decision=response_decision,
+                ),
+            )
             speaking.set()
             _publish_state("speaking")
             play_t0 = time.monotonic()
@@ -1120,8 +1208,30 @@ async def _auto(
                     timeout=max_dur,
                 )
                 if stop_waiter in done:
+                    _emit_realtime_event(
+                        profile,
+                        _realtime_block_event(
+                            profile=profile,
+                            provider=provider_name,
+                            label="cancel-playback",
+                            source="live_control",
+                            detail="stop-requested",
+                            automatic=False,
+                        ),
+                    )
                     play_task.cancel()
                 elif not done:
+                    _emit_realtime_event(
+                        profile,
+                        _realtime_block_event(
+                            profile=profile,
+                            provider=provider_name,
+                            label="playback-timeout",
+                            source="live_control",
+                            detail=f"max_speech_duration={max_dur}s",
+                            automatic=response_decision.automatic,
+                        ),
+                    )
                     play_task.cancel()
                     console.print(
                         f"[bold red]Playback exceeded {max_dur}s — forcibly stopped "
@@ -1199,6 +1309,7 @@ async def _auto(
                 pass
         hotkeys_active = False
         _publish_state("stopped")
+        _emit_launch_end("stopped")
 
 
 # ---------------------------------------------------------------------------
@@ -1696,6 +1807,8 @@ async def _prepare(config, save: bool, *, profile_name: str = "standup"):
             note_path.write_text(header + standup_section, encoding="utf-8")
 
         console.print(f"[blue]Saved text to: {note_path}[/]")
+        from saymo.obsidian.daily_notes import inspect_standup_source
+        source_sha256 = inspect_standup_source(note_path).source_sha256
 
     # Pre-generate audio file
     console.print("\n[bold blue]Pre-generating audio...[/]")

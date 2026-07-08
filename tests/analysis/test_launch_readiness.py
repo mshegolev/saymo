@@ -386,6 +386,7 @@ def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
 
 
 def test_prepare_saved_standup_metadata_matches_daily_note_hash(tmp_path, monkeypatch):
+    import saymo.commands as commands
     import saymo.commands.core as core
     from saymo.analysis.cache_metadata import read_voice_cache_metadata
     from saymo.analysis.launch_sources import prepared_audio_status
@@ -419,6 +420,7 @@ def test_prepare_saved_standup_metadata_matches_daily_note_hash(tmp_path, monkey
     monkeypatch.setattr(core, "_compose_text", fake_compose_text)
     monkeypatch.setattr(core, "_synthesize", fake_synthesize)
     monkeypatch.setattr(core, "_get_cached_audio_path", lambda team=False: audio_path)
+    monkeypatch.setattr(commands, "_get_cached_audio_path", lambda team=False: audio_path)
 
     asyncio.run(core._prepare(config, save=True, profile_name="standup"))
 
