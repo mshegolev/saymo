@@ -66,6 +66,29 @@ class CachedResponse:
     confidence: float
 
 
+@dataclass(frozen=True)
+class ResponseCacheCoverage:
+    """Privacy-safe readiness summary for the response cache."""
+
+    ready: int
+    total: int
+    missing: tuple[str, ...] = ()
+    stale: tuple[str, ...] = ()
+    cache_dir: Path | None = None
+
+    @property
+    def complete(self) -> bool:
+        return self.ready == self.total
+
+    @property
+    def ready_count(self) -> int:
+        return self.ready
+
+    @property
+    def total_count(self) -> int:
+        return self.total
+
+
 DEFAULT_RESPONSE_LIBRARY: dict[str, ResponseEntry] = {
     "status_generic": ResponseEntry(
         key="status_generic",
@@ -419,7 +442,7 @@ class ResponseCache:
         for entry in self.library.values():
             for variant_idx, text in enumerate(entry.variants):
                 seen += 1
-                path = self._variant_path(entry.key, variant_idx, text)
+                path = self.variant_path(entry.key, variant_idx, text)
                 if progress:
                     progress(entry.key, seen, total)
                 if path.exists() and not force:
@@ -449,11 +472,14 @@ class ResponseCache:
 
         return written
 
-    def _variant_path(self, key: str, variant_idx: int, text: str) -> Path:
+    def variant_path(self, key: str, variant_idx: int, text: str) -> Path:
         """Deterministic filename per variant. Text hash means edits
         invalidate the old file automatically."""
         digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]
         return self.cache_dir / f"{key}_{variant_idx}_{digest}.wav"
+
+    def _variant_path(self, key: str, variant_idx: int, text: str) -> Path:
+        return self.variant_path(key, variant_idx, text)
 
     # ------------------------------------------------------------------
     # Lookup (runtime, called from _auto())
@@ -471,7 +497,7 @@ class ResponseCache:
             return None
         candidates: list[tuple[int, str, Path]] = []
         for idx, text in enumerate(entry.variants):
-            path = self._variant_path(entry.key, idx, text)
+            path = self.variant_path(entry.key, idx, text)
             if self._variant_ready(path):
                 candidates.append((idx, text, path))
         if not candidates:
@@ -520,7 +546,7 @@ class ResponseCache:
         # Pick a random variant that actually has a cached file.
         candidates: list[tuple[int, str, Path]] = []
         for idx, text in enumerate(best_entry.variants):
-            path = self._variant_path(best_entry.key, idx, text)
+            path = self.variant_path(best_entry.key, idx, text)
             if self._variant_ready(path):
                 candidates.append((idx, text, path))
         if not candidates:
@@ -547,3 +573,43 @@ class ResponseCache:
         if self.voice_metadata is None:
             return True
         return check_voice_cache_metadata(path, self.voice_metadata).valid
+
+
+def response_cache_coverage(
+    cache: ResponseCache,
+    *,
+    max_examples: int = 5,
+) -> ResponseCacheCoverage:
+    """Report exact cached variant coverage without exposing response text."""
+    ready = 0
+    total = 0
+    missing: list[str] = []
+    stale: list[str] = []
+    example_limit = max(0, max_examples)
+
+    for entry in cache.library.values():
+        for idx, text in enumerate(entry.variants):
+            total += 1
+            variant_key = f"{entry.key}[{idx}]"
+            path = cache.variant_path(entry.key, idx, text)
+            if not path.exists():
+                if len(missing) < example_limit:
+                    missing.append(variant_key)
+                continue
+
+            if cache.voice_metadata is not None:
+                metadata_check = check_voice_cache_metadata(path, cache.voice_metadata)
+                if not metadata_check.valid:
+                    if len(stale) < example_limit:
+                        stale.append(f"{variant_key}:{metadata_check.blocked_reason}")
+                    continue
+
+            ready += 1
+
+    return ResponseCacheCoverage(
+        ready=ready,
+        total=total,
+        missing=tuple(missing),
+        stale=tuple(stale),
+        cache_dir=cache.cache_dir,
+    )
