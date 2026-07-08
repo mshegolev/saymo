@@ -95,7 +95,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [x] **EVID-03**: User can see launch health, daemon/control availability,
   cache hit/miss counts, unsafe fallback blocks, and provider drift in
   rehearsal or session scorecards.
-- [ ] **EVID-04**: User can run safety-soak against v1.9 launch and realtime
+- [x] **EVID-04**: User can run safety-soak against v1.9 launch and realtime
   evidence, and the gate fails on unsafe playback, stale cache, missing daemon
   readiness, provider blockers, or unapproved fallback conditions.
 - [ ] **EVID-05**: User can troubleshoot launch and realtime failures from
@@ -176,7 +176,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EVID-01 | Phase 40 | Complete |
 | EVID-02 | Phase 40 | Complete |
 | EVID-03 | Phase 40 | Complete |
-| EVID-04 | Phase 40 | Pending |
+| EVID-04 | Phase 40 | Complete |
 | EVID-05 | Phase 40 | Pending |
 
 **Coverage:**

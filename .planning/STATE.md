@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 3
+current_plan: 4
 status: in_progress
-stopped_at: Completed 40-02-PLAN.md
-last_updated: "2026-07-08T19:12:12.978Z"
+stopped_at: Completed 40-03-PLAN.md
+last_updated: "2026-07-08T19:22:00.941Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 22
-  completed_plans: 20
-  percent: 91
+  completed_plans: 21
+  percent: 95
 ---
 
 # Project State
@@ -24,26 +24,26 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
 **Current focus:** v1.9 Call Launch Readiness, Phase 40 Launch and Realtime
-Evidence Feedback is in progress; Plan 40-02 is complete and Plan 40-03 is next.
+Evidence Feedback is in progress; Plan 40-03 is complete and Plan 40-04 is next.
 
 ## Current Position
 
 Phase: 40 (5 of 5) - Launch and Realtime Evidence Feedback
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 4
-Plans: 2 of 4 completed.
-Status: Phase 40 Plan 02 is complete; ready to execute Plan 40-03.
+Plans: 3 of 4 completed.
+Status: Phase 40 Plan 03 is complete; ready to execute Plan 40-04.
 Last activity: 2026-07-08
 
-Progress: [█████████░] 91%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 20
+- Plans completed: 21
 - Average duration: 7 min
-- Total execution time: 134 min
+- Total execution time: 140 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -74,6 +74,7 @@ Progress: [█████████░] 91%
 | 39-05 | 6 min | 2 | 8 |
 | 40-01 | 12 min | 2 | 5 |
 | 40-02 | 7 min | 2 | 7 |
+| 40-03 | 6 min | 2 | 5 |
 
 **By Phase:**
 
@@ -83,7 +84,7 @@ Progress: [█████████░] 91%
 | 37. Provider and Audio Remediation | Complete | 4/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Complete | 5/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Complete | 5/5 |
-| 40. Launch and Realtime Evidence Feedback | In Progress | 2/4 |
+| 40. Launch and Realtime Evidence Feedback | In Progress | 3/4 |
 
 ## Accumulated Context
 
@@ -164,10 +165,13 @@ Recent decisions affecting current work:
 - [Phase 40]: Plan 40-02: Realtime JSONL loading reconstructs rows through RealtimeDecisionEvent.to_dict() so extra JSON fields cannot enter scorecard summaries.
 - [Phase 40]: Plan 40-02: Scorecard launch/realtime metrics use status=unavailable by default and are omitted from JSON/Markdown unless evidence paths are supplied.
 - [Phase 40]: Plan 40-02: Missing supplied evidence paths produce status=missing metrics and sanitized warnings instead of changing old no-evidence behavior.
+- [Phase 40]: Plan 40-03: v1.9 safety-soak failures are derived from SessionScorecard launch_metrics and realtime_metrics only.
+- [Phase 40]: Plan 40-03: v1.9 aggregate totals are emitted with zero defaults but kept out of DRIFT_METRICS so old baselines remain neutral.
+- [Phase 40]: Plan 40-03: safety-soak evidence path flags are pass-through for rehearsal scorecard construction, not inputs to safety_soak.py.
 
 ### Pending Todos
 
-Execute Phase 40 Plan 03.
+Execute Phase 40 Plan 04.
 
 ### Blockers/Concerns
 
@@ -180,6 +184,6 @@ Execute Phase 40 Plan 03.
 
 ## Session Continuity
 
-Last session: 2026-07-08T19:12:12.976Z
-Stopped at: Completed 40-02-PLAN.md
+Last session: 2026-07-08T19:22:00.938Z
+Stopped at: Completed 40-03-PLAN.md
 Resume file: None
