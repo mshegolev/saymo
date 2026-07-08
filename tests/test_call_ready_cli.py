@@ -179,6 +179,26 @@ def test_call_ready_prepare_creates_note_without_overwrite(tmp_path):
     assert "call-ready:" in result.output
     _assert_no_private_text(result.output)
 
+    today.unlink()
+    created = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "call-ready",
+            "-p",
+            "standup",
+            "--provider",
+            "glip",
+            "--prepare",
+        ],
+    )
+
+    assert today.exists()
+    assert "## Standup" in today.read_text(encoding="utf-8")
+    assert "call-ready:" in created.output
+    _assert_no_private_text(created.output)
+
 
 def test_call_ready_groups_remediation_with_rerun_commands(tmp_path, monkeypatch):
     import saymo.commands.call_ready as call_ready_module
