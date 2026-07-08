@@ -1,16 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.9
-milestone_name: Call Launch Readiness
-status: in progress
-stopped_at: Completed 36-01-PLAN.md
-last_updated: "2026-07-08T12:59:12.583Z"
-last_activity: 2026-07-08 - completed 36-01 shared launch-readiness contracts.
+milestone_name: milestone
+current_plan: 2
+status: executing
+stopped_at: Completed 36-03-PLAN.md
+last_updated: "2026-07-08T13:07:32.878Z"
+last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
   percent: 25
 ---
 
@@ -28,11 +29,11 @@ Call-Ready Preflight and Cache Gate.
 ## Current Position
 
 Phase: 36 (1 of 5) - Call-Ready Preflight and Cache Gate
-Current Plan: 1
+Current Plan: 2
 Total Plans in Phase: 4
 Plan: 1 of 4 planned
 Status: Ready to execute 36-02.
-Last activity: 2026-07-08 - completed 36-01 shared launch-readiness contracts.
+Last activity: 2026-07-08
 
 Progress: [███░░░░░░░] 25%
 
@@ -64,6 +65,7 @@ Progress: [███░░░░░░░] 25%
 | 38. Local Call-Control Daemon and LaunchAgent | Not started | 0/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
+| Phase 36 P03 | 4 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -86,6 +88,9 @@ Recent decisions affecting current work:
   provider/audio checks remain follow-up plan work.
 - 36-01: Human call-ready output keeps exactly one top-level status line, while
   JSON uses sanitized `LaunchReadinessReport.to_dict()` output.
+- [Phase 36-03]: Response-cache coverage examples use only stable variant keys, never response text.
+- [Phase 36-03]: Launch cache and cloned-voice checks stay standalone in saymo.analysis.launch_cache for later command wiring.
+- [Phase 36-03]: Cloned-voice metadata check derives a launch-level blocked_reason when selector output is allowed but not a cloned approved profile.
 
 ### Pending Todos
 
@@ -102,6 +107,6 @@ Execute Plan 36-02 from `.planning/phases/36-call-ready-preflight-and-cache-gate
 
 ## Session Continuity
 
-Last session: 2026-07-08T12:59:12.556Z
-Stopped at: Completed 36-01-PLAN.md
+Last session: 2026-07-08T13:07:32.875Z
+Stopped at: Completed 36-03-PLAN.md
 Resume file: None

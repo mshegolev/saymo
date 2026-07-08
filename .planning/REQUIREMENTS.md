@@ -20,10 +20,10 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [ ] **LAUN-04**: User can have the call-ready flow prepare or verify the
   current standup audio for the selected profile without silently accepting
   stale prepared WAVs.
-- [ ] **LAUN-05**: User can see response-cache coverage for the selected
+- [x] **LAUN-05**: User can see response-cache coverage for the selected
   profile, voice, and response library as counts plus exact stale or missing
   variant blockers.
-- [ ] **LAUN-06**: User can see approved cloned-voice metadata for prepared
+- [x] **LAUN-06**: User can see approved cloned-voice metadata for prepared
   and response-cache audio, including selected engine, voice profile,
   approval state, reference fingerprint, and stale-cache reason.
 - [x] **LAUN-07**: User can get grouped `block`, `warn`, and `info`
@@ -154,8 +154,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LAUN-02 | Phase 36 | Pending |
 | LAUN-03 | Phase 36 | Pending |
 | LAUN-04 | Phase 36 | Pending |
-| LAUN-05 | Phase 36 | Pending |
-| LAUN-06 | Phase 36 | Pending |
+| LAUN-05 | Phase 36 | Complete |
+| LAUN-06 | Phase 36 | Complete |
 | LAUN-07 | Phase 36 | Complete |
 | PROV-01 | Phase 37 | Pending |
 | PROV-02 | Phase 37 | Pending |
