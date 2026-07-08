@@ -70,7 +70,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [x] **REAL-02**: User can preserve the existing `saymo auto` workflow while
   using the same shared launch-readiness gate as any new call-start or
   realtime alias.
-- [ ] **REAL-03**: User can rely on automatic question handling to fail closed
+- [x] **REAL-03**: User can rely on automatic question handling to fail closed
   on response-cache miss, stale voice metadata, unsafe fallback, provider loss,
   manual takeover, hard-disable, or disabled auto-answer.
 - [ ] **REAL-04**: User can still trigger explicit prepared standup playback as
@@ -79,7 +79,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [ ] **REAL-05**: User can see why each realtime decision spoke, skipped, or
   blocked using sanitized route names such as response-cache hit,
   cache-miss-blocked, handbrake-blocked, provider-blocked, or fallback-blocked.
-- [ ] **REAL-06**: User can keep deterministic addressing and existing
+- [x] **REAL-06**: User can keep deterministic addressing and existing
   handbrake state as the live-call safety boundary; classifiers or LLM wording
   cannot override a deterministic skip in this milestone.
 
@@ -169,10 +169,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTRL-05 | Phase 38 | Complete |
 | REAL-01 | Phase 39 | Complete |
 | REAL-02 | Phase 39 | Complete |
-| REAL-03 | Phase 39 | Pending |
+| REAL-03 | Phase 39 | Complete |
 | REAL-04 | Phase 39 | Pending |
 | REAL-05 | Phase 39 | Pending |
-| REAL-06 | Phase 39 | Pending |
+| REAL-06 | Phase 39 | Complete |
 | EVID-01 | Phase 40 | Pending |
 | EVID-02 | Phase 40 | Pending |
 | EVID-03 | Phase 40 | Pending |
