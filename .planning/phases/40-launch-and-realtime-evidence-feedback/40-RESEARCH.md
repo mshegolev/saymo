@@ -388,8 +388,8 @@ def _v19_violations_for_scorecard(scorecard: SessionScorecard) -> tuple[SafetySo
 | Requirement | Primary Module | CLI Surface | Notes |
 |-------------|----------------|-------------|-------|
 | EVID-01 | `launch_readiness.py` plus focused `launch_evidence.py` | `call-ready --output` unchanged; optional richer fields | Keep `LaunchReadinessReport.to_dict()` root fields authoritative. Add loader and normalized metrics. |
-| EVID-02 | `realtime_events.py` | `session-scorecard --realtime PATH` and troubleshooting output | Add loader/summary over JSONL; skip malformed rows and report a warning count. |
-| EVID-03 | `session_scorecard.py` | `session-scorecard --launch-readiness PATH --realtime PATH` | Add optional typed metrics and Markdown/JSON sections. Preserve no-evidence behavior. |
+| EVID-02 | `realtime_events.py` | `session-scorecard --realtime-jsonl PATH` and troubleshooting output | Add loader/summary over JSONL; skip malformed rows and report a warning count. Plan `--realtime` as a Click alias. |
+| EVID-03 | `session_scorecard.py` | `session-scorecard --launch-json PATH --realtime-jsonl PATH` | Add optional typed metrics and Markdown/JSON sections. Preserve no-evidence behavior. Plan `--launch-readiness` and `--realtime` aliases. |
 | EVID-04 | `safety_soak.py` | Existing `safety-soak --scorecard-json PATH` | Add v1.9 violations derived from scorecard metrics; do not read raw evidence directly in soak. |
 | EVID-05 | `remediation.py` and `commands/tests.py` | Existing scorecard/soak output plus optional troubleshooting section | Reuse `RemediationHint`; include artifact/log paths and rerun commands. |
 
@@ -428,7 +428,7 @@ raw_transcript
 generated_answer
 answer_text
 audio_bytes
-PRIVATE_
+PRIVATE_ outside the existing launch_readiness.py sanitizer sentinel tuple/loop
 daily_note body fields
 transcript_window
 ```
@@ -488,7 +488,7 @@ Scope:
 
 - Add realtime JSONL loader and summary helpers to `realtime_events.py`.
 - Add `LaunchEvidenceMetrics` and `RealtimeEvidenceMetrics` to `SessionScorecard`.
-- Add optional CLI paths: recommended `--launch-readiness PATH`, `--realtime PATH`, and possibly `--evidence-root ROOT`.
+- Add optional CLI paths: canonical `--launch-json PATH` and `--realtime-jsonl PATH`, with `--launch-readiness` and `--realtime` aliases for compatibility.
 - Render JSON and Markdown evidence sections.
 - Preserve existing no-evidence scorecards.
 
@@ -719,8 +719,15 @@ uv run pytest
 Static privacy guard:
 
 ```bash
-! rg "raw_transcript|generated_answer|answer_text|audio_bytes|PRIVATE_" \
+! rg "raw_transcript|generated_answer|answer_text|audio_bytes" \
   saymo/analysis/launch_readiness.py \
+  saymo/analysis/launch_evidence.py \
+  saymo/analysis/realtime_events.py \
+  saymo/analysis/session_scorecard.py \
+  saymo/analysis/safety_soak.py \
+  saymo/analysis/remediation.py
+
+! rg "PRIVATE_" \
   saymo/analysis/launch_evidence.py \
   saymo/analysis/realtime_events.py \
   saymo/analysis/session_scorecard.py \
@@ -746,7 +753,7 @@ Static provider/audio mutation guard:
 - [ ] `tests/analysis/test_session_scorecard.py` - add launch/realtime metric JSON/Markdown/backward-compat coverage for EVID-03.
 - [ ] `tests/analysis/test_safety_soak.py` - add v1.9 launch/cache/daemon/provider/fallback violation coverage for EVID-04.
 - [ ] `tests/analysis/test_remediation.py` - add troubleshooting hints for evidence metrics and artifact/log paths for EVID-05.
-- [ ] `tests/test_session_scorecard_cli.py` - add optional `--launch-readiness` and `--realtime` CLI coverage.
+- [ ] `tests/test_session_scorecard_cli.py` - add optional `--launch-json`/`--realtime-jsonl` CLI coverage plus alias coverage for `--launch-readiness`/`--realtime`.
 - [ ] `tests/test_safety_soak_cli.py` - add evidence-rich scorecard JSON gate coverage.
 
 ## Open Questions
@@ -754,7 +761,7 @@ Static provider/audio mutation guard:
 1. **Should `safety-soak` accept raw launch/realtime evidence paths directly?**
    - What we know: CONTEXT says new v1.9 violations should be derived from sanitized scorecard metrics, and existing safety-soak accepts scorecards/baselines.
    - What's unclear: A direct evidence input could be convenient but would duplicate scorecard ingestion.
-   - Recommendation: Do not add direct raw evidence inputs in Phase 40. Use `session-scorecard --launch-readiness --realtime --json-output` followed by `safety-soak --scorecard-json`.
+   - Recommendation: Do not add direct raw evidence inputs in Phase 40. Use `session-scorecard --launch-json --realtime-jsonl --json-output` followed by `safety-soak --scorecard-json`; keep `--launch-readiness` and `--realtime` as aliases only.
 
 2. **How should stop reasons appear in realtime evidence?**
    - What we know: `realtime-decisions.jsonl` currently records launch blocks, skips, cache/fallback/metadata blocks, provider/handbrake blocks, manual standup decisions, and playback block results. Explicit stop/cancel actions are already counted from live-control audit in scorecards.

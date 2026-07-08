@@ -75,8 +75,16 @@ uv run pytest
 ### Static Privacy Guard
 
 ```bash
-! rg "raw_transcript|generated_answer|answer_text|audio_bytes|PRIVATE_" \
+! rg "raw_transcript|generated_answer|answer_text|audio_bytes" \
   saymo/analysis/launch_readiness.py \
+  saymo/analysis/launch_evidence.py \
+  saymo/analysis/realtime_events.py \
+  saymo/analysis/session_scorecard.py \
+  saymo/analysis/safety_soak.py \
+  saymo/analysis/remediation.py
+
+! rg "PRIVATE_" \
+  saymo/analysis/launch_evidence.py \
   saymo/analysis/realtime_events.py \
   saymo/analysis/session_scorecard.py \
   saymo/analysis/safety_soak.py \
@@ -86,13 +94,17 @@ uv run pytest
 The repository still has legacy trigger-review tests and fixtures that mention
 transcripts. Phase 40 guards should stay scoped to launch/realtime/scorecard
 evidence modules and must prove new serialized payloads do not include private
-meeting content.
+meeting content. `launch_readiness.py` intentionally contains a sanitizer
+sentinel tuple with `PRIVATE_` values; Phase 40 static tests should allow only
+that existing tuple/loop and keep `PRIVATE_` banned in new evidence/reporting
+modules.
 
 ### Static Provider/Audio Mutation Guard
 
 ```bash
 ! rg "activate_meeting\\(|toggle_mute\\(|switch_mic\\(|get_previous_app\\(|activate_app\\(|leave_meeting\\(|play_audio_bytes|play_bytes_to_devices|sd\\.rec|sounddevice\\.rec|_write_audio_settings_to_user_config|set_input_volume|bump_input_volume|killall|pkill" \
   saymo/analysis/launch_readiness.py \
+  saymo/analysis/launch_evidence.py \
   saymo/analysis/realtime_events.py \
   saymo/analysis/session_scorecard.py \
   saymo/analysis/safety_soak.py \
@@ -150,7 +162,7 @@ After automated tests pass, run locally before trusting live-call diagnostics:
 ```bash
 uv run saymo call-ready -p standup --provider glip --output ~/.saymo/live_control/standup/call-ready.json
 uv run saymo auto-preflight -p standup
-uv run saymo session-scorecard -p standup --realtime ~/.saymo/live_control/standup/realtime-decisions.jsonl
+uv run saymo session-scorecard -p standup --launch-json ~/.saymo/live_control/standup/call-ready.json --realtime-jsonl ~/.saymo/live_control/standup/realtime-decisions.jsonl
 uv run saymo safety-soak -p standup --scorecard-json <scorecard.json>
 ```
 
