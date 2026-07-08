@@ -49,7 +49,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 
 - [ ] **CTRL-01**: User can install, start, stop, restart, and inspect a
   per-profile Saymo call-control LaunchAgent from CLI commands.
-- [ ] **CTRL-02**: User can run a foreground call-control daemon that
+- [x] **CTRL-02**: User can run a foreground call-control daemon that
   registers configured global hotkeys and publishes a fresh heartbeat/status
   for the selected profile.
 - [ ] **CTRL-03**: User can see whether the call-control daemon is installed,
@@ -163,7 +163,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROV-04 | Phase 37 | Complete |
 | PROV-05 | Phase 37 | Complete |
 | CTRL-01 | Phase 38 | Pending |
-| CTRL-02 | Phase 38 | Pending |
+| CTRL-02 | Phase 38 | Complete |
 | CTRL-03 | Phase 38 | Pending |
 | CTRL-04 | Phase 38 | Pending |
 | CTRL-05 | Phase 38 | Pending |

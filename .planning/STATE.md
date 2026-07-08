@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 0
-status: ready_to_plan
-stopped_at: Phase 37 verified and completed; next Phase 38
-last_updated: "2026-07-08T15:12:50.208Z"
+current_plan: 1
+status: in_progress
+stopped_at: Completed 38-01-PLAN.md
+last_updated: "2026-07-08T15:52:08.208Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 22
-  completed_plans: 8
-  percent: 36
+  total_plans: 13
+  completed_plans: 9
+  percent: 69
 ---
 
 # Project State
@@ -29,21 +29,21 @@ Local Call-Control Daemon and LaunchAgent.
 ## Current Position
 
 Phase: 38 (3 of 5) - Local Call-Control Daemon and LaunchAgent
-Current Plan: 0
+Current Plan: 1
 Total Plans in Phase: 5
-Plan: 0 of 5 completed; next step is Phase 38 context and planning.
-Status: Phase 38 ready to plan.
+Plan: 1 of 5 completed; next step is 38-02.
+Status: Phase 38 in progress.
 Last activity: 2026-07-08
 
-Progress: [████░░░░░░] 36%
+Progress: [███████░░░] 69%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: 22
-- Plans completed: 8
+- Total plans planned: 13
+- Plans completed: 9
 - Average duration: 6 min
-- Total execution time: 50 min
+- Total execution time: 56 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -62,6 +62,7 @@ Progress: [████░░░░░░] 36%
 | 37-02 | 4 min | 2 | 4 |
 | 37-03 | 7 min | 2 | 7 |
 | 37-04 | 11 min | 2 | 4 |
+| 38-01 | 6 min | 2 | 5 |
 
 **By Phase:**
 
@@ -69,7 +70,7 @@ Progress: [████░░░░░░] 36%
 |-------|--------|-------|
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
 | 37. Provider and Audio Remediation | Complete | 4/4 |
-| 38. Local Call-Control Daemon and LaunchAgent | Not started | 0/5 |
+| 38. Local Call-Control Daemon and LaunchAgent | In Progress | 1/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
 
@@ -115,6 +116,9 @@ Recent decisions affecting current work:
 - [Phase 37]: Default call-ready provider/audio behavior is now asserted at the CLI boundary with mocked provider, audio, and permission helpers.
 - [Phase 37]: The static launch order tracks the fixed provider/audio sequence after cloned_voice_metadata; permission rows remain conditional and follow that sequence when emitted.
 - [Phase 37]: Call-ready --output artifacts continue to use sanitized LaunchReadinessReport.to_dict output instead of a separate artifact renderer.
+- [Phase 38-01]: The foreground call-control daemon is control-plane only: it writes heartbeat evidence and queues existing live-control commands without applying realtime/audio/provider actions.
+- [Phase 38-01]: Daemon hotkeys use source=daemon_hotkey so queued commands remain distinguishable from panel, CLI, and existing hotkey sources.
+- [Phase 38-01]: Hotkey registration failures are recorded as blocked heartbeat status while the daemon loop keeps running.
 
 ### Pending Todos
 
@@ -131,6 +135,6 @@ Continue to Phase 38 planning/execution.
 
 ## Session Continuity
 
-Last session: 2026-07-08T15:12:50.208Z
-Stopped at: Phase 37 verified and completed; next Phase 38
+Last session: 2026-07-08T15:51:47.398Z
+Stopped at: Completed 38-01-PLAN.md
 Resume file: None
