@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 39-02-PLAN.md
-last_updated: "2026-07-08T17:31:30.423Z"
+stopped_at: Completed 39-03-PLAN.md
+last_updated: "2026-07-08T17:43:02.290Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 18
-  completed_plans: 15
-  percent: 83
+  completed_plans: 16
+  percent: 89
 ---
 
 # Project State
@@ -29,21 +29,21 @@ Fail-Closed Realtime Meeting Loop.
 ## Current Position
 
 Phase: 39 (4 of 5) - Fail-Closed Realtime Meeting Loop
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 5
-Plans: 2 of 5 completed.
-Status: Phase 39 is in progress; Plan 39-02 completed and ready for Plan 39-03.
+Plans: 3 of 5 completed.
+Status: Phase 39 is in progress; Plan 39-03 completed and ready for Plan 39-04.
 Last activity: 2026-07-08
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 18
-- Plans completed: 15
+- Plans completed: 16
 - Average duration: 7 min
-- Total execution time: 100 min
+- Total execution time: 105 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -69,6 +69,7 @@ Progress: [████████░░] 83%
 | 38-05 | 7 min | 2 | 11 |
 | 39-01 | 18 min | 2 | 5 |
 | 39-02 | 6 min | 2 | 5 |
+| 39-03 | 5 min | 2 | 5 |
 
 **By Phase:**
 
@@ -77,7 +78,7 @@ Progress: [████████░░] 83%
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
 | 37. Provider and Audio Remediation | Complete | 4/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Complete | 5/5 |
-| 39. Fail-Closed Realtime Meeting Loop | In Progress | 2/5 |
+| 39. Fail-Closed Realtime Meeting Loop | In Progress | 3/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
 
 ## Accumulated Context
@@ -143,10 +144,13 @@ Recent decisions affecting current work:
 - [Phase 39]: Phase 39-02: Automatic realtime answers are response-cache-only; cache hits speak, while cache miss, disabled cache, stale metadata, and live_fallback miss paths block.
 - [Phase 39]: Phase 39-02: Runtime response cache construction uses response-cache cloned-voice metadata, so stale cached WAV sidecars are not playable automatically.
 - [Phase 39]: Phase 39-02: _auto no longer calls the legacy _resolve_auto_response_decision path for automatic playback and does not warm up live-fallback TTS.
+- [Phase 39]: Plan 39-03: Automatic runtime blocks use stable labels handbrake-blocked and provider-blocked.
+- [Phase 39]: Plan 39-03: Provider drift is checked with the existing provider object via provider.check_ready immediately before automatic playback.
+- [Phase 39]: Plan 39-03: Provider automation fallback is strict only for automatic realtime playback; manual and non-automatic callers keep default fallback behavior.
 
 ### Pending Todos
 
-Continue to Phase 39 Plan 03 execution after Plan 39-02 metadata commit.
+Continue to Phase 39 Plan 04 execution after Plan 39-03 metadata commit.
 
 ### Blockers/Concerns
 
@@ -159,6 +163,6 @@ Continue to Phase 39 Plan 03 execution after Plan 39-02 metadata commit.
 
 ## Session Continuity
 
-Last session: 2026-07-08T17:31:30.420Z
-Stopped at: Completed 39-02-PLAN.md
+Last session: 2026-07-08T17:42:23.907Z
+Stopped at: Completed 39-03-PLAN.md
 Resume file: None
