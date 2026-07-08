@@ -210,7 +210,7 @@ Phases execute in numeric order: 36 -> 37 -> 38 -> 39 -> 40
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 36. Call-Ready Preflight and Cache Gate | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
-| 37. Provider and Audio Remediation | 2/4 | In Progress|  | - |
+| 37. Provider and Audio Remediation | 3/4 | In Progress|  | - |
 | 38. Local Call-Control Daemon and LaunchAgent | v1.9 | 0/5 | Not started | - |
 | 39. Fail-Closed Realtime Meeting Loop | v1.9 | 0/5 | Not started | - |
 | 40. Launch and Realtime Evidence Feedback | v1.9 | 0/4 | Not started | - |

@@ -35,10 +35,10 @@ Requirements for milestone v1.9 Call Launch Readiness.
   tab are present, identifiable, and actionable before starting realtime mode.
 - [x] **PROV-02**: User can verify BlackHole capture/playback routing and the
   real microphone takeover route before joining or starting the live loop.
-- [ ] **PROV-03**: User can see provider capability details such as tab
+- [x] **PROV-03**: User can see provider capability details such as tab
   activation, mic switching support, mute recovery, and unsupported provider
   limitations without parsing raw errors.
-- [ ] **PROV-04**: User can see macOS permission blockers for hotkeys,
+- [x] **PROV-04**: User can see macOS permission blockers for hotkeys,
   microphone capture, Chrome automation, and audio routing with targeted
   remediation.
 - [x] **PROV-05**: User can run provider/audio readiness without destructive
@@ -159,8 +159,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LAUN-07 | Phase 36 | Complete |
 | PROV-01 | Phase 37 | Complete |
 | PROV-02 | Phase 37 | Complete |
-| PROV-03 | Phase 37 | Pending |
-| PROV-04 | Phase 37 | Pending |
+| PROV-03 | Phase 37 | Complete |
+| PROV-04 | Phase 37 | Complete |
 | PROV-05 | Phase 37 | Complete |
 | CTRL-01 | Phase 38 | Pending |
 | CTRL-02 | Phase 38 | Pending |
