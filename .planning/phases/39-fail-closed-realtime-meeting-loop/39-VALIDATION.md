@@ -71,10 +71,14 @@ called from the realtime automatic path.
 ### Static Privacy Guard
 
 ```bash
-! rg "raw_transcript|transcript_window|generated_answer|answer_text|audio_bytes|PRIVATE_" \
+! rg "raw_transcript|generated_answer|answer_text|audio_bytes|PRIVATE_" \
   saymo/analysis/realtime_policy.py \
   saymo/analysis/realtime_gate.py
 ```
+
+The policy helper may still use `transcript_window` as an input parameter name.
+Privacy tests must prove that no serialized decision or event payload contains
+a `transcript_window` key or raw transcript value.
 
 ### Static Provider/Audio Mutation Guard
 
@@ -124,8 +128,8 @@ called from the realtime automatic path.
 ### REAL-05: Sanitized Decision Reasons
 
 - Decisions expose stable reason/source labels and sanitized metadata only.
-- No raw transcript, generated answer, daily-note body, audio bytes, or secret
-  appears in decision evidence.
+- No raw transcript, `transcript_window` serialized key, generated answer,
+  daily-note body, audio bytes, or secret appears in decision evidence.
 - Existing audit readers remain backward compatible.
 
 ### REAL-06: Deterministic Boundary
