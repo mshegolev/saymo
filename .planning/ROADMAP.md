@@ -166,7 +166,7 @@ voice selector metadata, provider runtime checks, live-control state
 **Plans**: 5 plans
 
 Plans:
-- [ ] 39-01-PLAN.md — Wrap `saymo auto` and any realtime alias in the shared launch gate
+- [x] 39-01-PLAN.md — Wrap `saymo auto` and any realtime alias in the shared launch gate
 - [ ] 39-02-PLAN.md — Enforce fail-closed response-cache and cloned-voice metadata policy
 - [ ] 39-03-PLAN.md — Block playback on provider loss, takeover, hard-disable, and disabled auto-answer
 - [ ] 39-04-PLAN.md — Preserve explicit manual standup playback without automatic cache-miss fallback
@@ -212,7 +212,7 @@ Phases execute in numeric order: 36 -> 37 -> 38 -> 39 -> 40
 | 36. Call-Ready Preflight and Cache Gate | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
 | 37. Provider and Audio Remediation | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
 | 38. Local Call-Control Daemon and LaunchAgent | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
-| 39. Fail-Closed Realtime Meeting Loop | v1.9 | 0/5 | Not started | - |
+| 39. Fail-Closed Realtime Meeting Loop | v1.9 | 1/5 | In Progress | - |
 | 40. Launch and Realtime Evidence Feedback | v1.9 | 0/4 | Not started | - |
 
 ## Requirement Coverage

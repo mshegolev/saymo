@@ -64,10 +64,10 @@ Requirements for milestone v1.9 Call Launch Readiness.
 
 ### Realtime Meeting Loop
 
-- [ ] **REAL-01**: User can start realtime mode only after the selected
+- [x] **REAL-01**: User can start realtime mode only after the selected
   launch-readiness level passes for the profile, provider, cloned voice,
   cache, handbrake, and audio route.
-- [ ] **REAL-02**: User can preserve the existing `saymo auto` workflow while
+- [x] **REAL-02**: User can preserve the existing `saymo auto` workflow while
   using the same shared launch-readiness gate as any new call-start or
   realtime alias.
 - [ ] **REAL-03**: User can rely on automatic question handling to fail closed
@@ -167,8 +167,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTRL-03 | Phase 38 | Complete |
 | CTRL-04 | Phase 38 | Complete |
 | CTRL-05 | Phase 38 | Complete |
-| REAL-01 | Phase 39 | Pending |
-| REAL-02 | Phase 39 | Pending |
+| REAL-01 | Phase 39 | Complete |
+| REAL-02 | Phase 39 | Complete |
 | REAL-03 | Phase 39 | Pending |
 | REAL-04 | Phase 39 | Pending |
 | REAL-05 | Phase 39 | Pending |
