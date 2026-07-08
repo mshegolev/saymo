@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import asyncio
 import textwrap
 from datetime import date
 from pathlib import Path
@@ -382,6 +383,58 @@ def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
     assert prepared.action == "Run saymo prepare -p standup"
     assert prepared.rerun == "saymo call-ready -p standup --provider glip"
     _assert_private_absent(json.dumps(report.to_dict(), ensure_ascii=False))
+
+
+def test_prepare_saved_standup_metadata_matches_daily_note_hash(tmp_path, monkeypatch):
+    import saymo.commands.core as core
+    from saymo.analysis.cache_metadata import read_voice_cache_metadata
+    from saymo.analysis.launch_sources import prepared_audio_status
+    from saymo.obsidian.daily_notes import daily_note_path, inspect_standup_source
+
+    vault = tmp_path / "Vault"
+    vault.mkdir()
+    config = load_config(config_path=str(_write_config(tmp_path, vault_path=vault)))
+    config.tts.engine = "f5tts_clone"
+    config.voice_selector.profiles_dir = str(_write_voice_profile(tmp_path, approved=True))
+    audio_path = tmp_path / "cache" / "standup.wav"
+
+    async def fake_get_standup_content(_config):
+        return {
+            "yesterday": "Finished the launch gate.",
+            "today": "Close the integration gap.",
+            "today_date": date.today().isoformat(),
+        }
+
+    async def fake_compose_text(_config, notes):
+        assert notes["today"] == "Close the integration gap."
+        return "Prepared launch summary."
+
+    async def fake_synthesize(_config, text, *, purpose="prepare"):
+        assert purpose == "prepare"
+        assert "Prepared launch summary" in text
+        return b"RIFF prepared audio"
+
+    monkeypatch.setattr(core, "_rotate_audio_cache", lambda: None)
+    monkeypatch.setattr(core, "_get_standup_content", fake_get_standup_content)
+    monkeypatch.setattr(core, "_compose_text", fake_compose_text)
+    monkeypatch.setattr(core, "_synthesize", fake_synthesize)
+    monkeypatch.setattr(core, "_get_cached_audio_path", lambda team=False: audio_path)
+
+    asyncio.run(core._prepare(config, save=True, profile_name="standup"))
+
+    note_path = daily_note_path(config.obsidian)
+    daily_hash = inspect_standup_source(note_path).source_sha256
+    metadata = read_voice_cache_metadata(audio_path)
+    status = prepared_audio_status(
+        config,
+        profile="standup",
+        team_mode=False,
+        source_sha256=daily_hash,
+    )
+
+    assert metadata.source_sha256 == daily_hash
+    assert status.ok is True
+    assert status.reason == ""
 
 
 def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch):

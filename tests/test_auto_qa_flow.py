@@ -707,21 +707,416 @@ def test_auto_launch_gate_blocks_before_realtime_setup(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert "call-ready: not ready" in output
     assert "launch-readiness-blocked" in output
-    assert events == [
-        {
-            "created_at": events[0]["created_at"],
+    assert [event["label"] for event in events] == [
+        "launch-start",
+        "launch-readiness-blocked",
+        "launch-end",
+    ]
+    assert events[0] == {
+        "created_at": events[0]["created_at"],
+        "profile": "standup",
+        "provider": "glip",
+        "outcome": "skipped",
+        "label": "launch-start",
+        "source": "launch_readiness",
+        "automatic": True,
+        "intent_key": "",
+        "confidence": None,
+        "audio_path": "",
+        "detail": "realtime launch starting",
+    }
+    assert events[1] == {
+        "created_at": events[1]["created_at"],
+        "profile": "standup",
+        "provider": "glip",
+        "outcome": "blocked",
+        "label": "launch-readiness-blocked",
+        "source": "launch_readiness",
+        "automatic": True,
+        "intent_key": "",
+        "confidence": None,
+        "audio_path": "",
+        "detail": "launch-readiness-blocked",
+    }
+    assert events[2] == {
+        "created_at": events[2]["created_at"],
+        "profile": "standup",
+        "provider": "glip",
+        "outcome": "skipped",
+        "label": "launch-end",
+        "source": "launch_readiness",
+        "automatic": True,
+        "intent_key": "",
+        "confidence": None,
+        "audio_path": "",
+        "detail": "launch-readiness-blocked",
+    }
+
+
+def test_auto_successful_playback_emits_runtime_evidence_labels(
+    tmp_path,
+    monkeypatch,
+):
+    async def scenario():
+        import saymo.commands.core as core_module
+
+        config, audio_path = _auto_loop_config(tmp_path)
+        playback_done = asyncio.Event()
+        events = []
+        provider = MagicMock()
+        provider.name = "FakeMeet"
+        provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
+        provider.switch_mic.return_value = True
+
+        core, _detector = _install_auto_loop_fakes(
+            monkeypatch,
+            tmp_path,
+            provider=provider,
+            cached_audio=audio_path,
+        )
+        monkeypatch.setattr(
+            core,
+            "resolve_realtime_response_decision",
+            AsyncMock(
+                return_value=core.RealtimeResponseDecision(
+                    outcome="speak",
+                    label="response-cache-hit",
+                    source="response_cache",
+                    reason="prepared cached response selected",
+                    audio_path=audio_path,
+                    intent_key="status_ready",
+                    confidence=0.91,
+                )
+            ),
+        )
+
+        async def fake_play_cached_audio(*args, **kwargs):
+            on_playback_start = kwargs.get("on_playback_start")
+            if on_playback_start:
+                on_playback_start()
+            playback_done.set()
+            return SimpleNamespace(
+                success=True,
+                reason="",
+                playback_started=True,
+            )
+
+        monkeypatch.setattr(core, "_play_cached_audio", fake_play_cached_audio)
+        monkeypatch.setattr(
+            core,
+            "append_realtime_decision_event",
+            lambda profile, event, **kwargs: events.append(event.to_dict()),
+            raising=False,
+        )
+
+        await _run_auto_until(
+            playback_done,
+            core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
+        )
+
+        assert [event["label"] for event in events] == [
+            "launch-start",
+            "response-cache-hit",
+            "playback-attempted",
+            "launch-end",
+        ]
+        assert events[2] == {
+            "created_at": events[2]["created_at"],
             "profile": "standup",
             "provider": "glip",
-            "outcome": "blocked",
-            "label": "launch-readiness-blocked",
-            "source": "launch_readiness",
+            "outcome": "spoke",
+            "label": "playback-attempted",
+            "source": "playback",
             "automatic": True,
-            "intent_key": "",
-            "confidence": None,
-            "audio_path": "",
-            "detail": "launch-readiness-blocked",
+            "intent_key": "status_ready",
+            "confidence": 0.91,
+            "audio_path": str(audio_path),
+            "detail": "response-cache-hit",
         }
-    ]
+
+    _run(scenario())
+
+
+def test_auto_stop_control_emits_stop_and_cancel_events(
+    tmp_path,
+    monkeypatch,
+):
+    async def scenario():
+        import saymo.commands.core as core_module
+
+        config, audio_path = _auto_loop_config(tmp_path)
+        playback_started = asyncio.Event()
+        playback_cancelled = asyncio.Event()
+        events = []
+        provider = MagicMock()
+        provider.name = "FakeMeet"
+        provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
+        provider.switch_mic.return_value = True
+        stop_sent = False
+
+        def fake_read_control_commands(profile, offset=0):
+            nonlocal stop_sent
+            if playback_started.is_set() and not stop_sent:
+                stop_sent = True
+                return [
+                    SimpleNamespace(
+                        action="stop",
+                        source="test",
+                        command_id="cmd-stop",
+                        payload={},
+                    )
+                ], 1
+            return [], offset
+
+        core, _detector = _install_auto_loop_fakes(
+            monkeypatch,
+            tmp_path,
+            provider=provider,
+            cached_audio=audio_path,
+            control_commands=fake_read_control_commands,
+        )
+        monkeypatch.setattr(
+            core,
+            "resolve_realtime_response_decision",
+            AsyncMock(
+                return_value=core.RealtimeResponseDecision(
+                    outcome="speak",
+                    label="response-cache-hit",
+                    source="response_cache",
+                    reason="prepared cached response selected",
+                    audio_path=audio_path,
+                )
+            ),
+        )
+
+        async def fake_play_cached_audio(*args, **kwargs):
+            on_playback_start = kwargs.get("on_playback_start")
+            if on_playback_start:
+                on_playback_start()
+            playback_started.set()
+            await asyncio.sleep(10)
+            return SimpleNamespace(
+                success=True,
+                reason="",
+                playback_started=True,
+            )
+
+        def fake_append(profile, event, **kwargs):
+            payload = event.to_dict()
+            events.append(payload)
+            if payload["label"] == "cancel-playback":
+                playback_cancelled.set()
+
+        monkeypatch.setattr(core, "_play_cached_audio", fake_play_cached_audio)
+        monkeypatch.setattr(
+            core,
+            "append_realtime_decision_event",
+            fake_append,
+            raising=False,
+        )
+
+        await _run_auto_until(
+            playback_cancelled,
+            core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
+        )
+
+        labels = [event["label"] for event in events]
+        assert "stop-requested" in labels
+        assert "cancel-playback" in labels
+        assert events[labels.index("stop-requested")]["source"] == "live_control"
+        assert events[labels.index("cancel-playback")]["source"] == "live_control"
+
+    _run(scenario())
+
+
+def test_auto_playback_timeout_emits_timeout_event(tmp_path, monkeypatch):
+    async def scenario():
+        import saymo.commands.core as core_module
+
+        config, audio_path = _auto_loop_config(tmp_path)
+        timeout_seen = asyncio.Event()
+        events = []
+        provider = MagicMock()
+        provider.name = "FakeMeet"
+        provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
+        provider.switch_mic.return_value = True
+
+        core, _detector = _install_auto_loop_fakes(
+            monkeypatch,
+            tmp_path,
+            provider=provider,
+            cached_audio=audio_path,
+        )
+        monkeypatch.setattr(
+            core,
+            "resolve_realtime_response_decision",
+            AsyncMock(
+                return_value=core.RealtimeResponseDecision(
+                    outcome="speak",
+                    label="response-cache-hit",
+                    source="response_cache",
+                    reason="prepared cached response selected",
+                    audio_path=audio_path,
+                )
+            ),
+        )
+
+        async def fake_play_cached_audio(*args, **kwargs):
+            on_playback_start = kwargs.get("on_playback_start")
+            if on_playback_start:
+                on_playback_start()
+            await asyncio.sleep(10)
+            return SimpleNamespace(
+                success=True,
+                reason="",
+                playback_started=True,
+            )
+
+        def fake_append(profile, event, **kwargs):
+            payload = event.to_dict()
+            events.append(payload)
+            if payload["label"] == "playback-timeout":
+                timeout_seen.set()
+
+        monkeypatch.setattr(core, "_play_cached_audio", fake_play_cached_audio)
+        monkeypatch.setattr(
+            core,
+            "append_realtime_decision_event",
+            fake_append,
+            raising=False,
+        )
+
+        await _run_auto_until(
+            timeout_seen,
+            core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
+        )
+
+        labels = [event["label"] for event in events]
+        assert "playback-timeout" in labels
+        assert events[labels.index("playback-timeout")]["source"] == "live_control"
+
+    _run(scenario())
+
+
+def test_auto_launch_event_append_is_best_effort(monkeypatch, capsys):
+    import saymo.commands.core as core
+
+    config = SaymoConfig()
+    config.meetings = {
+        "standup": {
+            "description": "Standup",
+            "provider": "glip",
+            "team": False,
+            "source": "obsidian",
+            "trigger_phrases": ["John"],
+        }
+    }
+    gate = type(
+        "Gate",
+        (),
+        {
+            "profile": "standup",
+            "provider": "glip",
+            "allowed": False,
+            "reason": "launch-readiness-blocked",
+            "report": _blocked_launch_report(),
+        },
+    )()
+    forbidden = MagicMock(
+        side_effect=AssertionError("blocked gate must return before realtime setup")
+    )
+
+    monkeypatch.setattr(
+        core,
+        "evaluate_realtime_launch_gate",
+        lambda config, *, profile, provider_name=None: gate,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        core,
+        "render_realtime_launch_block",
+        lambda gate: "call-ready: not ready\nrealtime: blocked (launch-readiness-blocked)",
+        raising=False,
+    )
+    monkeypatch.setattr(core, "_get_cached_audio_path", forbidden)
+    monkeypatch.setattr(
+        core,
+        "append_realtime_decision_event",
+        MagicMock(side_effect=RuntimeError("event log unavailable")),
+        raising=False,
+    )
+
+    _run(core._auto(config, "tiny", "standup"))
+
+    forbidden.assert_not_called()
+    output = capsys.readouterr().out
+    assert "realtime event skipped" in output
+
+
+def test_auto_launch_event_uses_allowlisted_event_shape(monkeypatch):
+    import saymo.commands.core as core
+
+    config = SaymoConfig()
+    config.meetings = {
+        "standup": {
+            "description": "Standup",
+            "provider": "glip",
+            "team": False,
+            "source": "obsidian",
+            "trigger_phrases": ["John"],
+        }
+    }
+    gate = type(
+        "Gate",
+        (),
+        {
+            "profile": "standup",
+            "provider": "glip",
+            "allowed": False,
+            "reason": "launch-readiness-blocked",
+            "report": _blocked_launch_report(),
+        },
+    )()
+    events = []
+    monkeypatch.setattr(
+        core,
+        "evaluate_realtime_launch_gate",
+        lambda config, *, profile, provider_name=None: gate,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        core,
+        "render_realtime_launch_block",
+        lambda gate: "call-ready: not ready\nrealtime: blocked (launch-readiness-blocked)",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        core,
+        "append_realtime_decision_event",
+        lambda profile, event, **kwargs: events.append(event.to_dict()),
+        raising=False,
+    )
+
+    _run(core._auto(config, "tiny", "standup"))
+
+    serialized = json.dumps(events, ensure_ascii=False)
+    assert "raw_transcript" not in serialized
+    assert "generated_answer" not in serialized
+    assert "daily_note" not in serialized
+    assert "audio_bytes" not in serialized
+    assert {key for event in events for key in event} == {
+        "created_at",
+        "profile",
+        "provider",
+        "outcome",
+        "label",
+        "source",
+        "automatic",
+        "intent_key",
+        "confidence",
+        "audio_path",
+        "detail",
+    }
 
 
 def test_realtime_alias_delegates_to_same_auto_path(tmp_path, monkeypatch):
