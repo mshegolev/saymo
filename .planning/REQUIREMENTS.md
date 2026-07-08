@@ -1,150 +1,148 @@
-# Requirements: Saymo v1.8 Call-ready Voice Clone
+# Requirements: Saymo v1.9 Call Launch Readiness
 
-**Defined:** 2026-07-07
+**Defined:** 2026-07-08
 **Core Value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
 
-## v1.8 Requirements
+## v1.9 Requirements
 
-Requirements for milestone v1.8 Call-ready Voice Clone.
+Requirements for milestone v1.9 Call Launch Readiness.
 
-### Voice Asset Inventory
+### Call-Ready Launch Gate
 
-- [x] **INV-01**: User can run a read-only voice inventory that reports active
-  engine config, known TTS engines, F5 paths, Qwen support status, XTTS/RVC
-  remnants, voice samples, transcript sidecars, training datasets, response
-  caches, and benchmark runs.
-- [x] **INV-02**: User can see each local voice asset classified as usable,
-  missing, stale, duplicate, protected, dangerous to delete, or requiring user
-  action without any file deletion or mutation.
-- [x] **INV-03**: User can export sanitized inventory JSON/Markdown that
-  includes paths, sizes, hashes or fingerprints where useful, and roles, while
-  omitting private transcript text and secrets.
-- [x] **INV-04**: Inventory and profile checks treat `~/.saymo/voice_samples`,
-  `~/.saymo/training_dataset*`, trained adapters, and F5 runtime assets as
-  protected local state.
+- [ ] **LAUN-01**: User can run one call-ready command for a profile and
+  provider that returns a concise `ready` or `not ready` result before a call.
+- [ ] **LAUN-02**: User can have the call-ready flow create or verify today's
+  Obsidian daily note without overwriting existing note content.
+- [ ] **LAUN-03**: User can see daily-note source readiness separately from
+  file existence, including a blocker when the note contains only placeholders
+  or no usable standup content.
+- [ ] **LAUN-04**: User can have the call-ready flow prepare or verify the
+  current standup audio for the selected profile without silently accepting
+  stale prepared WAVs.
+- [ ] **LAUN-05**: User can see response-cache coverage for the selected
+  profile, voice, and response library as counts plus exact stale or missing
+  variant blockers.
+- [ ] **LAUN-06**: User can see approved cloned-voice metadata for prepared
+  and response-cache audio, including selected engine, voice profile,
+  approval state, reference fingerprint, and stale-cache reason.
+- [ ] **LAUN-07**: User can get grouped `block`, `warn`, and `info`
+  remediation with exact action and rerun commands for every call-ready check.
 
-### Voice Profile and Reference Setup
+### Provider and Audio Readiness
 
-- [x] **PROF-01**: User can create or update a voice profile that references an
-  existing WAV and transcript sidecar without copying, rewriting, trimming, or
-  retraining from those assets.
-- [x] **PROF-02**: User can validate a profile reference for existence,
-  duration, sample rate, channel count, sidecar transcript availability,
-  clipping/too-quiet risk, and SHA/hash drift.
-- [x] **PROF-03**: User can inspect voice profile status, active engine,
-  reference fingerprint, approval state, fallback policy, and linked benchmark
-  runs.
-- [x] **PROF-04**: Any profile mutation is explicit and atomic; dry-run profile
-  commands show proposed changes without writing.
+- [ ] **PROV-01**: User can verify the configured provider and Chrome meeting
+  tab are present, identifiable, and actionable before starting realtime mode.
+- [ ] **PROV-02**: User can verify BlackHole capture/playback routing and the
+  real microphone takeover route before joining or starting the live loop.
+- [ ] **PROV-03**: User can see provider capability details such as tab
+  activation, mic switching support, mute recovery, and unsupported provider
+  limitations without parsing raw errors.
+- [ ] **PROV-04**: User can see macOS permission blockers for hotkeys,
+  microphone capture, Chrome automation, and audio routing with targeted
+  remediation.
+- [ ] **PROV-05**: User can run provider/audio readiness without destructive
+  provider actions such as killing Chrome, leaving a meeting, or changing
+  system routes unless an explicit command requests it.
 
-### Benchmark and Baseline Evidence
+### Local Control Daemon
 
-- [x] **BEN-01**: User can run F5 benchmark dry-run, smoke, and full baseline
-  runs with the existing Russian phrase set, stable phrase ids, reference
-  metadata, per-clip latency, and incremental manifest writes.
-- [x] **BEN-02**: User can produce benchmark artifacts under
-  `~/.saymo/voice_benchmarks/<run_id>/`: WAV clips, `manifest.json`,
-  `blind-review.md`, `review.json`, and `score-report.md`.
-- [x] **BEN-03**: User can score benchmark clips for similarity, naturalness,
-  Russian pronunciation, artifacts, notes, and call-readiness without leaking
-  private reference transcript text.
-- [x] **BEN-04**: Benchmark reports clearly mark runs as dry-run, partial,
-  complete, rejected, or approved and preserve useful evidence after
-  interrupted long runs.
-- [x] **BEN-05**: F5 baseline score evidence exists before any challenger can
-  be treated as a promotion candidate.
+- [ ] **CTRL-01**: User can install, start, stop, restart, and inspect a
+  per-profile Saymo call-control LaunchAgent from CLI commands.
+- [ ] **CTRL-02**: User can run a foreground call-control daemon that
+  registers configured global hotkeys and publishes a fresh heartbeat/status
+  for the selected profile.
+- [ ] **CTRL-03**: User can see whether the call-control daemon is installed,
+  loaded, running, stale, crash-looping, missing permissions, or using an
+  outdated LaunchAgent plist.
+- [ ] **CTRL-04**: User can queue the existing live-control actions from the
+  daemon or status surface with the same semantics and audit trail as CLI and
+  current hotkeys.
+- [ ] **CTRL-05**: User can prove the handbrake is reachable before realtime
+  mode by checking heartbeat freshness, hotkey registration, command write,
+  command consumption, and latest applied action evidence.
 
-### Candidate Engine Gates
+### Realtime Meeting Loop
 
-- [x] **CAND-01**: User can run Qwen3 Base dry-run without importing
-  `qwen_tts`, installing packages, downloading model weights, or changing
-  production config.
-- [x] **CAND-02**: User can run real Qwen3 Base benchmark only when a reference
-  transcript is provided through `--ref-text`, `--ref-text-file`, or sidecar
-  `.txt`, and the command fails fast otherwise.
-- [x] **CAND-03**: Qwen3 Base benchmark evidence is kept separate from the
-  existing production `qwen3_clone` MLX runtime until runtime readiness is
-  proven explicitly.
-- [x] **CAND-04**: CosyVoice, GPT-SoVITS, LoRA training, and other heavier
-  candidates remain blocked until earlier score reports justify opening the
-  next gate.
-- [x] **CAND-05**: Approved installs use an explicit, documented isolated
-  runtime plan, preferring the internal Nexus3 PyPI mirror when package
-  resolution is needed, without hardcoding the mirror into public config.
+- [ ] **REAL-01**: User can start realtime mode only after the selected
+  launch-readiness level passes for the profile, provider, cloned voice,
+  cache, handbrake, and audio route.
+- [ ] **REAL-02**: User can preserve the existing `saymo auto` workflow while
+  using the same shared launch-readiness gate as any new call-start or
+  realtime alias.
+- [ ] **REAL-03**: User can rely on automatic question handling to fail closed
+  on response-cache miss, stale voice metadata, unsafe fallback, provider loss,
+  manual takeover, hard-disable, or disabled auto-answer.
+- [ ] **REAL-04**: User can still trigger explicit prepared standup playback as
+  a manual action when allowed, without that manual path becoming automatic
+  cache-miss fallback.
+- [ ] **REAL-05**: User can see why each realtime decision spoke, skipped, or
+  blocked using sanitized route names such as response-cache hit,
+  cache-miss-blocked, handbrake-blocked, provider-blocked, or fallback-blocked.
+- [ ] **REAL-06**: User can keep deterministic addressing and existing
+  handbrake state as the live-call safety boundary; classifiers or LLM wording
+  cannot override a deterministic skip in this milestone.
 
-### Call Runtime Selector and Fallback
+### Launch and Realtime Evidence
 
-- [x] **RUN-01**: User can configure an approved engine and fallback chain per
-  purpose: preview, prepare, response cache, realtime, and approved live call.
-- [x] **RUN-02**: Runtime synthesis routes through one selector that uses the
-  existing TTS factory and records selected engine, attempted engine, fallback
-  engine, cloned-vs-non-cloned state, and blocked reason.
-- [x] **RUN-03**: `prepare`, `prepare-responses`, `speak`, approved draft
-  playback, and `auto` use voice profile and fallback readiness without
-  bypassing existing handbrake, approval, timeout, and provider safety gates.
-- [x] **RUN-04**: Cached prepared audio and response-cache entries include
-  voice profile, reference fingerprint, engine, fallback, and selector
-  metadata so stale voice audio cannot be silently treated as current.
-- [x] **RUN-05**: Non-cloned fallbacks such as Piper and macOS `say` are
-  visible and blocked for live-call output unless explicitly approved as
-  non-cloned fallback behavior.
-
-### Preview, Approval, and Safety Gates
-
-- [x] **SAFE-01**: User can preview cloned voice locally or on the configured
-  monitor route before call approval, with audit metadata marking the output
-  as preview-only.
-- [x] **SAFE-02**: User can approve or reject a voice profile/engine only by
-  linking benchmark score evidence and recording whether the 7/10 similarity
-  and artifact gates passed or were explicitly overridden.
-- [x] **SAFE-03**: Real call output through `speak`, approved draft playback,
-  hotkey-triggered speak, or `auto` is blocked when the active voice profile,
-  benchmark approval, reference fingerprint, or cache fingerprint is missing,
-  stale, or unapproved.
-- [x] **SAFE-04**: `auto-preflight`, `rehearsal`, `session-scorecard`, and
-  `safety-soak` include voice readiness, selected engine, benchmark approval,
-  fallback status, cache fingerprint, and remediation hints.
-- [x] **SAFE-05**: Safety-soak fails when unapproved cloned audio, stale cache,
-  unexpected non-cloned fallback, manual takeover, hard-disable, or unapproved
-  generated draft conditions would allow unsafe live playback.
+- [ ] **EVID-01**: User can inspect a sanitized launch-readiness artifact that
+  records checks, blocker categories, cache counts, voice/cache fingerprints,
+  provider status, daemon status, mode, and rerun commands without raw meeting
+  content.
+- [ ] **EVID-02**: User can inspect sanitized realtime events for launch
+  start/end, cache hits/misses, fallback blocks, provider failures, playback
+  attempts, handbrake actions, and stop reasons.
+- [ ] **EVID-03**: User can see launch health, daemon/control availability,
+  cache hit/miss counts, unsafe fallback blocks, and provider drift in
+  rehearsal or session scorecards.
+- [ ] **EVID-04**: User can run safety-soak against v1.9 launch and realtime
+  evidence, and the gate fails on unsafe playback, stale cache, missing daemon
+  readiness, provider blockers, or unapproved fallback conditions.
+- [ ] **EVID-05**: User can troubleshoot launch and realtime failures from
+  sanitized evidence that includes log/artifact paths and next rerun commands.
 
 ## Future Requirements
 
-Deferred beyond v1.8.
+Deferred beyond v1.9.
 
-### Fine-tuning and New Candidates
+### Native UI and Scheduling
 
-- User can run Qwen3 LoRA or GPT-SoVITS fine-tuning after zero-shot candidates
-  and dataset quality evidence justify the training cost.
-- User can install and benchmark CosyVoice after Qwen3 score reports show that
-  the next candidate gate should open.
-- User can export selected live-call recordings into a separate consented
-  voice-training dataset after privacy and speaker-leakage safeguards exist.
+- User can manage Saymo from a polished native macOS menu bar app with
+  settings, history, and answer-cockpit integration after the daemon/control
+  contract is stable.
+- User can launch call readiness from calendar events or meeting URLs after the
+  manual call-ready workflow is trusted.
+- User can use voice commands as an additional handbrake path after hotkeys and
+  daemon controls prove reliable.
 
-### Packaging and UI
+### Advanced Realtime Behavior
 
-- User can manage voice profiles, benchmark runs, and approvals from a native
-  or browser UI after CLI artifacts stabilize.
-- User can sync or back up voice profiles across machines with encryption and
-  explicit handling of large private assets.
+- User can opt into guarded live LLM+TTS fallback after latency, quality,
+  source-grounding, approval, and failure-mode evidence justify it.
+- User can let Saymo perform limited provider auto-repair after non-destructive
+  remediation commands and provider-specific tests prove safety.
+- User can use richer realtime classifier assistance after deterministic
+  addressing and saved-session regressions remain the safety boundary.
 
-### Automated Scoring
+### Voice and Model Work
 
-- User can add optional speaker-embedding or MOS-like scoring as supplemental
-  evidence after manual blind A/B approval remains the authority.
+- User can retrain or replace voice models after explicit dataset, runtime,
+  and cleanup gates are added in a separate milestone.
+- User can benchmark heavier candidate engines only after v1.8 score evidence
+  and isolated install plans justify the cost.
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Automatic deletion or deduplication of voice/model assets | v1.8 inventories protected assets; destructive cleanup needs a separate explicit flow. |
-| Training started by setup, inventory, profile, benchmark, preflight, or safety-soak | Training is expensive and must stay behind explicit commands and a later fine-tune decision. |
-| Required cloud voice cloning provider | Saymo remains local-by-default and privacy-preserving. |
-| CosyVoice/GPT-SoVITS installation in the first implementation phase | Candidate order requires F5 and Qwen3 score reports before heavier stacks. |
-| Production config flip during benchmark generation | Benchmarks are experiments; runtime activation requires explicit profile approval. |
-| Using live call recordings as voice-clone training data | Captured calls are reliability fixtures in this milestone, not voice-training material. |
-| Fully automatic objective voice scoring as the promotion authority | User-perceived identity and artifacts require blind A/B approval first. |
+| Full native menu bar application packaging | v1.9 needs a daemon/status/control contract first; polished UI can follow later. |
+| Calendar-based automatic launch | Manual call-ready must prove reliable before unattended scheduling. |
+| Live LLM+TTS fallback for automatic answers | Cache misses must fail closed until latency, approval, and voice-quality gates exist. |
+| Automatic provider repair that changes live app state | Pre-call remediation should be explicit; killing Chrome or changing call state can disrupt meetings. |
+| Voice model training, downloads, or cleanup from call-ready | Voice assets are protected and expensive; training/cleanup stays behind explicit commands. |
+| Using live call recordings as voice-training data | Call recordings remain reliability fixtures, not voice identity training data. |
+| Cloud voice or meeting control as a required path | Saymo remains local-by-default. |
+| Full autonomous meeting participation | The product remains an assistant with manual takeover and explicit safety boundaries. |
 
 ## Traceability
 
@@ -152,40 +150,40 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INV-01 | Phase 31 | Complete |
-| INV-02 | Phase 31 | Complete |
-| INV-03 | Phase 31 | Complete |
-| INV-04 | Phase 31 | Complete |
-| PROF-01 | Phase 31 | Complete |
-| PROF-02 | Phase 31 | Complete |
-| PROF-03 | Phase 31 | Complete |
-| PROF-04 | Phase 31 | Complete |
-| BEN-01 | Phase 32 | Complete |
-| BEN-02 | Phase 32 | Complete |
-| BEN-03 | Phase 32 | Complete |
-| BEN-04 | Phase 32 | Complete |
-| BEN-05 | Phase 32 | Complete |
-| CAND-01 | Phase 33 | Complete |
-| CAND-02 | Phase 33 | Complete |
-| CAND-03 | Phase 33 | Complete |
-| CAND-04 | Phase 33 | Complete |
-| CAND-05 | Phase 33 | Complete |
-| RUN-01 | Phase 34 | Complete |
-| RUN-02 | Phase 34 | Complete |
-| RUN-03 | Phase 34 | Complete |
-| RUN-04 | Phase 34 | Complete |
-| RUN-05 | Phase 34 | Complete |
-| SAFE-01 | Phase 35 | Complete |
-| SAFE-02 | Phase 35 | Complete |
-| SAFE-03 | Phase 35 | Complete |
-| SAFE-04 | Phase 35 | Complete |
-| SAFE-05 | Phase 35 | Complete |
+| LAUN-01 | Pending roadmap | Pending |
+| LAUN-02 | Pending roadmap | Pending |
+| LAUN-03 | Pending roadmap | Pending |
+| LAUN-04 | Pending roadmap | Pending |
+| LAUN-05 | Pending roadmap | Pending |
+| LAUN-06 | Pending roadmap | Pending |
+| LAUN-07 | Pending roadmap | Pending |
+| PROV-01 | Pending roadmap | Pending |
+| PROV-02 | Pending roadmap | Pending |
+| PROV-03 | Pending roadmap | Pending |
+| PROV-04 | Pending roadmap | Pending |
+| PROV-05 | Pending roadmap | Pending |
+| CTRL-01 | Pending roadmap | Pending |
+| CTRL-02 | Pending roadmap | Pending |
+| CTRL-03 | Pending roadmap | Pending |
+| CTRL-04 | Pending roadmap | Pending |
+| CTRL-05 | Pending roadmap | Pending |
+| REAL-01 | Pending roadmap | Pending |
+| REAL-02 | Pending roadmap | Pending |
+| REAL-03 | Pending roadmap | Pending |
+| REAL-04 | Pending roadmap | Pending |
+| REAL-05 | Pending roadmap | Pending |
+| REAL-06 | Pending roadmap | Pending |
+| EVID-01 | Pending roadmap | Pending |
+| EVID-02 | Pending roadmap | Pending |
+| EVID-03 | Pending roadmap | Pending |
+| EVID-04 | Pending roadmap | Pending |
+| EVID-05 | Pending roadmap | Pending |
 
 **Coverage:**
-- v1.8 requirements: 28 total
-- Mapped to phases: 28
-- Unmapped: 0
+- v1.9 requirements: 28 total
+- Mapped to phases: 0
+- Unmapped: 28
 
 ---
-*Requirements defined: 2026-07-07*
-*Last updated: 2026-07-07 after completing Phase 35*
+*Requirements defined: 2026-07-08*
+*Last updated: 2026-07-08 after defining v1.9 requirements*
