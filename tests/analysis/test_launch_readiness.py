@@ -252,7 +252,7 @@ def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
 
 
 def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch):
-    from saymo.analysis import launch_cache, launch_sources
+    from saymo.analysis import launch_cache, launch_sources, provider_audio_readiness
     from saymo.analysis.launch_readiness import (
         LaunchReadinessCheck,
         collect_launch_readiness,
@@ -315,6 +315,19 @@ def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch
             ok=True,
         ),
     )
+    monkeypatch.setattr(
+        provider_audio_readiness,
+        "collect_provider_audio_checks",
+        lambda config, *, profile, provider_name: (
+            LaunchReadinessCheck(
+                key="provider_meeting_tab",
+                label="provider meeting tab",
+                severity="block",
+                ok=True,
+                detail="meeting_found",
+            ),
+        ),
+    )
 
     report = collect_launch_readiness(config, profile="standup", provider_name=None)
 
@@ -325,16 +338,12 @@ def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch
         "prepared_standup_audio",
         "response_cache_coverage",
         "cloned_voice_metadata",
-        "provider_audio_basic_scope",
+        "provider_meeting_tab",
     ]
-    provider_scope = _check_by_key(report, "provider_audio_basic_scope")
-    assert provider_scope.severity == "info"
-    assert provider_scope.ok is True
-    assert provider_scope.detail == "deferred_to_phase_37"
-    assert provider_scope.metadata == {
-        "deferred_to_phase": "37",
-        "scope": "basic_provider_audio_placeholder",
-    }
+    provider_tab = _check_by_key(report, "provider_meeting_tab")
+    assert provider_tab.severity == "block"
+    assert provider_tab.ok is True
+    assert provider_tab.detail == "meeting_found"
 
 
 def test_write_launch_readiness_artifact_writes_sorted_sanitized_json(tmp_path):

@@ -174,6 +174,104 @@ def test_call_ready_json_is_sanitized(tmp_path, monkeypatch):
     _assert_no_private_text(result.output)
 
 
+def test_call_ready_includes_provider_tab_readiness(tmp_path, monkeypatch):
+    from unittest.mock import MagicMock
+
+    from saymo.analysis import launch_cache, launch_sources
+    from saymo.analysis.launch_readiness import LaunchReadinessCheck
+    import saymo.providers.factory as provider_factory
+    from saymo.providers.base import MeetingStatus
+
+    config_path = _write_config(tmp_path)
+    provider = MagicMock()
+    provider.name = "glip"
+    provider.url_pattern = "app.glip.com"
+    provider.check_ready.return_value = MeetingStatus(
+        app_running=True,
+        meeting_found=True,
+        tab_info=(1, 2),
+    )
+    monkeypatch.setattr(provider_factory, "get_provider", lambda name: provider)
+    monkeypatch.setattr(
+        launch_sources,
+        "collect_daily_note_checks",
+        lambda config, profile, *, provider_name, prepare: (
+            LaunchReadinessCheck(
+                key="daily_note_present",
+                label="daily note present",
+                severity="block",
+                ok=True,
+                metadata={"source_sha256": "ignored"},
+            ),
+            LaunchReadinessCheck(
+                key="daily_note_source_ready",
+                label="daily note source ready",
+                severity="block",
+                ok=True,
+                metadata={"source_sha256": "abc123"},
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        launch_sources,
+        "collect_prepared_audio_check",
+        lambda config, profile, *, provider_name, team_mode, source_sha256: LaunchReadinessCheck(
+            key="prepared_standup_audio",
+            label="prepared standup audio",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_response_cache_check",
+        lambda config, *, profile, provider_name: LaunchReadinessCheck(
+            key="response_cache_coverage",
+            label="response cache coverage",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_voice_metadata_check",
+        lambda config, *, profile, provider_name: LaunchReadinessCheck(
+            key="cloned_voice_metadata",
+            label="cloned voice metadata",
+            severity="block",
+            ok=True,
+        ),
+    )
+
+    json_result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "call-ready",
+            "-p",
+            "standup",
+            "--provider",
+            "glip",
+            "--json",
+        ],
+    )
+    human_result = CliRunner().invoke(
+        main,
+        ["--config", str(config_path), "call-ready", "-p", "standup", "--provider", "glip"],
+    )
+
+    assert json_result.exit_code == 0
+    payload = json.loads(json_result.output)
+    checks = {check["key"]: check for check in payload["checks"]}
+    assert checks["provider_meeting_tab"]["detail"] == "meeting_found"
+    assert checks["provider_meeting_tab"]["metadata"]["tab_info"] == [1, 2]
+    assert human_result.exit_code == 0
+    assert "provider_meeting_tab" in human_result.output
+    _assert_no_private_text(json_result.output)
+    _assert_no_private_text(human_result.output)
+
+
 def test_call_ready_writes_output_artifact_in_human_mode(tmp_path, monkeypatch):
     import saymo.commands.call_ready as call_ready_module
     from saymo.analysis.launch_readiness import LaunchReadinessCheck, LaunchReadinessReport
