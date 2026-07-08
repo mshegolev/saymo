@@ -230,7 +230,7 @@ def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
     config = load_config(config_path=str(_write_config(tmp_path, vault_path=vault)))
 
     report = collect_launch_readiness(config, profile="standup", provider_name="glip")
-    prepared = _check_by_key(report, "prepared_audio")
+    prepared = _check_by_key(report, "prepared_standup_audio")
 
     assert prepared.severity == "block"
     assert prepared.ok is False
@@ -239,7 +239,7 @@ def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
         "audio_missing",
         "voice_metadata_missing",
         "voice_metadata_stale",
-        "source_digest_stale",
+        "source_metadata_stale",
     }
     _assert_private_absent(json.dumps(report.to_dict(), ensure_ascii=False))
 

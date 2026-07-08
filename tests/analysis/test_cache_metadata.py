@@ -63,6 +63,7 @@ def test_voice_cache_metadata_check_rejects_missing_and_stale_sidecars(tmp_path)
 def test_voice_cache_metadata_records_source_digest_without_text(tmp_path):
     from saymo.analysis.cache_metadata import (
         build_voice_cache_metadata,
+        check_voice_cache_metadata,
         write_voice_cache_metadata,
     )
 
@@ -86,4 +87,7 @@ def test_voice_cache_metadata_records_source_digest_without_text(tmp_path):
 
     assert payload["source_sha256"]
     assert metadata.source_sha256 != changed.source_sha256
+    source_stale = check_voice_cache_metadata(audio, changed)
+    assert source_stale.valid is False
+    assert source_stale.blocked_reason == "source_metadata_stale"
     assert "PRIVATE_DAILY_NOTE" not in out.read_text(encoding="utf-8")
