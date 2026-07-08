@@ -365,6 +365,75 @@ def test_write_launch_readiness_artifact_writes_sorted_sanitized_json(tmp_path):
     _assert_private_absent(raw)
 
 
+def test_launch_readiness_remediation_groups_by_severity():
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        LaunchReadinessReport,
+        render_grouped_launch_remediation,
+    )
+    from saymo.analysis.remediation import hints_from_launch_readiness
+
+    report = LaunchReadinessReport(
+        profile="standup",
+        provider="glip",
+        checks=(
+            LaunchReadinessCheck(
+                key="daily_note_source_ready",
+                label="daily note source ready",
+                severity="block",
+                ok=False,
+                detail="placeholder_only",
+                action="Run saymo call-ready -p standup --provider glip --prepare",
+                rerun="saymo call-ready -p standup --provider glip --prepare",
+            ),
+            LaunchReadinessCheck(
+                key="cloned_voice_metadata",
+                label="cloned voice metadata",
+                severity="warn",
+                ok=False,
+                detail="voice_profile_unapproved",
+                action="Approve a cloned voice profile for live calls",
+                rerun="saymo call-ready -p standup --provider glip --prepare",
+            ),
+            LaunchReadinessCheck(
+                key="provider_audio_basic_scope",
+                label="provider audio basic scope",
+                severity="info",
+                ok=False,
+                detail="deferred_to_phase_37",
+                action="Run Phase 37 provider/audio readiness",
+                rerun="saymo call-ready -p standup --provider glip --prepare",
+            ),
+        ),
+    )
+
+    hints = hints_from_launch_readiness(report)
+
+    assert [(hint.category, hint.title) for hint in hints] == [
+        ("source-data", "daily note source ready"),
+        ("voice-cache", "cloned voice metadata"),
+        ("retest", "provider audio basic scope"),
+    ]
+    assert render_grouped_launch_remediation(report).splitlines() == [
+        "remediation:",
+        "block:",
+        "- [source-data] daily note source ready",
+        "  why: placeholder_only",
+        "  action: Run saymo call-ready -p standup --provider glip --prepare",
+        "  rerun: saymo call-ready -p standup --provider glip --prepare",
+        "warn:",
+        "- [voice-cache] cloned voice metadata",
+        "  why: voice_profile_unapproved",
+        "  action: Approve a cloned voice profile for live calls",
+        "  rerun: saymo call-ready -p standup --provider glip --prepare",
+        "info:",
+        "- [retest] provider audio basic scope",
+        "  why: deferred_to_phase_37",
+        "  action: Run Phase 37 provider/audio readiness",
+        "  rerun: saymo call-ready -p standup --provider glip --prepare",
+    ]
+
+
 def test_voice_metadata_is_sanitized_and_actionable(tmp_path):
     from saymo.analysis.launch_cache import collect_voice_metadata_check
 
