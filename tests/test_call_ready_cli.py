@@ -18,6 +18,29 @@ PRIVATE_STRINGS = (
     "SECRET_TOKEN",
 )
 
+EXPECTED_GROUPED_REMEDIATION = """
+remediation:
+block:
+- [source-data] daily note source ready
+  why: placeholder_only
+  action: Run saymo call-ready -p standup --provider glip --prepare
+  rerun: saymo call-ready -p standup --provider glip --prepare
+- [source-data] response cache coverage
+  why: 0/2 variants ready
+  action: Run saymo prepare-responses for the selected profile
+  rerun: saymo call-ready -p standup --provider glip --prepare
+warn:
+- [voice-cache] cloned voice metadata
+  why: voice_profile_unapproved
+  action: Approve a cloned voice profile for live calls
+  rerun: saymo call-ready -p standup --provider glip --prepare
+info:
+- [retest] provider audio basic scope
+  why: deferred_to_phase_37
+  action: Run Phase 37 provider/audio readiness
+  rerun: saymo call-ready -p standup --provider glip --prepare
+""".strip()
+
 
 def _write_config(tmp_path, *, vault_path: Path | None = None) -> Path:
     config_path = tmp_path / "config.yaml"
@@ -350,28 +373,6 @@ def test_call_ready_groups_remediation_with_rerun_commands(tmp_path, monkeypatch
 
     assert result.exit_code == 1
     assert _top_level_result_lines(result.output) == ["call-ready: not ready"]
-    expected = [
-        "remediation:",
-        "block:",
-        "- [source-data] daily note source ready",
-        "  why: placeholder_only",
-        "  action: Run saymo call-ready -p standup --provider glip --prepare",
-        "  rerun: saymo call-ready -p standup --provider glip --prepare",
-        "- [source-data] response cache coverage",
-        "  why: 0/2 variants ready",
-        "  action: Run saymo prepare-responses for the selected profile",
-        "  rerun: saymo call-ready -p standup --provider glip --prepare",
-        "warn:",
-        "- [voice-cache] cloned voice metadata",
-        "  why: voice_profile_unapproved",
-        "  action: Approve a cloned voice profile for live calls",
-        "  rerun: saymo call-ready -p standup --provider glip --prepare",
-        "info:",
-        "- [retest] provider audio basic scope",
-        "  why: deferred_to_phase_37",
-        "  action: Run Phase 37 provider/audio readiness",
-        "  rerun: saymo call-ready -p standup --provider glip --prepare",
-    ]
-    for line in expected:
+    for line in EXPECTED_GROUPED_REMEDIATION.splitlines():
         assert line in result.output
     _assert_no_private_text(result.output)

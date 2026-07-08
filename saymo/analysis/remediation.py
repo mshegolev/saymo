@@ -56,6 +56,29 @@ def hints_from_preflight_checks(profile: str, checks: Iterable[Any]) -> list[Rem
     return _dedupe(hints)
 
 
+def hints_from_launch_readiness(report: Any) -> list[RemediationHint]:
+    """Return remediation hints for failed/warning call-ready checks."""
+    hints: list[RemediationHint] = []
+    for check in getattr(report, "checks", ()) or ():
+        severity = str(getattr(check, "severity", "") or "")
+        ok = bool(getattr(check, "ok", False))
+        if ok and severity != "warn":
+            continue
+        metadata = dict(getattr(check, "metadata", {}) or {})
+        key = str(getattr(check, "key", "") or "")
+        category = str(metadata.get("category") or _launch_category_for_check(key))
+        hints.append(
+            RemediationHint(
+                category=category,
+                title=str(getattr(check, "label", "") or key),
+                detail=str(getattr(check, "detail", "") or ""),
+                action=str(getattr(check, "action", "") or ""),
+                rerun=str(getattr(check, "rerun", "") or ""),
+            )
+        )
+    return _dedupe(hints)
+
+
 def hints_from_rehearsal(artifact: RehearsalArtifact) -> list[RemediationHint]:
     """Return remediation hints for a rehearsal artifact."""
     rerun = f"saymo rehearsal -p {_safe_profile(artifact.profile)}"
@@ -291,6 +314,16 @@ def _hint_for_check(name: str, detail: str, *, rerun: str) -> RemediationHint:
     if "hotkey" in lower:
         return RemediationHint("config", "Configure global hotkeys", detail, "Set the primary safety hotkeys in config.yaml.", rerun)
     return RemediationHint("retest", f"Recheck {name}", detail, "Fix the reported issue and rerun the check.", rerun)
+
+
+def _launch_category_for_check(key: str) -> str:
+    if key.startswith("daily_note_") or key == "prepared_standup_audio":
+        return "source-data"
+    if key == "response_cache_coverage":
+        return "source-data"
+    if key == "cloned_voice_metadata":
+        return "voice-cache"
+    return "retest"
 
 
 def _hint_for_warning(warning: str, *, rerun: str) -> RemediationHint:

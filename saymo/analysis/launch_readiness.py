@@ -124,6 +124,45 @@ def render_launch_readiness(report: LaunchReadinessReport) -> str:
                 lines.append(f"  action: {_sanitize_text(check.action)}")
             if check.rerun:
                 lines.append(f"  rerun: {_sanitize_text(check.rerun)}")
+    lines.extend(render_grouped_launch_remediation(report).splitlines())
+    return "\n".join(lines)
+
+
+def render_grouped_launch_remediation(report: LaunchReadinessReport) -> str:
+    """Render failed and warning launch checks as grouped remediation."""
+    from saymo.analysis.remediation import hints_from_launch_readiness
+
+    relevant_checks = [
+        check
+        for check in report.checks
+        if not check.ok or check.severity == "warn"
+    ]
+    hints = hints_from_launch_readiness(report)
+    grouped: dict[Severity, list[Any]] = {
+        "block": [],
+        "warn": [],
+        "info": [],
+    }
+    for check, hint in zip(relevant_checks, hints, strict=False):
+        grouped[check.severity].append(hint)
+
+    lines = ["remediation:"]
+    for severity in ("block", "warn", "info"):
+        lines.append(f"{severity}:")
+        items = grouped[severity]
+        if not items:
+            lines.append("- none")
+            continue
+        for hint in items:
+            lines.append(
+                f"- [{_sanitize_text(hint.category)}] {_sanitize_text(hint.title)}"
+            )
+            if hint.detail:
+                lines.append(f"  why: {_sanitize_text(hint.detail)}")
+            if hint.action:
+                lines.append(f"  action: {_sanitize_text(hint.action)}")
+            if hint.rerun:
+                lines.append(f"  rerun: {_sanitize_text(hint.rerun)}")
     return "\n".join(lines)
 
 
