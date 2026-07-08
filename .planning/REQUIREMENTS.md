@@ -12,12 +12,12 @@ Requirements for milestone v1.9 Call Launch Readiness.
 
 - [x] **LAUN-01**: User can run one call-ready command for a profile and
   provider that returns a concise `ready` or `not ready` result before a call.
-- [ ] **LAUN-02**: User can have the call-ready flow create or verify today's
+- [x] **LAUN-02**: User can have the call-ready flow create or verify today's
   Obsidian daily note without overwriting existing note content.
-- [ ] **LAUN-03**: User can see daily-note source readiness separately from
+- [x] **LAUN-03**: User can see daily-note source readiness separately from
   file existence, including a blocker when the note contains only placeholders
   or no usable standup content.
-- [ ] **LAUN-04**: User can have the call-ready flow prepare or verify the
+- [x] **LAUN-04**: User can have the call-ready flow prepare or verify the
   current standup audio for the selected profile without silently accepting
   stale prepared WAVs.
 - [x] **LAUN-05**: User can see response-cache coverage for the selected
@@ -151,9 +151,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | LAUN-01 | Phase 36 | Complete |
-| LAUN-02 | Phase 36 | Pending |
-| LAUN-03 | Phase 36 | Pending |
-| LAUN-04 | Phase 36 | Pending |
+| LAUN-02 | Phase 36 | Complete |
+| LAUN-03 | Phase 36 | Complete |
+| LAUN-04 | Phase 36 | Complete |
 | LAUN-05 | Phase 36 | Complete |
 | LAUN-06 | Phase 36 | Complete |
 | LAUN-07 | Phase 36 | Complete |
