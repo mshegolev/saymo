@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 2
-status: in_progress
-stopped_at: Completed 37-01-PLAN.md
-last_updated: "2026-07-08T14:11:30.314Z"
+current_plan: 3
+status: executing
+stopped_at: Completed 37-02-PLAN.md
+last_updated: "2026-07-08T14:21:38.876Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
-  percent: 63
+  completed_plans: 6
+  percent: 75
 ---
 
 # Project State
@@ -29,21 +29,21 @@ Provider and Audio Remediation.
 ## Current Position
 
 Phase: 37 (2 of 5) - Provider and Audio Remediation
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 4
-Plan: 1 of 4 completed; next plan is 37-02
-Status: Phase 37 in progress; Plan 37-01 complete.
+Plan: 2 of 4 completed; next plan is 37-03
+Status: Phase 37 in progress; Plan 37-02 complete.
 Last activity: 2026-07-08
 
-Progress: [██████░░░░] 63%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 5
-- Average duration: 6 min
-- Total execution time: 28 min
+- Plans completed: 6
+- Average duration: 5 min
+- Total execution time: 32 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -59,13 +59,14 @@ Progress: [██████░░░░] 63%
 | 36-03 | 4 min | 2 | 3 |
 | 36-04 | 7 min | 3 | 6 |
 | 37-01 | 5 min | 2 | 6 |
+| 37-02 | 4 min | 2 | 4 |
 
 **By Phase:**
 
 | Phase | Status | Plans |
 |-------|--------|-------|
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
-| 37. Provider and Audio Remediation | In Progress | 1/4 |
+| 37. Provider and Audio Remediation | In Progress | 2/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Not started | 0/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
@@ -103,10 +104,13 @@ Recent decisions affecting current work:
 - [Phase 37]: Provider tab readiness is a blocking LaunchReadinessCheck named provider_meeting_tab.
 - [Phase 37]: Default call-ready provider checks call only provider lookup and provider.check_ready(), leaving tab activation, mute, focus, mic switching, playback, recording, config writes, and system route changes out of scope.
 - [Phase 37]: Provider factory and check exceptions expose sanitized detail values plus error_type only, not raw exception text.
+- [Phase 37]: Call-ready audio route checks validate device visibility only; system route changes, playback, recording, and mic switching stay out of the default launch gate.
+- [Phase 37]: BlackHole 2ch is validated as an output device for provider audio injection, while BlackHole 16ch and recording_device are validated as input devices.
+- [Phase 37]: All five audio route rows use severity=block, so missing required devices prevent call-ready from reporting ready.
 
 ### Pending Todos
 
-Continue to Phase 37 Plan 37-02 for BlackHole route and microphone takeover verification.
+Continue to Phase 37 Plan 37-03 for provider capability and permission readiness.
 
 ### Blockers/Concerns
 
@@ -119,6 +123,6 @@ Continue to Phase 37 Plan 37-02 for BlackHole route and microphone takeover veri
 
 ## Session Continuity
 
-Last session: 2026-07-08T14:11:30.311Z
-Stopped at: Completed 37-01-PLAN.md
+Last session: 2026-07-08T14:21:21.104Z
+Stopped at: Completed 37-02-PLAN.md
 Resume file: None
