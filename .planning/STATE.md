@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 3
+current_plan: 4
 status: in_progress
-stopped_at: Completed 38-03-PLAN.md
-last_updated: "2026-07-08T16:11:36.671Z"
+stopped_at: Completed 38-04-PLAN.md
+last_updated: "2026-07-08T16:21:46.030Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 13
-  completed_plans: 11
-  percent: 85
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State
@@ -28,22 +28,22 @@ Local Call-Control Daemon and LaunchAgent.
 
 ## Current Position
 
-Phase: 38 (3 of 5) - Local Call-Control Daemon and LaunchAgent
-Current Plan: 3
+Phase: 38 (4 of 5) - Local Call-Control Daemon and LaunchAgent
+Current Plan: 4
 Total Plans in Phase: 5
-Plan: 3 of 5 completed; next step is 38-04.
+Plan: 4 of 5 completed; next step is 38-05.
 Status: Phase 38 in progress.
 Last activity: 2026-07-08
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 13
-- Plans completed: 11
+- Plans completed: 12
 - Average duration: 6 min
-- Total execution time: 65 min
+- Total execution time: 69 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -65,6 +65,7 @@ Progress: [█████████░] 85%
 | 38-01 | 6 min | 2 | 5 |
 | 38-02 | 4 min | 2 | 4 |
 | 38-03 | 5 min | 2 | 4 |
+| 38-04 | 4 min | 2 | 9 |
 
 **By Phase:**
 
@@ -72,7 +73,7 @@ Progress: [█████████░] 85%
 |-------|--------|-------|
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
 | 37. Provider and Audio Remediation | Complete | 4/4 |
-| 38. Local Call-Control Daemon and LaunchAgent | In Progress | 3/5 |
+| 38. Local Call-Control Daemon and LaunchAgent | In Progress | 4/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
 
@@ -127,6 +128,9 @@ Recent decisions affecting current work:
 - [Phase 38-03]: Call-control agent running state is defined as loaded plus fresh daemon heartbeat; launchctl print PID text is not trusted as running truth.
 - [Phase 38-03]: Daemon-side hotkey registration status from heartbeat is the permission signal for agent status.
 - [Phase 38-03]: Status output is read-only and exposes action/rerun guidance without lifecycle mutation or command queue writes.
+- [Phase 38]: Phase 38-04: call-control action uses the existing live-control queue with source=daemon_cli; no new protocol or action names were introduced.
+- [Phase 38]: Phase 38-04: audit command correlation is optional and bounded so existing audit readers continue to work without new required fields.
+- [Phase 38]: Phase 38-04: trusted daemon hotkey ownership is an internal opt-in seam; default saymo auto behavior still registers local hotkeys.
 
 ### Pending Todos
 
@@ -143,6 +147,6 @@ Continue to Phase 38 planning/execution.
 
 ## Session Continuity
 
-Last session: 2026-07-08T16:11:36.669Z
-Stopped at: Completed 38-03-PLAN.md
+Last session: 2026-07-08T16:21:46.028Z
+Stopped at: Completed 38-04-PLAN.md
 Resume file: None

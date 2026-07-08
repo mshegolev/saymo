@@ -55,7 +55,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [x] **CTRL-03**: User can see whether the call-control daemon is installed,
   loaded, running, stale, crash-looping, missing permissions, or using an
   outdated LaunchAgent plist.
-- [ ] **CTRL-04**: User can queue the existing live-control actions from the
+- [x] **CTRL-04**: User can queue the existing live-control actions from the
   daemon or status surface with the same semantics and audit trail as CLI and
   current hotkeys.
 - [ ] **CTRL-05**: User can prove the handbrake is reachable before realtime
@@ -165,7 +165,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTRL-01 | Phase 38 | Complete |
 | CTRL-02 | Phase 38 | Complete |
 | CTRL-03 | Phase 38 | Complete |
-| CTRL-04 | Phase 38 | Pending |
+| CTRL-04 | Phase 38 | Complete |
 | CTRL-05 | Phase 38 | Pending |
 | REAL-01 | Phase 39 | Pending |
 | REAL-02 | Phase 39 | Pending |
