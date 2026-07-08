@@ -8,8 +8,12 @@ import plistlib
 import re
 import shutil
 import subprocess
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from datetime import datetime
 from pathlib import Path
+from typing import Any
+
+from saymo.analysis.control_daemon import heartbeat_is_fresh, load_daemon_heartbeat
 
 
 LABEL_PREFIX = "com.saymo.call-control"
@@ -63,6 +67,33 @@ class LaunchAgentStatus:
     running: bool
     plutil_result: CommandResult | None
     launchctl_result: CommandResult
+
+
+@dataclass(frozen=True)
+class CallControlAgentStatus:
+    """Read-only daemon and LaunchAgent health classification."""
+
+    profile: str
+    label: str
+    plist_path: str
+    stdout_log_path: str
+    stderr_log_path: str
+    installed: bool
+    plist_current: bool
+    loaded: bool
+    heartbeat_fresh: bool
+    running: bool
+    hotkeys_active: bool
+    hotkey_registration_status: str
+    classification: str
+    detail: str
+    action: str
+    rerun: str
+    metadata: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return JSON-serializable status output."""
+        return asdict(self)
 
 
 def build_launch_agent_spec(
@@ -248,6 +279,114 @@ def collect_launch_agent_status(spec: LaunchAgentSpec) -> LaunchAgentStatus:
     )
 
 
+def collect_call_control_agent_status(
+    spec: LaunchAgentSpec,
+    *,
+    base_dir: Path | str | None = None,
+    now: datetime | None = None,
+    max_heartbeat_age_seconds: float = 5.0,
+    runner=None,
+) -> CallControlAgentStatus:
+    """Collect read-only LaunchAgent, heartbeat, and hotkey status."""
+    command_runner = runner or run_command
+    installed = spec.plist_path.exists()
+    expected_hash = expected_plist_hash(spec)
+    actual_hash = installed_plist_hash(spec)
+    plist_current = installed and actual_hash == expected_hash
+    plutil_result = None
+    launchctl_result = None
+    metadata: dict[str, Any] = {
+        "expected_plist_hash": expected_hash,
+        "installed_plist_hash": actual_hash,
+        "plutil_ok": False,
+    }
+
+    try:
+        if installed:
+            plutil_result = command_runner(plutil_lint_argv(spec), check=False)
+            metadata["plutil_ok"] = plutil_result.returncode == 0
+            if plutil_result.returncode != 0:
+                metadata["plutil_error_excerpt"] = _bounded_text(
+                    plutil_result.stderr or plutil_result.stdout
+                )
+        launchctl_result = command_runner(print_argv(spec), check=False)
+    except Exception as exc:
+        metadata.update(
+            {
+                "error_type": type(exc).__name__,
+                "error_excerpt": _bounded_text(str(exc)),
+            }
+        )
+        return _call_control_status(
+            spec,
+            installed=installed,
+            plist_current=plist_current,
+            loaded=False,
+            heartbeat_fresh=False,
+            hotkeys_active=False,
+            hotkey_registration_status="unknown",
+            classification="status_unavailable",
+            detail=f"status diagnostics unavailable: {_bounded_text(str(exc))}",
+            action=f"rerun status after diagnostics are available: {_status_rerun(spec)}",
+            metadata=metadata,
+        )
+
+    loaded = launchctl_result.returncode == 0
+    launch_output = "\n".join(
+        part
+        for part in [launchctl_result.stdout, launchctl_result.stderr]
+        if part
+    )
+    crash_metadata = _crash_metadata(launch_output)
+    if launchctl_result.returncode != 0:
+        metadata["launchctl_error_excerpt"] = _bounded_text(launch_output)
+    else:
+        metadata["launchctl_output_excerpt"] = _bounded_text(launch_output)
+    metadata["launchctl_returncode"] = launchctl_result.returncode
+    metadata.update(crash_metadata)
+
+    heartbeat = load_daemon_heartbeat(spec.profile, base_dir=base_dir)
+    heartbeat_fresh = heartbeat_is_fresh(
+        heartbeat,
+        now=now,
+        max_age_seconds=max_heartbeat_age_seconds,
+    )
+    running = loaded and heartbeat_fresh
+    hotkeys_active = bool(heartbeat and heartbeat.hotkeys_active)
+    hotkey_registration_status = (
+        heartbeat.hotkey_registration_status if heartbeat else "unknown"
+    )
+    if heartbeat is not None:
+        metadata["heartbeat"] = asdict(heartbeat)
+
+    classification, detail, action = _classify_call_control_status(
+        spec,
+        installed=installed,
+        plist_current=plist_current,
+        loaded=loaded,
+        heartbeat_fresh=heartbeat_fresh,
+        running=running,
+        heartbeat=heartbeat,
+        hotkeys_active=hotkeys_active,
+        hotkey_registration_status=hotkey_registration_status,
+        crash_metadata=crash_metadata,
+    )
+    return _call_control_status(
+        spec,
+        installed=installed,
+        plist_current=plist_current,
+        loaded=loaded,
+        heartbeat_fresh=heartbeat_fresh,
+        running=running,
+        hotkeys_active=hotkeys_active,
+        hotkey_registration_status=hotkey_registration_status,
+        classification=classification,
+        detail=detail,
+        action=action,
+        metadata=metadata,
+    )
+
+
 def _resolve_saymo_executable(explicit: str | None) -> str:
     if explicit:
         return str(Path(explicit).expanduser())
@@ -277,3 +416,140 @@ def _print_output_has_pid(output: str) -> bool:
         if match:
             return int(match.group(1)) > 0
     return False
+
+
+def _call_control_status(
+    spec: LaunchAgentSpec,
+    *,
+    installed: bool,
+    plist_current: bool,
+    loaded: bool,
+    heartbeat_fresh: bool,
+    hotkeys_active: bool,
+    hotkey_registration_status: str,
+    classification: str,
+    detail: str,
+    action: str,
+    metadata: dict[str, Any],
+    running: bool = False,
+) -> CallControlAgentStatus:
+    return CallControlAgentStatus(
+        profile=spec.profile,
+        label=spec.label,
+        plist_path=str(spec.plist_path),
+        stdout_log_path=str(spec.stdout_log_path),
+        stderr_log_path=str(spec.stderr_log_path),
+        installed=installed,
+        plist_current=plist_current,
+        loaded=loaded,
+        heartbeat_fresh=heartbeat_fresh,
+        running=running,
+        hotkeys_active=hotkeys_active,
+        hotkey_registration_status=hotkey_registration_status,
+        classification=classification,
+        detail=detail,
+        action=action,
+        rerun=_status_rerun(spec),
+        metadata=metadata,
+    )
+
+
+def _classify_call_control_status(
+    spec: LaunchAgentSpec,
+    *,
+    installed: bool,
+    plist_current: bool,
+    loaded: bool,
+    heartbeat_fresh: bool,
+    running: bool,
+    heartbeat,
+    hotkeys_active: bool,
+    hotkey_registration_status: str,
+    crash_metadata: dict[str, Any],
+) -> tuple[str, str, str]:
+    if not installed:
+        return (
+            "not_installed",
+            "LaunchAgent plist is not installed.",
+            f"saymo call-control-agent install -p {spec.profile}",
+        )
+    if not plist_current:
+        return (
+            "plist_drift",
+            "Installed LaunchAgent plist differs from the expected Saymo plist.",
+            f"saymo call-control-agent install -p {spec.profile}",
+        )
+    if crash_metadata.get("last_exit_status") or crash_metadata.get("throttle_hint"):
+        return (
+            "crash_loop",
+            "LaunchAgent print output shows recent exit or throttle evidence.",
+            "inspect logs and restart: "
+            f"{spec.stdout_log_path} {spec.stderr_log_path}; "
+            f"saymo call-control-agent restart -p {spec.profile}",
+        )
+    if not loaded:
+        return (
+            "installed_not_loaded",
+            "LaunchAgent plist is installed but not loaded in the GUI domain.",
+            f"saymo call-control-agent start -p {spec.profile}",
+        )
+    if not heartbeat_fresh:
+        return (
+            "stale_heartbeat",
+            "LaunchAgent is loaded but daemon heartbeat is missing or stale.",
+            f"saymo call-control-agent restart -p {spec.profile}",
+        )
+    if hotkey_registration_status == "blocked":
+        detail = heartbeat.hotkey_registration_detail if heartbeat else ""
+        return (
+            "hotkey_permission_blocked",
+            "Daemon heartbeat reports hotkey registration blocked"
+            + (f": {detail}" if detail else "."),
+            "grant Accessibility permission, then "
+            f"saymo call-control-agent restart -p {spec.profile}",
+        )
+    if running:
+        if hotkeys_active:
+            return (
+                "running",
+                "LaunchAgent is loaded and daemon heartbeat is fresh.",
+                "none",
+            )
+        return (
+            "running",
+            "LaunchAgent is loaded and daemon heartbeat is fresh; hotkeys are inactive.",
+            "check hotkey configuration if this profile should register hotkeys",
+        )
+    return (
+        "status_unavailable",
+        "Call-control agent status could not be classified.",
+        f"rerun status: {_status_rerun(spec)}",
+    )
+
+
+def _crash_metadata(output: str) -> dict[str, Any]:
+    compact = " ".join((output or "").split())
+    metadata: dict[str, Any] = {}
+    exit_match = re.search(
+        r"(?:last\s+exit\s+(?:status|code)|exit\s+status)\s*=\s*(-?\d+)",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if exit_match:
+        status = exit_match.group(1)
+        if status not in {"0", "-1"}:
+            metadata["last_exit_status"] = status
+    if re.search(r"\bthrottl\w*", compact, flags=re.IGNORECASE):
+        metadata["throttle_hint"] = _bounded_text(compact)
+    return metadata
+
+
+def _bounded_text(value: str, *, limit: int = 240) -> str:
+    text = " ".join(str(value or "").split())
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3] + "..."
+
+
+def _status_rerun(spec: LaunchAgentSpec) -> str:
+    return f"saymo call-control-agent status -p {spec.profile}"

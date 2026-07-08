@@ -204,8 +204,10 @@ def test_call_control_agent_status_is_read_only(tmp_path, monkeypatch):
         token in argv for argv in recorded for token in {"bootstrap", "bootout", "kickstart"}
     )
     assert "status: com.saymo.call-control.daily" in result.output
+    assert "classification: stale_heartbeat" in result.output
     assert "loaded: yes" in result.output
-    assert "running: yes" in result.output
+    assert "heartbeat fresh: no" in result.output
+    assert "running: no" in result.output
 
 
 def test_call_control_agent_status_json_is_read_only(tmp_path, monkeypatch):

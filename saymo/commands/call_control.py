@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from subprocess import CalledProcessError
 
@@ -11,7 +12,7 @@ from saymo.analysis.control_daemon import daemon_heartbeat_path, run_control_dae
 from saymo.analysis.launch_agent import (
     LaunchAgentError,
     build_launch_agent_spec,
-    collect_launch_agent_status,
+    collect_call_control_agent_status,
     install_launch_agent,
     restart_launch_agent,
     start_launch_agent,
@@ -115,27 +116,29 @@ def call_control_agent_restart(profile):
 
 @call_control_agent.command("status")
 @click.option("--profile", "-p", default="standup", show_default=True)
-def call_control_agent_status(profile):
+@click.option("--json", "json_output", is_flag=True, help="Print machine-readable status.")
+def call_control_agent_status(profile, json_output):
     """Inspect LaunchAgent plist and launchd state without mutation."""
     spec = _agent_spec(profile)
-    status = _run_agent_action(lambda: collect_launch_agent_status(spec))
-    next_action = "none"
-    if not status.installed:
-        next_action = "saymo call-control-agent install -p " + spec.profile
-    elif not status.loaded:
-        next_action = "saymo call-control-agent start -p " + spec.profile
-    elif not status.running:
-        next_action = "check logs or restart the LaunchAgent"
+    status = _run_agent_action(lambda: collect_call_control_agent_status(spec))
+    if json_output:
+        click.echo(json.dumps(status.to_dict(), indent=2, sort_keys=True))
+        return
     _print_agent_summary(
         "status",
         spec,
         extra=[
+            f"classification: {status.classification}",
             f"installed: {'yes' if status.installed else 'no'}",
             f"plist current: {'yes' if status.plist_current else 'no'}",
-            f"plutil: {'ok' if status.plutil_ok else 'unavailable'}",
             f"loaded: {'yes' if status.loaded else 'no'}",
+            f"heartbeat fresh: {'yes' if status.heartbeat_fresh else 'no'}",
             f"running: {'yes' if status.running else 'no'}",
-            f"next: {next_action}",
+            f"hotkeys active: {'yes' if status.hotkeys_active else 'no'}",
+            f"hotkey registration: {status.hotkey_registration_status}",
+            f"detail: {status.detail}",
+            f"action: {status.action}",
+            f"rerun: {status.rerun}",
         ],
     )
 
