@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 2
+current_plan: 3
 status: in_progress
-stopped_at: Completed 38-02-PLAN.md
-last_updated: "2026-07-08T16:00:06.900Z"
+stopped_at: Completed 38-03-PLAN.md
+last_updated: "2026-07-08T16:11:36.671Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 13
-  completed_plans: 10
-  percent: 77
+  completed_plans: 11
+  percent: 85
 ---
 
 # Project State
@@ -29,21 +29,21 @@ Local Call-Control Daemon and LaunchAgent.
 ## Current Position
 
 Phase: 38 (3 of 5) - Local Call-Control Daemon and LaunchAgent
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 5
-Plan: 2 of 5 completed; next step is 38-03.
+Plan: 3 of 5 completed; next step is 38-04.
 Status: Phase 38 in progress.
 Last activity: 2026-07-08
 
-Progress: [████████░░] 77%
+Progress: [█████████░] 85%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 13
-- Plans completed: 10
+- Plans completed: 11
 - Average duration: 6 min
-- Total execution time: 60 min
+- Total execution time: 65 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -64,6 +64,7 @@ Progress: [████████░░] 77%
 | 37-04 | 11 min | 2 | 4 |
 | 38-01 | 6 min | 2 | 5 |
 | 38-02 | 4 min | 2 | 4 |
+| 38-03 | 5 min | 2 | 4 |
 
 **By Phase:**
 
@@ -71,7 +72,7 @@ Progress: [████████░░] 77%
 |-------|--------|-------|
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
 | 37. Provider and Audio Remediation | Complete | 4/4 |
-| 38. Local Call-Control Daemon and LaunchAgent | In Progress | 2/5 |
+| 38. Local Call-Control Daemon and LaunchAgent | In Progress | 3/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
 
@@ -123,6 +124,9 @@ Recent decisions affecting current work:
 - [Phase 38-02]: LaunchAgent labels use the generic source-safe prefix com.saymo.call-control plus a sanitized profile segment.
 - [Phase 38-02]: LaunchAgent status is read-only: it checks plist existence/hash, optional plutil lint, and launchctl print without bootstrap, bootout, or kickstart.
 - [Phase 38-02]: CLI lifecycle commands stay explicit mutations; tests mock the subprocess boundary so automated runs never touch real launchd.
+- [Phase 38-03]: Call-control agent running state is defined as loaded plus fresh daemon heartbeat; launchctl print PID text is not trusted as running truth.
+- [Phase 38-03]: Daemon-side hotkey registration status from heartbeat is the permission signal for agent status.
+- [Phase 38-03]: Status output is read-only and exposes action/rerun guidance without lifecycle mutation or command queue writes.
 
 ### Pending Todos
 
@@ -139,6 +143,6 @@ Continue to Phase 38 planning/execution.
 
 ## Session Continuity
 
-Last session: 2026-07-08T16:00:06.897Z
-Stopped at: Completed 38-02-PLAN.md
+Last session: 2026-07-08T16:11:36.669Z
+Stopped at: Completed 38-03-PLAN.md
 Resume file: None

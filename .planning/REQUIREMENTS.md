@@ -52,7 +52,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [x] **CTRL-02**: User can run a foreground call-control daemon that
   registers configured global hotkeys and publishes a fresh heartbeat/status
   for the selected profile.
-- [ ] **CTRL-03**: User can see whether the call-control daemon is installed,
+- [x] **CTRL-03**: User can see whether the call-control daemon is installed,
   loaded, running, stale, crash-looping, missing permissions, or using an
   outdated LaunchAgent plist.
 - [ ] **CTRL-04**: User can queue the existing live-control actions from the
@@ -164,7 +164,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROV-05 | Phase 37 | Complete |
 | CTRL-01 | Phase 38 | Complete |
 | CTRL-02 | Phase 38 | Complete |
-| CTRL-03 | Phase 38 | Pending |
+| CTRL-03 | Phase 38 | Complete |
 | CTRL-04 | Phase 38 | Pending |
 | CTRL-05 | Phase 38 | Pending |
 | REAL-01 | Phase 39 | Pending |
