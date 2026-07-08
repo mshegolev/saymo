@@ -7,12 +7,18 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from click.testing import CliRunner
 
 from saymo.cli import (
     _looks_like_question,
     _resolve_auto_response,
     _resolve_auto_response_decision,
 )
+from saymo.analysis.launch_readiness import (
+    LaunchReadinessCheck,
+    LaunchReadinessReport,
+)
+from saymo.commands import main
 from saymo.config import SaymoConfig
 from saymo.commands.core import (
     _automatic_speaking_allowed,
@@ -36,6 +42,51 @@ from saymo.analysis.live_control import (
 def _run(coro):
     """Run an async coroutine synchronously for tests — pytest-asyncio not installed."""
     return asyncio.run(coro)
+
+
+def _write_auto_config(tmp_path) -> Path:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        """
+user:
+  name: "John"
+  name_variants: ["John"]
+audio:
+  capture_device: "BlackHole 16ch"
+  playback_device: "BlackHole 2ch"
+  recording_device: "MacBook Pro Microphone"
+meetings:
+  standup:
+    description: "Standup"
+    provider: glip
+    team: false
+    source: obsidian
+    trigger_phrases: ["John"]
+responses:
+  enabled: true
+  live_fallback: false
+""",
+        encoding="utf-8",
+    )
+    return config_path
+
+
+def _blocked_launch_report() -> LaunchReadinessReport:
+    return LaunchReadinessReport(
+        profile="standup",
+        provider="glip",
+        checks=(
+            LaunchReadinessCheck(
+                key="daily_note_source_ready",
+                label="daily note source ready",
+                severity="block",
+                ok=False,
+                detail="placeholder_only",
+                action="Add usable standup content",
+                rerun="saymo call-ready -p standup --provider glip",
+            ),
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -427,6 +478,102 @@ def test_auto_can_skip_local_hotkeys_when_daemon_controls_are_enabled():
 
     assert _should_register_local_hotkeys(config) is True
     assert _should_register_local_hotkeys(config, disable_local_hotkeys=True) is False
+
+
+def test_auto_launch_gate_blocks_before_realtime_setup(monkeypatch, capsys):
+    import saymo.commands.core as core
+
+    config = SaymoConfig()
+    config.meetings = {
+        "standup": {
+            "description": "Standup",
+            "provider": "glip",
+            "team": False,
+            "source": "obsidian",
+            "trigger_phrases": ["John"],
+        }
+    }
+    report = _blocked_launch_report()
+    gate = type(
+        "Gate",
+        (),
+        {
+            "profile": "standup",
+            "provider": "glip",
+            "allowed": False,
+            "reason": "launch-readiness-blocked",
+            "report": report,
+        },
+    )()
+    forbidden = MagicMock(
+        side_effect=AssertionError("blocked gate must return before realtime setup")
+    )
+
+    monkeypatch.setattr(
+        core,
+        "evaluate_realtime_launch_gate",
+        lambda config, *, profile, provider_name=None: gate,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        core,
+        "render_realtime_launch_block",
+        lambda gate: "call-ready: not ready\nrealtime: blocked (launch-readiness-blocked)",
+        raising=False,
+    )
+    monkeypatch.setattr(core, "_get_cached_audio_path", forbidden)
+
+    _run(core._auto(config, "tiny", "standup"))
+
+    forbidden.assert_not_called()
+    output = capsys.readouterr().out
+    assert "call-ready: not ready" in output
+    assert "launch-readiness-blocked" in output
+
+
+def test_realtime_alias_delegates_to_same_auto_path(tmp_path, monkeypatch):
+    import saymo.commands.core as core
+
+    calls = []
+
+    async def fake_auto(config, whisper_model, profile="standup", **kwargs):
+        calls.append((whisper_model, profile, kwargs))
+
+    monkeypatch.setattr(core, "_auto", fake_auto)
+
+    runner = CliRunner()
+    config_path = _write_auto_config(tmp_path)
+
+    auto_result = runner.invoke(
+        main,
+        ["--config", str(config_path), "auto", "-p", "standup", "--model", "tiny"],
+    )
+    realtime_result = runner.invoke(
+        main,
+        ["--config", str(config_path), "realtime", "-p", "standup", "--model", "tiny"],
+    )
+
+    assert auto_result.exit_code == 0
+    assert realtime_result.exit_code == 0
+    assert calls == [
+        ("tiny", "standup", {}),
+        ("tiny", "standup", {}),
+    ]
+
+
+def test_auto_and_realtime_help_do_not_expose_unsafe_gate_options():
+    runner = CliRunner()
+
+    for command in ("auto", "realtime"):
+        result = runner.invoke(main, [command, "--help"])
+        assert result.exit_code == 0
+        help_text = result.output.lower()
+        assert "unsafe" not in help_text
+        assert "bypass" not in help_text
+        assert "ignore-readiness" not in help_text
+        assert "ignore_readiness" not in help_text
+        assert "no-gate" not in help_text
+        assert "no_gate" not in help_text
 
 
 # ---------------------------------------------------------------------------
