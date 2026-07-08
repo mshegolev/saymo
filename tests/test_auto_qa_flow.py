@@ -576,6 +576,13 @@ def test_auto_and_realtime_help_do_not_expose_unsafe_gate_options():
         assert "no_gate" not in help_text
 
 
+def test_auto_uses_realtime_policy_not_legacy_response_resolver():
+    source = Path("saymo/commands/core.py").read_text(encoding="utf-8")
+
+    assert "resolve_realtime_response_decision" in source
+    assert "_resolve_auto_response_decision" not in source
+
+
 # ---------------------------------------------------------------------------
 # _resolve_auto_response
 # ---------------------------------------------------------------------------
