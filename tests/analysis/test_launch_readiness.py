@@ -111,6 +111,139 @@ def _check_by_key(report, key: str):
     return matches[0]
 
 
+def _rich_launch_evidence_report():
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        LaunchReadinessReport,
+    )
+
+    return LaunchReadinessReport(
+        profile="standup",
+        provider="glip",
+        checks=(
+            LaunchReadinessCheck(
+                key="response_cache_coverage",
+                label="response cache coverage",
+                severity="block",
+                ok=False,
+                detail="1/3 variants ready",
+                action="Run saymo prepare-responses",
+                rerun="saymo call-ready -p standup --provider glip",
+                metadata={
+                    "category": "source-data",
+                    "ready": 1,
+                    "total": 3,
+                    "missing_examples": ["daily_summary", "handoff_answer"],
+                    "cache_dir": "/tmp/saymo/responses",
+                },
+            ),
+            LaunchReadinessCheck(
+                key="cloned_voice_metadata",
+                label="cloned voice metadata",
+                severity="block",
+                ok=False,
+                detail="voice_profile_unapproved",
+                action="Approve a cloned voice profile for live calls",
+                rerun="saymo voice-profile approve personal",
+                metadata={
+                    "selected_engine": "f5tts_clone",
+                    "voice_profile": "personal",
+                    "profile_approved": False,
+                    "reference_fingerprint": "voicefp_123",
+                    "reference_audio_sha256": "audio_sha_123",
+                    "reference_text_sha256": "text_sha_123",
+                    "blocked_reason": "voice_profile_unapproved",
+                },
+            ),
+            LaunchReadinessCheck(
+                key="provider_meeting_tab",
+                label="provider meeting tab",
+                severity="block",
+                ok=False,
+                detail="meeting_tab_not_found",
+                action="Open the glip meeting in Chrome",
+                rerun="saymo call-ready -p standup --provider glip",
+                metadata={
+                    "category": "provider",
+                    "provider": "glip",
+                    "meeting_found": False,
+                    "app_running": True,
+                    "tab_info": None,
+                },
+            ),
+            LaunchReadinessCheck(
+                key="provider_capabilities",
+                label="provider capabilities",
+                severity="warn",
+                ok=False,
+                detail="mic_switch_unsupported",
+                action="Use saymo takeover-check before relying on mic switching.",
+                rerun="saymo takeover-check -p standup",
+                metadata={
+                    "category": "provider",
+                    "provider": "glip",
+                    "activation": "supported",
+                    "mic_switch": "unsupported",
+                    "mute_recovery": "supported",
+                },
+            ),
+            LaunchReadinessCheck(
+                key="call_control_agent",
+                label="call-control agent",
+                severity="block",
+                ok=True,
+                detail="LaunchAgent loaded",
+                rerun="saymo call-control-agent status -p standup",
+                metadata={
+                    "category": "call-control",
+                    "classification": "running",
+                    "stdout_log_path": "/tmp/standup/out.log",
+                    "stderr_log_path": "/tmp/standup/err.log",
+                    "loaded": True,
+                    "heartbeat_fresh": False,
+                    "running": False,
+                    "hotkeys_active": False,
+                },
+            ),
+            LaunchReadinessCheck(
+                key="call_control_daemon",
+                label="call-control daemon",
+                severity="block",
+                ok=False,
+                detail="heartbeat stale",
+                action="saymo call-control-agent restart -p standup",
+                rerun="saymo call-control probe -p standup",
+                metadata={
+                    "category": "call-control",
+                    "classification": "stale_heartbeat",
+                    "stdout_log_path": "/tmp/standup/out.log",
+                    "stderr_log_path": "/tmp/standup/err.log",
+                    "heartbeat_fresh": False,
+                    "running": False,
+                    "hotkeys_active": False,
+                },
+            ),
+            LaunchReadinessCheck(
+                key="call_control_hotkeys",
+                label="call-control hotkeys",
+                severity="block",
+                ok=False,
+                detail="Accessibility denied",
+                action="grant Accessibility permission",
+                rerun="saymo call-control-agent status -p standup",
+                metadata={
+                    "category": "macos-permission",
+                    "stdout_log_path": "/tmp/standup/out.log",
+                    "stderr_log_path": "/tmp/standup/err.log",
+                    "heartbeat_fresh": False,
+                    "running": False,
+                    "hotkeys_active": False,
+                },
+            ),
+        ),
+    )
+
+
 def test_report_ready_false_when_blocking_check_fails():
     from saymo.analysis.launch_readiness import (
         LaunchReadinessCheck,
@@ -714,3 +847,209 @@ def test_call_control_hotkey_readiness_uses_permission_category(tmp_path, monkey
     assert hotkeys.metadata["category"] == "macos-permission"
     assert "Accessibility" in hotkeys.action
     assert hotkeys.rerun == "saymo call-control-agent status -p standup"
+
+
+def test_write_launch_readiness_artifact_adds_phase40_metadata_without_wrapping(
+    tmp_path,
+):
+    from saymo.analysis.launch_evidence import load_launch_evidence
+    from saymo.analysis.launch_readiness import write_launch_readiness_artifact
+
+    report = _rich_launch_evidence_report()
+    output_path = tmp_path / "call-ready.json"
+
+    written = write_launch_readiness_artifact(report, output_path)
+
+    assert written == output_path
+    raw = output_path.read_text(encoding="utf-8")
+    assert raw.endswith("\n")
+    payload = json.loads(raw)
+    assert set(payload) == {
+        "artifact_path",
+        "block_count",
+        "check_count",
+        "checks",
+        "created_at",
+        "evidence_kind",
+        "mode",
+        "profile",
+        "provider",
+        "ready",
+        "ready_count",
+        "schema_version",
+        "warn_count",
+    }
+    assert payload["profile"] == "standup"
+    assert payload["provider"] == "glip"
+    assert payload["ready"] is False
+    assert payload["check_count"] == len(report.checks)
+    assert payload["ready_count"] == 1
+    assert payload["block_count"] == 4
+    assert payload["warn_count"] == 1
+    assert payload["schema_version"] == "1.0"
+    assert payload["evidence_kind"] == "launch-readiness"
+    assert payload["mode"] == "call-ready"
+    assert payload["artifact_path"] == str(output_path)
+    assert payload["created_at"]
+    assert payload["checks"][0]["key"] == "response_cache_coverage"
+    evidence = load_launch_evidence(output_path)
+    assert evidence.schema_version == "1.0"
+    assert evidence.path == str(output_path)
+    _assert_private_absent(raw)
+
+
+def test_launch_evidence_loads_enriched_artifact_summary(tmp_path):
+    from saymo.analysis.launch_evidence import load_launch_evidence
+    from saymo.analysis.launch_readiness import write_launch_readiness_artifact
+
+    output_path = tmp_path / "call-ready.json"
+    write_launch_readiness_artifact(_rich_launch_evidence_report(), output_path)
+
+    evidence = load_launch_evidence(output_path)
+
+    assert evidence.evidence_kind == "launch-readiness"
+    assert evidence.mode == "call-ready"
+    assert evidence.profile == "standup"
+    assert evidence.provider == "glip"
+    assert evidence.failed_labels == (
+        "response cache coverage",
+        "cloned voice metadata",
+        "provider meeting tab",
+        "provider capabilities",
+        "call-control daemon",
+        "call-control hotkeys",
+    )
+    assert evidence.blocker_categories == {
+        "call-control": 1,
+        "macos-permission": 1,
+        "provider": 1,
+        "source-data": 1,
+        "voice-cache": 1,
+    }
+    assert evidence.cache_counts == {
+        "ready": 1,
+        "total": 3,
+        "missing": 2,
+    }
+    assert evidence.voice_metadata == {
+        "selected_engine": "f5tts_clone",
+        "voice_profile": "personal",
+        "profile_approved": False,
+        "reference_fingerprint": "voicefp_123",
+        "reference_audio_sha256": "audio_sha_123",
+        "reference_text_sha256": "text_sha_123",
+        "blocked_reason": "voice_profile_unapproved",
+    }
+    assert evidence.provider_status == {
+        "meeting_tab_ok": False,
+        "meeting_tab_detail": "meeting_tab_not_found",
+        "meeting_found": False,
+        "app_running": True,
+        "capabilities_ok": False,
+        "capabilities_detail": "mic_switch_unsupported",
+        "activation": "supported",
+        "mic_switch": "unsupported",
+        "mute_recovery": "supported",
+    }
+    assert evidence.daemon_status == {
+        "agent_ok": True,
+        "daemon_ok": False,
+        "hotkeys_ok": False,
+        "heartbeat_fresh": False,
+        "running": False,
+        "hotkeys_active": False,
+        "stdout_log_path": "/tmp/standup/out.log",
+        "stderr_log_path": "/tmp/standup/err.log",
+        "classification": "stale_heartbeat",
+    }
+    assert evidence.artifact_paths == (
+        str(output_path),
+        "/tmp/standup/out.log",
+        "/tmp/standup/err.log",
+    )
+    assert evidence.rerun_commands == (
+        "saymo call-ready -p standup --provider glip",
+        "saymo voice-profile approve personal",
+        "saymo takeover-check -p standup",
+        "saymo call-control-agent status -p standup",
+        "saymo call-control probe -p standup",
+    )
+    assert len(evidence.checks) == len(_rich_launch_evidence_report().checks)
+    _assert_private_absent(repr(evidence))
+
+
+def test_launch_evidence_loads_legacy_report_dict_and_skips_bad_check_rows(
+    tmp_path,
+):
+    from saymo.analysis.launch_evidence import load_launch_evidence
+
+    payload = _rich_launch_evidence_report().to_dict()
+    payload["checks"].append("not a check")
+    legacy_path = tmp_path / "legacy-call-ready.json"
+    legacy_path.write_text(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    evidence = load_launch_evidence(legacy_path)
+
+    assert evidence.schema_version == "legacy"
+    assert evidence.evidence_kind == "launch-readiness"
+    assert evidence.mode == "call-ready"
+    assert evidence.path == str(legacy_path)
+    assert evidence.check_count == len(_rich_launch_evidence_report().checks)
+    assert len(evidence.checks) == len(_rich_launch_evidence_report().checks)
+    assert evidence.artifact_paths == (str(legacy_path),)
+    assert evidence.failed_labels[0] == "response cache coverage"
+
+
+def test_launch_evidence_redacts_sensitive_metadata_names_and_values(tmp_path):
+    from saymo.analysis.launch_evidence import load_launch_evidence
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        LaunchReadinessReport,
+        write_launch_readiness_artifact,
+    )
+
+    report = LaunchReadinessReport(
+        profile="standup",
+        provider="glip",
+        checks=(
+            LaunchReadinessCheck(
+                key="daily_note_source_ready",
+                label="daily note source ready",
+                severity="block",
+                ok=False,
+                detail="PRIVATE_DAILY_NOTE SECRET_TOKEN",
+                action="PRIVATE_TRANSCRIPT",
+                rerun="saymo call-ready -p standup --provider glip",
+                metadata={
+                    "raw_transcript": "PRIVATE_TRANSCRIPT",
+                    "generated_answer": "PRIVATE_GENERATED_ANSWER",
+                    "answer_text": "SECRET_TOKEN",
+                    "audio_bytes": "PRIVATE_DAILY_NOTE",
+                    "daily_note_body": "PRIVATE_DAILY_NOTE",
+                    "safe_hash": "abc123",
+                },
+            ),
+        ),
+    )
+    output_path = tmp_path / "call-ready.json"
+
+    write_launch_readiness_artifact(report, output_path)
+    raw = output_path.read_text(encoding="utf-8")
+    evidence = load_launch_evidence(output_path)
+    serialized = json.dumps(evidence.checks, ensure_ascii=False)
+
+    for forbidden in (
+        "raw_transcript",
+        "generated_answer",
+        "answer_text",
+        "audio_bytes",
+        "daily_note_body",
+        *PRIVATE_STRINGS,
+    ):
+        assert forbidden not in raw
+        assert forbidden not in serialized
+    assert "safe_hash" in raw
+    assert "safe_hash" in serialized

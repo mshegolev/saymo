@@ -611,7 +611,13 @@ def test_call_ready_output_artifact_includes_provider_audio_checks(
     assert result.exit_code == 1
     assert _top_level_result_lines(result.output) == ["call-ready: not ready"]
     assert f"artifact: {output_path}" in result.output
+    assert result.output.rstrip().endswith(f"artifact: {output_path}")
     payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "1.0"
+    assert payload["evidence_kind"] == "launch-readiness"
+    assert payload["mode"] == "call-ready"
+    assert payload["artifact_path"] == str(output_path)
+    assert payload["created_at"]
     keys = [check["key"] for check in payload["checks"]]
     assert {
         "provider_meeting_tab",
@@ -797,7 +803,14 @@ def test_call_ready_output_artifact_does_not_pollute_json_stdout(tmp_path, monke
     payload = json.loads(result.output)
     artifact = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["ready"] is True
+    assert "artifact_path" not in payload
+    assert "schema_version" not in payload
     assert artifact["ready"] is True
+    assert artifact["schema_version"] == "1.0"
+    assert artifact["evidence_kind"] == "launch-readiness"
+    assert artifact["mode"] == "call-ready"
+    assert artifact["artifact_path"] == str(output_path)
+    assert artifact["created_at"]
     _assert_no_private_text(result.output)
 
 
