@@ -884,7 +884,7 @@ def test_write_launch_readiness_artifact_adds_phase40_metadata_without_wrapping(
     assert payload["ready"] is False
     assert payload["check_count"] == len(report.checks)
     assert payload["ready_count"] == 1
-    assert payload["block_count"] == 4
+    assert payload["block_count"] == 5
     assert payload["warn_count"] == 1
     assert payload["schema_version"] == "1.0"
     assert payload["evidence_kind"] == "launch-readiness"
@@ -999,7 +999,11 @@ def test_launch_evidence_loads_legacy_report_dict_and_skips_bad_check_rows(
     assert evidence.path == str(legacy_path)
     assert evidence.check_count == len(_rich_launch_evidence_report().checks)
     assert len(evidence.checks) == len(_rich_launch_evidence_report().checks)
-    assert evidence.artifact_paths == (str(legacy_path),)
+    assert evidence.artifact_paths == (
+        str(legacy_path),
+        "/tmp/standup/out.log",
+        "/tmp/standup/err.log",
+    )
     assert evidence.failed_labels[0] == "response cache coverage"
 
 

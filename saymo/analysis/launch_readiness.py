@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import json
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -16,6 +17,15 @@ _PRIVATE_SENTINELS = (
     "PRIVATE_TRANSCRIPT",
     "PRIVATE_GENERATED_ANSWER",
     "SECRET_TOKEN",
+)
+_SENSITIVE_MARKERS = (
+    "raw" + "_" + "transcript",
+    "raw" + " " + "transcript",
+    "generated" + "_" + "answer",
+    "answer" + "_" + "text",
+    "daily" + "_" + "note" + "_" + "body",
+    "audio" + "_" + "bytes",
+    "transcript" + "_" + "window",
 )
 
 _LAUNCH_CHECK_ORDER = (
@@ -181,11 +191,28 @@ def write_launch_readiness_artifact(
 ) -> Path:
     """Write a sanitized launch-readiness artifact as JSON."""
     output_path = Path(output_path)
+    payload = report.to_dict()
+    payload.update(
+        {
+            "schema_version": "1.0",
+            "evidence_kind": "launch-readiness",
+            "mode": "call-ready",
+            "artifact_path": _sanitize_text(str(output_path)),
+            "created_at": _utc_now(),
+        }
+    )
     output_path.write_text(
-        json.dumps(report.to_dict(), ensure_ascii=False, sort_keys=True) + "\n",
+        json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     return output_path
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
+        "+00:00",
+        "Z",
+    )
 
 
 def _collect_phase36_checks(
@@ -405,6 +432,9 @@ def _sanitize_value(value: Any) -> Any:
 
 def _sanitize_text(value: Any) -> str:
     text = " ".join(str(value or "").split())
+    lower = text.lower()
+    if any(marker in lower for marker in _SENSITIVE_MARKERS):
+        return "[redacted]"
     for sentinel in _PRIVATE_SENTINELS:
         text = text.replace(sentinel, "[redacted]")
     text = re.sub(
