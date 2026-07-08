@@ -29,6 +29,18 @@ block:
   why: 0/2 variants ready
   action: Run saymo prepare-responses
   rerun: saymo call-ready -p standup --provider glip
+- [provider] provider meeting tab
+  why: meeting_tab_not_found
+  action: Open the glip meeting in Chrome
+  rerun: saymo call-ready -p standup --provider glip
+- [audio-device] provider output BlackHole
+  why: device_not_found
+  action: Run saymo test-devices and install BlackHole 2ch/16ch if missing
+  rerun: saymo call-ready -p standup --provider glip
+- [macos-permission] Chrome automation permission
+  why: chrome_automation_blocked
+  action: Allow Google Chrome automation and terminal Accessibility permissions, then rerun call-ready.
+  rerun: saymo call-ready -p standup --provider glip
 warn:
 - [voice-cache] cloned voice metadata
   why: voice_profile_unapproved
@@ -450,6 +462,36 @@ def test_call_ready_groups_remediation_with_rerun_commands(tmp_path, monkeypatch
                 ok=False,
                 detail="0/2 variants ready",
                 action="Run saymo prepare-responses",
+                rerun="saymo call-ready -p standup --provider glip",
+            ),
+            LaunchReadinessCheck(
+                key="provider_meeting_tab",
+                label="provider meeting tab",
+                severity="block",
+                ok=False,
+                detail="meeting_tab_not_found",
+                action="Open the glip meeting in Chrome",
+                rerun="saymo call-ready -p standup --provider glip",
+            ),
+            LaunchReadinessCheck(
+                key="provider_output_blackhole",
+                label="provider output BlackHole",
+                severity="block",
+                ok=False,
+                detail="device_not_found",
+                action="Run saymo test-devices and install BlackHole 2ch/16ch if missing",
+                rerun="saymo call-ready -p standup --provider glip",
+            ),
+            LaunchReadinessCheck(
+                key="chrome_automation_permission",
+                label="Chrome automation permission",
+                severity="block",
+                ok=False,
+                detail="chrome_automation_blocked",
+                action=(
+                    "Allow Google Chrome automation and terminal Accessibility "
+                    "permissions, then rerun call-ready."
+                ),
                 rerun="saymo call-ready -p standup --provider glip",
             ),
             LaunchReadinessCheck(

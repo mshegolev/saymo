@@ -7,6 +7,7 @@ import json
 from saymo.analysis.regression_replay import RegressionMetrics
 from saymo.analysis.remediation import (
     RemediationHint,
+    hints_from_launch_readiness,
     hints_from_preflight_checks,
     hints_from_scorecard,
     render_remediation_hints,
@@ -56,6 +57,87 @@ def test_preflight_hints_classify_next_actions():
     assert all("saymo auto-preflight -p personal" in hint.rerun for hint in hints)
 
 
+def test_launch_provider_audio_hints_classify_permissions():
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        LaunchReadinessReport,
+    )
+
+    report = LaunchReadinessReport(
+        profile="standup",
+        provider="glip",
+        checks=(
+            LaunchReadinessCheck(
+                key="provider_meeting_tab",
+                label="provider meeting tab",
+                severity="block",
+                ok=False,
+                detail="meeting_tab_not_found",
+            ),
+            LaunchReadinessCheck(
+                key="provider_capabilities",
+                label="provider capabilities",
+                severity="warn",
+                ok=False,
+                detail="mic_switch_unsupported",
+            ),
+            LaunchReadinessCheck(
+                key="provider_output_blackhole",
+                label="provider output BlackHole",
+                severity="block",
+                ok=False,
+                detail="device_not_found",
+            ),
+            LaunchReadinessCheck(
+                key="capture_route_blackhole",
+                label="capture route BlackHole",
+                severity="block",
+                ok=False,
+                detail="device_not_found",
+            ),
+            LaunchReadinessCheck(
+                key="chrome_automation_permission",
+                label="Chrome automation permission",
+                severity="block",
+                ok=False,
+                detail="chrome_automation_blocked",
+            ),
+            LaunchReadinessCheck(
+                key="hotkey_accessibility_permission",
+                label="hotkey Accessibility permission",
+                severity="block",
+                ok=False,
+                detail="hotkey_accessibility_blocked",
+            ),
+            LaunchReadinessCheck(
+                key="microphone_capture_permission",
+                label="microphone capture permission",
+                severity="block",
+                ok=False,
+                detail="microphone_capture_permission_blocked",
+            ),
+            LaunchReadinessCheck(
+                key="audio_routing_permission",
+                label="audio routing permission",
+                severity="block",
+                ok=False,
+                detail="audio_routing_permission_blocked",
+            ),
+        ),
+    )
+
+    categories = {hint.title: hint.category for hint in hints_from_launch_readiness(report)}
+
+    assert categories["provider meeting tab"] == "provider"
+    assert categories["provider capabilities"] == "provider"
+    assert categories["provider output BlackHole"] == "audio-device"
+    assert categories["capture route BlackHole"] == "audio-device"
+    assert categories["Chrome automation permission"] == "macos-permission"
+    assert categories["hotkey Accessibility permission"] == "macos-permission"
+    assert categories["microphone capture permission"] == "macos-permission"
+    assert categories["audio routing permission"] == "macos-permission"
+
+
 def test_scorecard_hints_cover_review_and_safety_issues():
     metrics = RegressionMetrics(
         profile="personal",
@@ -84,4 +166,3 @@ def test_scorecard_hints_cover_review_and_safety_issues():
     assert "Improve speaker labels" in payload
     assert "saymo trigger-samples queue -p personal --session daily" in payload
     assert "saymo session-scorecard -p personal --session daily" in payload
-

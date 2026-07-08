@@ -266,6 +266,190 @@ def test_audio_route_checks_validate_expected_devices_and_kinds(tmp_path, monkey
     }
 
 
+def test_provider_capabilities_are_reported_without_actions(tmp_path):
+    from saymo.analysis.provider_audio_readiness import collect_provider_capability_checks
+    from saymo.providers._chrome_base import ChromeCallProvider
+    from saymo.providers.glip import GlipProvider
+    from saymo.providers.mts_link import MTSLinkProvider
+
+    class GenericChromeProvider(ChromeCallProvider):
+        name = "generic"
+        url_pattern = "generic.example"
+
+    config = _config(tmp_path)
+    generic = GenericChromeProvider()
+    generic.check_ready = MagicMock()
+    generic.activate_meeting = MagicMock()
+    generic.toggle_mute = MagicMock()
+    generic.switch_mic = MagicMock()
+    generic.get_previous_app = MagicMock()
+    generic.activate_app = MagicMock()
+
+    generic_checks = collect_provider_capability_checks(
+        config,
+        profile="standup",
+        provider_name="generic",
+        provider=generic,
+    )
+
+    assert len(generic_checks) == 1
+    generic_check = generic_checks[0]
+    assert generic_check.key == "provider_capabilities"
+    assert generic_check.label == "provider capabilities"
+    assert generic_check.severity == "warn"
+    assert generic_check.ok is False
+    assert generic_check.detail == "mic_switch_unsupported"
+    assert generic_check.rerun == "saymo call-ready -p standup --provider generic"
+    assert generic_check.metadata["category"] == "provider"
+    assert generic_check.metadata["provider_name"] == "generic"
+    assert generic_check.metadata["configured_provider"] == "generic"
+    assert generic_check.metadata["tab_activation_supported"] is True
+    assert generic_check.metadata["mute_recovery_supported"] is True
+    assert generic_check.metadata["mic_switch_supported"] is False
+    assert generic_check.metadata["mic_switch_status"] == "mic_switch_unsupported"
+    assert generic_check.metadata["capability_limitations"] == [
+        "mic_switch_unsupported"
+    ]
+    generic.check_ready.assert_not_called()
+    _assert_provider_mutators_not_called(generic)
+
+    for provider in (GlipProvider(), MTSLinkProvider()):
+        provider.check_ready = MagicMock()
+        provider.activate_meeting = MagicMock()
+        provider.toggle_mute = MagicMock()
+        provider.switch_mic = MagicMock()
+        provider.get_previous_app = MagicMock()
+        provider.activate_app = MagicMock()
+
+        checks = collect_provider_capability_checks(
+            config,
+            profile="standup",
+            provider_name=provider.name,
+            provider=provider,
+        )
+
+        assert len(checks) == 1
+        check = checks[0]
+        assert check.key == "provider_capabilities"
+        assert check.severity == "info"
+        assert check.ok is True
+        assert check.detail == "provider_capabilities_supported"
+        assert check.metadata["tab_activation_supported"] is True
+        assert check.metadata["mute_recovery_supported"] is True
+        assert check.metadata["mic_switch_supported"] is True
+        assert check.metadata["mic_switch_status"] == "mic_switch_supported"
+        assert check.metadata["capability_limitations"] == []
+        provider.check_ready.assert_not_called()
+        _assert_provider_mutators_not_called(provider)
+
+
+def test_permission_blockers_are_actionable(tmp_path, monkeypatch):
+    from saymo.analysis.live_control import HotkeyDoctorReport
+    from saymo.analysis.provider_audio_readiness import collect_permission_checks
+    import saymo.analysis.live_control as live_control
+    import saymo.audio.macos_audio as macos_audio
+    import saymo.commands.tests as command_tests
+    import sounddevice
+
+    config = _config(tmp_path)
+    doctor_calls = []
+
+    def fake_hotkey_report(config_arg, profile, *, probe=True):
+        doctor_calls.append((config_arg, profile, probe))
+        return HotkeyDoctorReport(
+            profile=profile,
+            bindings={"toggle_auto_answer": "<cmd>+<shift>+m"},
+            process_running=False,
+            registration_status="blocked",
+            registration_detail="Accessibility denied",
+        )
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("permission checks must not mutate audio/provider state")
+
+    provider = _provider()
+    monkeypatch.setattr(live_control, "build_hotkey_doctor_report", fake_hotkey_report)
+    monkeypatch.setattr("saymo.audio.playback.play_audio_bytes", forbidden)
+    monkeypatch.setattr("saymo.audio.multi_play.play_bytes_to_devices", forbidden)
+    monkeypatch.setattr("sounddevice.rec", forbidden)
+    monkeypatch.setattr(macos_audio, "set_input_volume", forbidden)
+    monkeypatch.setattr(macos_audio, "bump_input_volume", forbidden)
+    monkeypatch.setattr(
+        command_tests,
+        "_write_audio_settings_to_user_config",
+        forbidden,
+    )
+
+    checks = collect_permission_checks(
+        config,
+        profile="standup",
+        provider_name="glip",
+        provider_error="osascript: Not authorized to send Apple events to Google Chrome",
+        microphone_permission_blocked=True,
+        audio_routing_permission_blocked=True,
+    )
+
+    assert doctor_calls == [(config, "standup", True)]
+    assert sounddevice.rec is forbidden
+    assert [check.key for check in checks] == [
+        "chrome_automation_permission",
+        "hotkey_accessibility_permission",
+        "microphone_capture_permission",
+        "audio_routing_permission",
+    ]
+    by_key = {check.key: check for check in checks}
+    assert by_key["chrome_automation_permission"].metadata["category"] == (
+        "macos-permission"
+    )
+    assert by_key["chrome_automation_permission"].detail == "chrome_automation_blocked"
+    assert by_key["chrome_automation_permission"].action == (
+        "Allow Google Chrome automation and terminal Accessibility permissions, "
+        "then rerun call-ready."
+    )
+    assert by_key["chrome_automation_permission"].rerun == (
+        "saymo call-ready -p standup --provider glip"
+    )
+    assert by_key["hotkey_accessibility_permission"].metadata["category"] == (
+        "macos-permission"
+    )
+    assert by_key["hotkey_accessibility_permission"].detail == (
+        "hotkey_accessibility_blocked"
+    )
+    assert by_key["hotkey_accessibility_permission"].action == (
+        "Allow the terminal app running Saymo in macOS Accessibility settings."
+    )
+    assert by_key["hotkey_accessibility_permission"].rerun == (
+        "saymo call-ready -p standup --provider glip"
+    )
+    assert by_key["microphone_capture_permission"].metadata["category"] == (
+        "macos-permission"
+    )
+    assert by_key["microphone_capture_permission"].detail == (
+        "microphone_capture_permission_blocked"
+    )
+    assert by_key["microphone_capture_permission"].action == (
+        "Allow microphone access for the terminal app running Saymo, "
+        "then rerun call-ready."
+    )
+    assert by_key["microphone_capture_permission"].rerun == (
+        "saymo call-ready -p standup --provider glip"
+    )
+    assert by_key["audio_routing_permission"].metadata["category"] == (
+        "macos-permission"
+    )
+    assert by_key["audio_routing_permission"].detail == (
+        "audio_routing_permission_blocked"
+    )
+    assert by_key["audio_routing_permission"].action == (
+        "Verify BlackHole permissions/routes in macOS Audio MIDI Setup and allow "
+        "required audio access, then rerun call-ready."
+    )
+    assert by_key["audio_routing_permission"].rerun == (
+        "saymo call-ready -p standup --provider glip"
+    )
+    _assert_provider_mutators_not_called(provider)
+
+
 def test_collect_provider_audio_checks_is_non_destructive(tmp_path, monkeypatch):
     from saymo.analysis.provider_audio_readiness import collect_provider_audio_checks
     import saymo.audio.devices as audio_devices
