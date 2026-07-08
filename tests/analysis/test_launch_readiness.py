@@ -244,6 +244,127 @@ def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
     _assert_private_absent(json.dumps(report.to_dict(), ensure_ascii=False))
 
 
+def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch):
+    from saymo.analysis import launch_cache, launch_sources
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        collect_launch_readiness,
+    )
+
+    config = load_config(config_path=str(_write_config(tmp_path)))
+
+    def fake_daily_checks(config, profile, *, provider_name, prepare):
+        assert profile == "standup"
+        assert provider_name == "glip"
+        assert prepare is False
+        return (
+            LaunchReadinessCheck(
+                key="daily_note_present",
+                label="daily note present",
+                severity="block",
+                ok=True,
+                metadata={"source_sha256": "ignored"},
+            ),
+            LaunchReadinessCheck(
+                key="daily_note_source_ready",
+                label="daily note source ready",
+                severity="block",
+                ok=True,
+                metadata={"source_sha256": "abc123"},
+            ),
+        )
+
+    def fake_prepared_check(config, profile, *, provider_name, team_mode, source_sha256):
+        assert profile == "standup"
+        assert provider_name == "glip"
+        assert team_mode is False
+        assert source_sha256 == "abc123"
+        return LaunchReadinessCheck(
+            key="prepared_standup_audio",
+            label="prepared standup audio",
+            severity="block",
+            ok=True,
+        )
+
+    monkeypatch.setattr(launch_sources, "collect_daily_note_checks", fake_daily_checks)
+    monkeypatch.setattr(launch_sources, "collect_prepared_audio_check", fake_prepared_check)
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_response_cache_check",
+        lambda config, *, profile, provider_name: LaunchReadinessCheck(
+            key="response_cache_coverage",
+            label="response cache coverage",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_voice_metadata_check",
+        lambda config, *, profile, provider_name: LaunchReadinessCheck(
+            key="cloned_voice_metadata",
+            label="cloned voice metadata",
+            severity="block",
+            ok=True,
+        ),
+    )
+
+    report = collect_launch_readiness(config, profile="standup", provider_name=None)
+
+    assert report.provider == "glip"
+    assert [check.key for check in report.checks] == [
+        "daily_note_present",
+        "daily_note_source_ready",
+        "prepared_standup_audio",
+        "response_cache_coverage",
+        "cloned_voice_metadata",
+        "provider_audio_basic_scope",
+    ]
+    provider_scope = _check_by_key(report, "provider_audio_basic_scope")
+    assert provider_scope.severity == "info"
+    assert provider_scope.ok is True
+    assert provider_scope.detail == "deferred_to_phase_37"
+    assert provider_scope.metadata == {
+        "deferred_to_phase": "37",
+        "scope": "basic_provider_audio_placeholder",
+    }
+
+
+def test_write_launch_readiness_artifact_writes_sorted_sanitized_json(tmp_path):
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        LaunchReadinessReport,
+        write_launch_readiness_artifact,
+    )
+
+    report = LaunchReadinessReport(
+        profile="standup",
+        provider="glip",
+        checks=(
+            LaunchReadinessCheck(
+                key="daily_note_source_ready",
+                label="daily note source ready",
+                severity="block",
+                ok=False,
+                detail="PRIVATE_DAILY_NOTE SECRET_TOKEN",
+                metadata={"source_sha256": "abc123"},
+            ),
+        ),
+    )
+    output_path = tmp_path / "call-ready.json"
+
+    written = write_launch_readiness_artifact(report, output_path)
+
+    assert written == output_path
+    raw = output_path.read_text(encoding="utf-8")
+    assert raw.endswith("\n")
+    assert raw.index('"block_count"') < raw.index('"profile"')
+    payload = json.loads(raw)
+    assert payload["checks"][0]["key"] == "daily_note_source_ready"
+    assert payload["checks"][0]["metadata"]["source_sha256"] == "abc123"
+    _assert_private_absent(raw)
+
+
 def test_voice_metadata_is_sanitized_and_actionable(tmp_path):
     from saymo.analysis.launch_cache import collect_voice_metadata_check
 

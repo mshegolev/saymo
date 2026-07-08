@@ -151,6 +151,96 @@ def test_call_ready_json_is_sanitized(tmp_path, monkeypatch):
     _assert_no_private_text(result.output)
 
 
+def test_call_ready_writes_output_artifact_in_human_mode(tmp_path, monkeypatch):
+    import saymo.commands.call_ready as call_ready_module
+    from saymo.analysis.launch_readiness import LaunchReadinessCheck, LaunchReadinessReport
+
+    config_path = _write_config(tmp_path)
+    output_path = tmp_path / "call-ready.json"
+    report = LaunchReadinessReport(
+        profile="standup",
+        provider="glip",
+        checks=(
+            LaunchReadinessCheck(
+                key="provider_audio_basic_scope",
+                label="provider audio basic scope",
+                severity="info",
+                ok=True,
+                detail="deferred_to_phase_37",
+                metadata={
+                    "deferred_to_phase": "37",
+                    "scope": "basic_provider_audio_placeholder",
+                },
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        call_ready_module,
+        "collect_launch_readiness",
+        lambda config, *, profile, provider_name, prepare: report,
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "call-ready",
+            "-p",
+            "standup",
+            "--provider",
+            "glip",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert _top_level_result_lines(result.output) == ["call-ready: ready"]
+    assert f"artifact: {output_path}" in result.output
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["checks"][0]["key"] == "provider_audio_basic_scope"
+    assert payload["checks"][0]["detail"] == "deferred_to_phase_37"
+    _assert_no_private_text(result.output)
+    _assert_no_private_text(json.dumps(payload, ensure_ascii=False))
+
+
+def test_call_ready_output_artifact_does_not_pollute_json_stdout(tmp_path, monkeypatch):
+    import saymo.commands.call_ready as call_ready_module
+
+    config_path = _write_config(tmp_path)
+    output_path = tmp_path / "call-ready.json"
+    monkeypatch.setattr(
+        call_ready_module,
+        "collect_launch_readiness",
+        lambda config, *, profile, provider_name, prepare: _report(ready=True),
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "call-ready",
+            "-p",
+            "standup",
+            "--provider",
+            "glip",
+            "--output",
+            str(output_path),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "artifact:" not in result.output
+    payload = json.loads(result.output)
+    artifact = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["ready"] is True
+    assert artifact["ready"] is True
+    _assert_no_private_text(result.output)
+
+
 def test_call_ready_prepare_creates_note_without_overwrite(tmp_path):
     from datetime import date
 
