@@ -480,6 +480,21 @@ def test_manual_speak_hotkey_queues_forced_playback():
     assert manual_speak.is_set()
 
 
+def test_manual_speak_hotkey_queues_when_auto_answer_off():
+    triggered = asyncio.Event()
+    manual_speak = asyncio.Event()
+    speaking = asyncio.Event()
+    manual_takeover = asyncio.Event()
+    auto_answer_enabled = asyncio.Event()
+
+    state = _request_manual_speak(triggered, manual_speak, speaking, manual_takeover)
+
+    assert state == "queued"
+    assert not auto_answer_enabled.is_set()
+    assert triggered.is_set()
+    assert manual_speak.is_set()
+
+
 def test_manual_speak_hotkey_ignored_during_takeover():
     triggered = asyncio.Event()
     manual_speak = asyncio.Event()
@@ -809,6 +824,127 @@ def test_auto_trigger_loop_blocks_handbrake_before_response_resolution(
 
         resolver.assert_not_called()
         assert any(expected_reason in audit.get("reason", "") for audit in audits)
+
+    _run(scenario())
+
+
+def test_auto_force_speak_uses_manual_standup_decision_without_automatic_paths(
+    tmp_path,
+    monkeypatch,
+):
+    async def scenario():
+        import saymo.commands.core as core_module
+
+        config, audio_path = _auto_loop_config(tmp_path)
+        playback_started = asyncio.Event()
+        provider = MagicMock()
+        provider.name = "FakeMeet"
+        provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
+        provider.switch_mic.return_value = True
+        read_calls = 0
+
+        def fake_read_control_commands(profile, offset=0):
+            nonlocal read_calls
+            if read_calls == 0:
+                read_calls += 1
+                return [
+                    SimpleNamespace(
+                        action="speak",
+                        source="test",
+                        command_id="cmd-manual-speak",
+                        payload={},
+                    )
+                ], 1
+            return [], offset
+
+        core, _detector = _install_auto_loop_fakes(
+            monkeypatch,
+            tmp_path,
+            provider=provider,
+            cached_audio=audio_path,
+            control_commands=fake_read_control_commands,
+            capture_delay=0.2,
+        )
+
+        forbidden_cache = MagicMock()
+        forbidden_cache.library = {}
+        forbidden_cache.lookup.side_effect = AssertionError("cache lookup must not run")
+        forbidden_cache.get_variant_by_key.side_effect = AssertionError(
+            "cache key lookup must not run"
+        )
+        forbidden_cache.library_keys.side_effect = AssertionError(
+            "cache keys must not be read"
+        )
+        monkeypatch.setattr(
+            core,
+            "build_realtime_response_cache",
+            lambda config: forbidden_cache,
+        )
+        automatic_resolver = AsyncMock(
+            side_effect=AssertionError("automatic resolver must not run")
+        )
+        monkeypatch.setattr(
+            core,
+            "resolve_realtime_response_decision",
+            automatic_resolver,
+        )
+        monkeypatch.setattr(
+            "saymo.speech.ollama_composer.classify_intent",
+            AsyncMock(side_effect=AssertionError("classifier must not run")),
+        )
+        monkeypatch.setattr(
+            "saymo.speech.ollama_composer.answer_question",
+            AsyncMock(side_effect=AssertionError("LLM must not run")),
+        )
+        monkeypatch.setattr(
+            "saymo.tts.selector.get_selected_tts_engine",
+            MagicMock(side_effect=AssertionError("TTS selector must not run")),
+        )
+        manual_calls = []
+
+        def fake_manual_decision(*, prepared_standup_path, handbrake_block=None):
+            manual_calls.append((prepared_standup_path, handbrake_block))
+            return core.RealtimeResponseDecision(
+                outcome="speak",
+                label="manual-standup-requested",
+                source="manual_standup",
+                reason="manual prepared playback requested",
+                audio_path=prepared_standup_path,
+                automatic=False,
+            )
+
+        monkeypatch.setattr(
+            core,
+            "resolve_manual_standup_decision",
+            fake_manual_decision,
+            raising=False,
+        )
+        playback_calls = []
+
+        async def fake_play_cached_audio(*args, **kwargs):
+            playback_calls.append((args, kwargs))
+            playback_started.set()
+            return SimpleNamespace(
+                success=True,
+                reason="",
+                playback_started=True,
+            )
+
+        monkeypatch.setattr(core, "_play_cached_audio", fake_play_cached_audio)
+
+        await _run_auto_until(
+            playback_started,
+            core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
+        )
+
+        assert manual_calls == [(audio_path, None)]
+        assert playback_calls
+        assert playback_calls[0][0][1] == audio_path
+        assert playback_calls[0][1]["allow_provider_fallback"] is True
+        automatic_resolver.assert_not_called()
+        forbidden_cache.lookup.assert_not_called()
+        forbidden_cache.get_variant_by_key.assert_not_called()
+        forbidden_cache.library_keys.assert_not_called()
 
     _run(scenario())
 

@@ -7,8 +7,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+from saymo.analysis import realtime_policy
 from saymo.analysis.cache_metadata import VoiceCacheMetadata, write_voice_cache_metadata
 from saymo.analysis.response_cache import ResponseCache, ResponseEntry
+from saymo.analysis.realtime_gate import RealtimePlaybackBlock
 from saymo.analysis.realtime_policy import (
     build_realtime_response_cache,
     resolve_realtime_response_decision,
@@ -172,6 +174,7 @@ def test_cache_miss_blocks_without_standup_fallback():
     cache = MagicMock()
     cache.voice_metadata = None
     cache.lookup.return_value = None
+    prepared_standup = Path("/tmp/prepared-standup.wav")
 
     decision = _run(
         resolve_realtime_response_decision(
@@ -184,7 +187,63 @@ def test_cache_miss_blocks_without_standup_fallback():
     assert decision.outcome == "block"
     assert decision.label == "cache-miss-blocked"
     assert decision.audio_path is None
+    assert decision.audio_path != prepared_standup
     assert decision.cleanup_path is False
+
+
+def test_manual_standup_decision_speaks_existing_prepared_path(tmp_path):
+    prepared_standup = tmp_path / "standup.wav"
+    prepared_standup.write_bytes(b"RIFFfake")
+
+    decision = realtime_policy.resolve_manual_standup_decision(
+        prepared_standup_path=prepared_standup,
+    )
+
+    assert decision.outcome == "speak"
+    assert decision.label == "manual-standup-requested"
+    assert decision.source == "manual_standup"
+    assert decision.reason == "manual prepared playback requested"
+    assert decision.audio_path == prepared_standup
+    assert decision.automatic is False
+    assert decision.cleanup_path is False
+
+
+def test_manual_standup_decision_blocks_missing_prepared_path(tmp_path):
+    missing_standup = tmp_path / "missing.wav"
+
+    decision = realtime_policy.resolve_manual_standup_decision(
+        prepared_standup_path=missing_standup,
+    )
+
+    assert decision.outcome == "block"
+    assert decision.label == "manual-standup-blocked"
+    assert decision.source == "manual_standup"
+    assert decision.reason == "prepared-standup-missing"
+    assert decision.audio_path is None
+    assert decision.automatic is False
+
+
+def test_manual_standup_decision_blocks_supplied_handbrake_reason(tmp_path):
+    prepared_standup = tmp_path / "standup.wav"
+    prepared_standup.write_bytes(b"RIFFfake")
+    handbrake_block = RealtimePlaybackBlock(
+        label="handbrake-blocked",
+        reason="manual-takeover",
+        detail="raw transcript should not leak",
+    )
+
+    decision = realtime_policy.resolve_manual_standup_decision(
+        prepared_standup_path=prepared_standup,
+        handbrake_block=handbrake_block,
+    )
+
+    assert decision.outcome == "block"
+    assert decision.label == "manual-standup-blocked"
+    assert decision.source == "manual_standup"
+    assert decision.reason == "manual-takeover"
+    assert decision.audio_path is None
+    assert decision.automatic is False
+    assert "raw transcript" not in repr(decision)
 
 
 def test_responses_disabled_or_missing_cache_blocks_before_lookup():
