@@ -56,7 +56,7 @@ safety-soak.
 - [x] **Phase 39: Fail-Closed Realtime Meeting Loop** - Gate realtime startup (completed 2026-07-08)
   and automatic answers so cache misses, stale voice metadata, provider loss,
   unsafe fallback, and handbrake state block playback.
-- [ ] **Phase 40: Launch and Realtime Evidence Feedback** - Record sanitized
+- [x] **Phase 40: Launch and Realtime Evidence Feedback** - Record sanitized (completed 2026-07-08)
   launch and realtime evidence, then feed launch health and unsafe conditions
   back into scorecards, troubleshooting, and safety-soak.
 
@@ -199,8 +199,8 @@ session-scorecard, safety-soak, remediation hints
 Plans:
 - [x] 40-01-PLAN.md — Define and write sanitized launch-readiness artifact schema
 - [x] 40-02-PLAN.md — Feed realtime and launch-health evidence into rehearsal/session scorecards
-- [ ] 40-03-PLAN.md — Extend safety-soak with v1.9 readiness, daemon, cache, and fallback gates
-- [ ] 40-04-PLAN.md — Add troubleshooting output, rerun commands, docs, and evidence tests
+- [x] 40-03-PLAN.md — Extend safety-soak with v1.9 readiness, daemon, cache, and fallback gates
+- [x] 40-04-PLAN.md — Add troubleshooting output, rerun commands, docs, and evidence tests
 
 ## Progress
 
@@ -213,7 +213,7 @@ Phases execute in numeric order: 36 -> 37 -> 38 -> 39 -> 40
 | 37. Provider and Audio Remediation | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
 | 38. Local Call-Control Daemon and LaunchAgent | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
 | 39. Fail-Closed Realtime Meeting Loop | v1.9 | Complete | 2026-07-08 | 2026-07-08 |
-| 40. Launch and Realtime Evidence Feedback | v1.9 | 3/4 | In Progress | - |
+| 40. Launch and Realtime Evidence Feedback | v1.9 | Complete | 2026-07-08 | 2026-07-08 |
 
 ## Requirement Coverage
 

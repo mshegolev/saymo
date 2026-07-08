@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
 current_plan: 4
-status: in_progress
-stopped_at: Completed 40-03-PLAN.md
-last_updated: "2026-07-08T19:22:00.941Z"
+status: completed
+stopped_at: Completed 40-04-PLAN.md
+last_updated: "2026-07-08T19:33:44.939Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 22
-  completed_plans: 21
-  percent: 95
+  completed_plans: 22
+  percent: 100
 ---
 
 # Project State
@@ -23,27 +23,27 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.9 Call Launch Readiness, Phase 40 Launch and Realtime
-Evidence Feedback is in progress; Plan 40-03 is complete and Plan 40-04 is next.
+**Current focus:** v1.9 Call Launch Readiness implementation is complete;
+Phase 40 Plan 04 is complete and the milestone is ready for verification.
 
 ## Current Position
 
 Phase: 40 (5 of 5) - Launch and Realtime Evidence Feedback
 Current Plan: 4
 Total Plans in Phase: 4
-Plans: 3 of 4 completed.
-Status: Phase 40 Plan 03 is complete; ready to execute Plan 40-04.
+Plans: 4 of 4 completed.
+Status: Phase 40 Plan 04 is complete; ready for verification.
 Last activity: 2026-07-08
 
-Progress: [██████████] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 21
+- Plans completed: 22
 - Average duration: 7 min
-- Total execution time: 140 min
+- Total execution time: 148 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -75,6 +75,7 @@ Progress: [██████████] 95%
 | 40-01 | 12 min | 2 | 5 |
 | 40-02 | 7 min | 2 | 7 |
 | 40-03 | 6 min | 2 | 5 |
+| 40-04 | 8 min | 2 | 10 |
 
 **By Phase:**
 
@@ -84,7 +85,7 @@ Progress: [██████████] 95%
 | 37. Provider and Audio Remediation | Complete | 4/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Complete | 5/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Complete | 5/5 |
-| 40. Launch and Realtime Evidence Feedback | In Progress | 3/4 |
+| 40. Launch and Realtime Evidence Feedback | Complete | 4/4 |
 
 ## Accumulated Context
 
@@ -168,10 +169,13 @@ Recent decisions affecting current work:
 - [Phase 40]: Plan 40-03: v1.9 safety-soak failures are derived from SessionScorecard launch_metrics and realtime_metrics only.
 - [Phase 40]: Plan 40-03: v1.9 aggregate totals are emitted with zero defaults but kept out of DRIFT_METRICS so old baselines remain neutral.
 - [Phase 40]: Plan 40-03: safety-soak evidence path flags are pass-through for rehearsal scorecard construction, not inputs to safety_soak.py.
+- [Phase 40]: Plan 40-04: v1.9 troubleshooting hints are derived only from sanitized scorecard and safety-soak metrics, artifact paths, log paths, labels, categories, and rerun commands.
+- [Phase 40]: Plan 40-04: safety-soak --scorecard-json inputs are annotated in memory as scorecard-json sources so remediation can print the exact soak rerun path without changing report JSON shape.
+- [Phase 40]: Plan 40-04: session-scorecard and safety-soak keep --output as Markdown output and --json-output as JSON output; remediation remains console troubleshooting output.
 
 ### Pending Todos
 
-Execute Phase 40 Plan 04.
+None - Phase 40 Plan 04 is complete.
 
 ### Blockers/Concerns
 
@@ -184,6 +188,6 @@ Execute Phase 40 Plan 04.
 
 ## Session Continuity
 
-Last session: 2026-07-08T19:22:00.938Z
-Stopped at: Completed 40-03-PLAN.md
+Last session: 2026-07-08T19:33:24.137Z
+Stopped at: Completed 40-04-PLAN.md
 Resume file: None
