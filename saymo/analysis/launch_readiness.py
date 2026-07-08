@@ -25,6 +25,12 @@ _LAUNCH_CHECK_ORDER = (
     "response_cache_coverage",
     "cloned_voice_metadata",
     "provider_meeting_tab",
+    "capture_input_device",
+    "playback_output_device",
+    "provider_output_blackhole",
+    "capture_route_blackhole",
+    "recording_microphone_input",
+    "provider_capabilities",
 )
 
 

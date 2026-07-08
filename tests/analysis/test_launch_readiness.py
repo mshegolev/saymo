@@ -375,7 +375,7 @@ def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch
     report = collect_launch_readiness(config, profile="standup", provider_name=None)
 
     assert report.provider == "glip"
-    expected_order = [
+    expected_base_order = [
         "daily_note_present",
         "daily_note_source_ready",
         "prepared_standup_audio",
@@ -388,10 +388,10 @@ def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch
         "capture_route_blackhole",
         "recording_microphone_input",
         "provider_capabilities",
-        "hotkey_accessibility_permission",
     ]
+    expected_order = [*expected_base_order, "hotkey_accessibility_permission"]
     assert [check.key for check in report.checks] == expected_order
-    assert launch_readiness._LAUNCH_CHECK_ORDER == tuple(expected_order)
+    assert launch_readiness._LAUNCH_CHECK_ORDER == tuple(expected_base_order)
     old_placeholder_key = "provider" + "_audio_basic_scope"
     assert old_placeholder_key not in expected_order
     provider_tab = _check_by_key(report, "provider_meeting_tab")
