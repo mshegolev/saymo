@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: Call Launch Readiness
-status: ready to plan
-stopped_at: v1.9 roadmap created; next action is planning Phase 36.
-last_updated: "2026-07-08"
-last_activity: "2026-07-08 - created v1.9 roadmap and mapped all requirements"
+status: in progress
+stopped_at: Completed 36-01-PLAN.md
+last_updated: "2026-07-08T12:59:12.583Z"
+last_activity: 2026-07-08 - completed 36-01 shared launch-readiness contracts.
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 22
-  completed_plans: 0
-  percent: 0
+  total_plans: 4
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -28,30 +28,38 @@ Call-Ready Preflight and Cache Gate.
 ## Current Position
 
 Phase: 36 (1 of 5) - Call-Ready Preflight and Cache Gate
-Plan: 0 of 4 planned
-Status: Ready to plan Phase 36.
-Last activity: 2026-07-08 - created v1.9 roadmap and mapped all requirements.
+Current Plan: 1
+Total Plans in Phase: 4
+Plan: 1 of 4 planned
+Status: Ready to execute 36-02.
+Last activity: 2026-07-08 - completed 36-01 shared launch-readiness contracts.
 
-Progress: [----------] 0%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 0
-- Average duration: not started
-- Total execution time: not started
+- Plans completed: 1
+- Average duration: 6 min
+- Total execution time: 6 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
 - v1.7 completed 15 plans across 4 phases.
 - v1.6 completed 16 plans across 4 phases.
 
+**Recent Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| 36-01 | 6 min | 2 | 7 |
+
 **By Phase:**
 
 | Phase | Status | Plans |
 |-------|--------|-------|
-| 36. Call-Ready Preflight and Cache Gate | Ready to plan | 0/4 |
+| 36. Call-Ready Preflight and Cache Gate | In Progress | 1/4 |
 | 37. Provider and Audio Remediation | Not started | 0/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Not started | 0/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
@@ -73,10 +81,15 @@ Recent decisions affecting current work:
   auto-answer.
 - v1.9: Local call-control daemon is control-plane only; realtime audio,
   transcription, synthesis, and playback stay owned by the existing loop.
+- 36-01: Initial call-ready collector is intentionally scoped to contract-safe
+  profile and provider scope checks; daily-note, cache, voice, and deeper
+  provider/audio checks remain follow-up plan work.
+- 36-01: Human call-ready output keeps exactly one top-level status line, while
+  JSON uses sanitized `LaunchReadinessReport.to_dict()` output.
 
 ### Pending Todos
 
-Plan Phase 36 from `.planning/ROADMAP.md`.
+Execute Plan 36-02 from `.planning/phases/36-call-ready-preflight-and-cache-gate/36-02-PLAN.md`.
 
 ### Blockers/Concerns
 
@@ -89,6 +102,6 @@ Plan Phase 36 from `.planning/ROADMAP.md`.
 
 ## Session Continuity
 
-Last session: 2026-07-08
-Stopped at: v1.9 roadmap created; Phase 36 is ready to plan.
+Last session: 2026-07-08T12:59:12.556Z
+Stopped at: Completed 36-01-PLAN.md
 Resume file: None

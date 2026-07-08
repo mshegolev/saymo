@@ -10,7 +10,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 
 ### Call-Ready Launch Gate
 
-- [ ] **LAUN-01**: User can run one call-ready command for a profile and
+- [x] **LAUN-01**: User can run one call-ready command for a profile and
   provider that returns a concise `ready` or `not ready` result before a call.
 - [ ] **LAUN-02**: User can have the call-ready flow create or verify today's
   Obsidian daily note without overwriting existing note content.
@@ -26,7 +26,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [ ] **LAUN-06**: User can see approved cloned-voice metadata for prepared
   and response-cache audio, including selected engine, voice profile,
   approval state, reference fingerprint, and stale-cache reason.
-- [ ] **LAUN-07**: User can get grouped `block`, `warn`, and `info`
+- [x] **LAUN-07**: User can get grouped `block`, `warn`, and `info`
   remediation with exact action and rerun commands for every call-ready check.
 
 ### Provider and Audio Readiness
@@ -150,13 +150,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LAUN-01 | Phase 36 | Pending |
+| LAUN-01 | Phase 36 | Complete |
 | LAUN-02 | Phase 36 | Pending |
 | LAUN-03 | Phase 36 | Pending |
 | LAUN-04 | Phase 36 | Pending |
 | LAUN-05 | Phase 36 | Pending |
 | LAUN-06 | Phase 36 | Pending |
-| LAUN-07 | Phase 36 | Pending |
+| LAUN-07 | Phase 36 | Complete |
 | PROV-01 | Phase 37 | Pending |
 | PROV-02 | Phase 37 | Pending |
 | PROV-03 | Phase 37 | Pending |
