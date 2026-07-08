@@ -23,58 +23,79 @@ enough that the call still feels live.
 
 ## Current State
 
-Saymo has shipped milestone v1.7 Live Reliability Rehearsal. The
-product can build local transcript ledgers from captured sessions, search and
-ask questions about those sessions with transcript citations, generate pending
-answer drafts grounded in meeting memory and configured sources, record
-explicit cockpit actions plus sanitized audit trails, review real captured
-sessions, reduce incidental name-handoff false positives, bootstrap speaker
-labels, play only approved generated drafts, and replay saved sessions as local
-regression fixtures.
+Saymo has shipped milestone v1.8 Call-ready Voice Clone. The product can build
+local transcript ledgers from captured sessions, search and ask questions about
+those sessions with transcript citations, generate pending answer drafts
+grounded in meeting memory and configured sources, record explicit cockpit
+actions plus sanitized audit trails, review real captured sessions, reduce
+incidental name-handoff false positives, bootstrap speaker labels, play only
+approved generated drafts, and replay saved sessions as local regression
+fixtures.
 
-It can now expose an operator handbrake during live calls: guide, hotkey
-doctor, local control panel, scriptable action queue, shared runtime state,
-expanded global hotkeys, and audit events for stop/toggle/takeover/skip/status
-actions.
-
+It can expose an operator handbrake during live calls: guide, hotkey doctor,
+local control panel, scriptable action queue, shared runtime state, expanded
+global hotkeys, and audit events for stop/toggle/takeover/skip/status actions.
 It can also prove the live loop repeatedly: `saymo rehearsal` performs a
 pre-call dry run, `saymo session-scorecard` exports sanitized reliability
 evidence, remediation hints explain the next action, and `saymo safety-soak`
 turns rehearsal/scorecard artifacts into a local pass/fail gate with baseline
 drift checks.
 
-The 2026-05-21 recorded session exposed reliability gaps that v1.5 addressed:
-`speaker=unknown` coverage can now be reviewed and bootstrapped, incidental
-name mentions can be separated from direct handoffs, approved answer drafts can
-use the safe playback path, and saved sessions can be replayed as regression
-fixtures.
+The v1.8 voice-clone path added read-only local model inventory, protected
+voice profiles, F5 benchmark evidence, purpose-specific voice selection,
+metadata-backed cache freshness checks, preview approval, and safety-soak voice
+readiness gates. The active local config now uses the approved `f5tts_clone`
+path for the `personal` profile, and a launchd helper can create the missing
+Obsidian daily note before standup preparation.
 
-**Status:** v1.8 Call-ready Voice Clone started on 2026-07-07.
+**Status:** v1.9 Call Launch Readiness started on 2026-07-08.
 
-The next milestone focuses on making the cloned voice itself reliable enough
-for the live-call path: auditable local model inventory, repeatable voice
-quality benchmarks, a chosen engine/fallback chain, and safety gates before
-any cloned voice reaches a call.
+The next milestone focuses on making the full pre-call and live-call path feel
+operationally reliable: one green launch path, provider/tab remediation,
+prepared response cache health, realtime loop readiness, and a local
+daemon/control surface so the handbrake does not depend on a terminal window.
 
-## Current Milestone: v1.8 Call-ready Voice Clone
+## Current Milestone: v1.9 Call Launch Readiness
+
+**Goal:** Make Saymo reliably go from daily note and prepared cloned-voice
+cache to a controlled realtime call loop with provider readiness, launchd
+health, and handbrake controls verified before the meeting starts.
+
+**Target features:**
+- One call-ready command or flow that checks/creates the daily note, prepares
+  standup audio and response-cache variants, validates cloned voice cache
+  metadata, and reports only actionable blockers.
+- Provider readiness checks and remediation for Glip/Chrome tab state,
+  BlackHole routing, playback/capture devices, permissions, and stale launchd
+  helpers.
+- A local Saymo call-control daemon or LaunchAgent that keeps global hotkeys,
+  live-control state, status, and stop/takeover actions available outside the
+  terminal.
+- A realtime meeting loop that starts only after cloned voice, response cache,
+  provider, handbrake, and profile readiness pass, and that fails closed on
+  cache miss or unsafe fallback.
+- Post-call/rehearsal evidence that shows whether the launch and realtime loop
+  stayed healthy, with regressions feeding back into preflight and safety-soak.
+
+## Last Completed Milestone: v1.8 Call-ready Voice Clone
 
 **Goal:** Make Saymo speak in the user's cloned voice through a reproducible,
 local, call-ready pipeline with clear quality, latency, fallback, and safety
 evidence.
 
-**Target features:**
-- Local voice model inventory that explains which engines, checkpoints,
-  datasets, and caches exist without deleting or mutating training data.
-- Voice reference/profile setup that can use existing local samples and
-  datasets read-only unless the user explicitly starts training.
-- Benchmark shootout for candidate engines such as Qwen3-TTS, F5-TTS, XTTS,
-  Piper/macOS fallback, with latency, quality notes, and artifact manifests.
-- A call-ready engine selector and fallback chain wired into Saymo config,
-  rehearsal, response-cache preparation, and safety-soak checks.
-- Preview/A-B evaluation commands so the user can decide whether the cloned
-  voice is good enough before enabling it in a real call.
+**Delivered:**
+- Read-only local voice model inventory and protected profile manifests for
+  samples, transcripts, training datasets, and runtime assets.
+- Repeatable F5 benchmark artifacts with manifests, blind review templates,
+  review scoring, and benchmark-backed approval.
+- Candidate gates for Qwen3 Base and heavier engines that prevent accidental
+  installs, downloads, runtime promotion, or training.
+- Purpose-specific call-ready voice selector and fallback chain for prepare,
+  response cache, preview, realtime, and approved live-call output.
+- Preview, A/B approval, preflight, rehearsal, scorecard, and safety-soak gates
+  that block stale, unapproved, or non-cloned live-call output.
 
-## Last Completed Milestone: v1.7 Live Reliability Rehearsal
+## Previous Milestone: v1.7 Live Reliability Rehearsal
 
 **Goal:** Turn real and rehearsal sessions into a repeatable reliability loop
 that shows whether Saymo is safe enough for the next call and what to fix when
@@ -195,16 +216,18 @@ playback, and regression replay.
 
 ### Active
 
-- User can see exactly which local voice clone assets are usable, stale,
-  duplicated, or dangerous to delete.
-- User can create a voice identity profile from existing local samples and
-  datasets without accidentally rewriting training data.
-- User can benchmark candidate voice engines with consistent text prompts,
-  reference audio, manifests, and latency/quality evidence.
-- User can configure a default call-ready cloned voice engine plus fallback
-  behavior for `prepare`, `speak`, rehearsal, and safety-soak.
-- User can preview and approve cloned voice outputs before trusting them in a
-  real call.
+- User can run one call-ready path that creates missing Obsidian daily notes,
+  prepares standup audio, builds response-cache variants, validates cloned
+  voice metadata, and returns a concise ready/not-ready result.
+- User can see provider, Chrome tab, BlackHole, permission, profile, cache, and
+  launchd helper blockers with exact remediation and rerun commands.
+- User can start, stop, inspect, and recover a local call-control daemon or
+  LaunchAgent that keeps hotkeys and live-control state active outside the
+  terminal.
+- User can start a realtime meeting loop only after cloned voice, response
+  cache, provider, handbrake, trigger, and profile readiness pass.
+- User can inspect post-call or rehearsal evidence for launch health, live-loop
+  decisions, cache hits/misses, handbrake actions, and unsafe fallback blocks.
 
 ### Out of Scope
 
@@ -222,8 +245,9 @@ playback, and regression replay.
   reach the call.
 - Native macOS capture without BlackHole — useful future work, but separate
   from the local memory/cockpit loop.
-- Native menu bar app or LaunchAgent for the handbrake — useful after the
-  local CLI/TUI safety contract is proven across more live meetings.
+- Polished App Store-style native menu bar packaging — v1.9 may add a local
+  daemon/LaunchAgent and lightweight status/control surface, but productized
+  native UI distribution is separate work.
 - Using real call recordings as voice-clone training data — call audio is for
   trigger/reliability review, not voice identity training, unless explicitly
   exported by the user in a future milestone.
@@ -284,7 +308,8 @@ playback, and regression replay.
 | Wire only approved generated drafts into playback | Approval/audit is the safety boundary; generated text may play only after an explicit user action | Implemented in v1.5 |
 | Prefer an explicit handbrake over hidden automation | During live calls, the user needs visible control and fast recovery more than another autonomous behavior | Implemented in v1.6 |
 | Prove the live loop before trusting it | The next risk is not missing controls, but not knowing whether the whole loop is reliable for the next meeting | Implemented in v1.7 |
-| Treat voice-clone assets as protected local state | Model checkpoints and training datasets are costly to redownload or retrain, so cleanup/training must be explicit and auditable | Pending in v1.8 |
+| Treat voice-clone assets as protected local state | Model checkpoints and training datasets are costly to redownload or retrain, so cleanup/training must be explicit and auditable | Implemented in v1.8 |
+| Treat call launch as one green path | Daily note, prepare/cache, provider tab, voice readiness, and handbrake state fail in different places unless the operator sees one actionable readiness result | Pending in v1.9 |
 
 ---
-*Last updated: 2026-07-07 after starting milestone v1.8*
+*Last updated: 2026-07-08 after starting milestone v1.9*

@@ -1,47 +1,46 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.8
-milestone_name: Call-ready Voice Clone
-status: milestone archived; runtime benchmark pending user scoring
-stopped_at: v1.8 archived; F5 benchmark run 20260707-210741-f5tts generated; next step is fill review.json and approve if quality passes.
-last_updated: "2026-07-07"
-last_activity: "2026-07-07 - archived v1.8 and generated F5 benchmark clips"
+milestone: v1.9
+milestone_name: Call Launch Readiness
+status: defining requirements
+stopped_at: v1.9 started from selected priorities: call launch readiness, realtime meeting loop, live-control daemon/menu bar.
+last_updated: "2026-07-08"
+last_activity: "2026-07-08 - started milestone v1.9 Call Launch Readiness"
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 22
-  completed_plans: 22
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-22)
+See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Planning next milestone; v1.8 runtime voice approval awaits
-local A/B scoring.
+**Current focus:** Defining v1.9 Call Launch Readiness: one green pre-call path,
+realtime loop readiness, and local daemon/control availability.
 
 ## Current Position
 
-Phase: v1.8 complete
-Plan: None
-Status: Milestone v1.8 archived; real F5 benchmark artifacts generated and
-waiting for user scoring.
-Last activity: 2026-07-07 - archived v1.8 and generated F5 benchmark clips.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements for milestone v1.9.
+Last activity: 2026-07-08 - started milestone v1.9 Call Launch Readiness.
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: 22
-- Plans completed: 22
-- Average duration: same-day execution
-- Total execution time: same-day execution
+- Total plans planned: 0
+- Plans completed: 0
+- Average duration: not started
+- Total execution time: not started
 
 **Historical Velocity:**
 - v1.0 completed 11 plans across 4 phases.
@@ -51,16 +50,14 @@ Progress: [##########] 100%
 - v1.4 completed 15 plans across 4 phases.
 - v1.5 completed 18 plans across 5 phases.
 - v1.6 completed 16 plans across 4 phases.
+- v1.7 completed 15 plans across 4 phases.
+- v1.8 completed 22 plans across 5 phases.
 
 **By Phase:**
 
 | Phase | Status | Plans |
 |-------|--------|-------|
-| 31. Voice Asset Inventory and Profile Setup | Complete | 4/4 |
-| 32. Benchmark Scoring and F5 Baseline | Complete | 4/4 |
-| 33. Candidate Shootout Gates | Complete | 4/4 |
-| 34. Call-ready Engine Selector and Fallback Chain | Complete | 5/5 |
-| 35. Preview, A/B Approval, and Safety Soak | Complete | 5/5 |
+| v1.9 phases | Pending roadmap | 0/0 |
 
 ## Accumulated Context
 
@@ -98,13 +95,18 @@ Recent decisions affecting future work:
 - v1.8 Phase 35: Voice profiles can be approved/rejected only from completed
   scored benchmark evidence; preview audits are preview-only and text-safe;
   safety-soak fails on voice profile/cache/non-cloned live-call blockers.
+- Post-v1.8: The `personal` F5 profile is approved from benchmark run
+  `20260707-213256-f5tts`, and the active config uses `tts.engine:
+  f5tts_clone`.
+- v1.9: The selected priority order is call launch readiness, realtime meeting
+  loop, then live-control daemon/menu bar.
 
 ### Pending Todos
 
-Fill
-`~/.saymo/voice_benchmarks/20260707-210741-f5tts/review.json`, regenerate the
-score report if needed, then approve the `personal` voice profile if the score
-gate passes.
+Define v1.9 requirements and roadmap. First implementation should make the
+current failure mode visible and actionable: missing prepared standup audio,
+provider tab readiness, launchd helper health, and whether the call-control
+listener is actually available before a meeting.
 
 ### Blockers/Concerns
 
@@ -122,12 +124,11 @@ gate passes.
   sanitizable.
 - Real captured sessions can be used as local regression fixtures, but raw
   audio/transcripts must not be committed.
-- Native menu bar app, LaunchAgent control listener, and voice-command
-  handbrake remain future work.
+- Productized native menu bar packaging remains future work, but a local
+  daemon/LaunchAgent control listener is now in v1.9 scope.
 
 ## Session Continuity
 
-Last session: 2026-07-07
-Stopped at: v1.8 archived; F5 benchmark run
-`20260707-210741-f5tts` is complete but unscored.
+Last session: 2026-07-08
+Stopped at: v1.9 new-milestone initialization.
 Resume file: None
