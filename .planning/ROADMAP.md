@@ -10,7 +10,8 @@ history is archived per milestone so this roadmap stays small.
 - ✅ **v1.9 Call Launch Readiness** — Phases 36-40 shipped 2026-07-08.
   Archives: `.planning/milestones/v1.9-ROADMAP.md`,
   `.planning/milestones/v1.9-REQUIREMENTS.md`,
-  `.planning/milestones/v1.9-MILESTONE-AUDIT.md`
+  `.planning/milestones/v1.9-MILESTONE-AUDIT.md`,
+  `.planning/milestones/v1.9-phases/`
 - ✅ **v1.8 Call-ready Voice Clone** — Phases 31-35 shipped 2026-07-07.
   Archives: `.planning/milestones/v1.8-ROADMAP.md`,
   `.planning/milestones/v1.8-REQUIREMENTS.md`,
@@ -50,12 +51,12 @@ No active milestone. Start the next milestone with `$gsd-new-milestone`.
 
 ## Current Archives
 
-| Milestone | Roadmap | Requirements | Audit |
-|---|---|---|---|
-| v1.9 | `.planning/milestones/v1.9-ROADMAP.md` | `.planning/milestones/v1.9-REQUIREMENTS.md` | `.planning/milestones/v1.9-MILESTONE-AUDIT.md` |
-| v1.8 | `.planning/milestones/v1.8-ROADMAP.md` | `.planning/milestones/v1.8-REQUIREMENTS.md` | `.planning/milestones/v1.8-MILESTONE-AUDIT.md` |
-| v1.7 | `.planning/milestones/v1.7-ROADMAP.md` | `.planning/milestones/v1.7-REQUIREMENTS.md` | `.planning/milestones/v1.7-MILESTONE-AUDIT.md` |
-| v1.6 | `.planning/milestones/v1.6-ROADMAP.md` | `.planning/milestones/v1.6-REQUIREMENTS.md` | `.planning/milestones/v1.6-MILESTONE-AUDIT.md` |
+| Milestone | Roadmap | Requirements | Audit | Phase Archive |
+|---|---|---|---|---|
+| v1.9 | `.planning/milestones/v1.9-ROADMAP.md` | `.planning/milestones/v1.9-REQUIREMENTS.md` | `.planning/milestones/v1.9-MILESTONE-AUDIT.md` | `.planning/milestones/v1.9-phases/` |
+| v1.8 | `.planning/milestones/v1.8-ROADMAP.md` | `.planning/milestones/v1.8-REQUIREMENTS.md` | `.planning/milestones/v1.8-MILESTONE-AUDIT.md` | `.planning/milestones/v1.8-phases/` |
+| v1.7 | `.planning/milestones/v1.7-ROADMAP.md` | `.planning/milestones/v1.7-REQUIREMENTS.md` | `.planning/milestones/v1.7-MILESTONE-AUDIT.md` | `.planning/milestones/v1.7-phases/` |
+| v1.6 | `.planning/milestones/v1.6-ROADMAP.md` | `.planning/milestones/v1.6-REQUIREMENTS.md` | `.planning/milestones/v1.6-MILESTONE-AUDIT.md` | `.planning/milestones/v1.6-phases/` |
 
 ## Next
 

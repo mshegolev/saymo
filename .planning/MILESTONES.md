@@ -35,6 +35,7 @@ Archives:
 - `.planning/milestones/v1.9-ROADMAP.md`
 - `.planning/milestones/v1.9-REQUIREMENTS.md`
 - `.planning/milestones/v1.9-MILESTONE-AUDIT.md`
+- `.planning/milestones/v1.9-phases/`
 
 ### v1.8 Call-ready Voice Clone
 
