@@ -18,13 +18,13 @@ _PRIVATE_SENTINELS = (
     "SECRET_TOKEN",
 )
 
-_PHASE36_CHECK_ORDER = (
+_LAUNCH_CHECK_ORDER = (
     "daily_note_present",
     "daily_note_source_ready",
     "prepared_standup_audio",
     "response_cache_coverage",
     "cloned_voice_metadata",
-    "provider_audio_basic_scope",
+    "provider_meeting_tab",
 )
 
 
@@ -186,11 +186,12 @@ def _collect_phase36_checks(
     provider_name: str,
     prepare: bool,
 ) -> tuple[LaunchReadinessCheck, ...]:
-    """Collect launch checks in the operator-facing Phase 36 order."""
+    """Collect launch checks in the operator-facing order."""
     from saymo.analysis.launch_cache import (
         collect_response_cache_check,
         collect_voice_metadata_check,
     )
+    from saymo.analysis.provider_audio_readiness import collect_provider_audio_checks
     from saymo.analysis.launch_sources import (
         collect_daily_note_checks,
         collect_prepared_audio_check,
@@ -232,22 +233,14 @@ def _collect_phase36_checks(
             provider_name=provider_name,
         )
     )
-    checks.append(_provider_audio_basic_scope_check())
-    return tuple(checks)
-
-
-def _provider_audio_basic_scope_check() -> LaunchReadinessCheck:
-    return LaunchReadinessCheck(
-        key="provider_audio_basic_scope",
-        label="provider audio basic scope",
-        severity="info",
-        ok=True,
-        detail="deferred_to_phase_37",
-        metadata={
-            "deferred_to_phase": "37",
-            "scope": "basic_provider_audio_placeholder",
-        },
+    checks.extend(
+        collect_provider_audio_checks(
+            config,
+            profile=profile,
+            provider_name=provider_name,
+        )
     )
+    return tuple(checks)
 
 
 def _sanitize_value(value: Any) -> Any:

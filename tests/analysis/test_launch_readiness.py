@@ -412,12 +412,12 @@ def test_launch_readiness_remediation_groups_by_severity():
                 rerun="saymo call-ready -p standup --provider glip",
             ),
             LaunchReadinessCheck(
-                key="provider_audio_basic_scope",
-                label="provider audio basic scope",
+                key="provider_meeting_tab",
+                label="provider meeting tab",
                 severity="info",
                 ok=False,
-                detail="deferred_to_phase_37",
-                action="Run Phase 37 provider/audio readiness",
+                detail="meeting_tab_not_found",
+                action="Open the glip meeting in Chrome",
                 rerun="saymo call-ready -p standup --provider glip",
             ),
         ),
@@ -428,7 +428,7 @@ def test_launch_readiness_remediation_groups_by_severity():
     assert [(hint.category, hint.title) for hint in hints] == [
         ("source-data", "daily note source ready"),
         ("voice-cache", "cloned voice metadata"),
-        ("retest", "provider audio basic scope"),
+        ("retest", "provider meeting tab"),
     ]
     assert render_grouped_launch_remediation(report).splitlines() == [
         "remediation:",
@@ -443,9 +443,9 @@ def test_launch_readiness_remediation_groups_by_severity():
         "  action: Approve a cloned voice profile for live calls",
         "  rerun: saymo call-ready -p standup --provider glip",
         "info:",
-        "- [retest] provider audio basic scope",
-        "  why: deferred_to_phase_37",
-        "  action: Run Phase 37 provider/audio readiness",
+        "- [retest] provider meeting tab",
+        "  why: meeting_tab_not_found",
+        "  action: Open the glip meeting in Chrome",
         "  rerun: saymo call-ready -p standup --provider glip",
     ]
 
