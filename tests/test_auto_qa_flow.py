@@ -2,8 +2,11 @@
 flow used by ``saymo auto`` (cli._resolve_auto_response)."""
 
 import asyncio
+import contextlib
 import json
+import time
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -19,6 +22,7 @@ from saymo.analysis.launch_readiness import (
     LaunchReadinessReport,
 )
 from saymo.commands import main
+from saymo.commands import _play_cached_audio
 from saymo.config import SaymoConfig
 from saymo.commands.core import (
     _automatic_speaking_allowed,
@@ -87,6 +91,155 @@ def _blocked_launch_report() -> LaunchReadinessReport:
             ),
         ),
     )
+
+
+def _auto_loop_config(tmp_path: Path) -> tuple[SaymoConfig, Path]:
+    config = SaymoConfig()
+    config.user.name = "John"
+    config.user.name_variants = ["John"]
+    config.user.language = "en"
+    config.audio.capture_device = "BlackHole 16ch"
+    config.audio.playback_device = "BlackHole 2ch"
+    config.audio.monitor_device = ""
+    config.audio.recording_device = "MacBook Pro Microphone"
+    config.safety.require_confirmation = False
+    config.safety.max_speech_duration = 1
+    config.live.chunk_seconds = 0.25
+    config.live.overlap_seconds = 0.0
+    config.live.read_timeout_seconds = 0.1
+    config.live.trigger_cooldown_seconds = 0.0
+    config.live.silence_rms_threshold = 0.0
+    config.live.pre_speak_delay_seconds = 0.01
+    config.meetings = {
+        "standup": {
+            "description": "Standup",
+            "provider": "glip",
+            "team": False,
+            "source": "obsidian",
+            "trigger_phrases": ["John"],
+        }
+    }
+    audio_path = tmp_path / "standup.wav"
+    audio_path.write_bytes(b"wav-bytes")
+    return config, audio_path
+
+
+class _AutoLoopChunk:
+    def __pow__(self, _power):
+        return self
+
+    def mean(self):
+        return 1.0
+
+
+class _EmptyAudioQueue:
+    def empty(self):
+        return True
+
+    def get_nowait(self):
+        raise RuntimeError("empty")
+
+
+class _FakeDetector:
+    recent_transcript = "John, what is the status?"
+
+    def __init__(self):
+        self.triggered = False
+        self.reset_count = 0
+
+    def check(self, _text: str) -> bool:
+        if self.triggered:
+            return False
+        self.triggered = True
+        return True
+
+    def reset_cooldown(self):
+        self.reset_count += 1
+
+
+def _install_auto_loop_fakes(
+    monkeypatch,
+    tmp_path: Path,
+    *,
+    provider,
+    cached_audio: Path,
+    control_commands=None,
+    capture_delay: float = 0.0,
+):
+    import saymo.commands.core as core
+
+    class FakeCapture:
+        def __init__(self, *args, **kwargs):
+            self.audio_queue = _EmptyAudioQueue()
+            self.emitted = False
+
+        def start(self):
+            pass
+
+        def stop(self):
+            pass
+
+        def get_chunk(self, _timeout):
+            if not self.emitted:
+                self.emitted = True
+                if capture_delay:
+                    time.sleep(capture_delay)
+                return _AutoLoopChunk()
+            time.sleep(0.01)
+            return None
+
+    class FakeWhisper:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def transcribe(self, _chunk):
+            return "John, what is the status?"
+
+    detector = _FakeDetector()
+
+    monkeypatch.setattr(
+        core,
+        "evaluate_realtime_launch_gate",
+        lambda *args, **kwargs: SimpleNamespace(allowed=True),
+    )
+    monkeypatch.setattr(core, "_get_cached_audio_path", lambda team=False: cached_audio)
+    monkeypatch.setattr(core, "_should_register_local_hotkeys", lambda *args, **kwargs: False)
+    monkeypatch.setattr(
+        core,
+        "_classify_trigger_window",
+        lambda *args, **kwargs: SimpleNamespace(label="direct-question", reason="direct"),
+    )
+    monkeypatch.setattr(
+        "saymo.analysis.addressing.should_answer_decision",
+        lambda decision: True,
+    )
+    monkeypatch.setattr(
+        "saymo.audio.devices.find_device",
+        lambda device_name, kind=None: SimpleNamespace(index=1, name=device_name),
+    )
+    monkeypatch.setattr("saymo.providers.factory.get_provider", lambda provider_name: provider)
+    monkeypatch.setattr("saymo.audio.capture.AudioCapture", FakeCapture)
+    monkeypatch.setattr("saymo.stt.whisper_local.LocalWhisper", FakeWhisper)
+    monkeypatch.setattr("saymo.analysis.turn_detector.TurnDetector", lambda *a, **k: detector)
+    monkeypatch.setattr(core, "build_realtime_response_cache", lambda config: None)
+    monkeypatch.setattr("saymo.analysis.live_control.command_log_offset", lambda profile: 0)
+    monkeypatch.setattr("saymo.analysis.live_control.live_control_dir", lambda profile: tmp_path)
+    monkeypatch.setattr("saymo.analysis.live_control.write_live_state", lambda *a, **k: None)
+    monkeypatch.setattr(
+        "saymo.analysis.live_control.read_control_commands",
+        control_commands or (lambda profile, offset=0: ([], offset)),
+    )
+    return core, detector
+
+
+async def _run_auto_until(wait_for_event: asyncio.Event, coro):
+    task = asyncio.create_task(coro)
+    try:
+        await asyncio.wait_for(wait_for_event.wait(), timeout=2.0)
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
 
 # ---------------------------------------------------------------------------
@@ -581,6 +734,246 @@ def test_auto_uses_realtime_policy_not_legacy_response_resolver():
 
     assert "resolve_realtime_response_decision" in source
     assert "_resolve_auto_response_decision" not in source
+
+
+@pytest.mark.parametrize(
+    "action, expected_reason",
+    [
+        ("toggle_auto_answer", "auto-answer-off"),
+        ("takeover", "manual-takeover"),
+        ("hard_disable", "hard-disabled"),
+    ],
+)
+def test_auto_trigger_loop_blocks_handbrake_before_response_resolution(
+    tmp_path,
+    monkeypatch,
+    action,
+    expected_reason,
+):
+    async def scenario():
+        import saymo.commands.core as core_module
+
+        config, audio_path = _auto_loop_config(tmp_path)
+        blocked = asyncio.Event()
+        audits = []
+        provider = MagicMock()
+        provider.name = "FakeMeet"
+        provider.check_ready.return_value = SimpleNamespace(meeting_found=True)
+        provider.switch_mic.return_value = True
+
+        read_calls = 0
+
+        def fake_read_control_commands(profile, offset=0):
+            nonlocal read_calls
+            if read_calls == 0:
+                read_calls += 1
+                return [
+                    SimpleNamespace(
+                        action=action,
+                        source="test",
+                        command_id="cmd-1",
+                        payload={},
+                    )
+                ], 1
+            return [], offset
+
+        def fake_append_control_audit(*args, **kwargs):
+            audits.append(kwargs)
+            if kwargs.get("result") == "automatic_speaking_blocked":
+                blocked.set()
+
+        core, _detector = _install_auto_loop_fakes(
+            monkeypatch,
+            tmp_path,
+            provider=provider,
+            cached_audio=audio_path,
+            control_commands=fake_read_control_commands,
+            capture_delay=0.05,
+        )
+        resolver = AsyncMock(
+            side_effect=AssertionError("blocked handbrake must not resolve response")
+        )
+        monkeypatch.setattr(core, "resolve_realtime_response_decision", resolver)
+        monkeypatch.setattr(
+            "saymo.analysis.live_control.append_control_audit",
+            fake_append_control_audit,
+        )
+
+        await _run_auto_until(
+            blocked,
+            core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
+        )
+
+        resolver.assert_not_called()
+        assert any(expected_reason in audit.get("reason", "") for audit in audits)
+
+    _run(scenario())
+
+
+def test_auto_trigger_loop_checks_provider_before_automatic_playback(
+    tmp_path,
+    monkeypatch,
+):
+    async def scenario():
+        import saymo.commands.core as core_module
+        import saymo.commands as commands_module
+
+        config, audio_path = _auto_loop_config(tmp_path)
+        provider_rechecked = asyncio.Event()
+        playback_calls = []
+
+        class Provider:
+            name = "FakeMeet"
+
+            def __init__(self):
+                self.ready_checks = 0
+
+            def check_ready(self):
+                self.ready_checks += 1
+                if self.ready_checks == 1:
+                    return SimpleNamespace(meeting_found=True)
+                provider_rechecked.set()
+                return SimpleNamespace(meeting_found=False)
+
+            def switch_mic(self, device_name):
+                return True
+
+        provider = Provider()
+        core, _detector = _install_auto_loop_fakes(
+            monkeypatch,
+            tmp_path,
+            provider=provider,
+            cached_audio=audio_path,
+        )
+        monkeypatch.setattr(
+            core,
+            "resolve_realtime_response_decision",
+            AsyncMock(
+                return_value=core.RealtimeResponseDecision(
+                    outcome="speak",
+                    label="response-cache-hit",
+                    source="response_cache",
+                    reason="prepared cached response selected",
+                    audio_path=audio_path,
+                )
+            ),
+        )
+        original_play_cached_audio = commands_module._play_cached_audio
+
+        async def wrapped_play_cached_audio(*args, **kwargs):
+            playback_calls.append((args, kwargs))
+            return await original_play_cached_audio(*args, **kwargs)
+
+        monkeypatch.setattr(core, "_play_cached_audio", wrapped_play_cached_audio)
+
+        await _run_auto_until(
+            provider_rechecked,
+            core_module._auto(config, "tiny", "standup", disable_local_hotkeys=True),
+        )
+
+        assert playback_calls == []
+
+    _run(scenario())
+
+
+def test_play_cached_audio_strict_provider_fallback_blocks_direct_blackhole(
+    tmp_path,
+    monkeypatch,
+):
+    audio_path = tmp_path / "cached.wav"
+    audio_path.write_bytes(b"wav-bytes")
+    config = SaymoConfig()
+    config.audio.monitor_device = ""
+
+    class FailingProvider:
+        name = "FailMeet"
+
+        def check_ready(self):
+            return SimpleNamespace(meeting_found=True)
+
+        def switch_mic(self, device_name):
+            return True
+
+        async def unmute_speak_mute(self, speak_fn, *args, **kwargs):
+            raise RuntimeError("mute automation failed")
+
+    played = []
+
+    async def fake_play_audio_bytes(audio_bytes, device_name):
+        played.append((audio_bytes, device_name))
+
+    monkeypatch.setattr(
+        "saymo.providers.factory.get_provider",
+        lambda provider_name: FailingProvider(),
+    )
+    monkeypatch.setattr(
+        "saymo.audio.devices.find_device",
+        lambda device_name, kind=None: object(),
+    )
+    monkeypatch.setattr(
+        "saymo.audio.playback.play_audio_bytes",
+        fake_play_audio_bytes,
+    )
+
+    result = _run(
+        _play_cached_audio(
+            config,
+            audio_path,
+            provider_name="failmeet",
+            allow_provider_fallback=False,
+        )
+    )
+
+    assert result.success is False
+    assert result.reason == "provider-automation-blocked"
+    assert result.playback_started is False
+    assert played == []
+
+
+def test_play_cached_audio_default_keeps_non_automatic_provider_fallback(
+    tmp_path,
+    monkeypatch,
+):
+    audio_path = tmp_path / "cached.wav"
+    audio_path.write_bytes(b"wav-bytes")
+    config = SaymoConfig()
+    config.audio.monitor_device = ""
+
+    class FailingProvider:
+        name = "FailMeet"
+
+        def check_ready(self):
+            return SimpleNamespace(meeting_found=True)
+
+        def switch_mic(self, device_name):
+            return True
+
+        async def unmute_speak_mute(self, speak_fn, *args, **kwargs):
+            raise RuntimeError("mute automation failed")
+
+    played = []
+
+    async def fake_play_audio_bytes(audio_bytes, device_name):
+        played.append((audio_bytes, device_name))
+
+    monkeypatch.setattr(
+        "saymo.providers.factory.get_provider",
+        lambda provider_name: FailingProvider(),
+    )
+    monkeypatch.setattr(
+        "saymo.audio.devices.find_device",
+        lambda device_name, kind=None: object(),
+    )
+    monkeypatch.setattr(
+        "saymo.audio.playback.play_audio_bytes",
+        fake_play_audio_bytes,
+    )
+
+    result = _run(_play_cached_audio(config, audio_path, provider_name="failmeet"))
+
+    assert result.success is True
+    assert result.playback_started is True
+    assert played == [(b"wav-bytes", "BlackHole 2ch")]
 
 
 # ---------------------------------------------------------------------------

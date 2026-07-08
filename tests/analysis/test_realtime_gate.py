@@ -7,10 +7,21 @@ from saymo.analysis.launch_readiness import (
     LaunchReadinessReport,
 )
 from saymo.analysis.realtime_gate import (
+    automatic_handbrake_block,
     evaluate_realtime_launch_gate,
+    provider_playback_block,
+    RealtimePlaybackBlock,
     render_realtime_launch_block,
 )
 from saymo.config import SaymoConfig
+
+
+class _Flag:
+    def __init__(self, value: bool = False):
+        self.value = value
+
+    def is_set(self) -> bool:
+        return self.value
 
 
 def _report(*, ready: bool, provider: str = "glip") -> LaunchReadinessReport:
@@ -107,3 +118,73 @@ def test_render_realtime_launch_block_reuses_call_ready_remediation():
     assert "remediation:" in rendered
     assert "- [source-data] daily note source ready" in rendered
     assert "realtime: blocked (launch-readiness-blocked)" in rendered
+
+
+def test_automatic_handbrake_block_returns_stable_reasons():
+    assert isinstance(
+        automatic_handbrake_block(_Flag(True), _Flag(True), _Flag(False)),
+        RealtimePlaybackBlock,
+    )
+
+    cases = [
+        (_Flag(True), _Flag(True), _Flag(False), "manual-takeover"),
+        (_Flag(True), _Flag(False), _Flag(True), "hard-disabled"),
+        (_Flag(False), _Flag(False), _Flag(False), "auto-answer-off"),
+    ]
+
+    for auto_answer_enabled, manual_takeover, hard_disabled, reason in cases:
+        block = automatic_handbrake_block(
+            auto_answer_enabled,
+            manual_takeover,
+            hard_disabled,
+        )
+
+        assert block is not None
+        assert block.label == "handbrake-blocked"
+        assert block.reason == reason
+        assert "private" not in block.detail.lower()
+
+
+def test_automatic_handbrake_block_allows_enabled_automatic_state():
+    assert automatic_handbrake_block(_Flag(True), _Flag(False), _Flag(False)) is None
+
+
+def test_provider_playback_block_reports_missing_provider_tab():
+    class Provider:
+        name = "FakeMeet"
+
+        def check_ready(self):
+            return type("Status", (), {"meeting_found": False})()
+
+    block = provider_playback_block(Provider())
+
+    assert block is not None
+    assert block.label == "provider-blocked"
+    assert block.reason == "meeting-not-found"
+    assert block.detail == "FakeMeet"
+
+
+def test_provider_playback_block_sanitizes_readiness_exceptions():
+    class Provider:
+        name = "FakeMeet"
+
+        def check_ready(self):
+            raise RuntimeError("raw chrome tab title and private meeting text")
+
+    block = provider_playback_block(Provider())
+
+    assert block is not None
+    assert block.label == "provider-blocked"
+    assert block.reason == "provider-check-error"
+    assert block.detail == "RuntimeError"
+    assert "private meeting text" not in block.detail
+
+
+def test_provider_playback_block_allows_ready_provider():
+    class Provider:
+        name = "FakeMeet"
+
+        def check_ready(self):
+            return type("Status", (), {"meeting_found": True})()
+
+    assert provider_playback_block(Provider()) is None
