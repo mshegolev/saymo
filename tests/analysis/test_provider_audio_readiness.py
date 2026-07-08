@@ -6,6 +6,7 @@ import json
 import textwrap
 from unittest.mock import MagicMock
 
+from saymo.audio.devices import AudioDevice
 from saymo.config import load_config
 from saymo.providers.base import MeetingStatus
 
@@ -60,6 +61,16 @@ def _assert_provider_mutators_not_called(provider):
     provider.switch_mic.assert_not_called()
     provider.get_previous_app.assert_not_called()
     provider.activate_app.assert_not_called()
+
+
+def _device(index: int, name: str) -> AudioDevice:
+    return AudioDevice(
+        index=index,
+        name=name,
+        max_input_channels=2,
+        max_output_channels=2,
+        default_samplerate=48000.0,
+    )
 
 
 def test_provider_tab_readiness_reports_found_missing_and_errors(tmp_path, monkeypatch):
@@ -177,20 +188,140 @@ def test_provider_tab_readiness_reports_found_missing_and_errors(tmp_path, monke
     assert "SECRET_TOKEN" not in json.dumps(check_error.to_dict(), ensure_ascii=False)
 
 
+def test_audio_route_checks_validate_expected_devices_and_kinds(tmp_path, monkeypatch):
+    from saymo.analysis.provider_audio_readiness import collect_audio_route_checks
+    import saymo.audio.devices as audio_devices
+
+    config = _config(tmp_path)
+    config.audio.capture_device = "Call Capture Device"
+    config.audio.playback_device = "Conference Headphones"
+    config.audio.recording_device = "MacBook Pro Microphone"
+    found_devices = {
+        ("Call Capture Device", "input"): _device(1, "Call Capture Device"),
+        ("Conference Headphones", "output"): _device(2, "Conference Headphones"),
+        ("BlackHole 2ch", "output"): _device(3, "BlackHole 2ch"),
+        ("MacBook Pro Microphone", "input"): _device(4, "MacBook Pro Microphone"),
+    }
+    calls = []
+
+    def fake_find_device(name, kind="input"):
+        calls.append((name, kind))
+        return found_devices.get((name, kind))
+
+    monkeypatch.setattr(audio_devices, "find_device", fake_find_device)
+
+    checks = collect_audio_route_checks(
+        config,
+        profile="standup",
+        provider_name="glip",
+    )
+
+    assert calls == [
+        ("Call Capture Device", "input"),
+        ("Conference Headphones", "output"),
+        ("BlackHole 2ch", "output"),
+        ("BlackHole 16ch", "input"),
+        ("MacBook Pro Microphone", "input"),
+    ]
+    assert [check.key for check in checks] == [
+        "capture_input_device",
+        "playback_output_device",
+        "provider_output_blackhole",
+        "capture_route_blackhole",
+        "recording_microphone_input",
+    ]
+    by_key = {check.key: check for check in checks}
+    capture = by_key["capture_input_device"]
+    assert capture.ok is True
+    assert capture.severity == "block"
+    assert capture.metadata == {
+        "category": "audio-device",
+        "device_name": "Call Capture Device",
+        "kind": "input",
+        "required": True,
+        "found": True,
+        "device": {
+            "index": 1,
+            "name": "Call Capture Device",
+            "max_input_channels": 2,
+            "max_output_channels": 2,
+            "default_samplerate": 48000.0,
+        },
+    }
+
+    missing_blackhole = by_key["capture_route_blackhole"]
+    assert missing_blackhole.ok is False
+    assert missing_blackhole.severity == "block"
+    assert missing_blackhole.detail == "device_not_found"
+    assert "saymo test-devices" in missing_blackhole.action
+    assert "install BlackHole" in missing_blackhole.action
+    assert "switch" not in missing_blackhole.action.lower()
+    assert missing_blackhole.rerun == "saymo call-ready -p standup --provider glip"
+    assert missing_blackhole.metadata == {
+        "category": "audio-device",
+        "device_name": "BlackHole 16ch",
+        "kind": "input",
+        "required": True,
+        "found": False,
+    }
+
+
 def test_collect_provider_audio_checks_is_non_destructive(tmp_path, monkeypatch):
     from saymo.analysis.provider_audio_readiness import collect_provider_audio_checks
+    import saymo.audio.devices as audio_devices
+    import saymo.audio.macos_audio as macos_audio
+    import saymo.audio.multi_play as multi_play
+    import saymo.audio.playback as playback
+    import saymo.commands.tests as command_tests
     import saymo.providers.factory as provider_factory
+    import sounddevice as sd
 
     provider = _provider()
     monkeypatch.setattr(provider_factory, "get_provider", lambda name: provider)
+    config = _config(tmp_path)
+    config.audio.recording_device = "MacBook Pro Microphone"
+    find_calls = []
+
+    def fake_find_device(name, kind="input"):
+        find_calls.append((name, kind))
+        return _device(len(find_calls), name)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("call-ready provider/audio checks must be read-only")
+
+    monkeypatch.setattr(audio_devices, "find_device", fake_find_device)
+    monkeypatch.setattr(playback, "play_audio_bytes", forbidden)
+    monkeypatch.setattr(multi_play, "play_bytes_to_devices", forbidden)
+    monkeypatch.setattr(sd, "rec", forbidden)
+    monkeypatch.setattr(macos_audio, "set_input_volume", forbidden)
+    monkeypatch.setattr(macos_audio, "bump_input_volume", forbidden)
+    monkeypatch.setattr(
+        command_tests,
+        "_write_audio_settings_to_user_config",
+        forbidden,
+    )
 
     checks = collect_provider_audio_checks(
-        _config(tmp_path),
+        config,
         profile="standup",
         provider_name="glip",
     )
 
     assert isinstance(checks, tuple)
     assert checks[0].key == "provider_meeting_tab"
+    assert [check.key for check in checks[1:]] == [
+        "capture_input_device",
+        "playback_output_device",
+        "provider_output_blackhole",
+        "capture_route_blackhole",
+        "recording_microphone_input",
+    ]
+    assert find_calls == [
+        ("BlackHole 16ch", "input"),
+        ("BlackHole 2ch", "output"),
+        ("BlackHole 2ch", "output"),
+        ("BlackHole 16ch", "input"),
+        ("MacBook Pro Microphone", "input"),
+    ]
     provider.check_ready.assert_called_once_with()
     _assert_provider_mutators_not_called(provider)
