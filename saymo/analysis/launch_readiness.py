@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Literal
 
 
@@ -14,6 +16,15 @@ _PRIVATE_SENTINELS = (
     "PRIVATE_TRANSCRIPT",
     "PRIVATE_GENERATED_ANSWER",
     "SECRET_TOKEN",
+)
+
+_PHASE36_CHECK_ORDER = (
+    "daily_note_present",
+    "daily_note_source_ready",
+    "prepared_standup_audio",
+    "response_cache_coverage",
+    "cloned_voice_metadata",
+    "provider_audio_basic_scope",
 )
 
 
@@ -80,42 +91,15 @@ def collect_launch_readiness(
     provider_name: str | None,
     prepare: bool = False,
 ) -> LaunchReadinessReport:
-    """Collect the Phase 36.01 contract-only launch-readiness checks."""
+    """Collect the full Phase 36 launch-readiness checks."""
     meeting = config.get_meeting(profile)
     provider = provider_name or (meeting.provider if meeting else "glip")
-    checks: list[LaunchReadinessCheck] = [
-        LaunchReadinessCheck(
-            key="profile",
-            label="profile",
-            severity="info",
-            ok=True,
-            detail=f"profile={profile}",
-            metadata={
-                "profile": profile,
-                "meeting_configured": meeting is not None,
-                "prepare": bool(prepare),
-            },
-        ),
-        LaunchReadinessCheck(
-            key="provider_basic_scope",
-            label="provider basic scope",
-            severity="info",
-            ok=True,
-            detail=f"provider={provider}; deferred_to_phase=37",
-            metadata={
-                "provider": provider,
-                "deferred_to_phase": "37",
-            },
-        ),
-    ]
-    checks.extend(
-        _collect_injected_checks(
-            config,
-            profile=profile,
-            provider_name=provider,
-            prepare=prepare,
-        )
-    )
+    checks = list(_collect_phase36_checks(
+        config,
+        profile=profile,
+        provider_name=provider,
+        prepare=prepare,
+    ))
     return LaunchReadinessReport(
         profile=profile,
         provider=provider,
@@ -143,14 +127,31 @@ def render_launch_readiness(report: LaunchReadinessReport) -> str:
     return "\n".join(lines)
 
 
-def _collect_injected_checks(
+def write_launch_readiness_artifact(
+    report: LaunchReadinessReport,
+    output_path: Path,
+) -> Path:
+    """Write a sanitized launch-readiness artifact as JSON."""
+    output_path = Path(output_path)
+    output_path.write_text(
+        json.dumps(report.to_dict(), ensure_ascii=False, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return output_path
+
+
+def _collect_phase36_checks(
     config,
     *,
     profile: str,
     provider_name: str,
     prepare: bool,
 ) -> tuple[LaunchReadinessCheck, ...]:
-    """Collect launch-source checks without changing the command wrapper."""
+    """Collect launch checks in the operator-facing Phase 36 order."""
+    from saymo.analysis.launch_cache import (
+        collect_response_cache_check,
+        collect_voice_metadata_check,
+    )
     from saymo.analysis.launch_sources import (
         collect_daily_note_checks,
         collect_prepared_audio_check,
@@ -178,7 +179,36 @@ def _collect_injected_checks(
             source_sha256=source_sha256,
         )
     )
+    checks.append(
+        collect_response_cache_check(
+            config,
+            profile=profile,
+            provider_name=provider_name,
+        )
+    )
+    checks.append(
+        collect_voice_metadata_check(
+            config,
+            profile=profile,
+            provider_name=provider_name,
+        )
+    )
+    checks.append(_provider_audio_basic_scope_check())
     return tuple(checks)
+
+
+def _provider_audio_basic_scope_check() -> LaunchReadinessCheck:
+    return LaunchReadinessCheck(
+        key="provider_audio_basic_scope",
+        label="provider audio basic scope",
+        severity="info",
+        ok=True,
+        detail="deferred_to_phase_37",
+        metadata={
+            "deferred_to_phase": "37",
+            "scope": "basic_provider_audio_placeholder",
+        },
+    )
 
 
 def _sanitize_value(value: Any) -> Any:
