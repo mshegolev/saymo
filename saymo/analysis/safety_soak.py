@@ -276,6 +276,16 @@ def render_safety_soak_markdown(report: SafetySoakReport) -> str:
             "- refresh the baseline only after the current soak is acceptable",
         ]
     )
+    if _has_v19_report(report):
+        lines.extend(
+            [
+                "- regenerate scorecard JSON with saymo session-scorecard -p "
+                f"{_safe_text(report.profile)} --launch-json <launch.json> "
+                "--realtime-jsonl <realtime.jsonl> --json-output <scorecard.json>",
+                "- rerun safety-soak with saymo safety-soak -p "
+                f"{_safe_text(report.profile)} --scorecard-json <scorecard.json>",
+            ]
+        )
 
     lines.extend(["", "## Warnings", ""])
     if report.warnings:
@@ -540,6 +550,22 @@ def _render_v19_totals(totals: dict[str, float | int]) -> list[str]:
         f"{label}: {_format_number(totals.get(key, 0))}"
         for key, label in V19_TOTAL_LINES
     ]
+
+
+def _has_v19_report(report: SafetySoakReport) -> bool:
+    totals = report.totals
+    return _metric_value(totals.get("v19_evidence_items")) > 0 or any(
+        violation.rule
+        in {
+            "launch_not_ready",
+            "stale_or_missing_response_cache",
+            "call_control_daemon_not_ready",
+            "provider_blocked",
+            "fallback_blocked",
+            "handbrake_blocked",
+        }
+        for violation in report.violations
+    )
 
 
 def _has_launch_metrics(scorecard: SessionScorecard) -> bool:

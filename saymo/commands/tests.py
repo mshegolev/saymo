@@ -6,7 +6,7 @@ provider-latency, mic-check."""
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import click
@@ -1100,7 +1100,11 @@ def session_scorecard(
 
     rendered = render_scorecard_markdown(scorecard)
     console.print(rendered)
-    console.print(render_remediation_hints(hints_from_scorecard(scorecard)), markup=False)
+    console.print(
+        render_remediation_hints(hints_from_scorecard(scorecard)),
+        markup=False,
+        soft_wrap=True,
+    )
     if output:
         out_path = Path(output).expanduser()
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1194,7 +1198,14 @@ def safety_soak(
         for path in rehearsal
     ]
     for path in scorecard_json:
-        scorecards.append(scorecard_from_json(json.loads(Path(path).expanduser().read_text(encoding="utf-8"))))
+        scorecard_path = Path(path).expanduser()
+        scorecards.append(
+            replace(
+                scorecard_from_json(json.loads(scorecard_path.read_text(encoding="utf-8"))),
+                source_type="scorecard-json",
+                source_id=str(scorecard_path),
+            )
+        )
 
     baseline = load_safety_soak_json(baseline_json) if baseline_json else None
     report = build_safety_soak_report(
@@ -1205,7 +1216,11 @@ def safety_soak(
 
     rendered = render_safety_soak_markdown(report)
     console.print(rendered)
-    console.print(render_remediation_hints(hints_from_safety_soak(report)), markup=False)
+    console.print(
+        render_remediation_hints(hints_from_safety_soak(report)),
+        markup=False,
+        soft_wrap=True,
+    )
     if output:
         out_path = Path(output).expanduser()
         out_path.parent.mkdir(parents=True, exist_ok=True)

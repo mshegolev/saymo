@@ -116,11 +116,12 @@ def hints_from_scorecard(scorecard: SessionScorecard) -> list[RemediationHint]:
     """Return remediation hints for a session scorecard."""
     profile = _safe_profile(scorecard.profile)
     source_ref = _scorecard_source_ref(scorecard)
-    scorecard_rerun = f"saymo session-scorecard -p {profile} {source_ref}".strip()
+    scorecard_rerun = _scorecard_rerun(scorecard, profile=profile, source_ref=source_ref)
     trigger = scorecard.trigger_metrics
     playback = scorecard.playback_metrics
     safety = scorecard.safety_metrics
     hints: list[RemediationHint] = []
+    hints.extend(_v19_scorecard_hints(scorecard, scorecard_rerun=scorecard_rerun))
 
     if (trigger.false_handoffs or 0) or (trigger.missed_handoffs or 0):
         hints.append(
@@ -184,9 +185,13 @@ def hints_from_scorecard(scorecard: SessionScorecard) -> list[RemediationHint]:
 def hints_from_safety_soak(report: Any) -> list[RemediationHint]:
     """Return remediation hints for a safety soak gate report."""
     profile = _safe_profile(getattr(report, "profile", "personal"))
-    rerun = f"saymo safety-soak -p {profile}"
     hints: list[RemediationHint] = []
     for violation in getattr(report, "violations", ()) or ():
+        rule = str(getattr(violation, "rule", "unknown") or "unknown")
+        if _is_v19_soak_rule(rule):
+            hints.append(_v19_safety_soak_hint(profile, violation, report))
+            continue
+        rerun = f"saymo safety-soak -p {profile}"
         hints.append(
             RemediationHint(
                 category="retest",
@@ -211,12 +216,170 @@ def hints_from_safety_soak(report: Any) -> list[RemediationHint]:
                     f"{getattr(metric, 'delta', 'unknown')}"
                 ),
                 action="Review the source scorecards before accepting a new baseline.",
-                rerun=rerun,
+                rerun=f"saymo safety-soak -p {profile}",
             )
         )
     for warning in getattr(report, "warnings", ()) or ():
-        hints.append(_hint_for_warning(str(warning), rerun=rerun))
+        hints.append(_hint_for_warning(str(warning), rerun=f"saymo safety-soak -p {profile}"))
     return _dedupe(hints)
+
+
+def _v19_scorecard_hints(
+    scorecard: SessionScorecard,
+    *,
+    scorecard_rerun: str,
+) -> list[RemediationHint]:
+    hints: list[RemediationHint] = []
+    launch = scorecard.launch_metrics
+    realtime = scorecard.realtime_metrics
+
+    if launch.status != "unavailable":
+        if launch.status == "loaded":
+            failed_labels = ", ".join(launch.failed_labels) or "none"
+            categories = _format_counts(launch.blocker_categories)
+            log_paths = ", ".join(launch.log_paths) or "none"
+            detail = (
+                f"failed_labels={failed_labels} categories={categories} "
+                f"artifact_path={launch.artifact_path or 'unknown'} "
+                f"log_paths={log_paths} blocks={launch.block_count} "
+                f"warnings={launch.warn_count}"
+            )
+            action = "Fix launch blockers, then rerun call-ready, call-control, and scorecard checks."
+            rerun_commands = _launch_rerun_chain(launch.rerun_commands, scorecard_rerun)
+            for category in launch.blocker_categories or {"retest": launch.block_count}:
+                hints.append(
+                    RemediationHint(
+                        category=str(category),
+                        title=f"Fix {category} launch evidence",
+                        detail=detail,
+                        action=action,
+                        rerun=rerun_commands,
+                    )
+                )
+        else:
+            hints.append(
+                RemediationHint(
+                    category="source-data",
+                    title="Load launch evidence artifact",
+                    detail=(
+                        f"status={launch.status} "
+                        f"artifact_path={launch.artifact_path or 'unknown'}"
+                    ),
+                    action="Regenerate the call-ready JSON artifact before scoring the session.",
+                    rerun=scorecard_rerun,
+                )
+            )
+
+    if realtime.status != "unavailable":
+        if realtime.status == "loaded":
+            detail = (
+                f"artifact_path={realtime.artifact_path or 'unknown'} "
+                f"cache_hits={realtime.cache_hits} cache_misses={realtime.cache_misses} "
+                f"provider_blocks={realtime.provider_blocks} "
+                f"fallback_blocks={realtime.fallback_blocks} "
+                f"handbrake_blocks={realtime.handbrake_blocks} "
+                f"playback_attempts={realtime.playback_attempts} "
+                f"malformed_rows={realtime.malformed_rows}"
+            )
+            if (
+                realtime.cache_misses
+                or realtime.provider_blocks
+                or realtime.fallback_blocks
+                or realtime.handbrake_blocks
+                or realtime.malformed_rows
+            ):
+                hints.append(
+                    RemediationHint(
+                        category="retest",
+                        title="Review realtime evidence blockers",
+                        detail=detail,
+                        action="Inspect sanitized realtime labels and rerun the scorecard after fixing blockers.",
+                        rerun=scorecard_rerun,
+                    )
+                )
+        else:
+            hints.append(
+                RemediationHint(
+                    category="retest",
+                    title="Load realtime evidence artifact",
+                    detail=(
+                        f"status={realtime.status} "
+                        f"artifact_path={realtime.artifact_path or 'unknown'}"
+                    ),
+                    action="Regenerate realtime decision JSONL evidence before scoring the session.",
+                    rerun=scorecard_rerun,
+                )
+            )
+    return hints
+
+
+def _v19_safety_soak_hint(profile: str, violation: Any, report: Any) -> RemediationHint:
+    rule = str(getattr(violation, "rule", "unknown") or "unknown")
+    detail_text = str(getattr(violation, "detail", "") or "")
+    source_id = str(getattr(violation, "source_id", "") or "unknown")
+    scorecard_json = _scorecard_json_ref(source_id)
+    launch_json = _field_from_detail(detail_text, "launch_json") or "<launch.json>"
+    realtime_jsonl = _field_from_detail(detail_text, "realtime_jsonl") or "<realtime.jsonl>"
+    count = _v19_violation_count(rule, report)
+    source_label = _source_label(source_id)
+    detail = f"source={source_label} rule={rule}"
+    if count:
+        detail += f" count={count}"
+    action = (
+        "Rerun scorecard first: "
+        f"saymo session-scorecard -p {profile} --rehearsal <artifact> "
+        f"--launch-json {launch_json} --realtime-jsonl {realtime_jsonl} "
+        f"--json-output {scorecard_json}"
+    )
+    return RemediationHint(
+        category=_v19_rule_category(rule),
+        title=f"Resolve {rule}",
+        detail=detail,
+        action=action,
+        rerun=f"saymo safety-soak -p {profile} --scorecard-json {scorecard_json}",
+    )
+
+
+def _is_v19_soak_rule(rule: str) -> bool:
+    return rule in {
+        "launch_not_ready",
+        "stale_or_missing_response_cache",
+        "call_control_daemon_not_ready",
+        "provider_blocked",
+        "fallback_blocked",
+        "handbrake_blocked",
+    }
+
+
+def _v19_rule_category(rule: str) -> str:
+    if rule in {"launch_not_ready", "stale_or_missing_response_cache"}:
+        return "source-data"
+    if rule == "call_control_daemon_not_ready":
+        return "call-control"
+    if rule == "provider_blocked":
+        return "provider"
+    return "retest"
+
+
+def _v19_violation_count(rule: str, report: Any) -> int:
+    totals = dict(getattr(report, "totals", {}) or {})
+    key_by_rule = {
+        "launch_not_ready": "launch_not_ready",
+        "stale_or_missing_response_cache": "cache_missing",
+        "call_control_daemon_not_ready": "daemon_not_ready",
+        "provider_blocked": "provider_blocks",
+        "fallback_blocked": "fallback_blocks",
+        "handbrake_blocked": "handbrake_blocks",
+    }
+    key = key_by_rule.get(rule)
+    if not key:
+        return 0
+    return _int_value(totals.get(key))
+
+
+def _field_from_detail(detail: str, field: str) -> str:
+    match = re.search(rf"(?:^|\s){re.escape(field)}=([^\s]+)", detail)
+    return match.group(1) if match else ""
 
 
 def hints_from_hotkey_doctor(report: Any, *, probe: bool) -> list[RemediationHint]:
@@ -363,6 +526,56 @@ def _scorecard_source_ref(scorecard: SessionScorecard) -> str:
     return f"--session {_safe_label(scorecard.source_id)}"
 
 
+def _scorecard_rerun(
+    scorecard: SessionScorecard,
+    *,
+    profile: str,
+    source_ref: str,
+) -> str:
+    parts = [f"saymo session-scorecard -p {profile}", source_ref]
+    if scorecard.launch_metrics.artifact_path:
+        parts.append(f"--launch-json {shlex.quote(scorecard.launch_metrics.artifact_path)}")
+    if scorecard.realtime_metrics.artifact_path:
+        parts.append(f"--realtime-jsonl {shlex.quote(scorecard.realtime_metrics.artifact_path)}")
+    return " ".join(part for part in parts if part).strip()
+
+
+def _launch_rerun_chain(
+    commands: tuple[str, ...],
+    scorecard_rerun: str,
+) -> str:
+    items = [command for command in commands if command]
+    items.append(scorecard_rerun)
+    return " && ".join(_dedupe_text(items))
+
+
+def _format_counts(counts: Mapping[str, int]) -> str:
+    if not counts:
+        return "none"
+    return ", ".join(f"{key}={counts[key]}" for key in sorted(counts))
+
+
+def _scorecard_json_ref(source_id: str) -> str:
+    text = str(source_id or "").strip()
+    if text.endswith(".json") or "/" in text:
+        return text
+    return "<scorecard.json>"
+
+
+def _source_label(source_id: str) -> str:
+    text = str(source_id or "").strip()
+    if not text:
+        return "unknown"
+    return Path(text).name if "/" in text else text
+
+
+def _int_value(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _dedupe(hints: Iterable[RemediationHint]) -> list[RemediationHint]:
     seen: set[tuple[str, str, str]] = set()
     result: list[RemediationHint] = []
@@ -372,6 +585,18 @@ def _dedupe(hints: Iterable[RemediationHint]) -> list[RemediationHint]:
             continue
         seen.add(key)
         result.append(hint)
+    return result
+
+
+def _dedupe_text(values: Iterable[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        text = str(value or "")
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        result.append(text)
     return result
 
 
