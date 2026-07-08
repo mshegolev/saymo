@@ -108,10 +108,10 @@ permission checks
 **Plans**: 4 plans
 
 Plans:
-- [ ] 37-01: Add provider and Chrome tab readiness checks to launch readiness
-- [ ] 37-02: Add BlackHole route and microphone takeover verification
-- [ ] 37-03: Add provider capability and macOS permission remediation output
-- [ ] 37-04: Prove provider/audio checks are non-destructive with tests and artifacts
+- [ ] 37-01-PLAN.md - Add provider and Chrome tab readiness checks to launch readiness
+- [ ] 37-02-PLAN.md - Add BlackHole route and microphone takeover verification
+- [ ] 37-03-PLAN.md - Add provider capability and macOS permission remediation output
+- [ ] 37-04-PLAN.md - Prove provider/audio checks are non-destructive with tests and artifacts
 
 ### Phase 38: Local Call-Control Daemon and LaunchAgent
 **Goal**: User can keep the live-call handbrake reachable outside the terminal
