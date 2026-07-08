@@ -23,4 +23,6 @@ def test_live_control_action_queues_normalized_command(tmp_path):
     assert "queued: skip_current" in result.output
     command_log = tmp_path / "daily" / "commands.jsonl"
     assert command_log.exists()
-    assert '"action": "skip_current"' in command_log.read_text(encoding="utf-8")
+    text = command_log.read_text(encoding="utf-8")
+    assert '"action": "skip_current"' in text
+    assert '"source": "cli"' in text

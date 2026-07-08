@@ -11,6 +11,7 @@ from saymo.analysis.control_daemon import (
     daemon_heartbeat_path,
     heartbeat_is_fresh,
     load_daemon_heartbeat,
+    queue_daemon_hotkey_command,
     run_control_daemon,
     write_daemon_heartbeat,
 )
@@ -179,6 +180,26 @@ def test_daemon_hotkeys_queue_existing_commands(tmp_path):
         "daemon_hotkey",
         "daemon_hotkey",
     ]
+
+
+def test_daemon_hotkey_source_and_payload_are_sanitized(tmp_path):
+    queue_daemon_hotkey_command(
+        "daily",
+        "status",
+        payload={
+            "probe_id": "probe-123",
+            "raw_transcript": "private meeting text",
+            "secret": {"token": "not-for-audit"},
+        },
+        base_dir=tmp_path,
+    )
+
+    commands, _ = read_control_commands("daily", base_dir=tmp_path)
+
+    assert len(commands) == 1
+    assert commands[0].action == "status"
+    assert commands[0].source == "daemon_hotkey"
+    assert commands[0].payload == {"probe_id": "probe-123"}
 
 
 def test_daemon_survives_hotkey_registration_failure(tmp_path):

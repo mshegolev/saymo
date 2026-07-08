@@ -74,6 +74,32 @@ def test_control_audit_writes_sanitized_state_event(tmp_path):
     assert "hotkey" in text
 
 
+def test_control_audit_accepts_optional_command_and_probe_ids(tmp_path):
+    previous = LiveControlSnapshot(profile="daily", auto_answer_enabled=True)
+    next_state = LiveControlSnapshot(profile="daily", auto_answer_enabled=True)
+
+    path = append_control_audit(
+        "daily",
+        action="status",
+        source="probe",
+        previous_state=previous,
+        next_state=next_state,
+        result="status_printed",
+        command_id="cmd-123",
+        probe_id="probe-456",
+        payload={"probe_id": "probe-456", "raw_transcript": "private meeting text"},
+        base_dir=tmp_path,
+    )
+
+    text = path.read_text(encoding="utf-8")
+    assert '"command_id": "cmd-123"' in text
+    assert '"probe_id": "probe-456"' in text
+    assert '"payload": {"probe_id": "probe-456"}' in text
+    assert "private meeting text" not in text
+    assert '"previous_state"' in text
+    assert '"next_state"' in text
+
+
 def test_effective_hotkey_bindings_and_render_include_expanded_actions():
     config = SaymoConfig()
 

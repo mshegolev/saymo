@@ -2,6 +2,7 @@
 flow used by ``saymo auto`` (cli._resolve_auto_response)."""
 
 import asyncio
+import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -15,6 +16,8 @@ from saymo.cli import (
 from saymo.config import SaymoConfig
 from saymo.commands.core import (
     _automatic_speaking_allowed,
+    _append_control_action_audit,
+    _should_register_local_hotkeys,
     _hard_disable_auto_answer,
     _request_manual_speak,
     _should_answer_trigger_window,
@@ -22,6 +25,11 @@ from saymo.commands.core import (
     _toggle_auto_answer,
     _toggle_auto_pause,
     _toggle_manual_takeover,
+)
+from saymo.analysis.live_control import (
+    LiveControlCommand,
+    LiveControlSnapshot,
+    audit_log_path,
 )
 
 
@@ -379,6 +387,46 @@ def test_hard_disable_stops_playback_and_blocks_automatic_speaking():
         manual_takeover,
         hard_disabled,
     )
+
+
+def test_control_command_audit_preserves_command_id_and_probe_id(tmp_path):
+    command = LiveControlCommand(
+        action="status",
+        source="probe",
+        command_id="cmd-123",
+        payload={
+            "probe_id": "probe-456",
+            "raw_transcript": "private meeting text",
+        },
+    )
+    previous = LiveControlSnapshot(profile="daily", last_action="started")
+    next_state = LiveControlSnapshot(profile="daily", last_action="status_printed")
+
+    _append_control_action_audit(
+        "daily",
+        action=command.action,
+        source=command.source,
+        previous_state=previous,
+        next_state=next_state,
+        result="status_printed",
+        command=command,
+        base_dir=tmp_path,
+    )
+
+    payload = json.loads(audit_log_path("daily", base_dir=tmp_path).read_text())
+    assert payload["action"] == "status"
+    assert payload["source"] == "probe"
+    assert payload["command_id"] == "cmd-123"
+    assert payload["probe_id"] == "probe-456"
+    assert payload["payload"] == {"probe_id": "probe-456"}
+    assert "private meeting text" not in json.dumps(payload)
+
+
+def test_auto_can_skip_local_hotkeys_when_daemon_controls_are_enabled():
+    config = SaymoConfig()
+
+    assert _should_register_local_hotkeys(config) is True
+    assert _should_register_local_hotkeys(config, disable_local_hotkeys=True) is False
 
 
 # ---------------------------------------------------------------------------

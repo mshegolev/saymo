@@ -67,6 +67,35 @@ def test_call_control_daemon_once_writes_heartbeat(tmp_path):
     assert payload["daemon_version"]
 
 
+def test_call_control_action_queues_normalized_existing_command(tmp_path):
+    # Contract: `saymo call-control action` queues existing live-control actions.
+    result = CliRunner().invoke(
+        main,
+        [
+            "call-control",
+            "action",
+            "-p",
+            "daily",
+            "--action",
+            "hard-disable",
+            "--probe-id",
+            "probe-123",
+            "--base-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "queued: hard_disable" in result.output
+    assert "commands:" in result.output
+    command_log = tmp_path / "daily" / "commands.jsonl"
+    payload = json.loads(command_log.read_text(encoding="utf-8").strip())
+    assert payload["action"] == "hard_disable"
+    assert payload["source"] == "daemon_cli"
+    assert payload["command_id"]
+    assert payload["payload"] == {"probe_id": "probe-123"}
+
+
 def _invoke_agent(tmp_path, monkeypatch, args):
     from saymo.analysis import launch_agent
 
