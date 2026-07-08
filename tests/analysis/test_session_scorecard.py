@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 from saymo.analysis.regression_replay import RegressionMetrics, RegressionSample
+from saymo.analysis.realtime_events import RealtimeDecisionEvent
 from saymo.analysis.rehearsal import (
     RehearsalArtifact,
     RehearsalCheck,
@@ -15,6 +16,7 @@ from saymo.analysis.session_scorecard import (
     build_scorecard_from_regression,
     build_scorecard_from_rehearsal,
     render_scorecard_markdown,
+    scorecard_from_json,
     scorecard_to_json,
 )
 
@@ -58,6 +60,110 @@ def _write_rehearsal(tmp_path, *, would_speak: bool = False):
     return path
 
 
+def _write_launch_evidence(tmp_path):
+    path = tmp_path / "call-ready.json"
+    payload = {
+        "schema_version": "1.0",
+        "evidence_kind": "launch-readiness",
+        "mode": "call-ready",
+        "artifact_path": str(path),
+        "profile": "personal",
+        "provider": "glip",
+        "ready": False,
+        "check_count": 4,
+        "ready_count": 1,
+        "block_count": 2,
+        "warn_count": 1,
+        "checks": [
+            {
+                "key": "response_cache_coverage",
+                "label": "response cache coverage",
+                "severity": "block",
+                "ok": False,
+                "detail": "missing response cache variants",
+                "action": "prepare response cache",
+                "rerun": "saymo call-ready -p personal --provider glip",
+                "metadata": {
+                    "category": "source-data",
+                    "ready": 1,
+                    "total": 3,
+                    "missing": 2,
+                },
+            },
+            {
+                "key": "provider_meeting_tab",
+                "label": "provider meeting tab",
+                "severity": "info",
+                "ok": True,
+                "detail": "meeting tab found",
+                "metadata": {"meeting_found": True, "app_running": True},
+            },
+            {
+                "key": "call_control_daemon",
+                "label": "call-control daemon",
+                "severity": "block",
+                "ok": False,
+                "detail": "stale heartbeat",
+                "action": "restart daemon",
+                "rerun": "saymo call-control-agent status -p personal",
+                "metadata": {
+                    "category": "call-control",
+                    "running": False,
+                    "heartbeat_fresh": False,
+                    "stdout_log_path": "/tmp/saymo/out.log",
+                    "stderr_log_path": "/tmp/saymo/err.log",
+                },
+            },
+            {
+                "key": "cloned_voice_metadata",
+                "label": "cloned voice metadata",
+                "severity": "warn",
+                "ok": False,
+                "detail": "profile approval warning",
+                "metadata": {
+                    "category": "voice-cache",
+                    "voice_profile": "personal",
+                    "reference_fingerprint": "voicefp_123",
+                },
+            },
+        ],
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def _write_realtime_events(tmp_path):
+    path = tmp_path / "realtime-decisions.jsonl"
+    events = [
+        ("skipped", "launch-start", "launch_readiness"),
+        ("blocked", "launch-readiness-blocked", "launch_readiness"),
+        ("skipped", "launch-end", "launch_readiness"),
+        ("spoke", "response-cache-hit", "response_cache"),
+        ("blocked", "cache-miss-blocked", "response_cache"),
+        ("blocked", "fallback-blocked", "playback"),
+        ("blocked", "provider-blocked", "provider"),
+        ("blocked", "handbrake-blocked", "live_control"),
+        ("spoke", "playback-attempted", "playback"),
+        ("blocked", "stop-requested", "live_control"),
+    ]
+    lines = [
+        json.dumps(
+            RealtimeDecisionEvent(
+                created_at=f"2026-07-08T18:10:{index:02d}Z",
+                profile="personal",
+                provider="glip",
+                outcome=outcome,
+                label=label,
+                source=source,
+                detail="generated answer and PRIVATE_SENTINEL should be redacted",
+            ).to_dict()
+        )
+        for index, (outcome, label, source) in enumerate(events)
+    ]
+    path.write_text("\n".join([*lines, "{malformed"]) + "\n", encoding="utf-8")
+    return path
+
+
 def test_scorecard_from_rehearsal_is_sanitized_and_maps_trigger_metrics(tmp_path):
     rehearsal_path = _write_rehearsal(tmp_path)
 
@@ -84,6 +190,130 @@ def test_scorecard_from_rehearsal_is_sanitized_and_maps_trigger_metrics(tmp_path
     assert "TOKEN-123" not in combined
     assert "last_trigger" not in combined
     assert "/private/" not in combined
+    assert "launch_metrics" not in payload
+    assert "realtime_metrics" not in payload
+    assert "v1.9 Evidence" not in rendered
+
+
+def test_scorecard_includes_optional_launch_and_realtime_evidence(tmp_path):
+    rehearsal_path = _write_rehearsal(tmp_path)
+    launch_path = _write_launch_evidence(tmp_path)
+    realtime_path = _write_realtime_events(tmp_path)
+
+    scorecard = build_scorecard_from_rehearsal(
+        rehearsal_path,
+        launch_json=launch_path,
+        realtime_jsonl=realtime_path,
+    )
+    payload = scorecard_to_json(scorecard)
+    rendered = render_scorecard_markdown(scorecard)
+    combined = json.dumps(payload, ensure_ascii=False) + rendered
+
+    assert payload["launch_metrics"] == {
+        "status": "loaded",
+        "ready": False,
+        "block_count": 2,
+        "warn_count": 1,
+        "failed_labels": ["response cache coverage", "call-control daemon", "cloned voice metadata"],
+        "blocker_categories": {"call-control": 1, "source-data": 1},
+        "cache_ready": 1,
+        "cache_total": 3,
+        "cache_missing": 2,
+        "voice_profile": "personal",
+        "reference_fingerprint": "voicefp_123",
+        "provider_ready": True,
+        "daemon_ready": False,
+        "daemon_running": False,
+        "daemon_heartbeat_fresh": False,
+        "artifact_path": str(launch_path),
+        "log_paths": ["/tmp/saymo/out.log", "/tmp/saymo/err.log"],
+        "rerun_commands": [
+            "saymo call-ready -p personal --provider glip",
+            "saymo call-control-agent status -p personal",
+        ],
+    }
+    assert payload["realtime_metrics"] == {
+        "status": "loaded",
+        "total_events": 10,
+        "malformed_rows": 1,
+        "launch_starts": 1,
+        "launch_ends": 1,
+        "launch_blocks": 1,
+        "cache_hits": 1,
+        "cache_misses": 1,
+        "fallback_blocks": 1,
+        "provider_blocks": 1,
+        "handbrake_blocks": 1,
+        "playback_attempts": 1,
+        "stop_reasons": {"stop-requested": 1},
+        "label_counts": {
+            "cache-miss-blocked": 1,
+            "fallback-blocked": 1,
+            "handbrake-blocked": 1,
+            "launch-end": 1,
+            "launch-readiness-blocked": 1,
+            "launch-start": 1,
+            "playback-attempted": 1,
+            "provider-blocked": 1,
+            "response-cache-hit": 1,
+            "stop-requested": 1,
+        },
+        "source_counts": {
+            "launch_readiness": 3,
+            "live_control": 2,
+            "playback": 2,
+            "provider": 1,
+            "response_cache": 2,
+        },
+        "artifact_path": str(realtime_path),
+    }
+    assert "## v1.9 Evidence" in rendered
+    assert "launch: loaded ready=no blocks=2 warns=1" in rendered
+    assert "failed launch labels: response cache coverage, call-control daemon, cloned voice metadata" in rendered
+    assert "daemon: ready=no running=no heartbeat_fresh=no" in rendered
+    assert "realtime launch: starts=1 ends=1 blocks=1 malformed_rows=1" in rendered
+    assert "cache: hits=1 misses=1 fallback_blocks=1" in rendered
+    assert "runtime blocks: provider=1 handbrake=1 playback_attempts=1" in rendered
+    assert "stop reasons: stop-requested=1" in rendered
+    assert "generated answer" not in combined
+    assert "PRIVATE_SENTINEL" not in combined
+
+
+def test_scorecard_marks_supplied_missing_evidence_paths(tmp_path):
+    rehearsal_path = _write_rehearsal(tmp_path)
+    launch_path = tmp_path / "missing-call-ready.json"
+    realtime_path = tmp_path / "missing-realtime.jsonl"
+
+    scorecard = build_scorecard_from_rehearsal(
+        rehearsal_path,
+        launch_json=launch_path,
+        realtime_jsonl=realtime_path,
+    )
+    payload = scorecard_to_json(scorecard)
+    rendered = render_scorecard_markdown(scorecard)
+
+    assert payload["launch_metrics"]["status"] == "missing"
+    assert payload["launch_metrics"]["artifact_path"] == str(launch_path)
+    assert payload["realtime_metrics"]["status"] == "missing"
+    assert payload["realtime_metrics"]["artifact_path"] == str(realtime_path)
+    assert "launch: missing" in rendered
+    assert "realtime: missing" in rendered
+    assert "launch evidence not found" in payload["warnings"]
+    assert "realtime evidence not found" in payload["warnings"]
+
+
+def test_old_scorecard_json_round_trips_without_phase40_fields(tmp_path):
+    old_payload = scorecard_to_json(build_scorecard_from_rehearsal(_write_rehearsal(tmp_path)))
+
+    scorecard = scorecard_from_json(old_payload)
+    payload = scorecard_to_json(scorecard)
+    rendered = render_scorecard_markdown(scorecard)
+
+    assert "launch_metrics" not in old_payload
+    assert "realtime_metrics" not in old_payload
+    assert "launch_metrics" not in payload
+    assert "realtime_metrics" not in payload
+    assert "v1.9 Evidence" not in rendered
 
 
 def test_scorecard_maps_regression_metrics_without_transcripts():
