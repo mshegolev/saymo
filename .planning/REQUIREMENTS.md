@@ -73,7 +73,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [x] **REAL-03**: User can rely on automatic question handling to fail closed
   on response-cache miss, stale voice metadata, unsafe fallback, provider loss,
   manual takeover, hard-disable, or disabled auto-answer.
-- [ ] **REAL-04**: User can still trigger explicit prepared standup playback as
+- [x] **REAL-04**: User can still trigger explicit prepared standup playback as
   a manual action when allowed, without that manual path becoming automatic
   cache-miss fallback.
 - [ ] **REAL-05**: User can see why each realtime decision spoke, skipped, or
@@ -170,7 +170,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REAL-01 | Phase 39 | Complete |
 | REAL-02 | Phase 39 | Complete |
 | REAL-03 | Phase 39 | Complete |
-| REAL-04 | Phase 39 | Pending |
+| REAL-04 | Phase 39 | Complete |
 | REAL-05 | Phase 39 | Pending |
 | REAL-06 | Phase 39 | Complete |
 | EVID-01 | Phase 40 | Pending |

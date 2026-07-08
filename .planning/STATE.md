@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 39-03-PLAN.md
-last_updated: "2026-07-08T17:43:02.290Z"
+stopped_at: Completed 39-04-PLAN.md
+last_updated: "2026-07-08T17:52:13.537Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 18
-  completed_plans: 16
-  percent: 89
+  completed_plans: 17
+  percent: 94
 ---
 
 # Project State
@@ -29,21 +29,21 @@ Fail-Closed Realtime Meeting Loop.
 ## Current Position
 
 Phase: 39 (4 of 5) - Fail-Closed Realtime Meeting Loop
-Current Plan: 4
+Current Plan: 5
 Total Plans in Phase: 5
-Plans: 3 of 5 completed.
-Status: Phase 39 is in progress; Plan 39-03 completed and ready for Plan 39-04.
+Plans: 4 of 5 completed.
+Status: Phase 39 is in progress; Plan 39-04 completed and ready for Plan 39-05.
 Last activity: 2026-07-08
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 18
-- Plans completed: 16
+- Plans completed: 17
 - Average duration: 7 min
-- Total execution time: 105 min
+- Total execution time: 109 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -70,6 +70,7 @@ Progress: [█████████░] 89%
 | 39-01 | 18 min | 2 | 5 |
 | 39-02 | 6 min | 2 | 5 |
 | 39-03 | 5 min | 2 | 5 |
+| 39-04 | 4 min | 2 | 5 |
 
 **By Phase:**
 
@@ -78,7 +79,7 @@ Progress: [█████████░] 89%
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
 | 37. Provider and Audio Remediation | Complete | 4/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Complete | 5/5 |
-| 39. Fail-Closed Realtime Meeting Loop | In Progress | 3/5 |
+| 39. Fail-Closed Realtime Meeting Loop | In Progress | 4/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
 
 ## Accumulated Context
@@ -147,6 +148,9 @@ Recent decisions affecting current work:
 - [Phase 39]: Plan 39-03: Automatic runtime blocks use stable labels handbrake-blocked and provider-blocked.
 - [Phase 39]: Plan 39-03: Provider drift is checked with the existing provider object via provider.check_ready immediately before automatic playback.
 - [Phase 39]: Plan 39-03: Provider automation fallback is strict only for automatic realtime playback; manual and non-automatic callers keep default fallback behavior.
+- [Phase 39]: Plan 39-04: Explicit manual prepared playback is a separate manual_standup route labeled manual-standup-requested, not a response-cache fallback.
+- [Phase 39]: Plan 39-04: Manual standup blocks use label manual-standup-blocked with stable sanitized reasons such as prepared-standup-missing and manual-takeover.
+- [Phase 39]: Plan 39-04: Manual provider fallback remains enabled through automatic=false, while automatic cached playback remains strict.
 
 ### Pending Todos
 
@@ -163,6 +167,6 @@ Continue to Phase 39 Plan 04 execution after Plan 39-03 metadata commit.
 
 ## Session Continuity
 
-Last session: 2026-07-08T17:42:23.907Z
-Stopped at: Completed 39-03-PLAN.md
+Last session: 2026-07-08T17:52:13.534Z
+Stopped at: Completed 39-04-PLAN.md
 Resume file: None
