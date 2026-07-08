@@ -19,6 +19,34 @@ DRIFT_METRICS = (
     "max_latency_ms",
 )
 
+V19_TOTAL_LINES = (
+    ("launch_not_ready", "launch not ready"),
+    ("launch_blocks", "launch blocks"),
+    ("launch_warnings", "launch warnings"),
+    ("cache_hits", "cache hits"),
+    ("cache_misses", "cache misses"),
+    ("cache_missing", "cache missing"),
+    ("provider_blocks", "provider blocks"),
+    ("fallback_blocks", "fallback blocks"),
+    ("handbrake_blocks", "handbrake blocks"),
+    ("realtime_malformed_rows", "realtime malformed rows"),
+    ("daemon_not_ready", "daemon not ready"),
+)
+
+REALTIME_CACHE_BLOCK_LABELS = (
+    "cache-miss-blocked",
+    "cache-disabled-blocked",
+    "voice-metadata-blocked",
+)
+
+DAEMON_READY_FIELDS = (
+    "daemon_ready",
+    "daemon_running",
+    "daemon_heartbeat_fresh",
+    "daemon_hotkeys_ready",
+    "hotkeys_ready",
+)
+
 
 @dataclass(frozen=True)
 class SafetySoakViolation:
@@ -208,6 +236,10 @@ def render_safety_soak_markdown(report: SafetySoakReport) -> str:
     else:
         lines.append("- none")
 
+    v19_lines = _render_v19_totals(report.totals)
+    if v19_lines:
+        lines.extend(["", "## v1.9 Evidence Totals", "", *v19_lines])
+
     lines.extend(["", "## Baseline Drift", ""])
     if report.drift:
         lines.extend(
@@ -258,6 +290,11 @@ def _aggregate_totals(scorecards: tuple[SessionScorecard, ...]) -> dict[str, flo
     for scorecard in scorecards:
         if scorecard.playback_metrics.latency_ms:
             max_latency = max(max_latency, max(scorecard.playback_metrics.latency_ms.values()))
+    v19_evidence_items = sum(
+        1
+        for item in scorecards
+        if _has_launch_metrics(item) or _has_realtime_metrics(item)
+    )
     return {
         "items": len(scorecards),
         "would_speak": sum(1 for item in scorecards if item.trigger_metrics.would_speak is True),
@@ -278,6 +315,58 @@ def _aggregate_totals(scorecards: tuple[SessionScorecard, ...]) -> dict[str, flo
             for item in scorecards
         ),
         "max_latency_ms": max_latency,
+        "v19_evidence_items": v19_evidence_items,
+        "launch_not_ready": sum(
+            1
+            for item in scorecards
+            if _has_launch_metrics(item) and item.launch_metrics.ready is False
+        ),
+        "launch_blocks": sum(
+            item.launch_metrics.block_count
+            for item in scorecards
+            if _has_launch_metrics(item)
+        ),
+        "launch_warnings": sum(
+            item.launch_metrics.warn_count
+            for item in scorecards
+            if _has_launch_metrics(item)
+        ),
+        "cache_hits": sum(
+            item.realtime_metrics.cache_hits
+            for item in scorecards
+            if _has_realtime_metrics(item)
+        ),
+        "cache_misses": sum(
+            item.realtime_metrics.cache_misses
+            for item in scorecards
+            if _has_realtime_metrics(item)
+        ),
+        "cache_missing": sum(
+            item.launch_metrics.cache_missing
+            for item in scorecards
+            if _has_launch_metrics(item)
+        ),
+        "provider_blocks": sum(_provider_block_total(item) for item in scorecards),
+        "fallback_blocks": sum(
+            item.realtime_metrics.fallback_blocks
+            for item in scorecards
+            if _has_realtime_metrics(item)
+        ),
+        "handbrake_blocks": sum(
+            item.realtime_metrics.handbrake_blocks
+            for item in scorecards
+            if _has_realtime_metrics(item)
+        ),
+        "realtime_malformed_rows": sum(
+            item.realtime_metrics.malformed_rows
+            for item in scorecards
+            if _has_realtime_metrics(item)
+        ),
+        "daemon_not_ready": sum(
+            1
+            for item in scorecards
+            if _has_launch_metrics(item) and _daemon_not_ready(item)
+        ),
     }
 
 
@@ -295,6 +384,8 @@ def _violations_for_scorecard(scorecard: SessionScorecard) -> tuple[SafetySoakVi
                 ),
             )
         )
+
+    violations.extend(_v19_violations_for_scorecard(scorecard))
 
     if scorecard.trigger_metrics.would_speak is not True:
         return tuple(violations)
@@ -355,6 +446,151 @@ def _violations_for_scorecard(scorecard: SessionScorecard) -> tuple[SafetySoakVi
                 )
             )
     return tuple(violations)
+
+
+def _v19_violations_for_scorecard(scorecard: SessionScorecard) -> list[SafetySoakViolation]:
+    violations: list[SafetySoakViolation] = []
+    source_id = scorecard.source_id
+    launch = scorecard.launch_metrics
+    realtime = scorecard.realtime_metrics
+
+    if _has_launch_metrics(scorecard) and launch.ready is False:
+        violations.append(
+            SafetySoakViolation(
+                source_id=source_id,
+                rule="launch_not_ready",
+                detail=(
+                    "launch readiness is not ready "
+                    f"(blocks={launch.block_count} warnings={launch.warn_count}"
+                    f"{_failed_launch_labels(launch.failed_labels)})"
+                ),
+            )
+        )
+
+    if _has_launch_cache_blocker(scorecard) or _has_realtime_cache_blocker(scorecard):
+        violations.append(
+            SafetySoakViolation(
+                source_id=source_id,
+                rule="stale_or_missing_response_cache",
+                detail=(
+                    "response cache is stale or missing "
+                    f"(launch_ready={launch.cache_ready}/{launch.cache_total} "
+                    f"launch_missing={launch.cache_missing} "
+                    f"realtime_cache_misses={realtime.cache_misses} "
+                    f"realtime_cache_blockers={_realtime_cache_blocker_count(realtime)})"
+                ),
+            )
+        )
+
+    if _has_launch_metrics(scorecard) and _daemon_not_ready(scorecard):
+        violations.append(
+            SafetySoakViolation(
+                source_id=source_id,
+                rule="call_control_daemon_not_ready",
+                detail=(
+                    "call-control daemon readiness is explicitly false "
+                    f"(ready={_format_bool(launch.daemon_ready)} "
+                    f"running={_format_bool(launch.daemon_running)} "
+                    f"heartbeat_fresh={_format_bool(launch.daemon_heartbeat_fresh)})"
+                ),
+            )
+        )
+
+    if _provider_block_total(scorecard):
+        violations.append(
+            SafetySoakViolation(
+                source_id=source_id,
+                rule="provider_blocked",
+                detail=(
+                    "provider readiness or realtime provider block failed "
+                    f"(launch_ready={_format_bool(launch.provider_ready)} "
+                    f"realtime_provider_blocks={realtime.provider_blocks})"
+                ),
+            )
+        )
+
+    if _has_realtime_metrics(scorecard) and realtime.fallback_blocks > 0:
+        violations.append(
+            SafetySoakViolation(
+                source_id=source_id,
+                rule="fallback_blocked",
+                detail=f"realtime fallback blocks={realtime.fallback_blocks}",
+            )
+        )
+
+    if _has_realtime_metrics(scorecard) and realtime.handbrake_blocks > 0:
+        violations.append(
+            SafetySoakViolation(
+                source_id=source_id,
+                rule="handbrake_blocked",
+                detail=f"realtime handbrake blocks={realtime.handbrake_blocks}",
+            )
+        )
+    return violations
+
+
+def _render_v19_totals(totals: dict[str, float | int]) -> list[str]:
+    has_v19_evidence = _metric_value(totals.get("v19_evidence_items")) > 0
+    has_nonzero_total = any(
+        _metric_value(totals.get(key)) > 0 for key, _label in V19_TOTAL_LINES
+    )
+    if not has_v19_evidence and not has_nonzero_total:
+        return []
+    return [
+        f"{label}: {_format_number(totals.get(key, 0))}"
+        for key, label in V19_TOTAL_LINES
+    ]
+
+
+def _has_launch_metrics(scorecard: SessionScorecard) -> bool:
+    return scorecard.launch_metrics.status != "unavailable"
+
+
+def _has_realtime_metrics(scorecard: SessionScorecard) -> bool:
+    return scorecard.realtime_metrics.status != "unavailable"
+
+
+def _has_launch_cache_blocker(scorecard: SessionScorecard) -> bool:
+    if not _has_launch_metrics(scorecard):
+        return False
+    launch = scorecard.launch_metrics
+    return launch.cache_total > 0 and (
+        launch.cache_ready < launch.cache_total or launch.cache_missing > 0
+    )
+
+
+def _has_realtime_cache_blocker(scorecard: SessionScorecard) -> bool:
+    if not _has_realtime_metrics(scorecard):
+        return False
+    realtime = scorecard.realtime_metrics
+    return realtime.cache_misses > 0 or _realtime_cache_blocker_count(realtime) > 0
+
+
+def _realtime_cache_blocker_count(realtime: Any) -> int:
+    return sum(
+        _metric_value(realtime.label_counts.get(label))
+        for label in REALTIME_CACHE_BLOCK_LABELS
+    )
+
+
+def _daemon_not_ready(scorecard: SessionScorecard) -> bool:
+    launch = scorecard.launch_metrics
+    return any(getattr(launch, field, None) is False for field in DAEMON_READY_FIELDS)
+
+
+def _provider_block_total(scorecard: SessionScorecard) -> int:
+    total = 0
+    if _has_launch_metrics(scorecard) and scorecard.launch_metrics.provider_ready is False:
+        total += 1
+    if _has_realtime_metrics(scorecard):
+        total += scorecard.realtime_metrics.provider_blocks
+    return total
+
+
+def _failed_launch_labels(labels: tuple[str, ...]) -> str:
+    if not labels:
+        return ""
+    return " failed=" + ", ".join(_safe_text(label) for label in labels)
 
 
 def _compare_drift(

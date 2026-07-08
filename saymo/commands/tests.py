@@ -1137,6 +1137,22 @@ def session_scorecard(
     type=click.Path(),
     help="Live-control root containing <profile>/audit.jsonl",
 )
+@click.option(
+    "--launch-json",
+    "--launch-readiness",
+    "launch_json",
+    default=None,
+    type=click.Path(),
+    help="Optional call-ready launch-readiness JSON artifact for rehearsal scorecards",
+)
+@click.option(
+    "--realtime-jsonl",
+    "--realtime",
+    "realtime_jsonl",
+    default=None,
+    type=click.Path(),
+    help="Optional realtime decision JSONL artifact for rehearsal scorecards",
+)
 @click.option("--output", "-o", default=None, type=click.Path(), help="Markdown output path")
 @click.option("--json-output", default=None, type=click.Path(), help="Sanitized JSON output path")
 @click.pass_context
@@ -1147,6 +1163,8 @@ def safety_soak(
     scorecard_json,
     baseline_json,
     audit_root,
+    launch_json,
+    realtime_jsonl,
     output,
     json_output,
 ):
@@ -1167,7 +1185,12 @@ def safety_soak(
         raise click.ClickException("Provide at least one --rehearsal or --scorecard-json")
 
     scorecards = [
-        build_scorecard_from_rehearsal(path, audit_root=audit_root)
+        build_scorecard_from_rehearsal(
+            path,
+            audit_root=audit_root,
+            launch_json=launch_json,
+            realtime_jsonl=realtime_jsonl,
+        )
         for path in rehearsal
     ]
     for path in scorecard_json:
