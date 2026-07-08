@@ -9,11 +9,15 @@ from saymo.analysis.realtime_gate import (
     evaluate_realtime_launch_gate,
     render_realtime_launch_block,
 )
+from saymo.analysis.realtime_policy import (
+    RealtimeResponseDecision,
+    build_realtime_response_cache,
+    resolve_realtime_response_decision,
+)
 from saymo.commands import (
     _get_cached_audio_path,
     _load_cached_summary,
     _play_cached_audio,
-    _resolve_auto_response_decision,
     _rotate_audio_cache,
     console,
     main,
@@ -418,41 +422,11 @@ async def _auto(
         fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
     )
 
-    # Initialize response cache (Q&A) if enabled and a library is populated
-    response_cache = None
-    if config.responses.enabled:
-        from saymo.analysis.response_cache import ResponseCache, build_library
-        from pathlib import Path
-        cache_dir = Path(config.responses.cache_dir) if config.responses.cache_dir else None
-        response_cache = ResponseCache(
-            library=build_library(config.responses.library),
-            cache_dir=cache_dir,
-            confidence_threshold=config.responses.confidence_threshold,
-        )
+    response_cache = build_realtime_response_cache(config)
+    if response_cache is not None:
         console.print(
-            f"[dim]Q&A cache: {len(response_cache.library)} intents"
-            f"{' + live fallback' if config.responses.live_fallback else ''}[/]"
+            f"[dim]Q&A cache: {len(response_cache.library)} intents[/]"
         )
-
-    standup_summary = _load_cached_summary(config)
-
-    # Warm up the realtime TTS engine so the first trigger doesn't pay
-    # cold-start cost (model load can be 5-10s for XTTS/Qwen3). Only
-    # meaningful when live_fallback is on — otherwise we never synthesise.
-    if config.responses.live_fallback:
-        try:
-            from saymo.tts.factory import get_tts_engine, UnsupportedTTSEngine
-            console.print("[dim]Warming up realtime TTS engine...[/]")
-            warmup_t = time.monotonic()
-            try:
-                await get_tts_engine(config, realtime=True).synthesize(".")
-                console.print(
-                    f"[dim]TTS ready ({(time.monotonic() - warmup_t)*1000:.0f} ms)[/]"
-                )
-            except UnsupportedTTSEngine as e:
-                console.print(f"[yellow]TTS warmup skipped: {e}[/]")
-        except Exception as e:
-            console.print(f"[dim]TTS warmup failed (non-fatal): {e}[/]")
 
     triggered = asyncio.Event()
     speaking = asyncio.Event()
@@ -903,20 +877,32 @@ async def _auto(
             trigger_t = time.monotonic()
 
             resolve_t0 = time.monotonic()
-            response_decision = await _resolve_auto_response_decision(
-                config,
-                transcript_window,
-                response_cache,
-                standup_summary,
-                cached_audio,
-            )
-            audio_to_play = response_decision.audio_path
+            if force_speak:
+                response_decision = RealtimeResponseDecision(
+                    outcome="speak",
+                    label="manual-standup-requested",
+                    source="standup",
+                    reason="manual prepared playback requested",
+                    audio_path=cached_audio,
+                    automatic=False,
+                )
+            else:
+                response_decision = await resolve_realtime_response_decision(
+                    config,
+                    transcript_window=transcript_window,
+                    response_cache=response_cache,
+                )
             resolve_ms = (time.monotonic() - resolve_t0) * 1000
 
             console.print(
                 f"[dim]response route: {response_decision.source} "
-                f"({response_decision.reason})[/]"
+                f"({response_decision.label}: {response_decision.reason})[/]"
             )
+            if response_decision.outcome != "speak" or response_decision.audio_path is None:
+                detector.reset_cooldown()
+                console.print("\n[bold yellow]Listening again...[/]\n")
+                continue
+            audio_to_play = response_decision.audio_path
             console.print(
                 f"[bold blue]Speaking in {live_tuning.pre_speak_delay_seconds:.1f} seconds...[/]"
             )
@@ -1005,8 +991,7 @@ async def _auto(
                 speaking.clear()
                 _publish_state("listening")
                 detector.reset_cooldown()
-                # Clean up live-fallback temp files
-                if audio_to_play != cached_audio:
+                if response_decision.cleanup_path:
                     try:
                         audio_to_play.unlink(missing_ok=True)
                     except Exception:
