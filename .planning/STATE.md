@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 1
+current_plan: 2
 status: in_progress
-stopped_at: Completed 38-01-PLAN.md
-last_updated: "2026-07-08T15:52:08.208Z"
+stopped_at: Completed 38-02-PLAN.md
+last_updated: "2026-07-08T16:00:06.900Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 13
-  completed_plans: 9
-  percent: 69
+  completed_plans: 10
+  percent: 77
 ---
 
 # Project State
@@ -29,21 +29,21 @@ Local Call-Control Daemon and LaunchAgent.
 ## Current Position
 
 Phase: 38 (3 of 5) - Local Call-Control Daemon and LaunchAgent
-Current Plan: 1
+Current Plan: 2
 Total Plans in Phase: 5
-Plan: 1 of 5 completed; next step is 38-02.
+Plan: 2 of 5 completed; next step is 38-03.
 Status: Phase 38 in progress.
 Last activity: 2026-07-08
 
-Progress: [███████░░░] 69%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 13
-- Plans completed: 9
+- Plans completed: 10
 - Average duration: 6 min
-- Total execution time: 56 min
+- Total execution time: 60 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -63,6 +63,7 @@ Progress: [███████░░░] 69%
 | 37-03 | 7 min | 2 | 7 |
 | 37-04 | 11 min | 2 | 4 |
 | 38-01 | 6 min | 2 | 5 |
+| 38-02 | 4 min | 2 | 4 |
 
 **By Phase:**
 
@@ -70,7 +71,7 @@ Progress: [███████░░░] 69%
 |-------|--------|-------|
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
 | 37. Provider and Audio Remediation | Complete | 4/4 |
-| 38. Local Call-Control Daemon and LaunchAgent | In Progress | 1/5 |
+| 38. Local Call-Control Daemon and LaunchAgent | In Progress | 2/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
 
@@ -119,6 +120,9 @@ Recent decisions affecting current work:
 - [Phase 38-01]: The foreground call-control daemon is control-plane only: it writes heartbeat evidence and queues existing live-control commands without applying realtime/audio/provider actions.
 - [Phase 38-01]: Daemon hotkeys use source=daemon_hotkey so queued commands remain distinguishable from panel, CLI, and existing hotkey sources.
 - [Phase 38-01]: Hotkey registration failures are recorded as blocked heartbeat status while the daemon loop keeps running.
+- [Phase 38-02]: LaunchAgent labels use the generic source-safe prefix com.saymo.call-control plus a sanitized profile segment.
+- [Phase 38-02]: LaunchAgent status is read-only: it checks plist existence/hash, optional plutil lint, and launchctl print without bootstrap, bootout, or kickstart.
+- [Phase 38-02]: CLI lifecycle commands stay explicit mutations; tests mock the subprocess boundary so automated runs never touch real launchd.
 
 ### Pending Todos
 
@@ -135,6 +139,6 @@ Continue to Phase 38 planning/execution.
 
 ## Session Continuity
 
-Last session: 2026-07-08T15:51:47.398Z
-Stopped at: Completed 38-01-PLAN.md
+Last session: 2026-07-08T16:00:06.897Z
+Stopped at: Completed 38-02-PLAN.md
 Resume file: None
