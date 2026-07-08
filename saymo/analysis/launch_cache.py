@@ -31,7 +31,7 @@ def collect_response_cache_check(
             severity="block",
             ok=False,
             detail="response_cache_disabled",
-            action="Set responses.enabled=true and run saymo prepare-responses",
+            action="Set responses.enabled=true, then run saymo prepare-responses",
             rerun=rerun,
             metadata={
                 "ready": 0,
@@ -57,7 +57,7 @@ def collect_response_cache_check(
         severity="block",
         ok=ok,
         detail=f"{coverage.ready}/{coverage.total} variants ready",
-        action="" if ok else "Run saymo prepare-responses for the selected profile",
+        action="" if ok else "Run saymo prepare-responses",
         rerun="" if ok else rerun,
         metadata={
             "ready": coverage.ready,
@@ -112,4 +112,4 @@ def _voice_blocked_reason(decision) -> str:
 
 
 def _rerun_command(profile: str, provider_name: str) -> str:
-    return f"saymo call-ready -p {profile} --provider {provider_name} --prepare"
+    return f"saymo call-ready -p {profile} --provider {provider_name}"

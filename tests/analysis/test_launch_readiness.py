@@ -214,6 +214,11 @@ def test_placeholder_daily_note_blocks_source_readiness(tmp_path):
     assert source.detail == "placeholder_only"
     assert source.metadata["note_path"].endswith(f"{today}.md")
     assert source.metadata["source_sha256"]
+    assert source.action == (
+        f"Add usable standup content to {source.metadata['note_path']}, "
+        "then run saymo prepare -p standup"
+    )
+    assert source.rerun == "saymo call-ready -p standup --provider glip"
     _assert_private_absent(json.dumps(report.to_dict(), ensure_ascii=False))
 
 
@@ -241,6 +246,8 @@ def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
         "voice_metadata_stale",
         "source_metadata_stale",
     }
+    assert prepared.action == "Run saymo prepare -p standup"
+    assert prepared.rerun == "saymo call-ready -p standup --provider glip"
     _assert_private_absent(json.dumps(report.to_dict(), ensure_ascii=False))
 
 
@@ -383,8 +390,8 @@ def test_launch_readiness_remediation_groups_by_severity():
                 severity="block",
                 ok=False,
                 detail="placeholder_only",
-                action="Run saymo call-ready -p standup --provider glip --prepare",
-                rerun="saymo call-ready -p standup --provider glip --prepare",
+                action="Add usable standup content to /tmp/daily.md, then run saymo prepare -p standup",
+                rerun="saymo call-ready -p standup --provider glip",
             ),
             LaunchReadinessCheck(
                 key="cloned_voice_metadata",
@@ -393,7 +400,7 @@ def test_launch_readiness_remediation_groups_by_severity():
                 ok=False,
                 detail="voice_profile_unapproved",
                 action="Approve a cloned voice profile for live calls",
-                rerun="saymo call-ready -p standup --provider glip --prepare",
+                rerun="saymo call-ready -p standup --provider glip",
             ),
             LaunchReadinessCheck(
                 key="provider_audio_basic_scope",
@@ -402,7 +409,7 @@ def test_launch_readiness_remediation_groups_by_severity():
                 ok=False,
                 detail="deferred_to_phase_37",
                 action="Run Phase 37 provider/audio readiness",
-                rerun="saymo call-ready -p standup --provider glip --prepare",
+                rerun="saymo call-ready -p standup --provider glip",
             ),
         ),
     )
@@ -419,18 +426,18 @@ def test_launch_readiness_remediation_groups_by_severity():
         "block:",
         "- [source-data] daily note source ready",
         "  why: placeholder_only",
-        "  action: Run saymo call-ready -p standup --provider glip --prepare",
-        "  rerun: saymo call-ready -p standup --provider glip --prepare",
+        "  action: Add usable standup content to /tmp/daily.md, then run saymo prepare -p standup",
+        "  rerun: saymo call-ready -p standup --provider glip",
         "warn:",
         "- [voice-cache] cloned voice metadata",
         "  why: voice_profile_unapproved",
         "  action: Approve a cloned voice profile for live calls",
-        "  rerun: saymo call-ready -p standup --provider glip --prepare",
+        "  rerun: saymo call-ready -p standup --provider glip",
         "info:",
         "- [retest] provider audio basic scope",
         "  why: deferred_to_phase_37",
         "  action: Run Phase 37 provider/audio readiness",
-        "  rerun: saymo call-ready -p standup --provider glip --prepare",
+        "  rerun: saymo call-ready -p standup --provider glip",
     ]
 
 
@@ -447,7 +454,7 @@ def test_voice_metadata_is_sanitized_and_actionable(tmp_path):
     assert voice.severity == "block"
     assert voice.ok is False
     assert voice.action
-    assert voice.rerun == "saymo call-ready -p standup --provider glip --prepare"
+    assert voice.rerun == "saymo call-ready -p standup --provider glip"
     assert "selected_engine" in voice.metadata
     assert "voice_profile" in voice.metadata
     assert "profile_approved" in voice.metadata
@@ -496,5 +503,5 @@ def test_response_cache_launch_check_blocks_disabled_and_partial_coverage(tmp_pa
 
     assert disabled.ok is False
     assert disabled.detail == "response_cache_disabled"
-    assert disabled.action == "Set responses.enabled=true and run saymo prepare-responses"
-    assert disabled.rerun == "saymo call-ready -p standup --provider glip --prepare"
+    assert disabled.action == "Set responses.enabled=true, then run saymo prepare-responses"
+    assert disabled.rerun == "saymo call-ready -p standup --provider glip"

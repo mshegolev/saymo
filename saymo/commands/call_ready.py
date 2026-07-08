@@ -43,7 +43,7 @@ def call_ready(ctx, profile, provider, prepare, json_output, output):
     if json_output:
         click.echo(json.dumps(report.to_dict(), ensure_ascii=False))
     else:
-        console.print(render_launch_readiness(report), markup=False)
+        console.print(render_launch_readiness(report), markup=False, soft_wrap=True)
         if artifact_path:
             click.echo(f"artifact: {artifact_path}")
 

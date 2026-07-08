@@ -23,22 +23,22 @@ remediation:
 block:
 - [source-data] daily note source ready
   why: placeholder_only
-  action: Run saymo call-ready -p standup --provider glip --prepare
-  rerun: saymo call-ready -p standup --provider glip --prepare
+  action: Add usable standup content to daily note, then run saymo prepare -p standup
+  rerun: saymo call-ready -p standup --provider glip
 - [source-data] response cache coverage
   why: 0/2 variants ready
-  action: Run saymo prepare-responses for the selected profile
-  rerun: saymo call-ready -p standup --provider glip --prepare
+  action: Run saymo prepare-responses
+  rerun: saymo call-ready -p standup --provider glip
 warn:
 - [voice-cache] cloned voice metadata
   why: voice_profile_unapproved
   action: Approve a cloned voice profile for live calls
-  rerun: saymo call-ready -p standup --provider glip --prepare
+  rerun: saymo call-ready -p standup --provider glip
 info:
 - [retest] provider audio basic scope
   why: deferred_to_phase_37
   action: Run Phase 37 provider/audio readiness
-  rerun: saymo call-ready -p standup --provider glip --prepare
+  rerun: saymo call-ready -p standup --provider glip
 """.strip()
 
 
@@ -328,8 +328,8 @@ def test_call_ready_groups_remediation_with_rerun_commands(tmp_path, monkeypatch
                 severity="block",
                 ok=False,
                 detail="placeholder_only",
-                action="Run saymo call-ready -p standup --provider glip --prepare",
-                rerun="saymo call-ready -p standup --provider glip --prepare",
+                action="Add usable standup content to daily note, then run saymo prepare -p standup",
+                rerun="saymo call-ready -p standup --provider glip",
             ),
             LaunchReadinessCheck(
                 key="response_cache_coverage",
@@ -337,8 +337,8 @@ def test_call_ready_groups_remediation_with_rerun_commands(tmp_path, monkeypatch
                 severity="block",
                 ok=False,
                 detail="0/2 variants ready",
-                action="Run saymo prepare-responses for the selected profile",
-                rerun="saymo call-ready -p standup --provider glip --prepare",
+                action="Run saymo prepare-responses",
+                rerun="saymo call-ready -p standup --provider glip",
             ),
             LaunchReadinessCheck(
                 key="cloned_voice_metadata",
@@ -347,7 +347,7 @@ def test_call_ready_groups_remediation_with_rerun_commands(tmp_path, monkeypatch
                 ok=False,
                 detail="voice_profile_unapproved",
                 action="Approve a cloned voice profile for live calls",
-                rerun="saymo call-ready -p standup --provider glip --prepare",
+                rerun="saymo call-ready -p standup --provider glip",
             ),
             LaunchReadinessCheck(
                 key="provider_audio_basic_scope",
@@ -356,7 +356,7 @@ def test_call_ready_groups_remediation_with_rerun_commands(tmp_path, monkeypatch
                 ok=False,
                 detail="deferred_to_phase_37",
                 action="Run Phase 37 provider/audio readiness",
-                rerun="saymo call-ready -p standup --provider glip --prepare",
+                rerun="saymo call-ready -p standup --provider glip",
             ),
         ),
     )

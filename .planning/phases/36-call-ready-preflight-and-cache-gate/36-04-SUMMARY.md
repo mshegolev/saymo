@@ -119,6 +119,37 @@ None - implementation scope followed the plan as written.
 
 The plan expected the existing 36-01 RED checks to fail before Task 1 and Task 2 implementation, but the focused suites were already green after Plans 36-02 and 36-03. I preserved TDD by adding stricter Task 1 and Task 2 RED tests, observing the expected failures, committing those tests, and only then writing production code.
 
+## Post-Verification Gap Fix
+
+Initial phase verification found that two remediation actions were not exact:
+`daily_note_source_ready` and `prepared_standup_audio` pointed to
+`saymo call-ready --prepare`, but that flag only allows missing daily-note
+creation and does not add usable note content or synthesize the prepared WAV.
+
+Fix applied:
+
+- `daily_note_source_ready` now tells the user to add usable content to the
+  daily note path and then run `saymo prepare -p standup`.
+- `prepared_standup_audio` now points to `saymo prepare -p standup`.
+- response-cache and voice rerun commands now use `saymo call-ready -p standup
+  --provider glip` without the no-op `--prepare`.
+- `saymo call-ready` human output uses Rich `soft_wrap=True` so exact action
+  commands remain copyable instead of being line-wrapped.
+
+Post-fix verification:
+
+- `uv run pytest tests/analysis/test_launch_readiness.py tests/test_call_ready_cli.py -q`
+  - Result: `15 passed in 0.16s`
+- `uv run pytest tests/analysis/test_launch_readiness.py tests/test_call_ready_cli.py tests/analysis/test_response_cache.py tests/analysis/test_cache_metadata.py tests/scripts/test_ensure_obsidian_daily_note.py tests/test_trigger_check.py -q`
+  - Result: `85 passed in 0.77s`
+- `uv run pytest`
+  - Result: `433 passed in 3.58s`
+- `uv run saymo call-ready -p standup --provider glip`
+  - Result: exit 1 for current local data, with actionable blockers:
+    placeholder daily-note source -> add usable content and run
+    `saymo prepare -p standup`; missing prepared WAV -> run
+    `saymo prepare -p standup`.
+
 ## Authentication Gates
 
 None.

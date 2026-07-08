@@ -38,7 +38,13 @@ def collect_daily_note_checks(
         note_path = ensure_daily_note(config.obsidian)
 
     readiness = inspect_standup_source(note_path)
-    action = f"Run saymo call-ready -p {profile} --provider {provider_name} --prepare"
+    create_note_action = (
+        f"Run saymo call-ready -p {profile} --provider {provider_name} --prepare"
+    )
+    source_action = (
+        f"Add usable standup content to {readiness.path}, "
+        f"then run saymo prepare -p {profile}"
+    )
     rerun = f"saymo call-ready -p {profile} --provider {provider_name}"
     metadata = {
         "note_path": str(readiness.path),
@@ -54,7 +60,7 @@ def collect_daily_note_checks(
         severity="block",
         ok=readiness.exists,
         detail="ready" if readiness.exists else "missing",
-        action="" if readiness.exists else action,
+        action="" if readiness.exists else create_note_action,
         rerun=rerun,
         metadata=metadata,
     )
@@ -64,7 +70,7 @@ def collect_daily_note_checks(
         severity="block",
         ok=readiness.exists and readiness.usable_line_count > 0,
         detail=readiness.reason,
-        action="" if readiness.usable_line_count > 0 else action,
+        action="" if readiness.usable_line_count > 0 else source_action,
         rerun=rerun,
         metadata=metadata,
     )
@@ -137,7 +143,7 @@ def collect_prepared_audio_check(
         team_mode=team_mode,
         source_sha256=source_sha256,
     )
-    action = f"Run saymo call-ready -p {profile} --provider {provider_name} --prepare"
+    action = f"Run saymo prepare -p {profile}"
     return LaunchReadinessCheck(
         key="prepared_standup_audio",
         label="prepared standup audio",
