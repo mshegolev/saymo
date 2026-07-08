@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 from saymo.analysis.cache_metadata import build_voice_cache_metadata
+from saymo.analysis.realtime_gate import RealtimePlaybackBlock
 from saymo.analysis.response_cache import (
     CachedResponse,
     ResponseCache,
@@ -39,6 +40,41 @@ def build_realtime_response_cache(config) -> ResponseCache | None:
         cache_dir=cache_dir,
         confidence_threshold=config.responses.confidence_threshold,
         voice_metadata=build_voice_cache_metadata(config, purpose="response_cache"),
+    )
+
+
+def resolve_manual_standup_decision(
+    *,
+    prepared_standup_path: Path,
+    handbrake_block: RealtimePlaybackBlock | None = None,
+) -> RealtimeResponseDecision:
+    """Resolve an explicit operator-requested prepared standup playback."""
+    if handbrake_block is not None:
+        return RealtimeResponseDecision(
+            outcome="block",
+            label="manual-standup-blocked",
+            source="manual_standup",
+            reason=handbrake_block.reason,
+            automatic=False,
+        )
+
+    path = Path(prepared_standup_path)
+    if not path.exists():
+        return RealtimeResponseDecision(
+            outcome="block",
+            label="manual-standup-blocked",
+            source="manual_standup",
+            reason="prepared-standup-missing",
+            automatic=False,
+        )
+
+    return RealtimeResponseDecision(
+        outcome="speak",
+        label="manual-standup-requested",
+        source="manual_standup",
+        reason="manual prepared playback requested",
+        audio_path=path,
+        automatic=False,
     )
 
 

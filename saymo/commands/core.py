@@ -6,6 +6,7 @@ import json
 import click
 
 from saymo.analysis.realtime_gate import (
+    RealtimePlaybackBlock,
     automatic_handbrake_block,
     evaluate_realtime_launch_gate,
     provider_playback_block,
@@ -14,6 +15,7 @@ from saymo.analysis.realtime_gate import (
 from saymo.analysis.realtime_policy import (
     RealtimeResponseDecision,
     build_realtime_response_cache,
+    resolve_manual_standup_decision,
     resolve_realtime_response_decision,
 )
 from saymo.commands import (
@@ -208,6 +210,26 @@ def _automatic_speaking_allowed(auto_answer_enabled, manual_takeover, hard_disab
         and not manual_takeover.is_set()
         and not hard_disabled.is_set()
     )
+
+
+def _manual_standup_handbrake_block(
+    manual_takeover,
+    hard_disabled,
+) -> RealtimePlaybackBlock | None:
+    """Return a manual playback block without treating auto-answer-off as a block."""
+    if manual_takeover.is_set():
+        return RealtimePlaybackBlock(
+            label="handbrake-blocked",
+            reason="manual-takeover",
+            detail="manual takeover active",
+        )
+    if hard_disabled.is_set():
+        return RealtimePlaybackBlock(
+            label="handbrake-blocked",
+            reason="hard-disabled",
+            detail="automatic answers hard disabled",
+        )
+    return None
 
 
 def _request_manual_speak(
@@ -877,13 +899,12 @@ async def _auto(
 
             resolve_t0 = time.monotonic()
             if force_speak:
-                response_decision = RealtimeResponseDecision(
-                    outcome="speak",
-                    label="manual-standup-requested",
-                    source="standup",
-                    reason="manual prepared playback requested",
-                    audio_path=cached_audio,
-                    automatic=False,
+                response_decision = resolve_manual_standup_decision(
+                    prepared_standup_path=cached_audio,
+                    handbrake_block=_manual_standup_handbrake_block(
+                        manual_takeover,
+                        hard_disabled,
+                    ),
                 )
             else:
                 response_decision = await resolve_realtime_response_decision(
@@ -908,7 +929,7 @@ async def _auto(
             await asyncio.sleep(live_tuning.pre_speak_delay_seconds)
 
             handbrake_block = (
-                None
+                _manual_standup_handbrake_block(manual_takeover, hard_disabled)
                 if force_speak
                 else automatic_handbrake_block(
                     auto_answer_enabled,
@@ -972,7 +993,7 @@ async def _auto(
                     audio_to_play,
                     provider_name=provider_name,
                     on_playback_start=_mark_playback_start,
-                    allow_provider_fallback=force_speak,
+                    allow_provider_fallback=not response_decision.automatic,
                 )
             )
             stop_waiter = asyncio.create_task(stop_playback.wait())
