@@ -31,7 +31,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 
 ### Provider and Audio Readiness
 
-- [ ] **PROV-01**: User can verify the configured provider and Chrome meeting
+- [x] **PROV-01**: User can verify the configured provider and Chrome meeting
   tab are present, identifiable, and actionable before starting realtime mode.
 - [ ] **PROV-02**: User can verify BlackHole capture/playback routing and the
   real microphone takeover route before joining or starting the live loop.
@@ -41,7 +41,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [ ] **PROV-04**: User can see macOS permission blockers for hotkeys,
   microphone capture, Chrome automation, and audio routing with targeted
   remediation.
-- [ ] **PROV-05**: User can run provider/audio readiness without destructive
+- [x] **PROV-05**: User can run provider/audio readiness without destructive
   provider actions such as killing Chrome, leaving a meeting, or changing
   system routes unless an explicit command requests it.
 
@@ -157,11 +157,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LAUN-05 | Phase 36 | Complete |
 | LAUN-06 | Phase 36 | Complete |
 | LAUN-07 | Phase 36 | Complete |
-| PROV-01 | Phase 37 | Pending |
+| PROV-01 | Phase 37 | Complete |
 | PROV-02 | Phase 37 | Pending |
 | PROV-03 | Phase 37 | Pending |
 | PROV-04 | Phase 37 | Pending |
-| PROV-05 | Phase 37 | Pending |
+| PROV-05 | Phase 37 | Complete |
 | CTRL-01 | Phase 38 | Pending |
 | CTRL-02 | Phase 38 | Pending |
 | CTRL-03 | Phase 38 | Pending |

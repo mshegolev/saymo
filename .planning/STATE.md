@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 4
-status: verifying
-stopped_at: Completed 36-04-PLAN.md
-last_updated: "2026-07-08T13:38:08.297Z"
-last_activity: 2026-07-08 - completed 36-04 full call-ready gate, grouped remediation, and validation evidence.
+current_plan: 2
+status: in_progress
+stopped_at: Completed 37-01-PLAN.md
+last_updated: "2026-07-08T14:11:30.314Z"
+last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_plans: 8
+  completed_plans: 5
+  percent: 63
 ---
 
 # Project State
@@ -23,27 +23,27 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.9 Call Launch Readiness, starting with Phase 36:
-Call-Ready Preflight and Cache Gate.
+**Current focus:** v1.9 Call Launch Readiness, currently Phase 37:
+Provider and Audio Remediation.
 
 ## Current Position
 
-Phase: 36 (1 of 5) - Call-Ready Preflight and Cache Gate
-Current Plan: 4
+Phase: 37 (2 of 5) - Provider and Audio Remediation
+Current Plan: 2
 Total Plans in Phase: 4
-Plan: 4 of 4 planned
-Status: Phase 36 complete; ready for verification.
-Last activity: 2026-07-08 - completed 36-04 full call-ready gate, grouped remediation, and validation evidence.
+Plan: 1 of 4 completed; next plan is 37-02
+Status: Phase 37 in progress; Plan 37-01 complete.
+Last activity: 2026-07-08
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 63%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 4
+- Plans completed: 5
 - Average duration: 6 min
-- Total execution time: 23 min
+- Total execution time: 28 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -58,13 +58,14 @@ Progress: [██████████] 100%
 | 36-02 | 6 min | 2 | 8 |
 | 36-03 | 4 min | 2 | 3 |
 | 36-04 | 7 min | 3 | 6 |
+| 37-01 | 5 min | 2 | 6 |
 
 **By Phase:**
 
 | Phase | Status | Plans |
 |-------|--------|-------|
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
-| 37. Provider and Audio Remediation | Not started | 0/4 |
+| 37. Provider and Audio Remediation | In Progress | 1/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Not started | 0/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
@@ -99,10 +100,13 @@ Recent decisions affecting current work:
 - [Phase 36-04]: Provider/audio readiness remains an info-only Phase 37 placeholder in Phase 36.
 - [Phase 36-04]: Call-ready artifacts are sanitized JSON and never mix artifact path text into JSON stdout.
 - [Phase 36-04]: Grouped launch remediation uses check labels, details, actions, and rerun commands by severity section.
+- [Phase 37]: Provider tab readiness is a blocking LaunchReadinessCheck named provider_meeting_tab.
+- [Phase 37]: Default call-ready provider checks call only provider lookup and provider.check_ready(), leaving tab activation, mute, focus, mic switching, playback, recording, config writes, and system route changes out of scope.
+- [Phase 37]: Provider factory and check exceptions expose sanitized detail values plus error_type only, not raw exception text.
 
 ### Pending Todos
 
-Run Phase 36 verification or continue to Phase 37 planning.
+Continue to Phase 37 Plan 37-02 for BlackHole route and microphone takeover verification.
 
 ### Blockers/Concerns
 
@@ -115,6 +119,6 @@ Run Phase 36 verification or continue to Phase 37 planning.
 
 ## Session Continuity
 
-Last session: 2026-07-08T13:22:15.998Z
-Stopped at: Completed 36-04-PLAN.md
+Last session: 2026-07-08T14:11:30.311Z
+Stopped at: Completed 37-01-PLAN.md
 Resume file: None
