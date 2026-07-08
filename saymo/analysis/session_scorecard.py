@@ -9,8 +9,10 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from saymo.analysis.launch_evidence import LaunchEvidence, load_launch_evidence
 from saymo.analysis.live_control import normalize_action
 from saymo.analysis.regression_replay import RegressionMetrics
+from saymo.analysis.realtime_events import RealtimeEventSummary, summarize_realtime_decision_events
 from saymo.analysis.rehearsal import RehearsalArtifact, rehearsal_artifact_from_json
 
 
@@ -66,6 +68,52 @@ class SafetyScorecardMetrics:
 
 
 @dataclass(frozen=True)
+class LaunchScorecardMetrics:
+    """Launch-readiness artifact evidence folded into a scorecard."""
+
+    status: str = "unavailable"
+    ready: bool | None = None
+    block_count: int = 0
+    warn_count: int = 0
+    failed_labels: tuple[str, ...] = ()
+    blocker_categories: dict[str, int] = field(default_factory=dict)
+    cache_ready: int = 0
+    cache_total: int = 0
+    cache_missing: int = 0
+    voice_profile: str = ""
+    reference_fingerprint: str = ""
+    provider_ready: bool | None = None
+    daemon_ready: bool | None = None
+    daemon_running: bool | None = None
+    daemon_heartbeat_fresh: bool | None = None
+    artifact_path: str = ""
+    log_paths: tuple[str, ...] = ()
+    rerun_commands: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class RealtimeScorecardMetrics:
+    """Realtime decision JSONL evidence folded into a scorecard."""
+
+    status: str = "unavailable"
+    total_events: int = 0
+    malformed_rows: int = 0
+    launch_starts: int = 0
+    launch_ends: int = 0
+    launch_blocks: int = 0
+    cache_hits: int = 0
+    cache_misses: int = 0
+    fallback_blocks: int = 0
+    provider_blocks: int = 0
+    handbrake_blocks: int = 0
+    playback_attempts: int = 0
+    stop_reasons: dict[str, int] = field(default_factory=dict)
+    label_counts: dict[str, int] = field(default_factory=dict)
+    source_counts: dict[str, int] = field(default_factory=dict)
+    artifact_path: str = ""
+
+
+@dataclass(frozen=True)
 class SessionScorecard:
     """One sanitized reliability scorecard."""
 
@@ -79,6 +127,8 @@ class SessionScorecard:
     warnings: tuple[str, ...] = ()
     created_at: str = ""
     source_path: str = ""
+    launch_metrics: LaunchScorecardMetrics = field(default_factory=LaunchScorecardMetrics)
+    realtime_metrics: RealtimeScorecardMetrics = field(default_factory=RealtimeScorecardMetrics)
 
 
 @dataclass(frozen=True)
@@ -101,6 +151,8 @@ def build_scorecard_from_rehearsal(
     path: str | Path,
     *,
     audit_root: str | Path | None = None,
+    launch_json: str | Path | None = None,
+    realtime_jsonl: str | Path | None = None,
 ) -> SessionScorecard:
     """Build a sanitized scorecard from one saved rehearsal artifact."""
     artifact_path = Path(path).expanduser()
@@ -109,6 +161,11 @@ def build_scorecard_from_rehearsal(
     )
     audit = _load_live_control_audit(artifact.profile, audit_root=audit_root)
     warnings = _warnings_from_audit(audit)
+    launch_metrics, realtime_metrics, evidence_warnings = _load_evidence_metrics(
+        launch_json=launch_json,
+        realtime_jsonl=realtime_jsonl,
+    )
+    warnings.extend(evidence_warnings)
 
     return SessionScorecard(
         profile=artifact.profile,
@@ -121,6 +178,8 @@ def build_scorecard_from_rehearsal(
         warnings=tuple(warnings),
         created_at=artifact.created_at,
         source_path=str(artifact_path),
+        launch_metrics=launch_metrics,
+        realtime_metrics=realtime_metrics,
     )
 
 
@@ -128,10 +187,17 @@ def build_scorecard_from_regression(
     metrics: RegressionMetrics,
     *,
     audit_root: str | Path | None = None,
+    launch_json: str | Path | None = None,
+    realtime_jsonl: str | Path | None = None,
 ) -> SessionScorecard:
     """Build a sanitized scorecard from replayed trigger-session metrics."""
     audit = _load_live_control_audit(metrics.profile, audit_root=audit_root)
     warnings = _warnings_from_audit(audit)
+    launch_metrics, realtime_metrics, evidence_warnings = _load_evidence_metrics(
+        launch_json=launch_json,
+        realtime_jsonl=realtime_jsonl,
+    )
+    warnings.extend(evidence_warnings)
     if metrics.readiness_missing:
         warnings.append(
             "classifier readiness missing: "
@@ -159,6 +225,138 @@ def build_scorecard_from_regression(
             cancellation_events=audit.cancellation_events,
         ),
         warnings=tuple(warnings),
+        launch_metrics=launch_metrics,
+        realtime_metrics=realtime_metrics,
+    )
+
+
+def _load_evidence_metrics(
+    *,
+    launch_json: str | Path | None,
+    realtime_jsonl: str | Path | None,
+) -> tuple[LaunchScorecardMetrics, RealtimeScorecardMetrics, list[str]]:
+    warnings: list[str] = []
+    launch_metrics = LaunchScorecardMetrics()
+    realtime_metrics = RealtimeScorecardMetrics()
+    if launch_json is not None:
+        launch_metrics, warning = _launch_metrics_from_path(launch_json)
+        if warning:
+            warnings.append(warning)
+    if realtime_jsonl is not None:
+        realtime_metrics, warning = _realtime_metrics_from_path(realtime_jsonl)
+        if warning:
+            warnings.append(warning)
+    return launch_metrics, realtime_metrics, warnings
+
+
+def _launch_metrics_from_path(
+    path: str | Path,
+) -> tuple[LaunchScorecardMetrics, str]:
+    evidence_path = Path(path).expanduser()
+    if not evidence_path.exists():
+        return (
+            LaunchScorecardMetrics(status="missing", artifact_path=str(evidence_path)),
+            "launch evidence not found",
+        )
+    try:
+        evidence = load_launch_evidence(evidence_path)
+    except (OSError, json.JSONDecodeError, ValueError):
+        return (
+            LaunchScorecardMetrics(status="invalid", artifact_path=str(evidence_path)),
+            "launch evidence unreadable",
+        )
+    return _launch_metrics_from_evidence(evidence), ""
+
+
+def _launch_metrics_from_evidence(evidence: LaunchEvidence) -> LaunchScorecardMetrics:
+    cache = evidence.cache_counts
+    daemon = evidence.daemon_status
+    return LaunchScorecardMetrics(
+        status="loaded",
+        ready=evidence.ready,
+        block_count=evidence.block_count,
+        warn_count=evidence.warn_count,
+        failed_labels=tuple(_sanitize_detail(item) for item in evidence.failed_labels),
+        blocker_categories={
+            str(key): _int_value(value)
+            for key, value in evidence.blocker_categories.items()
+        },
+        cache_ready=_int_value(cache.get("ready")),
+        cache_total=_int_value(cache.get("total")),
+        cache_missing=_int_value(cache.get("missing")),
+        voice_profile=_safe_label(evidence.voice_metadata.get("voice_profile") or ""),
+        reference_fingerprint=_sanitize_detail(
+            evidence.voice_metadata.get("reference_fingerprint") or ""
+        ),
+        provider_ready=_provider_ready(evidence.provider_status),
+        daemon_ready=_bool_or_none(daemon.get("daemon_ok")),
+        daemon_running=_bool_or_none(daemon.get("running")),
+        daemon_heartbeat_fresh=_bool_or_none(daemon.get("heartbeat_fresh")),
+        artifact_path=evidence.path,
+        log_paths=_log_paths(evidence),
+        rerun_commands=tuple(_sanitize_detail(item) for item in evidence.rerun_commands),
+    )
+
+
+def _realtime_metrics_from_path(
+    path: str | Path,
+) -> tuple[RealtimeScorecardMetrics, str]:
+    evidence_path = Path(path).expanduser()
+    if not evidence_path.exists():
+        return (
+            RealtimeScorecardMetrics(status="missing", artifact_path=str(evidence_path)),
+            "realtime evidence not found",
+        )
+    try:
+        summary = summarize_realtime_decision_events(evidence_path)
+    except (OSError, json.JSONDecodeError, ValueError):
+        return (
+            RealtimeScorecardMetrics(status="invalid", artifact_path=str(evidence_path)),
+            "realtime evidence unreadable",
+        )
+    return _realtime_metrics_from_summary(summary), ""
+
+
+def _realtime_metrics_from_summary(summary: RealtimeEventSummary) -> RealtimeScorecardMetrics:
+    return RealtimeScorecardMetrics(
+        status="loaded",
+        total_events=summary.total,
+        malformed_rows=summary.malformed_rows,
+        launch_starts=summary.launch_starts,
+        launch_ends=summary.launch_ends,
+        launch_blocks=summary.launch_blocks,
+        cache_hits=summary.cache_hits,
+        cache_misses=summary.cache_misses,
+        fallback_blocks=summary.fallback_blocks,
+        provider_blocks=summary.provider_blocks,
+        handbrake_blocks=summary.handbrake_blocks,
+        playback_attempts=summary.playback_attempts,
+        stop_reasons=dict(summary.stop_reasons),
+        label_counts=dict(summary.label_counts),
+        source_counts=dict(summary.source_counts),
+        artifact_path=summary.path,
+    )
+
+
+def _provider_ready(status: Mapping[str, Any]) -> bool | None:
+    values = [
+        value
+        for key, value in status.items()
+        if key.endswith("_ok") and isinstance(value, bool)
+    ]
+    if values:
+        return all(values)
+    if isinstance(status.get("meeting_found"), bool):
+        return bool(status.get("meeting_found"))
+    return None
+
+
+def _log_paths(evidence: LaunchEvidence) -> tuple[str, ...]:
+    roots = {evidence.path}
+    return tuple(
+        str(path)
+        for path in evidence.artifact_paths
+        if path and path not in roots and str(path).endswith(".log")
     )
 
 
@@ -172,6 +370,18 @@ def scorecard_to_json(scorecard: SessionScorecard) -> dict[str, Any]:
     data["trigger_metrics"]["sample_names"] = list(
         scorecard.trigger_metrics.sample_names
     )
+    if scorecard.launch_metrics.status == "unavailable":
+        data.pop("launch_metrics", None)
+    else:
+        data["launch_metrics"]["failed_labels"] = list(
+            scorecard.launch_metrics.failed_labels
+        )
+        data["launch_metrics"]["log_paths"] = list(scorecard.launch_metrics.log_paths)
+        data["launch_metrics"]["rerun_commands"] = list(
+            scorecard.launch_metrics.rerun_commands
+        )
+    if scorecard.realtime_metrics.status == "unavailable":
+        data.pop("realtime_metrics", None)
     data.pop("source_path", None)
     return data
 
@@ -181,6 +391,8 @@ def scorecard_from_json(data: Mapping[str, Any]) -> SessionScorecard:
     trigger = data.get("trigger_metrics") or {}
     playback = data.get("playback_metrics") or {}
     safety = data.get("safety_metrics") or {}
+    launch = data.get("launch_metrics") or {}
+    realtime = data.get("realtime_metrics") or {}
     return SessionScorecard(
         profile=str(data.get("profile") or "unknown"),
         source_type=str(data.get("source_type") or "unknown"),
@@ -245,6 +457,74 @@ def scorecard_from_json(data: Mapping[str, Any]) -> SessionScorecard:
             for item in _sequence_or_empty(data.get("warnings"))
         ),
         created_at=_safe_label(data.get("created_at") or ""),
+        launch_metrics=_launch_metrics_from_json(launch) if launch else LaunchScorecardMetrics(),
+        realtime_metrics=(
+            _realtime_metrics_from_json(realtime)
+            if realtime
+            else RealtimeScorecardMetrics()
+        ),
+    )
+
+
+def _launch_metrics_from_json(data: Mapping[str, Any]) -> LaunchScorecardMetrics:
+    return LaunchScorecardMetrics(
+        status=_safe_label(data.get("status") or "unavailable"),
+        ready=_bool_or_none(data.get("ready")),
+        block_count=_int_value(data.get("block_count")),
+        warn_count=_int_value(data.get("warn_count")),
+        failed_labels=tuple(
+            _sanitize_detail(item)
+            for item in _sequence_or_empty(data.get("failed_labels"))
+        ),
+        blocker_categories={
+            str(key): _int_value(value)
+            for key, value in _dict_or_empty(data.get("blocker_categories")).items()
+        },
+        cache_ready=_int_value(data.get("cache_ready")),
+        cache_total=_int_value(data.get("cache_total")),
+        cache_missing=_int_value(data.get("cache_missing")),
+        voice_profile=_safe_label(data.get("voice_profile") or ""),
+        reference_fingerprint=_sanitize_detail(data.get("reference_fingerprint") or ""),
+        provider_ready=_bool_or_none(data.get("provider_ready")),
+        daemon_ready=_bool_or_none(data.get("daemon_ready")),
+        daemon_running=_bool_or_none(data.get("daemon_running")),
+        daemon_heartbeat_fresh=_bool_or_none(data.get("daemon_heartbeat_fresh")),
+        artifact_path=str(data.get("artifact_path") or ""),
+        log_paths=tuple(str(item) for item in _sequence_or_empty(data.get("log_paths"))),
+        rerun_commands=tuple(
+            _sanitize_detail(item)
+            for item in _sequence_or_empty(data.get("rerun_commands"))
+        ),
+    )
+
+
+def _realtime_metrics_from_json(data: Mapping[str, Any]) -> RealtimeScorecardMetrics:
+    return RealtimeScorecardMetrics(
+        status=_safe_label(data.get("status") or "unavailable"),
+        total_events=_int_value(data.get("total_events")),
+        malformed_rows=_int_value(data.get("malformed_rows")),
+        launch_starts=_int_value(data.get("launch_starts")),
+        launch_ends=_int_value(data.get("launch_ends")),
+        launch_blocks=_int_value(data.get("launch_blocks")),
+        cache_hits=_int_value(data.get("cache_hits")),
+        cache_misses=_int_value(data.get("cache_misses")),
+        fallback_blocks=_int_value(data.get("fallback_blocks")),
+        provider_blocks=_int_value(data.get("provider_blocks")),
+        handbrake_blocks=_int_value(data.get("handbrake_blocks")),
+        playback_attempts=_int_value(data.get("playback_attempts")),
+        stop_reasons={
+            str(key): _int_value(value)
+            for key, value in _dict_or_empty(data.get("stop_reasons")).items()
+        },
+        label_counts={
+            str(key): _int_value(value)
+            for key, value in _dict_or_empty(data.get("label_counts")).items()
+        },
+        source_counts={
+            str(key): _int_value(value)
+            for key, value in _dict_or_empty(data.get("source_counts")).items()
+        },
+        artifact_path=str(data.get("artifact_path") or ""),
     )
 
 
@@ -320,16 +600,99 @@ def render_scorecard_markdown(scorecard: SessionScorecard) -> str:
             f"takeover events: {safety.takeover_events}",
             f"hard-disable events: {safety.hard_disable_events}",
             f"cancellation events: {safety.cancellation_events}",
-            "",
-            "## Warnings",
-            "",
         ]
     )
+    evidence_lines = _render_phase40_evidence(scorecard)
+    if evidence_lines:
+        lines.extend(["", "## v1.9 Evidence", "", *evidence_lines])
+
+    lines.extend(["", "## Warnings", ""])
     if scorecard.warnings:
         lines.extend(f"- {_sanitize_detail(warning)}" for warning in scorecard.warnings)
     else:
         lines.append("- none")
     return "\n".join(lines) + "\n"
+
+
+def _render_phase40_evidence(scorecard: SessionScorecard) -> list[str]:
+    lines: list[str] = []
+    launch = scorecard.launch_metrics
+    realtime = scorecard.realtime_metrics
+    if launch.status != "unavailable":
+        if launch.status == "loaded":
+            lines.extend(
+                [
+                    (
+                        "launch: loaded "
+                        f"ready={_format_bool(launch.ready)} "
+                        f"blocks={launch.block_count} warns={launch.warn_count}"
+                    ),
+                    (
+                        "launch cache: "
+                        f"ready={launch.cache_ready} total={launch.cache_total} "
+                        f"missing={launch.cache_missing}"
+                    ),
+                    f"provider ready: {_format_bool(launch.provider_ready)}",
+                    (
+                        "daemon: "
+                        f"ready={_format_bool(launch.daemon_ready)} "
+                        f"running={_format_bool(launch.daemon_running)} "
+                        f"heartbeat_fresh={_format_bool(launch.daemon_heartbeat_fresh)}"
+                    ),
+                    f"launch artifact: {launch.artifact_path or '-'}",
+                    f"launch log paths: {_format_tuple(launch.log_paths)}",
+                    f"launch rerun commands: {len(launch.rerun_commands)}",
+                ]
+            )
+            if launch.failed_labels:
+                lines.append(
+                    "failed launch labels: "
+                    + ", ".join(_sanitize_detail(item) for item in launch.failed_labels)
+                )
+            if launch.blocker_categories:
+                lines.append(
+                    "launch blocker categories: "
+                    + _format_counts(launch.blocker_categories)
+                )
+        else:
+            lines.append(f"launch: {launch.status}")
+            if launch.artifact_path:
+                lines.append(f"launch artifact: {launch.artifact_path}")
+
+    if realtime.status != "unavailable":
+        if realtime.status == "loaded":
+            lines.extend(
+                [
+                    (
+                        "realtime launch: "
+                        f"starts={realtime.launch_starts} "
+                        f"ends={realtime.launch_ends} "
+                        f"blocks={realtime.launch_blocks} "
+                        f"malformed_rows={realtime.malformed_rows}"
+                    ),
+                    (
+                        "cache: "
+                        f"hits={realtime.cache_hits} "
+                        f"misses={realtime.cache_misses} "
+                        f"fallback_blocks={realtime.fallback_blocks}"
+                    ),
+                    (
+                        "runtime blocks: "
+                        f"provider={realtime.provider_blocks} "
+                        f"handbrake={realtime.handbrake_blocks} "
+                        f"playback_attempts={realtime.playback_attempts}"
+                    ),
+                    f"stop reasons: {_format_counts(realtime.stop_reasons)}",
+                    f"realtime labels: {_format_counts(realtime.label_counts)}",
+                    f"realtime sources: {_format_counts(realtime.source_counts)}",
+                    f"realtime artifact: {realtime.artifact_path or '-'}",
+                ]
+            )
+        else:
+            lines.append(f"realtime: {realtime.status}")
+            if realtime.artifact_path:
+                lines.append(f"realtime artifact: {realtime.artifact_path}")
+    return lines
 
 
 def _trigger_metrics_from_rehearsal(artifact: RehearsalArtifact) -> TriggerScorecardMetrics:
@@ -587,6 +950,10 @@ def _format_counts(counts: Mapping[str, Any]) -> str:
     if not counts:
         return "unknown"
     return ", ".join(f"{key}={_format_count_value(value)}" for key, value in sorted(counts.items()))
+
+
+def _format_tuple(values: tuple[str, ...]) -> str:
+    return ", ".join(values) if values else "unknown"
 
 
 def _format_count_value(value: Any) -> str:

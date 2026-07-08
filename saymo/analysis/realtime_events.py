@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import math
 import re
-from dataclasses import dataclass
+from collections import Counter
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -72,6 +74,28 @@ class RealtimeDecisionEvent:
         }
 
 
+@dataclass(frozen=True)
+class RealtimeEventSummary:
+    """Sanitized aggregate evidence from realtime decision JSONL rows."""
+
+    path: str = ""
+    total: int = 0
+    malformed_rows: int = 0
+    outcome_counts: dict[str, int] = field(default_factory=dict)
+    label_counts: dict[str, int] = field(default_factory=dict)
+    source_counts: dict[str, int] = field(default_factory=dict)
+    launch_starts: int = 0
+    launch_ends: int = 0
+    launch_blocks: int = 0
+    cache_hits: int = 0
+    cache_misses: int = 0
+    fallback_blocks: int = 0
+    provider_blocks: int = 0
+    handbrake_blocks: int = 0
+    playback_attempts: int = 0
+    stop_reasons: dict[str, int] = field(default_factory=dict)
+
+
 def realtime_event_log_path(profile: str, *, base_dir: Path | str | None = None) -> Path:
     """Return the JSONL decision-event path for a profile."""
     return live_control.live_control_dir(profile, base_dir=base_dir) / EVENT_LOG_NAME
@@ -88,6 +112,105 @@ def append_realtime_decision_event(
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(event.to_dict(), ensure_ascii=False, sort_keys=True) + "\n")
     return path
+
+
+def load_realtime_decision_events(path: str | Path) -> tuple[RealtimeDecisionEvent, ...]:
+    """Load sanitized realtime decision events from JSONL, skipping bad rows."""
+    events, _malformed = _read_realtime_decision_events(path)
+    return events
+
+
+def summarize_realtime_decision_events(path: str | Path) -> RealtimeEventSummary:
+    """Summarize sanitized realtime decision evidence from JSONL."""
+    event_path = Path(path).expanduser()
+    events, malformed_rows = _read_realtime_decision_events(event_path)
+    outcomes: Counter[str] = Counter()
+    labels: Counter[str] = Counter()
+    sources: Counter[str] = Counter()
+
+    for event in events:
+        payload = event.to_dict()
+        outcomes[str(payload.get("outcome") or "blocked")] += 1
+        labels[str(payload.get("label") or "unknown")] += 1
+        sources[str(payload.get("source") or "unknown")] += 1
+
+    return RealtimeEventSummary(
+        path=str(event_path),
+        total=len(events),
+        malformed_rows=malformed_rows,
+        outcome_counts=_sorted_counts(outcomes),
+        label_counts=_sorted_counts(labels),
+        source_counts=_sorted_counts(sources),
+        launch_starts=labels.get("launch-start", 0),
+        launch_ends=labels.get("launch-end", 0),
+        launch_blocks=labels.get("launch-readiness-blocked", 0),
+        cache_hits=labels.get("response-cache-hit", 0),
+        cache_misses=labels.get("cache-miss-blocked", 0),
+        fallback_blocks=labels.get("fallback-blocked", 0),
+        provider_blocks=labels.get("provider-blocked", 0),
+        handbrake_blocks=labels.get("handbrake-blocked", 0),
+        playback_attempts=sum(
+            count
+            for label, count in labels.items()
+            if label in {"playback-attempt", "playback-attempted", "playback-started"}
+        ),
+        stop_reasons=_stop_reason_counts(labels),
+    )
+
+
+def _read_realtime_decision_events(
+    path: str | Path,
+) -> tuple[tuple[RealtimeDecisionEvent, ...], int]:
+    event_path = Path(path).expanduser()
+    events: list[RealtimeDecisionEvent] = []
+    malformed = 0
+    for raw in event_path.read_text(encoding="utf-8").splitlines():
+        if not raw.strip():
+            continue
+        try:
+            row = json.loads(raw)
+        except json.JSONDecodeError:
+            malformed += 1
+            continue
+        if not isinstance(row, Mapping):
+            malformed += 1
+            continue
+        events.append(_event_from_mapping(row))
+    return tuple(events), malformed
+
+
+def _event_from_mapping(row: Mapping[str, Any]) -> RealtimeDecisionEvent:
+    event = RealtimeDecisionEvent(
+        created_at=str(row.get("created_at") or ""),
+        profile=str(row.get("profile") or ""),
+        provider=str(row.get("provider") or ""),
+        outcome=_outcome(row.get("outcome")),
+        label=str(row.get("label") or ""),
+        source=str(row.get("source") or ""),
+        automatic=bool(row.get("automatic", True)),
+        intent_key=str(row.get("intent_key") or ""),
+        confidence=_sanitize_confidence(row.get("confidence")),
+        audio_path=str(row.get("audio_path") or ""),
+        detail=str(row.get("detail") or ""),
+    )
+    return RealtimeDecisionEvent(**event.to_dict())
+
+
+def _outcome(value: object) -> Literal["spoke", "skipped", "blocked"]:
+    text = str(value or "")
+    return text if text in _OUTCOMES else "blocked"  # type: ignore[return-value]
+
+
+def _sorted_counts(counter: Counter[str]) -> dict[str, int]:
+    return {key: counter[key] for key in sorted(counter)}
+
+
+def _stop_reason_counts(labels: Counter[str]) -> dict[str, int]:
+    return {
+        label: labels[label]
+        for label in sorted(labels)
+        if "stop" in label.casefold() or "cancel" in label.casefold()
+    }
 
 
 def _now() -> str:

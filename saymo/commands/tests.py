@@ -1017,6 +1017,22 @@ def _transcript_snippet(text: str, *, limit: int = 240) -> str:
     type=click.Path(),
     help="Live-control root containing <profile>/audit.jsonl",
 )
+@click.option(
+    "--launch-json",
+    "--launch-readiness",
+    "launch_json",
+    default=None,
+    type=click.Path(),
+    help="Optional call-ready launch-readiness JSON artifact",
+)
+@click.option(
+    "--realtime-jsonl",
+    "--realtime",
+    "realtime_jsonl",
+    default=None,
+    type=click.Path(),
+    help="Optional realtime decision JSONL artifact",
+)
 @click.option("--output", "-o", default=None, type=click.Path(), help="Markdown output path")
 @click.option("--json-output", default=None, type=click.Path(), help="Sanitized JSON output path")
 @click.pass_context
@@ -1027,6 +1043,8 @@ def session_scorecard(
     session_source,
     samples_dir,
     audit_root,
+    launch_json,
+    realtime_jsonl,
     output,
     json_output,
 ):
@@ -1043,7 +1061,12 @@ def session_scorecard(
         raise click.ClickException("Provide exactly one of --rehearsal or --session")
 
     if rehearsal:
-        scorecard = build_scorecard_from_rehearsal(rehearsal, audit_root=audit_root)
+        scorecard = build_scorecard_from_rehearsal(
+            rehearsal,
+            audit_root=audit_root,
+            launch_json=launch_json,
+            realtime_jsonl=realtime_jsonl,
+        )
     else:
         from saymo.analysis.regression_replay import load_regression_json
 
@@ -1068,7 +1091,12 @@ def session_scorecard(
                 profile=profile,
                 session_id=resolved_session,
             )
-        scorecard = build_scorecard_from_regression(metrics, audit_root=audit_root)
+        scorecard = build_scorecard_from_regression(
+            metrics,
+            audit_root=audit_root,
+            launch_json=launch_json,
+            realtime_jsonl=realtime_jsonl,
+        )
 
     rendered = render_scorecard_markdown(scorecard)
     console.print(rendered)
