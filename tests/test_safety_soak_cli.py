@@ -298,6 +298,12 @@ def test_safety_soak_cli_fails_from_scorecard_json_v19_metrics_preserving_export
     assert "provider_blocked" in result.output
     assert "fallback_blocked" in result.output
     assert "handbrake_blocked" in result.output
+    assert "remediation:" in result.output
+    assert "source=v19-scorecard.json rule=provider_blocked count=2" in result.output
+    assert "saymo session-scorecard -p personal" in result.output
+    assert "--launch-json <launch.json>" in result.output
+    assert "--realtime-jsonl <realtime.jsonl>" in result.output
+    assert f"rerun: saymo safety-soak -p personal --scorecard-json {scorecard_path}" in result.output
     assert "soak markdown:" in result.output
     assert "soak json:" in result.output
 

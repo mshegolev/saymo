@@ -237,6 +237,16 @@ def test_session_scorecard_cli_accepts_launch_and_realtime_evidence_paths(tmp_pa
     assert "v1.9 Evidence" in result.output
     assert "launch: loaded ready=no blocks=1 warns=1" in result.output
     assert "runtime blocks: provider=1 handbrake=1 playback_attempts=1" in result.output
+    assert "remediation:" in result.output
+    assert "response cache coverage" in result.output
+    assert "source-data=1" in result.output
+    assert "provider_blocks=1 fallback_blocks=1 handbrake_blocks=1" in result.output
+    assert "saymo call-ready -p personal --provider glip" in result.output
+    assert "saymo call-control-agent status -p personal" in result.output
+    assert (
+        f"rerun: saymo session-scorecard -p personal --rehearsal {rehearsal_path} "
+        f"--launch-json {launch_path} --realtime-jsonl {realtime_path}"
+    ) in result.output
     assert "scorecard markdown:" in result.output
     assert "scorecard json:" in result.output
 
@@ -249,6 +259,8 @@ def test_session_scorecard_cli_accepts_launch_and_realtime_evidence_paths(tmp_pa
     assert payload["realtime_metrics"]["status"] == "loaded"
     assert payload["realtime_metrics"]["launch_blocks"] == 1
     assert payload["realtime_metrics"]["malformed_rows"] == 1
+    assert markdown_path.exists()
+    assert json_path.exists()
     assert "Alice, share" not in combined
     assert "private project secret" not in combined
     assert "last_trigger" not in combined

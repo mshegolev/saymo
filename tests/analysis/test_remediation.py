@@ -10,9 +10,23 @@ from saymo.analysis.remediation import (
     hints_from_launch_readiness,
     hints_from_preflight_checks,
     hints_from_scorecard,
+    hints_from_safety_soak,
     render_remediation_hints,
 )
-from saymo.analysis.session_scorecard import build_scorecard_from_regression
+from saymo.analysis.safety_soak import (
+    SafetySoakReport,
+    SafetySoakSource,
+    SafetySoakViolation,
+)
+from saymo.analysis.session_scorecard import (
+    LaunchScorecardMetrics,
+    PlaybackScorecardMetrics,
+    RealtimeScorecardMetrics,
+    SafetyScorecardMetrics,
+    SessionScorecard,
+    TriggerScorecardMetrics,
+    build_scorecard_from_regression,
+)
 from saymo.commands.tests import PreflightCheck
 
 
@@ -222,3 +236,141 @@ def test_scorecard_hints_cover_review_and_safety_issues():
     assert "Improve speaker labels" in payload
     assert "saymo trigger-samples queue -p personal --session daily" in payload
     assert "saymo session-scorecard -p personal --session daily" in payload
+
+
+def test_scorecard_hints_include_v19_evidence_paths_counts_and_reruns(tmp_path):
+    launch_path = tmp_path / "call-ready.json"
+    realtime_path = tmp_path / "realtime-decisions.jsonl"
+    stdout_log = tmp_path / "daemon.out.log"
+    stderr_log = tmp_path / "daemon.err.log"
+    rehearsal_path = tmp_path / "rehearsal.json"
+    scorecard = SessionScorecard(
+        profile="personal",
+        source_type="rehearsal",
+        source_id=rehearsal_path.name,
+        source_path=str(rehearsal_path),
+        status="fail",
+        trigger_metrics=TriggerScorecardMetrics(total_decisions=1, would_speak=False),
+        playback_metrics=PlaybackScorecardMetrics(),
+        safety_metrics=SafetyScorecardMetrics(),
+        launch_metrics=LaunchScorecardMetrics(
+            status="loaded",
+            ready=False,
+            block_count=3,
+            warn_count=1,
+            failed_labels=(
+                "response cache coverage",
+                "provider meeting tab",
+                "call-control daemon",
+            ),
+            blocker_categories={"source-data": 1, "provider": 1, "call-control": 1},
+            cache_ready=1,
+            cache_total=3,
+            cache_missing=2,
+            provider_ready=False,
+            daemon_ready=False,
+            daemon_running=False,
+            daemon_heartbeat_fresh=False,
+            artifact_path=str(launch_path),
+            log_paths=(str(stdout_log), str(stderr_log)),
+            rerun_commands=(
+                "saymo call-ready -p personal --provider glip",
+                "saymo call-control-agent status -p personal",
+                "saymo call-control probe -p personal",
+            ),
+        ),
+        realtime_metrics=RealtimeScorecardMetrics(
+            status="loaded",
+            total_events=6,
+            malformed_rows=1,
+            cache_hits=1,
+            cache_misses=2,
+            fallback_blocks=1,
+            provider_blocks=2,
+            handbrake_blocks=1,
+            playback_attempts=1,
+            label_counts={
+                "cache-miss-blocked": 2,
+                "fallback-blocked": 1,
+                "provider-blocked": 2,
+                "handbrake-blocked": 1,
+            },
+            artifact_path=str(realtime_path),
+        ),
+    )
+
+    hints = hints_from_scorecard(scorecard)
+    payload = json.dumps([hint.__dict__ for hint in hints], ensure_ascii=False)
+
+    assert "response cache coverage" in payload
+    assert "provider meeting tab" in payload
+    assert "call-control daemon" in payload
+    assert "source-data=1" in payload
+    assert "provider=1" in payload
+    assert "call-control=1" in payload
+    assert str(launch_path) in payload
+    assert str(stdout_log) in payload
+    assert str(stderr_log) in payload
+    assert str(realtime_path) in payload
+    assert "cache_hits=1 cache_misses=2" in payload
+    assert "provider_blocks=2 fallback_blocks=1 handbrake_blocks=1" in payload
+    assert "saymo call-ready -p personal --provider glip" in payload
+    assert "saymo call-control-agent status -p personal" in payload
+    assert "saymo call-control probe -p personal" in payload
+    assert (
+        f"saymo session-scorecard -p personal --rehearsal {rehearsal_path} "
+        f"--launch-json {launch_path} --realtime-jsonl {realtime_path}"
+    ) in payload
+    assert "raw_transcript" not in payload
+    assert "generated_answer" not in payload
+    assert "answer_text" not in payload
+    assert "audio_bytes" not in payload
+
+
+def test_safety_soak_hints_include_v19_scorecard_and_soak_reruns(tmp_path):
+    scorecard_path = tmp_path / "scorecard.json"
+    launch_path = tmp_path / "call-ready.json"
+    realtime_path = tmp_path / "realtime-decisions.jsonl"
+    report = SafetySoakReport(
+        profile="personal",
+        status="fail",
+        totals={"items": 1, "provider_blocks": 2, "fallback_blocks": 1},
+        sources=(
+            SafetySoakSource(
+                source_type="scorecard-json",
+                source_id=str(scorecard_path),
+                status="fail",
+                would_speak=False,
+            ),
+        ),
+        violations=(
+            SafetySoakViolation(
+                source_id=str(scorecard_path),
+                rule="provider_blocked",
+                detail=(
+                    "source=scorecard.json rule=provider_blocked count=2 "
+                    f"launch_json={launch_path} realtime_jsonl={realtime_path}"
+                ),
+            ),
+            SafetySoakViolation(
+                source_id=str(scorecard_path),
+                rule="fallback_blocked",
+                detail="source=scorecard.json rule=fallback_blocked count=1",
+            ),
+        ),
+    )
+
+    hints = hints_from_safety_soak(report)
+    payload = json.dumps([hint.__dict__ for hint in hints], ensure_ascii=False)
+
+    assert "provider_blocked" in payload
+    assert "source=scorecard.json rule=provider_blocked count=2" in payload
+    assert "saymo session-scorecard -p personal" in payload
+    assert f"--launch-json {launch_path}" in payload
+    assert f"--realtime-jsonl {realtime_path}" in payload
+    assert f"--json-output {scorecard_path}" in payload
+    assert f"saymo safety-soak -p personal --scorecard-json {scorecard_path}" in payload
+    assert "raw_transcript" not in payload
+    assert "generated_answer" not in payload
+    assert "answer_text" not in payload
+    assert "audio_bytes" not in payload
