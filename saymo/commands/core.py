@@ -221,6 +221,52 @@ def _request_manual_speak(
     return "queued"
 
 
+def _control_audit_context_from_command(command) -> dict:
+    if command is None:
+        return {}
+    payload = getattr(command, "payload", {}) or {}
+    return {
+        "command_id": getattr(command, "command_id", "") or "",
+        "probe_id": payload.get("probe_id", "") if isinstance(payload, dict) else "",
+        "payload": payload if isinstance(payload, dict) else {},
+    }
+
+
+def _append_control_action_audit(
+    profile: str,
+    *,
+    action: str,
+    source: str,
+    previous_state,
+    next_state,
+    result: str,
+    reason: str = "",
+    mic_result: str = "",
+    command=None,
+    base_dir=None,
+):
+    """Append action audit, preserving optional command correlation."""
+    from saymo.analysis.live_control import append_control_audit
+
+    return append_control_audit(
+        profile,
+        action=action,
+        source=source,
+        previous_state=previous_state,
+        next_state=next_state,
+        result=result,
+        reason=reason,
+        mic_result=mic_result,
+        base_dir=base_dir,
+        **_control_audit_context_from_command(command),
+    )
+
+
+def _should_register_local_hotkeys(config, *, disable_local_hotkeys: bool = False) -> bool:
+    """Return whether `saymo auto` should own its local hotkey listener."""
+    return not disable_local_hotkeys
+
+
 @main.command()
 @click.option("--profile", "-p", default="standup", help="Meeting profile: standup, scrum, retro")
 @click.option("--model", "-m", default="small", help="Whisper model: tiny, small, medium")
@@ -242,7 +288,13 @@ def auto(ctx, profile, model, mic):
     run_async(_auto(config, model, profile))
 
 
-async def _auto(config, whisper_model: str, profile: str = "standup"):
+async def _auto(
+    config,
+    whisper_model: str,
+    profile: str = "standup",
+    *,
+    disable_local_hotkeys: bool = False,
+):
     import asyncio
     import time
     from dataclasses import dataclass
@@ -414,8 +466,9 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
         *,
         reason: str = "",
         mic_result: str = "",
+        command=None,
     ) -> None:
-        append_control_audit(
+        _append_control_action_audit(
             profile,
             action=action,
             source=source,
@@ -424,11 +477,12 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
             result=result,
             reason=reason,
             mic_result=mic_result,
+            command=command,
         )
 
     _publish_state("started")
 
-    def _apply_control_action(action: str, source: str = "panel") -> str:
+    def _apply_control_action(action: str, source: str = "panel", command=None) -> str:
         nonlocal last_action, pending_confirmation
         previous = _snapshot(last_action)
         result = "ignored"
@@ -540,47 +594,61 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
 
         last_action = result
         _publish_state(result)
-        _audit_action(action, source, previous, result, reason=reason, mic_result=mic_result)
+        _audit_action(
+            action,
+            source,
+            previous,
+            result,
+            reason=reason,
+            mic_result=mic_result,
+            command=command,
+        )
         return result
 
     # Wire global hotkeys for stop/pause. Failures here (e.g., macOS
     # accessibility permissions missing) shouldn't break auto mode — just
     # log and continue without hotkeys.
     hotkey_listener = None
-    try:
-        from pynput import keyboard as _keyboard
-        loop = asyncio.get_running_loop()
+    if not _should_register_local_hotkeys(
+        config,
+        disable_local_hotkeys=disable_local_hotkeys,
+    ):
+        console.print("[dim]hotkeys: local listener disabled; using call-control daemon[/]")
+    else:
+        try:
+            from pynput import keyboard as _keyboard
+            loop = asyncio.get_running_loop()
 
-        def _hotkey(action: str):
-            return lambda: loop.call_soon_threadsafe(_apply_control_action, action, "hotkey")
+            def _hotkey(action: str):
+                return lambda: loop.call_soon_threadsafe(_apply_control_action, action, "hotkey")
 
-        bindings = hotkey_listener_bindings(
-            config,
-            {
-                "toggle_auto_answer": _hotkey("toggle_auto_answer"),
-                "speak": _hotkey("speak"),
-                "stop": _hotkey("stop"),
-                "takeover": _hotkey("takeover"),
-                "approved_speak": _hotkey("approved_speak"),
-                "skip_current": _hotkey("skip_current"),
-                "capture_marker": _hotkey("capture_marker"),
-                "status": _hotkey("status"),
-                "hard_disable": _hotkey("hard_disable"),
-            },
-        )
-        if bindings:
-            hotkey_listener = _keyboard.GlobalHotKeys(bindings)
-            hotkey_listener.start()
-            hotkeys_active = True
-            _publish_state("hotkeys_active")
-            effective = effective_hotkey_bindings(config)
-            console.print(
-                "[dim]hotkeys: "
-                + " ".join(f"{action}={hotkey}" for action, hotkey in effective.items())
-                + "[/]"
+            bindings = hotkey_listener_bindings(
+                config,
+                {
+                    "toggle_auto_answer": _hotkey("toggle_auto_answer"),
+                    "speak": _hotkey("speak"),
+                    "stop": _hotkey("stop"),
+                    "takeover": _hotkey("takeover"),
+                    "approved_speak": _hotkey("approved_speak"),
+                    "skip_current": _hotkey("skip_current"),
+                    "capture_marker": _hotkey("capture_marker"),
+                    "status": _hotkey("status"),
+                    "hard_disable": _hotkey("hard_disable"),
+                },
             )
-    except Exception as e:
-        console.print(f"[dim]hotkeys disabled: {e}[/]")
+            if bindings:
+                hotkey_listener = _keyboard.GlobalHotKeys(bindings)
+                hotkey_listener.start()
+                hotkeys_active = True
+                _publish_state("hotkeys_active")
+                effective = effective_hotkey_bindings(config)
+                console.print(
+                    "[dim]hotkeys: "
+                    + " ".join(f"{action}={hotkey}" for action, hotkey in effective.items())
+                    + "[/]"
+                )
+        except Exception as e:
+            console.print(f"[dim]hotkeys disabled: {e}[/]")
 
     async def _control_command_loop():
         """Apply commands written by `saymo live-control` or scripts."""
@@ -592,7 +660,7 @@ async def _auto(config, whisper_model: str, profile: str = "standup"):
                 offset=control_offset,
             )
             for command in commands:
-                _apply_control_action(command.action, command.source)
+                _apply_control_action(command.action, command.source, command)
             await asyncio.sleep(0.25)
 
     async def _transcribe_loop():

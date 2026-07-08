@@ -222,6 +222,16 @@ def append_control_command(
     return path
 
 
+def sanitized_control_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
+    """Return bounded command/audit metadata allowed into local evidence."""
+    payload = payload or {}
+    sanitized: dict[str, Any] = {}
+    probe_id = _bounded_token(payload.get("probe_id"))
+    if probe_id:
+        sanitized["probe_id"] = probe_id
+    return sanitized
+
+
 def read_control_commands(
     profile: str,
     *,
@@ -308,9 +318,16 @@ def append_control_audit(
     result: str,
     reason: str = "",
     mic_result: str = "",
+    command_id: str = "",
+    probe_id: str = "",
+    payload: dict[str, Any] | None = None,
     base_dir: Path | str | None = None,
 ) -> Path:
     """Append a local audit event for live-control actions."""
+    audit_payload = sanitized_control_payload(payload)
+    sanitized_probe_id = _bounded_token(probe_id) or str(
+        audit_payload.get("probe_id") or ""
+    )
     event = {
         "created_at": _now(),
         "action": normalize_action(action),
@@ -321,6 +338,14 @@ def append_control_audit(
         "reason": reason,
         "mic_result": mic_result,
     }
+    sanitized_command_id = _bounded_token(command_id)
+    if sanitized_command_id:
+        event["command_id"] = sanitized_command_id
+    if sanitized_probe_id:
+        event["probe_id"] = sanitized_probe_id
+        audit_payload["probe_id"] = sanitized_probe_id
+    if audit_payload:
+        event["payload"] = audit_payload
     path = audit_log_path(profile, base_dir=base_dir)
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
@@ -448,3 +473,13 @@ def _state_payload(value: dict[str, Any] | LiveControlSnapshot | None) -> dict[s
     if isinstance(value, LiveControlSnapshot):
         return asdict(value)
     return dict(value)
+
+
+def _bounded_token(value: Any, *, limit: int = 128) -> str:
+    token = str(value or "").strip()
+    if not token:
+        return ""
+    token = "".join(ch for ch in token if ch.isalnum() or ch in {"-", "_", ".", ":"})
+    if len(token) <= limit:
+        return token
+    return token[:limit]

@@ -19,6 +19,11 @@ from saymo.analysis.launch_agent import (
     stop_launch_agent,
     uninstall_launch_agent,
 )
+from saymo.analysis.live_control import (
+    append_control_command,
+    normalize_action,
+    sanitized_control_payload,
+)
 from saymo.commands import console, main
 
 
@@ -62,6 +67,48 @@ def call_control_daemon(ctx, profile, heartbeat_interval, base_dir, label, once)
         soft_wrap=True,
     )
     raise click.exceptions.Exit(exit_code)
+
+
+@main.group("call-control")
+def call_control():
+    """Queue call-control actions through the existing live-control queue."""
+
+
+@call_control.command("action")
+@click.option("--profile", "-p", default="standup", show_default=True)
+@click.option(
+    "--action",
+    "action_name",
+    required=True,
+    help="Existing live-control action or alias.",
+)
+@click.option(
+    "--probe-id",
+    default="",
+    help="Optional sanitized probe id to include in command metadata.",
+)
+@click.option(
+    "--base-dir",
+    default=None,
+    type=click.Path(path_type=Path),
+    help="Override live-control directory; defaults to ~/.saymo/live_control.",
+)
+def call_control_action(profile, action_name, probe_id, base_dir):
+    """Queue one existing live-control action for a running `saymo auto`."""
+    try:
+        action = normalize_action(action_name)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    payload = sanitized_control_payload({"probe_id": probe_id})
+    path = append_control_command(
+        profile,
+        action,
+        source="daemon_cli",
+        payload=payload,
+        base_dir=base_dir,
+    )
+    console.print(f"queued: {action}")
+    console.print(f"commands: {path}")
 
 
 @main.group("call-control-agent")

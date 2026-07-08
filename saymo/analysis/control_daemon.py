@@ -16,6 +16,7 @@ from saymo.analysis.live_control import (
     command_log_offset,
     hotkey_listener_bindings,
     live_control_dir,
+    sanitized_control_payload,
 )
 
 
@@ -187,14 +188,26 @@ def run_control_daemon(
 
 def _command_handler(profile: str, action: str, *, base_dir: Path | str | None):
     def _handler() -> None:
-        append_control_command(
-            profile,
-            action,
-            source="daemon_hotkey",
-            base_dir=base_dir,
-        )
+        queue_daemon_hotkey_command(profile, action, base_dir=base_dir)
 
     return _handler
+
+
+def queue_daemon_hotkey_command(
+    profile: str,
+    action: str,
+    *,
+    payload: dict[str, Any] | None = None,
+    base_dir: Path | str | None = None,
+) -> Path:
+    """Queue one daemon-owned hotkey action with bounded metadata only."""
+    return append_control_command(
+        profile,
+        action,
+        source="daemon_hotkey",
+        payload=sanitized_control_payload(payload),
+        base_dir=base_dir,
+    )
 
 
 def _default_listener_factory():
