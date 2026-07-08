@@ -89,10 +89,10 @@ Requirements for milestone v1.9 Call Launch Readiness.
   records checks, blocker categories, cache counts, voice/cache fingerprints,
   provider status, daemon status, mode, and rerun commands without raw meeting
   content.
-- [ ] **EVID-02**: User can inspect sanitized realtime events for launch
+- [x] **EVID-02**: User can inspect sanitized realtime events for launch
   start/end, cache hits/misses, fallback blocks, provider failures, playback
   attempts, handbrake actions, and stop reasons.
-- [ ] **EVID-03**: User can see launch health, daemon/control availability,
+- [x] **EVID-03**: User can see launch health, daemon/control availability,
   cache hit/miss counts, unsafe fallback blocks, and provider drift in
   rehearsal or session scorecards.
 - [ ] **EVID-04**: User can run safety-soak against v1.9 launch and realtime
@@ -174,8 +174,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REAL-05 | Phase 39 | Complete |
 | REAL-06 | Phase 39 | Complete |
 | EVID-01 | Phase 40 | Complete |
-| EVID-02 | Phase 40 | Pending |
-| EVID-03 | Phase 40 | Pending |
+| EVID-02 | Phase 40 | Complete |
+| EVID-03 | Phase 40 | Complete |
 | EVID-04 | Phase 40 | Pending |
 | EVID-05 | Phase 40 | Pending |
 

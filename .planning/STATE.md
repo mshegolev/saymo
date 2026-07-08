@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 2
+current_plan: 3
 status: in_progress
-stopped_at: Completed 40-01-PLAN.md
-last_updated: "2026-07-08T18:59:02.291Z"
+stopped_at: Completed 40-02-PLAN.md
+last_updated: "2026-07-08T19:12:12.978Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 22
-  completed_plans: 19
-  percent: 86
+  completed_plans: 20
+  percent: 91
 ---
 
 # Project State
@@ -24,26 +24,26 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
 **Current focus:** v1.9 Call Launch Readiness, Phase 40 Launch and Realtime
-Evidence Feedback is in progress; Plan 40-01 is complete and Plan 40-02 is next.
+Evidence Feedback is in progress; Plan 40-02 is complete and Plan 40-03 is next.
 
 ## Current Position
 
 Phase: 40 (5 of 5) - Launch and Realtime Evidence Feedback
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 4
-Plans: 1 of 4 completed.
-Status: Phase 40 Plan 01 is complete; ready to execute Plan 40-02.
+Plans: 2 of 4 completed.
+Status: Phase 40 Plan 02 is complete; ready to execute Plan 40-03.
 Last activity: 2026-07-08
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 22
-- Plans completed: 19
+- Plans completed: 20
 - Average duration: 7 min
-- Total execution time: 127 min
+- Total execution time: 134 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -73,6 +73,7 @@ Progress: [█████████░] 86%
 | 39-04 | 4 min | 2 | 5 |
 | 39-05 | 6 min | 2 | 8 |
 | 40-01 | 12 min | 2 | 5 |
+| 40-02 | 7 min | 2 | 7 |
 
 **By Phase:**
 
@@ -82,7 +83,7 @@ Progress: [█████████░] 86%
 | 37. Provider and Audio Remediation | Complete | 4/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Complete | 5/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Complete | 5/5 |
-| 40. Launch and Realtime Evidence Feedback | In Progress | 1/4 |
+| 40. Launch and Realtime Evidence Feedback | In Progress | 2/4 |
 
 ## Accumulated Context
 
@@ -160,10 +161,13 @@ Recent decisions affecting current work:
 - [Phase 40]: Plan 40-01: Launch evidence is a read-only artifact consumer and does not call live provider, audio, launchd, probe, preparation, synthesis, playback, recording, or config mutation helpers.
 - [Phase 40]: Plan 40-01: call-ready --output writes enriched root-level JSON while call-ready --json continues printing the legacy report.to_dict payload without artifact_path or schema metadata.
 - [Phase 40]: Plan 40-01: Legacy launch-readiness JSON loads with schema_version=legacy and derives normalized summaries from sanitized check rows.
+- [Phase 40]: Plan 40-02: Realtime JSONL loading reconstructs rows through RealtimeDecisionEvent.to_dict() so extra JSON fields cannot enter scorecard summaries.
+- [Phase 40]: Plan 40-02: Scorecard launch/realtime metrics use status=unavailable by default and are omitted from JSON/Markdown unless evidence paths are supplied.
+- [Phase 40]: Plan 40-02: Missing supplied evidence paths produce status=missing metrics and sanitized warnings instead of changing old no-evidence behavior.
 
 ### Pending Todos
 
-Execute Phase 40 Plan 02.
+Execute Phase 40 Plan 03.
 
 ### Blockers/Concerns
 
@@ -176,6 +180,6 @@ Execute Phase 40 Plan 02.
 
 ## Session Continuity
 
-Last session: 2026-07-08T18:59:02.288Z
-Stopped at: Completed 40-01-PLAN.md
+Last session: 2026-07-08T19:12:12.976Z
+Stopped at: Completed 40-02-PLAN.md
 Resume file: None

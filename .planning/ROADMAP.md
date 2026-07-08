@@ -197,8 +197,8 @@ session-scorecard, safety-soak, remediation hints
 **Plans**: 4 plans
 
 Plans:
-- [ ] 40-01-PLAN.md — Define and write sanitized launch-readiness artifact schema
-- [ ] 40-02-PLAN.md — Feed realtime and launch-health evidence into rehearsal/session scorecards
+- [x] 40-01-PLAN.md — Define and write sanitized launch-readiness artifact schema
+- [x] 40-02-PLAN.md — Feed realtime and launch-health evidence into rehearsal/session scorecards
 - [ ] 40-03-PLAN.md — Extend safety-soak with v1.9 readiness, daemon, cache, and fallback gates
 - [ ] 40-04-PLAN.md — Add troubleshooting output, rerun commands, docs, and evidence tests
 
@@ -213,7 +213,7 @@ Phases execute in numeric order: 36 -> 37 -> 38 -> 39 -> 40
 | 37. Provider and Audio Remediation | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
 | 38. Local Call-Control Daemon and LaunchAgent | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
 | 39. Fail-Closed Realtime Meeting Loop | v1.9 | Complete | 2026-07-08 | 2026-07-08 |
-| 40. Launch and Realtime Evidence Feedback | v1.9 | 1/4 | In Progress | - |
+| 40. Launch and Realtime Evidence Feedback | v1.9 | 2/4 | In Progress | - |
 
 ## Requirement Coverage
 
