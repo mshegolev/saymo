@@ -53,7 +53,7 @@ safety-soak.
 - [x] **Phase 38: Local Call-Control Daemon and LaunchAgent** - Keep hotkeys, (completed 2026-07-08)
   heartbeat, live-control status, and stop/takeover actions available outside
   the terminal through a local daemon and per-profile LaunchAgent.
-- [ ] **Phase 39: Fail-Closed Realtime Meeting Loop** - Gate realtime startup
+- [x] **Phase 39: Fail-Closed Realtime Meeting Loop** - Gate realtime startup (completed 2026-07-08)
   and automatic answers so cache misses, stale voice metadata, provider loss,
   unsafe fallback, and handbrake state block playback.
 - [ ] **Phase 40: Launch and Realtime Evidence Feedback** - Record sanitized
@@ -167,10 +167,10 @@ voice selector metadata, provider runtime checks, live-control state
 
 Plans:
 - [x] 39-01-PLAN.md — Wrap `saymo auto` and any realtime alias in the shared launch gate
-- [ ] 39-02-PLAN.md — Enforce fail-closed response-cache and cloned-voice metadata policy
-- [ ] 39-03-PLAN.md — Block playback on provider loss, takeover, hard-disable, and disabled auto-answer
-- [ ] 39-04-PLAN.md — Preserve explicit manual standup playback without automatic cache-miss fallback
-- [ ] 39-05-PLAN.md — Emit sanitized realtime decision events and add regression tests
+- [x] 39-02-PLAN.md — Enforce fail-closed response-cache and cloned-voice metadata policy
+- [x] 39-03-PLAN.md — Block playback on provider loss, takeover, hard-disable, and disabled auto-answer
+- [x] 39-04-PLAN.md — Preserve explicit manual standup playback without automatic cache-miss fallback
+- [x] 39-05-PLAN.md — Emit sanitized realtime decision events and add regression tests
 
 ### Phase 40: Launch and Realtime Evidence Feedback
 **Goal**: User can inspect sanitized launch and realtime evidence, see health
@@ -212,7 +212,7 @@ Phases execute in numeric order: 36 -> 37 -> 38 -> 39 -> 40
 | 36. Call-Ready Preflight and Cache Gate | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
 | 37. Provider and Audio Remediation | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
 | 38. Local Call-Control Daemon and LaunchAgent | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
-| 39. Fail-Closed Realtime Meeting Loop | v1.9 | 4/5 | In Progress | - |
+| 39. Fail-Closed Realtime Meeting Loop | v1.9 | Complete | 2026-07-08 | 2026-07-08 |
 | 40. Launch and Realtime Evidence Feedback | v1.9 | 0/4 | Not started | - |
 
 ## Requirement Coverage

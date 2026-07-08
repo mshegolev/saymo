@@ -76,7 +76,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [x] **REAL-04**: User can still trigger explicit prepared standup playback as
   a manual action when allowed, without that manual path becoming automatic
   cache-miss fallback.
-- [ ] **REAL-05**: User can see why each realtime decision spoke, skipped, or
+- [x] **REAL-05**: User can see why each realtime decision spoke, skipped, or
   blocked using sanitized route names such as response-cache hit,
   cache-miss-blocked, handbrake-blocked, provider-blocked, or fallback-blocked.
 - [x] **REAL-06**: User can keep deterministic addressing and existing
@@ -171,7 +171,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REAL-02 | Phase 39 | Complete |
 | REAL-03 | Phase 39 | Complete |
 | REAL-04 | Phase 39 | Complete |
-| REAL-05 | Phase 39 | Pending |
+| REAL-05 | Phase 39 | Complete |
 | REAL-06 | Phase 39 | Complete |
 | EVID-01 | Phase 40 | Pending |
 | EVID-02 | Phase 40 | Pending |

@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
 current_plan: 5
-status: executing
-stopped_at: Completed 39-04-PLAN.md
-last_updated: "2026-07-08T17:52:13.537Z"
+status: ready_for_verification
+stopped_at: Completed 39-05-PLAN.md
+last_updated: "2026-07-08T18:03:48.487Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 18
-  completed_plans: 17
-  percent: 94
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -23,27 +23,27 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.9 Call Launch Readiness, currently Phase 39:
-Fail-Closed Realtime Meeting Loop.
+**Current focus:** v1.9 Call Launch Readiness, Phase 39 is complete and ready
+for verification; Phase 40 remains not started.
 
 ## Current Position
 
-Phase: 39 (4 of 5) - Fail-Closed Realtime Meeting Loop
+Phase: 39 (5 of 5) - Fail-Closed Realtime Meeting Loop
 Current Plan: 5
 Total Plans in Phase: 5
-Plans: 4 of 5 completed.
-Status: Phase 39 is in progress; Plan 39-04 completed and ready for Plan 39-05.
+Plans: 5 of 5 completed.
+Status: Phase 39 is complete and ready for verification; Phase 40 remains not started.
 Last activity: 2026-07-08
 
-Progress: [█████████░] 94%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 18
-- Plans completed: 17
-- Average duration: 7 min
-- Total execution time: 109 min
+- Plans completed: 18
+- Average duration: 6 min
+- Total execution time: 115 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -71,6 +71,7 @@ Progress: [█████████░] 94%
 | 39-02 | 6 min | 2 | 5 |
 | 39-03 | 5 min | 2 | 5 |
 | 39-04 | 4 min | 2 | 5 |
+| 39-05 | 6 min | 2 | 8 |
 
 **By Phase:**
 
@@ -79,7 +80,7 @@ Progress: [█████████░] 94%
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
 | 37. Provider and Audio Remediation | Complete | 4/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Complete | 5/5 |
-| 39. Fail-Closed Realtime Meeting Loop | In Progress | 4/5 |
+| 39. Fail-Closed Realtime Meeting Loop | Complete | 5/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
 
 ## Accumulated Context
@@ -151,10 +152,14 @@ Recent decisions affecting current work:
 - [Phase 39]: Plan 39-04: Explicit manual prepared playback is a separate manual_standup route labeled manual-standup-requested, not a response-cache fallback.
 - [Phase 39]: Plan 39-04: Manual standup blocks use label manual-standup-blocked with stable sanitized reasons such as prepared-standup-missing and manual-takeover.
 - [Phase 39]: Plan 39-04: Manual provider fallback remains enabled through automatic=false, while automatic cached playback remains strict.
+- [Phase 39]: Plan 39-05: Realtime decision events use a strict allowlist of stable fields only.
+- [Phase 39]: Plan 39-05: Decision conversion maps speak, block, and skip to spoke, blocked, and skipped event outcomes.
+- [Phase 39]: Plan 39-05: _auto event appends are best-effort and cannot crash the live loop.
+- [Phase 39]: Plan 39-05: Phase 39 writes minimal realtime JSONL evidence without Phase 40 reporting imports or aggregation.
 
 ### Pending Todos
 
-Continue to Phase 39 Plan 04 execution after Plan 39-03 metadata commit.
+Run Phase 39 verification or plan Phase 40 Launch and Realtime Evidence Feedback.
 
 ### Blockers/Concerns
 
@@ -167,6 +172,6 @@ Continue to Phase 39 Plan 04 execution after Plan 39-03 metadata commit.
 
 ## Session Continuity
 
-Last session: 2026-07-08T17:52:13.534Z
-Stopped at: Completed 39-04-PLAN.md
+Last session: 2026-07-08T18:03:48.484Z
+Stopped at: Completed 39-05-PLAN.md
 Resume file: None
