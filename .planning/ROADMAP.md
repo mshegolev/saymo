@@ -197,10 +197,10 @@ session-scorecard, safety-soak, remediation hints
 **Plans**: 4 plans
 
 Plans:
-- [ ] 40-01: Define and write sanitized launch-readiness artifact schema
-- [ ] 40-02: Feed realtime and launch-health evidence into rehearsal/session scorecards
-- [ ] 40-03: Extend safety-soak with v1.9 readiness, daemon, cache, and fallback gates
-- [ ] 40-04: Add troubleshooting output, rerun commands, docs, and evidence tests
+- [ ] 40-01-PLAN.md — Define and write sanitized launch-readiness artifact schema
+- [ ] 40-02-PLAN.md — Feed realtime and launch-health evidence into rehearsal/session scorecards
+- [ ] 40-03-PLAN.md — Extend safety-soak with v1.9 readiness, daemon, cache, and fallback gates
+- [ ] 40-04-PLAN.md — Add troubleshooting output, rerun commands, docs, and evidence tests
 
 ## Progress
 
