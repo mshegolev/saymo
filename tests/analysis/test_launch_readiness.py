@@ -428,7 +428,7 @@ def test_launch_readiness_remediation_groups_by_severity():
     assert [(hint.category, hint.title) for hint in hints] == [
         ("source-data", "daily note source ready"),
         ("voice-cache", "cloned voice metadata"),
-        ("retest", "provider meeting tab"),
+        ("provider", "provider meeting tab"),
     ]
     assert render_grouped_launch_remediation(report).splitlines() == [
         "remediation:",
@@ -443,7 +443,7 @@ def test_launch_readiness_remediation_groups_by_severity():
         "  action: Approve a cloned voice profile for live calls",
         "  rerun: saymo call-ready -p standup --provider glip",
         "info:",
-        "- [retest] provider meeting tab",
+        "- [provider] provider meeting tab",
         "  why: meeting_tab_not_found",
         "  action: Open the glip meeting in Chrome",
         "  rerun: saymo call-ready -p standup --provider glip",

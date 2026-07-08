@@ -317,6 +317,23 @@ def _hint_for_check(name: str, detail: str, *, rerun: str) -> RemediationHint:
 
 
 def _launch_category_for_check(key: str) -> str:
+    if key in {"provider_meeting_tab", "provider_capabilities"}:
+        return "provider"
+    if key in {
+        "capture_input_device",
+        "playback_output_device",
+        "provider_output_blackhole",
+        "capture_route_blackhole",
+        "recording_microphone_input",
+    }:
+        return "audio-device"
+    if key in {
+        "hotkey_accessibility_permission",
+        "chrome_automation_permission",
+        "microphone_capture_permission",
+        "audio_routing_permission",
+    }:
+        return "macos-permission"
     if key.startswith("daily_note_") or key == "prepared_standup_audio":
         return "source-data"
     if key == "response_cache_coverage":

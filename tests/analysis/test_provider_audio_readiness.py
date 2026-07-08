@@ -499,6 +499,7 @@ def test_collect_provider_audio_checks_is_non_destructive(tmp_path, monkeypatch)
         "provider_output_blackhole",
         "capture_route_blackhole",
         "recording_microphone_input",
+        "provider_capabilities",
     ]
     assert find_calls == [
         ("BlackHole 16ch", "input"),

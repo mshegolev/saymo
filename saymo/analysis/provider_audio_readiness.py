@@ -5,13 +5,28 @@ from __future__ import annotations
 from typing import Any
 
 from saymo.analysis.launch_readiness import LaunchReadinessCheck
+from saymo.analysis import live_control
 from saymo.audio import devices as audio_devices
 from saymo.providers import factory as provider_factory
+from saymo.providers._chrome_base import ChromeCallProvider
 from saymo.providers.base import MeetingStatus
 
 
 _PROVIDER_OUTPUT_DEVICE = "BlackHole 2ch"
 _CAPTURE_ROUTE_DEVICE = "BlackHole 16ch"
+_MIC_SWITCH_PROVIDER_CLASSES = {"GlipProvider", "MTSLinkProvider"}
+_CHROME_PERMISSION_MARKERS = (
+    "applescript",
+    "automation",
+    "chrome",
+    "google chrome",
+    "not authorized",
+    "not authorised",
+    "osascript",
+    "permission",
+    "accessibility",
+    "denied",
+)
 
 
 def collect_provider_audio_checks(
@@ -21,16 +36,29 @@ def collect_provider_audio_checks(
     provider_name: str,
 ) -> tuple[LaunchReadinessCheck, ...]:
     """Collect provider/audio checks for the shared launch gate."""
+    provider_tab, provider, provider_error = _provider_tab_check_with_context(
+        config,
+        profile=profile,
+        provider_name=provider_name,
+    )
     return (
-        collect_provider_tab_check(
-            config,
-            profile=profile,
-            provider_name=provider_name,
-        ),
+        provider_tab,
         *collect_audio_route_checks(
             config,
             profile=profile,
             provider_name=provider_name,
+        ),
+        *collect_provider_capability_checks(
+            config,
+            profile=profile,
+            provider_name=provider_name,
+            provider=provider,
+        ),
+        *collect_permission_checks(
+            config,
+            profile=profile,
+            provider_name=provider_name,
+            provider_error=provider_error,
         ),
     )
 
@@ -136,30 +164,212 @@ def collect_provider_tab_check(
     provider_name: str,
 ) -> LaunchReadinessCheck:
     """Check whether the configured provider has a meeting tab ready."""
+    check, _, _ = _provider_tab_check_with_context(
+        config,
+        profile=profile,
+        provider_name=provider_name,
+    )
+    return check
+
+
+def collect_provider_capability_checks(
+    config,
+    *,
+    profile: str,
+    provider_name: str,
+    provider: object | None = None,
+) -> tuple[LaunchReadinessCheck, ...]:
+    """Report provider capabilities without invoking provider actions."""
+    del config
+    rerun = _rerun(profile, provider_name)
+    if provider is None:
+        try:
+            provider = provider_factory.get_provider(provider_name)
+        except Exception as exc:
+            return (
+                LaunchReadinessCheck(
+                    key="provider_capabilities",
+                    label="provider capabilities",
+                    severity="warn",
+                    ok=False,
+                    detail="provider_capabilities_unavailable",
+                    action="Fix provider configuration, then rerun call-ready.",
+                    rerun=rerun,
+                    metadata={
+                        "category": "provider",
+                        "provider_name": provider_name,
+                        "configured_provider": provider_name,
+                        "tab_activation_supported": False,
+                        "mute_recovery_supported": False,
+                        "mic_switch_supported": False,
+                        "mic_switch_status": "mic_switch_unknown",
+                        "capability_limitations": ["provider_capabilities_unavailable"],
+                        "error_type": type(exc).__name__,
+                    },
+                ),
+            )
+
+    resolved_provider = _provider_name(provider, provider_name)
+    tab_activation_supported = callable(getattr(provider, "activate_meeting", None))
+    mute_recovery_supported = callable(getattr(provider, "toggle_mute", None))
+    mic_switch_supported = _provider_supports_mic_switch(provider, provider_name)
+    limitations = [] if mic_switch_supported else ["mic_switch_unsupported"]
+    mic_switch_status = (
+        "mic_switch_supported" if mic_switch_supported else "mic_switch_unsupported"
+    )
+    return (
+        LaunchReadinessCheck(
+            key="provider_capabilities",
+            label="provider capabilities",
+            severity="info" if mic_switch_supported else "warn",
+            ok=mic_switch_supported,
+            detail=(
+                "provider_capabilities_supported"
+                if mic_switch_supported
+                else "mic_switch_unsupported"
+            ),
+            action=(
+                ""
+                if mic_switch_supported
+                else (
+                    "Use saymo takeover-check before relying on automated "
+                    "microphone switching for this provider."
+                )
+            ),
+            rerun="" if mic_switch_supported else rerun,
+            metadata={
+                "category": "provider",
+                "provider_name": resolved_provider,
+                "configured_provider": provider_name,
+                "tab_activation_supported": tab_activation_supported,
+                "mute_recovery_supported": mute_recovery_supported,
+                "mic_switch_supported": mic_switch_supported,
+                "mic_switch_status": mic_switch_status,
+                "capability_limitations": limitations,
+            },
+        ),
+    )
+
+
+def collect_permission_checks(
+    config,
+    *,
+    profile: str,
+    provider_name: str,
+    provider_error: str = "",
+    microphone_permission_blocked: bool = False,
+    audio_routing_permission_blocked: bool = False,
+) -> tuple[LaunchReadinessCheck, ...]:
+    """Collect non-destructive macOS permission remediation rows."""
+    checks: list[LaunchReadinessCheck] = []
+    rerun = _rerun(profile, provider_name)
+    if _looks_like_chrome_permission_error(provider_error):
+        checks.append(
+            _permission_check(
+                key="chrome_automation_permission",
+                label="Chrome automation permission",
+                detail="chrome_automation_blocked",
+                action=(
+                    "Allow Google Chrome automation and terminal Accessibility "
+                    "permissions, then rerun call-ready."
+                ),
+                rerun=rerun,
+                provider_name=provider_name,
+            )
+        )
+
+    hotkey_status, hotkey_detail = _hotkey_permission_status(config, profile)
+    if hotkey_status not in {"ok", "skipped", "no_bindings"}:
+        checks.append(
+            _permission_check(
+                key="hotkey_accessibility_permission",
+                label="hotkey Accessibility permission",
+                detail="hotkey_accessibility_blocked",
+                action=(
+                    "Allow the terminal app running Saymo in macOS Accessibility "
+                    "settings."
+                ),
+                rerun=rerun,
+                provider_name=provider_name,
+                extra_metadata={
+                    "registration_status": hotkey_status,
+                    "registration_detail": hotkey_detail,
+                },
+            )
+        )
+
+    if microphone_permission_blocked or _microphone_permission_blocked(config):
+        checks.append(
+            _permission_check(
+                key="microphone_capture_permission",
+                label="microphone capture permission",
+                detail="microphone_capture_permission_blocked",
+                action=(
+                    "Allow microphone access for the terminal app running Saymo, "
+                    "then rerun call-ready."
+                ),
+                rerun=rerun,
+                provider_name=provider_name,
+            )
+        )
+
+    if audio_routing_permission_blocked or _audio_routing_permission_blocked(config):
+        checks.append(
+            _permission_check(
+                key="audio_routing_permission",
+                label="audio routing permission",
+                detail="audio_routing_permission_blocked",
+                action=(
+                    "Verify BlackHole permissions/routes in macOS Audio MIDI Setup "
+                    "and allow required audio access, then rerun call-ready."
+                ),
+                rerun=rerun,
+                provider_name=provider_name,
+            )
+        )
+
+    return tuple(checks)
+
+
+def _provider_tab_check_with_context(
+    config,
+    *,
+    profile: str,
+    provider_name: str,
+) -> tuple[LaunchReadinessCheck, object | None, str]:
+    """Return provider tab check plus context for follow-on read-only checks."""
     del config
     rerun = _rerun(profile, provider_name)
     try:
         provider = provider_factory.get_provider(provider_name)
     except Exception as exc:
         if _is_unknown_provider(exc):
-            return _blocked_check(
+            return (
+                _blocked_check(
+                    configured_provider=provider_name,
+                    provider_name=provider_name,
+                    detail="unknown_provider",
+                    action="Use a supported provider name, then rerun saymo call-ready",
+                    rerun=rerun,
+                    error_type=type(exc).__name__,
+                ),
+                None,
+                str(exc),
+            )
+        return (
+            _blocked_check(
                 configured_provider=provider_name,
                 provider_name=provider_name,
-                detail="unknown_provider",
-                action="Use a supported provider name, then rerun saymo call-ready",
+                detail="provider_check_error",
+                action=(
+                    "Open Chrome, allow provider automation permissions, "
+                    "then rerun saymo call-ready"
+                ),
                 rerun=rerun,
                 error_type=type(exc).__name__,
-            )
-        return _blocked_check(
-            configured_provider=provider_name,
-            provider_name=provider_name,
-            detail="provider_check_error",
-            action=(
-                "Open Chrome, allow provider automation permissions, "
-                "then rerun saymo call-ready"
             ),
-            rerun=rerun,
-            error_type=type(exc).__name__,
+            None,
+            str(exc),
         )
 
     resolved_provider = _provider_name(provider, provider_name)
@@ -167,25 +377,33 @@ def collect_provider_tab_check(
     try:
         status = provider.check_ready()
     except Exception as exc:
-        return _blocked_check(
-            configured_provider=provider_name,
-            provider_name=resolved_provider,
-            detail="provider_check_error",
-            action=(
-                "Open Chrome, allow provider automation permissions, "
-                "then rerun saymo call-ready"
+        return (
+            _blocked_check(
+                configured_provider=provider_name,
+                provider_name=resolved_provider,
+                detail="provider_check_error",
+                action=(
+                    "Open Chrome, allow provider automation permissions, "
+                    "then rerun saymo call-ready"
+                ),
+                rerun=rerun,
+                error_type=type(exc).__name__,
+                url_pattern=url_pattern,
             ),
-            rerun=rerun,
-            error_type=type(exc).__name__,
-            url_pattern=url_pattern,
+            provider,
+            str(exc),
         )
 
-    return _check_from_status(
-        configured_provider=provider_name,
-        provider_name=resolved_provider,
-        url_pattern=url_pattern,
-        status=status,
-        rerun=rerun,
+    return (
+        _check_from_status(
+            configured_provider=provider_name,
+            provider_name=resolved_provider,
+            url_pattern=url_pattern,
+            status=status,
+            rerun=rerun,
+        ),
+        provider,
+        "",
     )
 
 
@@ -329,6 +547,71 @@ def _provider_url_pattern(provider: Any) -> str | None:
         return None
     text = str(value)
     return text or None
+
+
+def _provider_supports_mic_switch(provider: Any, provider_name: str) -> bool:
+    del provider_name
+    class_name = provider.__class__.__name__
+    provider_method = getattr(provider.__class__, "switch_mic", None)
+    base_method = getattr(ChromeCallProvider, "switch_mic", None)
+    return class_name in _MIC_SWITCH_PROVIDER_CLASSES or (
+        callable(provider_method) and provider_method is not base_method
+    )
+
+
+def _permission_check(
+    *,
+    key: str,
+    label: str,
+    detail: str,
+    action: str,
+    rerun: str,
+    provider_name: str,
+    extra_metadata: dict[str, Any] | None = None,
+) -> LaunchReadinessCheck:
+    metadata: dict[str, Any] = {
+        "category": "macos-permission",
+        "provider_name": provider_name,
+        "configured_provider": provider_name,
+    }
+    if extra_metadata:
+        metadata.update(extra_metadata)
+    return LaunchReadinessCheck(
+        key=key,
+        label=label,
+        severity="block",
+        ok=False,
+        detail=detail,
+        action=action,
+        rerun=rerun,
+        metadata=metadata,
+    )
+
+
+def _hotkey_permission_status(config: Any, profile: str) -> tuple[str, str]:
+    try:
+        report = live_control.build_hotkey_doctor_report(config, profile, probe=True)
+    except Exception as exc:
+        return "blocked", type(exc).__name__
+    return (
+        str(getattr(report, "registration_status", "") or ""),
+        str(getattr(report, "registration_detail", "") or ""),
+    )
+
+
+def _looks_like_chrome_permission_error(provider_error: str) -> bool:
+    lower = str(provider_error or "").lower()
+    return bool(lower) and any(marker in lower for marker in _CHROME_PERMISSION_MARKERS)
+
+
+def _microphone_permission_blocked(config: Any) -> bool:
+    del config
+    return False
+
+
+def _audio_routing_permission_blocked(config: Any) -> bool:
+    del config
+    return False
 
 
 def _rerun(profile: str, provider_name: str) -> str:
