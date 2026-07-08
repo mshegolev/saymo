@@ -223,7 +223,10 @@ def _install_auto_loop_fakes(
     monkeypatch.setattr("saymo.analysis.turn_detector.TurnDetector", lambda *a, **k: detector)
     monkeypatch.setattr(core, "build_realtime_response_cache", lambda config: None)
     monkeypatch.setattr("saymo.analysis.live_control.command_log_offset", lambda profile: 0)
-    monkeypatch.setattr("saymo.analysis.live_control.live_control_dir", lambda profile: tmp_path)
+    monkeypatch.setattr(
+        "saymo.analysis.live_control.live_control_dir",
+        lambda profile, base_dir=None: tmp_path,
+    )
     monkeypatch.setattr("saymo.analysis.live_control.write_live_state", lambda *a, **k: None)
     monkeypatch.setattr(
         "saymo.analysis.live_control.read_control_commands",

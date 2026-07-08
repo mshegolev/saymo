@@ -6,7 +6,9 @@ import json
 import click
 
 from saymo.analysis.realtime_gate import (
+    automatic_handbrake_block,
     evaluate_realtime_launch_gate,
+    provider_playback_block,
     render_realtime_launch_block,
 )
 from saymo.analysis.realtime_policy import (
@@ -752,18 +754,12 @@ async def _auto(
                 pending_confirmation = None
                 console.print("[dim]Manual speak hotkey: using prepared playback[/]")
             else:
-                if not _automatic_speaking_allowed(
+                handbrake_block = automatic_handbrake_block(
                     auto_answer_enabled,
                     manual_takeover,
                     hard_disabled,
-                ):
-                    reason = (
-                        "manual takeover active"
-                        if manual_takeover.is_set()
-                        else "hard disabled"
-                        if hard_disabled.is_set()
-                        else "auto-answer off"
-                    )
+                )
+                if handbrake_block is not None:
                     append_control_audit(
                         profile,
                         action="toggle_auto_answer",
@@ -771,10 +767,13 @@ async def _auto(
                         previous_state=_snapshot("auto_blocked"),
                         next_state=_snapshot("auto_blocked"),
                         result="automatic_speaking_blocked",
-                        reason=reason,
+                        reason=handbrake_block.reason,
                     )
                     detector.reset_cooldown()
-                    console.print(f"[bold yellow]Auto answer blocked:[/] {reason}")
+                    console.print(
+                        f"[bold yellow]Auto answer blocked:[/] "
+                        f"{handbrake_block.detail}"
+                    )
                     console.print("\n[bold yellow]Listening again...[/]\n")
                     continue
                 addressing_t0 = time.monotonic()
@@ -908,11 +907,16 @@ async def _auto(
             )
             await asyncio.sleep(live_tuning.pre_speak_delay_seconds)
 
-            if not force_speak and not _automatic_speaking_allowed(
-                auto_answer_enabled,
-                manual_takeover,
-                hard_disabled,
-            ):
+            handbrake_block = (
+                None
+                if force_speak
+                else automatic_handbrake_block(
+                    auto_answer_enabled,
+                    manual_takeover,
+                    hard_disabled,
+                )
+            )
+            if handbrake_block is not None:
                 append_control_audit(
                     profile,
                     action="toggle_auto_answer",
@@ -920,10 +924,32 @@ async def _auto(
                     previous_state=_snapshot("playback_blocked"),
                     next_state=_snapshot("playback_blocked"),
                     result="automatic_playback_blocked",
-                    reason="handbrake activated before playback",
+                    reason=handbrake_block.reason,
                 )
                 detector.reset_cooldown()
-                console.print("[bold yellow]Playback blocked by handbrake[/]")
+                console.print(
+                    f"[bold yellow]Playback blocked by handbrake:[/] "
+                    f"{handbrake_block.detail}"
+                )
+                console.print("\n[bold yellow]Listening again...[/]\n")
+                continue
+
+            provider_block = None if force_speak else provider_playback_block(provider)
+            if provider_block is not None:
+                append_control_audit(
+                    profile,
+                    action="status",
+                    source="auto",
+                    previous_state=_snapshot("provider_blocked"),
+                    next_state=_snapshot("provider_blocked"),
+                    result=provider_block.label,
+                    reason=provider_block.reason,
+                )
+                detector.reset_cooldown()
+                console.print(
+                    f"[bold yellow]Playback blocked by provider:[/] "
+                    f"{provider_block.reason}"
+                )
                 console.print("\n[bold yellow]Listening again...[/]\n")
                 continue
 
@@ -946,6 +972,7 @@ async def _auto(
                     audio_to_play,
                     provider_name=provider_name,
                     on_playback_start=_mark_playback_start,
+                    allow_provider_fallback=force_speak,
                 )
             )
             stop_waiter = asyncio.create_task(stop_playback.wait())

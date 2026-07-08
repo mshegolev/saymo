@@ -82,6 +82,7 @@ async def _play_cached_audio(
     audio_path,
     provider_name: str | None = None,
     on_playback_start=None,
+    allow_provider_fallback: bool = True,
 ):
     """Play pre-generated audio file directly — no TTS needed.
 
@@ -156,6 +157,17 @@ async def _play_cached_audio(
                     "Check the call mute state manually.[/]"
                 )
             else:
+                if not allow_provider_fallback and not playback_started:
+                    reason = "provider-automation-blocked"
+                    console.print(
+                        f"[bold red]{provider.name} mute automation failed before "
+                        "playback; automatic fallback blocked.[/]"
+                    )
+                    return PlaybackResult(
+                        False,
+                        reason=reason,
+                        playback_started=playback_started,
+                    )
                 console.print(
                     f"[yellow]{provider.name} mute automation failed; playing to "
                     "BlackHole 2ch without automatic mute control.[/]"
