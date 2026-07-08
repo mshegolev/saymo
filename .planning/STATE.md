@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.9
-milestone_name: milestone
-current_plan: 4
-status: completed
-stopped_at: Completed 40-04-PLAN.md
-last_updated: "2026-07-08T19:33:44.939Z"
+milestone_name: Call Launch Readiness
+current_plan: null
+status: complete
+stopped_at: Milestone v1.9 archived
+last_updated: "2026-07-08T20:09:31.902Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
@@ -23,16 +23,16 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.9 Call Launch Readiness implementation is complete;
-Phase 40 Plan 04 is complete and the milestone is ready for verification.
+**Current focus:** v1.9 Call Launch Readiness is shipped and archived. Next
+focus should be defined with `$gsd-new-milestone`.
 
 ## Current Position
 
-Phase: 40 (5 of 5) - Launch and Realtime Evidence Feedback
-Current Plan: 4
-Total Plans in Phase: 4
-Plans: 4 of 4 completed.
-Status: Phase 40 Plan 04 is complete; ready for verification.
+Phase: none - v1.9 milestone complete
+Current Plan: none
+Total Plans in Phase: 0
+Plans: 22 of 22 completed.
+Status: v1.9 archived; ready for next milestone definition.
 Last activity: 2026-07-08
 
 Progress: [██████████] 100%

@@ -2,16 +2,23 @@
 
 ## Current
 
+No active milestone. Run `$gsd-new-milestone` to define the next requirements
+and roadmap.
+
+## Completed
+
 ### v1.9 Call Launch Readiness
 
 **Started:** 2026-07-08
-**Status:** Active
+**Completed:** 2026-07-08
+**Archived:** 2026-07-08
+**Status:** Complete
 
 Focus: make Saymo reliably go from daily note and prepared cloned-voice cache
-to a controlled realtime call loop with provider readiness, launchd health,
+to a controlled realtime call loop with provider readiness, LaunchAgent health,
 and handbrake controls verified before the meeting starts.
 
-Planned:
+Delivered:
 - One call-ready launch gate for daily note, prepared standup audio,
   response-cache coverage, cloned-voice metadata, and actionable remediation.
 - Provider and audio readiness for Glip/Chrome, BlackHole routing, microphone
@@ -24,12 +31,10 @@ Planned:
 - Sanitized launch/realtime evidence feeding rehearsal, scorecards,
   troubleshooting, and safety-soak.
 
-Roadmap:
-- `.planning/ROADMAP.md`
-- `.planning/REQUIREMENTS.md`
-- `.planning/research/SUMMARY.md`
-
-## Completed
+Archives:
+- `.planning/milestones/v1.9-ROADMAP.md`
+- `.planning/milestones/v1.9-REQUIREMENTS.md`
+- `.planning/milestones/v1.9-MILESTONE-AUDIT.md`
 
 ### v1.8 Call-ready Voice Clone
 

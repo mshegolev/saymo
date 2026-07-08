@@ -23,7 +23,7 @@ enough that the call still feels live.
 
 ## Current State
 
-Saymo has shipped milestone v1.8 Call-ready Voice Clone. The product can build
+Saymo has shipped milestone v1.9 Call Launch Readiness. The product can build
 local transcript ledgers from captured sessions, search and ask questions about
 those sessions with transcript citations, generate pending answer drafts
 grounded in meeting memory and configured sources, record explicit cockpit
@@ -48,20 +48,23 @@ readiness gates. The active local config now uses the approved `f5tts_clone`
 path for the `personal` profile, and a launchd helper can create the missing
 Obsidian daily note before standup preparation.
 
-**Status:** v1.9 Call Launch Readiness started on 2026-07-08.
+The v1.9 call-readiness path added one green launch gate across daily notes,
+prepared standup audio, response-cache coverage, cloned-voice metadata,
+provider/audio readiness, call-control daemon health, fail-closed realtime
+startup, and sanitized launch/realtime evidence for scorecards, remediation,
+and safety-soak. Runtime evidence now includes lifecycle/playback/stop labels,
+and prepared-audio freshness uses the same saved daily-note hash that
+call-ready verifies.
 
-The next milestone focuses on making the full pre-call and live-call path feel
-operationally reliable: one green launch path, provider/tab remediation,
-prepared response cache health, realtime loop readiness, and a local
-daemon/control surface so the handbrake does not depend on a terminal window.
+**Status:** v1.9 Call Launch Readiness shipped on 2026-07-08.
 
-## Current Milestone: v1.9 Call Launch Readiness
+## Last Completed Milestone: v1.9 Call Launch Readiness
 
 **Goal:** Make Saymo reliably go from daily note and prepared cloned-voice
 cache to a controlled realtime call loop with provider readiness, launchd
 health, and handbrake controls verified before the meeting starts.
 
-**Target features:**
+**Delivered:**
 - One call-ready command or flow that checks/creates the daily note, prepares
   standup audio and response-cache variants, validates cloned voice cache
   metadata, and reports only actionable blockers.
@@ -77,7 +80,7 @@ health, and handbrake controls verified before the meeting starts.
 - Post-call/rehearsal evidence that shows whether the launch and realtime loop
   stayed healthy, with regressions feeding back into preflight and safety-soak.
 
-## Last Completed Milestone: v1.8 Call-ready Voice Clone
+## Previous Milestone: v1.8 Call-ready Voice Clone
 
 **Goal:** Make Saymo speak in the user's cloned voice through a reproducible,
 local, call-ready pipeline with clear quality, latency, fallback, and safety
@@ -213,21 +216,24 @@ playback, and regression replay.
   safety checks fail.
 - ✓ User can run a repeatable safety soak/regression gate before trusting
   Saymo in another meeting.
+- ✓ User can run one call-ready path that creates missing Obsidian daily notes,
+  prepares standup audio, builds response-cache variants, validates cloned
+  voice metadata, and returns a concise ready/not-ready result.
+- ✓ User can see provider, Chrome tab, BlackHole, permission, profile, cache,
+  and LaunchAgent blockers with exact remediation and rerun commands.
+- ✓ User can start, stop, inspect, and recover a local call-control daemon or
+  LaunchAgent that keeps hotkeys and live-control state active outside the
+  terminal.
+- ✓ User can start a realtime meeting loop only after cloned voice, response
+  cache, provider, handbrake, trigger, and profile readiness pass.
+- ✓ User can inspect post-call or rehearsal evidence for launch health,
+  live-loop decisions, cache hits/misses, handbrake actions, and unsafe
+  fallback blocks.
 
 ### Active
 
-- User can run one call-ready path that creates missing Obsidian daily notes,
-  prepares standup audio, builds response-cache variants, validates cloned
-  voice metadata, and returns a concise ready/not-ready result.
-- User can see provider, Chrome tab, BlackHole, permission, profile, cache, and
-  launchd helper blockers with exact remediation and rerun commands.
-- User can start, stop, inspect, and recover a local call-control daemon or
-  LaunchAgent that keeps hotkeys and live-control state active outside the
-  terminal.
-- User can start a realtime meeting loop only after cloned voice, response
-  cache, provider, handbrake, trigger, and profile readiness pass.
-- User can inspect post-call or rehearsal evidence for launch health, live-loop
-  decisions, cache hits/misses, handbrake actions, and unsafe fallback blocks.
+No active milestone requirements. Run `$gsd-new-milestone` to define the next
+focused requirements and roadmap.
 
 ### Out of Scope
 
@@ -245,7 +251,7 @@ playback, and regression replay.
   reach the call.
 - Native macOS capture without BlackHole — useful future work, but separate
   from the local memory/cockpit loop.
-- Polished App Store-style native menu bar packaging — v1.9 may add a local
+- Polished App Store-style native menu bar packaging — v1.9 added a local
   daemon/LaunchAgent and lightweight status/control surface, but productized
   native UI distribution is separate work.
 - Using real call recordings as voice-clone training data — call audio is for
@@ -309,7 +315,7 @@ playback, and regression replay.
 | Prefer an explicit handbrake over hidden automation | During live calls, the user needs visible control and fast recovery more than another autonomous behavior | Implemented in v1.6 |
 | Prove the live loop before trusting it | The next risk is not missing controls, but not knowing whether the whole loop is reliable for the next meeting | Implemented in v1.7 |
 | Treat voice-clone assets as protected local state | Model checkpoints and training datasets are costly to redownload or retrain, so cleanup/training must be explicit and auditable | Implemented in v1.8 |
-| Treat call launch as one green path | Daily note, prepare/cache, provider tab, voice readiness, and handbrake state fail in different places unless the operator sees one actionable readiness result | Pending in v1.9 |
+| Treat call launch as one green path | Daily note, prepare/cache, provider tab, voice readiness, and handbrake state fail in different places unless the operator sees one actionable readiness result | Implemented in v1.9 |
 
 ---
-*Last updated: 2026-07-08 after starting milestone v1.9*
+*Last updated: 2026-07-08 after shipping milestone v1.9*
