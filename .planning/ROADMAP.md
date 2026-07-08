@@ -50,7 +50,7 @@ safety-soak.
 - [x] **Phase 37: Provider and Audio Remediation** - Verify provider tab, (completed 2026-07-08)
   Chrome capability, BlackHole routing, microphone takeover, permissions, and
   non-destructive remediation before realtime starts.
-- [ ] **Phase 38: Local Call-Control Daemon and LaunchAgent** - Keep hotkeys,
+- [x] **Phase 38: Local Call-Control Daemon and LaunchAgent** - Keep hotkeys, (completed 2026-07-08)
   heartbeat, live-control status, and stop/takeover actions available outside
   the terminal through a local daemon and per-profile LaunchAgent.
 - [ ] **Phase 39: Fail-Closed Realtime Meeting Loop** - Gate realtime startup
@@ -136,11 +136,11 @@ macOS LaunchAgent conventions
 **Plans**: 5 plans
 
 Plans:
-- [ ] 38-01: Add foreground call-control daemon lifecycle and heartbeat model
-- [ ] 38-02: Add LaunchAgent install, start, stop, restart, and status commands
-- [ ] 38-03: Add daemon health diagnostics for stale heartbeat, crashes, permissions, and plist drift
-- [ ] 38-04: Route daemon/status actions through existing live-control command and audit semantics
-- [ ] 38-05: Add handbrake reachability probe, logs, docs, and tests
+- [x] 38-01: Add foreground call-control daemon lifecycle and heartbeat model
+- [x] 38-02: Add LaunchAgent install, start, stop, restart, and status commands
+- [x] 38-03: Add daemon health diagnostics for stale heartbeat, crashes, permissions, and plist drift
+- [x] 38-04: Route daemon/status actions through existing live-control command and audit semantics
+- [x] 38-05: Add handbrake reachability probe, logs, docs, and tests
 
 ### Phase 39: Fail-Closed Realtime Meeting Loop
 **Goal**: User can start realtime mode only through the shared launch gate, and
@@ -211,7 +211,7 @@ Phases execute in numeric order: 36 -> 37 -> 38 -> 39 -> 40
 |-------|-----------|----------------|--------|-----------|
 | 36. Call-Ready Preflight and Cache Gate | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
 | 37. Provider and Audio Remediation | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
-| 38. Local Call-Control Daemon and LaunchAgent | v1.9 | 4/5 | In Progress | - |
+| 38. Local Call-Control Daemon and LaunchAgent | v1.9 | Complete    | 2026-07-08 | 2026-07-08 |
 | 39. Fail-Closed Realtime Meeting Loop | v1.9 | 0/5 | Not started | - |
 | 40. Launch and Realtime Evidence Feedback | v1.9 | 0/4 | Not started | - |
 

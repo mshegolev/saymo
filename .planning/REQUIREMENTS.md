@@ -58,7 +58,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 - [x] **CTRL-04**: User can queue the existing live-control actions from the
   daemon or status surface with the same semantics and audit trail as CLI and
   current hotkeys.
-- [ ] **CTRL-05**: User can prove the handbrake is reachable before realtime
+- [x] **CTRL-05**: User can prove the handbrake is reachable before realtime
   mode by checking heartbeat freshness, hotkey registration, command write,
   command consumption, and latest applied action evidence.
 
@@ -166,7 +166,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTRL-02 | Phase 38 | Complete |
 | CTRL-03 | Phase 38 | Complete |
 | CTRL-04 | Phase 38 | Complete |
-| CTRL-05 | Phase 38 | Pending |
+| CTRL-05 | Phase 38 | Complete |
 | REAL-01 | Phase 39 | Pending |
 | REAL-02 | Phase 39 | Pending |
 | REAL-03 | Phase 39 | Pending |

@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 4
+current_plan: 5
 status: in_progress
-stopped_at: Completed 38-04-PLAN.md
-last_updated: "2026-07-08T16:21:46.030Z"
+stopped_at: Completed 38-05-PLAN.md
+last_updated: "2026-07-08T16:33:27.322Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -28,22 +28,22 @@ Local Call-Control Daemon and LaunchAgent.
 
 ## Current Position
 
-Phase: 38 (4 of 5) - Local Call-Control Daemon and LaunchAgent
-Current Plan: 4
+Phase: 38 (5 of 5) - Local Call-Control Daemon and LaunchAgent
+Current Plan: 5
 Total Plans in Phase: 5
-Plan: 4 of 5 completed; next step is 38-05.
-Status: Phase 38 in progress.
+Plan: 5 of 5 completed.
+Status: Phase 38 plan execution complete; ready for phase verification or Phase 39 planning.
 Last activity: 2026-07-08
 
-Progress: [█████████░] 92%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
 - Total plans planned: 13
-- Plans completed: 12
+- Plans completed: 13
 - Average duration: 6 min
-- Total execution time: 69 min
+- Total execution time: 76 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -66,6 +66,7 @@ Progress: [█████████░] 92%
 | 38-02 | 4 min | 2 | 4 |
 | 38-03 | 5 min | 2 | 4 |
 | 38-04 | 4 min | 2 | 9 |
+| 38-05 | 7 min | 2 | 11 |
 
 **By Phase:**
 
@@ -73,7 +74,7 @@ Progress: [█████████░] 92%
 |-------|--------|-------|
 | 36. Call-Ready Preflight and Cache Gate | Complete | 4/4 |
 | 37. Provider and Audio Remediation | Complete | 4/4 |
-| 38. Local Call-Control Daemon and LaunchAgent | In Progress | 4/5 |
+| 38. Local Call-Control Daemon and LaunchAgent | Complete | 5/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Not started | 0/5 |
 | 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
 
@@ -131,10 +132,13 @@ Recent decisions affecting current work:
 - [Phase 38]: Phase 38-04: call-control action uses the existing live-control queue with source=daemon_cli; no new protocol or action names were introduced.
 - [Phase 38]: Phase 38-04: audit command correlation is optional and bounded so existing audit readers continue to work without new required fields.
 - [Phase 38]: Phase 38-04: trusted daemon hotkey ownership is an internal opt-in seam; default saymo auto behavior still registers local hotkeys.
+- [Phase 38]: Phase 38-05: reachability probe uses existing status action with source=probe and sanitized probe_id; no new live-control action or protocol was introduced.
+- [Phase 38]: Phase 38-05: default call-ready remains read-only; it reports call-control readiness rows but never queues the explicit probe.
+- [Phase 38]: Phase 38-05: call-control daemon rows block launch readiness and carry log paths for Phase 39 realtime startup gating.
 
 ### Pending Todos
 
-Continue to Phase 38 planning/execution.
+Continue to Phase 39 planning/execution after any phase-level verification.
 
 ### Blockers/Concerns
 
@@ -147,6 +151,6 @@ Continue to Phase 38 planning/execution.
 
 ## Session Continuity
 
-Last session: 2026-07-08T16:21:46.028Z
-Stopped at: Completed 38-04-PLAN.md
+Last session: 2026-07-08T16:33:12.943Z
+Stopped at: Completed 38-05-PLAN.md
 Resume file: None
