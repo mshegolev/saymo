@@ -138,6 +138,62 @@ def test_launch_provider_audio_hints_classify_permissions():
     assert categories["audio routing permission"] == "macos-permission"
 
 
+def test_launch_call_control_hints_include_agent_daemon_probe_and_accessibility_actions():
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        LaunchReadinessReport,
+    )
+
+    report = LaunchReadinessReport(
+        profile="standup",
+        provider="glip",
+        checks=(
+            LaunchReadinessCheck(
+                key="call_control_agent",
+                label="call-control agent",
+                severity="block",
+                ok=False,
+                detail="LaunchAgent plist is not installed.",
+                action="saymo call-control-agent install -p standup",
+                rerun="saymo call-control-agent status -p standup",
+                metadata={"category": "call-control"},
+            ),
+            LaunchReadinessCheck(
+                key="call_control_daemon",
+                label="call-control daemon",
+                severity="block",
+                ok=False,
+                detail="LaunchAgent is loaded but daemon heartbeat is stale.",
+                action="saymo call-control-agent restart -p standup",
+                rerun="saymo call-control probe -p standup",
+                metadata={"category": "call-control"},
+            ),
+            LaunchReadinessCheck(
+                key="call_control_hotkeys",
+                label="call-control hotkeys",
+                severity="block",
+                ok=False,
+                detail="Daemon heartbeat reports hotkey registration blocked.",
+                action="grant Accessibility permission, then saymo call-control-agent restart -p standup",
+                rerun="saymo call-control-agent status -p standup",
+                metadata={"category": "macos-permission"},
+            ),
+        ),
+    )
+
+    hints = hints_from_launch_readiness(report)
+    payload = json.dumps([hint.__dict__ for hint in hints])
+    categories = {hint.title: hint.category for hint in hints}
+
+    assert categories["call-control agent"] == "call-control"
+    assert categories["call-control daemon"] == "call-control"
+    assert categories["call-control hotkeys"] == "macos-permission"
+    assert "saymo call-control-agent install -p standup" in payload
+    assert "saymo call-control-agent restart -p standup" in payload
+    assert "saymo call-control probe -p standup" in payload
+    assert "Accessibility" in payload
+
+
 def test_scorecard_hints_cover_review_and_safety_issues():
     metrics = RegressionMetrics(
         profile="personal",

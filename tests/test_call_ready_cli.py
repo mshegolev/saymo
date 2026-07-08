@@ -468,6 +468,7 @@ def test_call_ready_output_artifact_includes_provider_audio_checks(
     monkeypatch,
 ):
     from saymo.analysis.live_control import HotkeyDoctorReport
+    from saymo.analysis import launch_agent
     import saymo.analysis.launch_readiness as launch_readiness
     import saymo.analysis.live_control as live_control
     import saymo.audio.devices as audio_devices
@@ -500,7 +501,39 @@ def test_call_ready_output_artifact_includes_provider_audio_checks(
             process_running=False,
             registration_status="no_bindings",
             registration_detail="",
-        ),
+            ),
+    )
+    monkeypatch.setattr(
+        launch_agent,
+        "build_launch_agent_spec",
+        lambda profile: "fake-spec",
+    )
+    monkeypatch.setattr(
+        launch_agent,
+        "collect_call_control_agent_status",
+        lambda spec: type(
+            "Status",
+            (),
+            {
+                "profile": "standup",
+                "label": "com.saymo.call-control.standup",
+                "plist_path": "/tmp/com.saymo.call-control.standup.plist",
+                "stdout_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.out.log",
+                "stderr_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.err.log",
+                "installed": True,
+                "plist_current": True,
+                "loaded": True,
+                "heartbeat_fresh": True,
+                "running": True,
+                "hotkeys_active": True,
+                "hotkey_registration_status": "ok",
+                "classification": "running",
+                "detail": "LaunchAgent is loaded and daemon heartbeat is fresh.",
+                "action": "none",
+                "rerun": "saymo call-control-agent status -p standup",
+                "metadata": {"bindings_count": 3},
+            },
+        )(),
     )
 
     result = CliRunner().invoke(
@@ -530,6 +563,9 @@ def test_call_ready_output_artifact_includes_provider_audio_checks(
         "provider_output_blackhole",
         "recording_microphone_input",
         "provider_capabilities",
+        "call_control_agent",
+        "call_control_daemon",
+        "call_control_hotkeys",
     }.issubset(keys)
     old_placeholder_key = "provider" + "_audio_basic_scope"
     assert old_placeholder_key not in keys
@@ -549,8 +585,120 @@ def test_call_ready_output_artifact_includes_provider_audio_checks(
         expected_phase37_order
     )
     assert expected_phase37_order == launch_readiness._LAUNCH_CHECK_ORDER[5:12]
+    assert tuple(keys[cloned_voice_index + 8 : cloned_voice_index + 11]) == (
+        "call_control_agent",
+        "call_control_daemon",
+        "call_control_hotkeys",
+    )
+    daemon = {check["key"]: check for check in payload["checks"]}["call_control_daemon"]
+    assert daemon["metadata"]["stdout_log_path"].endswith(".out.log")
+    assert daemon["metadata"]["stderr_log_path"].endswith(".err.log")
     _assert_no_private_text(result.output)
     _assert_no_private_text(json.dumps(payload, ensure_ascii=False))
+
+
+def test_call_ready_daemon_rows_are_read_only_and_do_not_run_probe(
+    tmp_path,
+    monkeypatch,
+):
+    from saymo.analysis.live_control import HotkeyDoctorReport
+    from saymo.analysis import control_daemon, launch_agent
+    import saymo.analysis.live_control as live_control
+    import saymo.audio.devices as audio_devices
+    import saymo.providers.factory as provider_factory
+    import sounddevice as sd
+    from saymo.providers.base import MeetingStatus
+
+    config_path = _write_config(tmp_path)
+    _patch_ready_phase36(monkeypatch)
+    provider = MagicMock()
+    provider.name = "glip"
+    provider.url_pattern = "app.glip.com"
+    provider.check_ready.return_value = MeetingStatus(
+        app_running=True,
+        meeting_found=True,
+        tab_info=(1, 2),
+    )
+    monkeypatch.setattr(provider_factory, "get_provider", lambda name: provider)
+    monkeypatch.setattr(
+        audio_devices,
+        "find_device",
+        lambda name, kind="input": _audio_device(name),
+    )
+    monkeypatch.setattr(sd, "check_input_settings", lambda **kwargs: None)
+    monkeypatch.setattr(sd, "check_output_settings", lambda **kwargs: None)
+    monkeypatch.setattr(
+        live_control,
+        "build_hotkey_doctor_report",
+        lambda config, profile, *, probe=True: HotkeyDoctorReport(
+            profile=profile,
+            bindings={},
+            process_running=False,
+            registration_status="no_bindings",
+            registration_detail="",
+        ),
+    )
+    monkeypatch.setattr(
+        control_daemon,
+        "run_handbrake_reachability_probe",
+        MagicMock(side_effect=AssertionError("call-ready must not run probe")),
+    )
+    monkeypatch.setattr(
+        launch_agent,
+        "build_launch_agent_spec",
+        lambda profile: "fake-spec",
+    )
+    monkeypatch.setattr(
+        launch_agent,
+        "collect_call_control_agent_status",
+        lambda spec: type(
+            "Status",
+            (),
+            {
+                "profile": "standup",
+                "label": "com.saymo.call-control.standup",
+                "plist_path": "/tmp/com.saymo.call-control.standup.plist",
+                "stdout_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.out.log",
+                "stderr_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.err.log",
+                "installed": True,
+                "plist_current": True,
+                "loaded": True,
+                "heartbeat_fresh": False,
+                "running": False,
+                "hotkeys_active": False,
+                "hotkey_registration_status": "blocked",
+                "classification": "hotkey_permission_blocked",
+                "detail": "Daemon heartbeat reports hotkey registration blocked: Accessibility denied",
+                "action": "grant Accessibility permission, then saymo call-control-agent restart -p standup",
+                "rerun": "saymo call-control-agent status -p standup",
+                "metadata": {"bindings_count": 3},
+            },
+        )(),
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "call-ready",
+            "-p",
+            "standup",
+            "--provider",
+            "glip",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    checks = {check["key"]: check for check in payload["checks"]}
+    assert result.exit_code == 1
+    assert checks["call_control_agent"]["metadata"]["category"] == "call-control"
+    assert checks["call_control_daemon"]["ok"] is False
+    assert checks["call_control_daemon"]["rerun"] == "saymo call-control probe -p standup"
+    assert checks["call_control_hotkeys"]["metadata"]["category"] == "macos-permission"
+    assert checks["call_control_hotkeys"]["metadata"]["stdout_log_path"].endswith(".out.log")
+    assert not (tmp_path / "standup" / "commands.jsonl").exists()
 
 
 def test_call_ready_output_artifact_does_not_pollute_json_stdout(tmp_path, monkeypatch):

@@ -252,7 +252,7 @@ def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
 
 
 def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch):
-    from saymo.analysis import launch_cache, launch_sources, provider_audio_readiness
+    from saymo.analysis import launch_agent, launch_cache, launch_sources, provider_audio_readiness
     import saymo.analysis.launch_readiness as launch_readiness
     from saymo.analysis.launch_readiness import (
         LaunchReadinessCheck,
@@ -371,6 +371,38 @@ def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch
             ),
         ),
     )
+    monkeypatch.setattr(
+        launch_agent,
+        "build_launch_agent_spec",
+        lambda profile: "fake-spec",
+    )
+    monkeypatch.setattr(
+        launch_agent,
+        "collect_call_control_agent_status",
+        lambda spec: type(
+            "Status",
+            (),
+            {
+                "profile": "standup",
+                "label": "com.saymo.call-control.standup",
+                "plist_path": "/tmp/com.saymo.call-control.standup.plist",
+                "stdout_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.out.log",
+                "stderr_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.err.log",
+                "installed": True,
+                "plist_current": True,
+                "loaded": True,
+                "heartbeat_fresh": True,
+                "running": True,
+                "hotkeys_active": True,
+                "hotkey_registration_status": "ok",
+                "classification": "running",
+                "detail": "LaunchAgent is loaded and daemon heartbeat is fresh.",
+                "action": "none",
+                "rerun": "saymo call-control-agent status -p standup",
+                "metadata": {"bindings_count": 3},
+            },
+        )(),
+    )
 
     report = collect_launch_readiness(config, profile="standup", provider_name=None)
 
@@ -389,15 +421,39 @@ def test_collect_launch_readiness_wires_full_phase36_order(tmp_path, monkeypatch
         "recording_microphone_input",
         "provider_capabilities",
     ]
-    expected_order = [*expected_base_order, "hotkey_accessibility_permission"]
+    expected_daemon_order = [
+        "call_control_agent",
+        "call_control_daemon",
+        "call_control_hotkeys",
+    ]
+    expected_order = [
+        *expected_base_order,
+        "hotkey_accessibility_permission",
+        *expected_daemon_order,
+    ]
     assert [check.key for check in report.checks] == expected_order
-    assert launch_readiness._LAUNCH_CHECK_ORDER == tuple(expected_base_order)
+    assert launch_readiness._LAUNCH_CHECK_ORDER == tuple(
+        [*expected_base_order, *expected_daemon_order]
+    )
     old_placeholder_key = "provider" + "_audio_basic_scope"
     assert old_placeholder_key not in expected_order
     provider_tab = _check_by_key(report, "provider_meeting_tab")
     assert provider_tab.severity == "block"
     assert provider_tab.ok is True
     assert provider_tab.detail == "meeting_found"
+    for key in expected_daemon_order:
+        check = _check_by_key(report, key)
+        assert check.severity == "block"
+        assert check.ok is True
+        assert check.metadata["category"] == "call-control"
+        assert check.metadata["stdout_log_path"].endswith(".out.log")
+        assert check.metadata["stderr_log_path"].endswith(".err.log")
+    assert _check_by_key(report, "call_control_agent").rerun == (
+        "saymo call-control-agent status -p standup"
+    )
+    assert _check_by_key(report, "call_control_daemon").rerun == (
+        "saymo call-control probe -p standup"
+    )
 
 
 def test_write_launch_readiness_artifact_writes_sorted_sanitized_json(tmp_path):
@@ -568,3 +624,93 @@ def test_response_cache_launch_check_blocks_disabled_and_partial_coverage(tmp_pa
     assert disabled.detail == "response_cache_disabled"
     assert disabled.action == "Set responses.enabled=true, then run saymo prepare-responses"
     assert disabled.rerun == "saymo call-ready -p standup --provider glip"
+
+
+def test_call_control_hotkey_readiness_uses_permission_category(tmp_path, monkeypatch):
+    from saymo.analysis import launch_agent, launch_cache, launch_sources, provider_audio_readiness
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        collect_launch_readiness,
+    )
+
+    config = load_config(config_path=str(_write_config(tmp_path)))
+    monkeypatch.setattr(
+        launch_sources,
+        "collect_daily_note_checks",
+        lambda config, profile, *, provider_name, prepare: (),
+    )
+    monkeypatch.setattr(
+        launch_sources,
+        "collect_prepared_audio_check",
+        lambda config, profile, *, provider_name, team_mode, source_sha256: LaunchReadinessCheck(
+            key="prepared_standup_audio",
+            label="prepared standup audio",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_response_cache_check",
+        lambda config, *, profile, provider_name: LaunchReadinessCheck(
+            key="response_cache_coverage",
+            label="response cache coverage",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_voice_metadata_check",
+        lambda config, *, profile, provider_name: LaunchReadinessCheck(
+            key="cloned_voice_metadata",
+            label="cloned voice metadata",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        provider_audio_readiness,
+        "collect_provider_audio_checks",
+        lambda config, *, profile, provider_name: (),
+    )
+    monkeypatch.setattr(
+        launch_agent,
+        "build_launch_agent_spec",
+        lambda profile: "fake-spec",
+    )
+    monkeypatch.setattr(
+        launch_agent,
+        "collect_call_control_agent_status",
+        lambda spec: type(
+            "Status",
+            (),
+            {
+                "profile": "standup",
+                "label": "com.saymo.call-control.standup",
+                "plist_path": "/tmp/com.saymo.call-control.standup.plist",
+                "stdout_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.out.log",
+                "stderr_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.err.log",
+                "installed": True,
+                "plist_current": True,
+                "loaded": True,
+                "heartbeat_fresh": True,
+                "running": True,
+                "hotkeys_active": False,
+                "hotkey_registration_status": "blocked",
+                "classification": "hotkey_permission_blocked",
+                "detail": "Daemon heartbeat reports hotkey registration blocked: Accessibility denied",
+                "action": "grant Accessibility permission, then saymo call-control-agent restart -p standup",
+                "rerun": "saymo call-control-agent status -p standup",
+                "metadata": {"bindings_count": 3},
+            },
+        )(),
+    )
+
+    report = collect_launch_readiness(config, profile="standup", provider_name="glip")
+    hotkeys = _check_by_key(report, "call_control_hotkeys")
+
+    assert hotkeys.ok is False
+    assert hotkeys.metadata["category"] == "macos-permission"
+    assert "Accessibility" in hotkeys.action
+    assert hotkeys.rerun == "saymo call-control-agent status -p standup"

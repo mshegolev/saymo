@@ -12,10 +12,16 @@ from saymo.analysis.control_daemon import (
     heartbeat_is_fresh,
     load_daemon_heartbeat,
     queue_daemon_hotkey_command,
+    run_handbrake_reachability_probe,
     run_control_daemon,
     write_daemon_heartbeat,
 )
-from saymo.analysis.live_control import effective_hotkey_bindings, read_control_commands
+from saymo.analysis.live_control import (
+    append_control_audit,
+    audit_log_path,
+    effective_hotkey_bindings,
+    read_control_commands,
+)
 from saymo.config import SaymoConfig
 
 
@@ -232,3 +238,140 @@ def test_daemon_survives_hotkey_registration_failure(tmp_path):
     assert "RuntimeError" in loaded.hotkey_registration_detail
     assert "Accessibility denied" in loaded.hotkey_registration_detail
     assert len(loaded.hotkey_registration_detail) <= 200
+
+
+def test_handbrake_reachability_probe_requires_full_command_and_audit_proof(
+    tmp_path,
+    monkeypatch,
+):
+    now = datetime(2026, 7, 8, 16, 30, tzinfo=timezone.utc)
+    write_daemon_heartbeat(_heartbeat(now), base_dir=tmp_path)
+    original_sleep = __import__("time").sleep
+    sleep_count = {"value": 0}
+
+    def fake_sleep(seconds):
+        sleep_count["value"] += 1
+        commands, offset = read_control_commands("daily", base_dir=tmp_path)
+        assert commands
+        command = commands[-1]
+        write_daemon_heartbeat(
+            replace(_heartbeat(now), command_log_offset=offset),
+            base_dir=tmp_path,
+        )
+        append_control_audit(
+            "daily",
+            action="status",
+            source="probe",
+            previous_state=None,
+            next_state=None,
+            result="status_printed",
+            command_id=command.command_id,
+            probe_id=command.payload["probe_id"],
+            payload=command.payload,
+            base_dir=tmp_path,
+        )
+        original_sleep(0)
+
+    monkeypatch.setattr("saymo.analysis.control_daemon.time.sleep", fake_sleep)
+
+    probe = run_handbrake_reachability_probe(
+        "daily",
+        base_dir=tmp_path,
+        timeout_seconds=1.0,
+        poll_interval_seconds=0.01,
+        now=now,
+    )
+    commands, _ = read_control_commands("daily", base_dir=tmp_path)
+
+    assert probe.ok is True
+    assert probe.heartbeat_fresh is True
+    assert probe.hotkeys_active is True
+    assert probe.command_written is True
+    assert probe.command_consumed is True
+    assert probe.audit_applied is True
+    assert probe.detail == "reachable"
+    assert commands[-1].action == "status"
+    assert commands[-1].source == "probe"
+    assert commands[-1].payload == {"probe_id": probe.probe_id}
+    assert probe.probe_id and "/" not in probe.probe_id and " " not in probe.probe_id
+    assert probe.command_log_path.endswith("commands.jsonl")
+    assert probe.audit_log_path.endswith("audit.jsonl")
+    assert probe.stdout_log_path.endswith(".out.log")
+    assert probe.stderr_log_path.endswith(".err.log")
+    audit_payload = audit_log_path("daily", base_dir=tmp_path).read_text(encoding="utf-8")
+    assert probe.probe_id in audit_payload
+    assert sleep_count["value"] >= 1
+
+
+def test_handbrake_reachability_probe_reports_separate_failure_modes(
+    tmp_path,
+):
+    now = datetime(2026, 7, 8, 16, 30, tzinfo=timezone.utc)
+
+    write_daemon_heartbeat(_heartbeat(now - timedelta(seconds=30)), base_dir=tmp_path)
+    stale = run_handbrake_reachability_probe(
+        "daily",
+        base_dir=tmp_path,
+        timeout_seconds=0,
+        poll_interval_seconds=0,
+        now=now,
+    )
+    assert stale.ok is False
+    assert stale.heartbeat_fresh is False
+    assert stale.command_written is True
+    assert stale.command_consumed is False
+    assert stale.audit_applied is False
+    assert stale.detail == "stale heartbeat"
+
+    write_daemon_heartbeat(
+        replace(
+            _heartbeat(now),
+            hotkeys_active=False,
+            hotkey_registration_status="blocked",
+            hotkey_registration_detail="Accessibility denied",
+        ),
+        base_dir=tmp_path,
+    )
+    blocked = run_handbrake_reachability_probe(
+        "daily",
+        base_dir=tmp_path,
+        timeout_seconds=0,
+        poll_interval_seconds=0,
+        now=now,
+    )
+    assert blocked.ok is False
+    assert blocked.heartbeat_fresh is True
+    assert blocked.hotkeys_active is False
+    assert blocked.detail == "hotkeys blocked"
+
+    write_daemon_heartbeat(_heartbeat(now), base_dir=tmp_path)
+    not_consumed = run_handbrake_reachability_probe(
+        "daily",
+        base_dir=tmp_path,
+        timeout_seconds=0,
+        poll_interval_seconds=0,
+        now=now,
+    )
+    assert not_consumed.ok is False
+    assert not_consumed.command_written is True
+    assert not_consumed.command_consumed is False
+    assert not_consumed.audit_applied is False
+    assert not_consumed.detail == "command not consumed"
+
+    commands, offset = read_control_commands("daily", base_dir=tmp_path)
+    write_daemon_heartbeat(
+        replace(_heartbeat(now), command_log_offset=offset),
+        base_dir=tmp_path,
+    )
+    missing_audit = run_handbrake_reachability_probe(
+        "daily",
+        base_dir=tmp_path,
+        timeout_seconds=0,
+        poll_interval_seconds=0,
+        now=now,
+    )
+    assert commands
+    assert missing_audit.ok is False
+    assert missing_audit.command_consumed is True
+    assert missing_audit.audit_applied is False
+    assert missing_audit.detail == "missing audit"

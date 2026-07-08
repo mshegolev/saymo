@@ -96,6 +96,60 @@ def test_call_control_action_queues_normalized_existing_command(tmp_path):
     assert payload["payload"] == {"probe_id": "probe-123"}
 
 
+def test_call_control_probe_reports_paths_and_failure_modes(tmp_path):
+    result = CliRunner().invoke(
+        main,
+        [
+            "call-control",
+            "probe",
+            "-p",
+            "daily",
+            "--base-dir",
+            str(tmp_path),
+            "--timeout",
+            "0.1",
+            "--json",
+        ],
+    )
+
+    payload = json.loads(result.output)
+    assert result.exit_code == 1
+    assert payload["ok"] is False
+    assert payload["heartbeat_fresh"] is False
+    assert payload["hotkeys_active"] is False
+    assert payload["command_written"] is True
+    assert payload["command_consumed"] is False
+    assert payload["audit_applied"] is False
+    assert payload["detail"] == "stale heartbeat"
+    assert payload["probe_id"]
+    assert payload["command_log_path"].endswith("commands.jsonl")
+    assert payload["audit_log_path"].endswith("audit.jsonl")
+    assert payload["stdout_log_path"].endswith(".out.log")
+    assert payload["stderr_log_path"].endswith(".err.log")
+
+    human = CliRunner().invoke(
+        main,
+        [
+            "call-control",
+            "probe",
+            "-p",
+            "daily",
+            "--base-dir",
+            str(tmp_path),
+            "--timeout",
+            "0",
+        ],
+    )
+
+    assert human.exit_code == 1
+    assert "probe: not reachable" in human.output
+    assert "detail: stale heartbeat" in human.output
+    assert "commands:" in human.output
+    assert "audit:" in human.output
+    assert "stdout:" in human.output
+    assert "stderr:" in human.output
+
+
 def _invoke_agent(tmp_path, monkeypatch, args):
     from saymo.analysis import launch_agent
 
