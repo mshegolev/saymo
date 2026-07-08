@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,9 +14,12 @@ from typing import Any
 from saymo.analysis.live_control import (
     ACTION_CATALOG,
     append_control_command,
+    audit_log_path,
+    command_log_path,
     command_log_offset,
     hotkey_listener_bindings,
     live_control_dir,
+    read_control_commands,
     sanitized_control_payload,
 )
 
@@ -38,6 +42,28 @@ class ControlDaemonHeartbeat:
     bindings_count: int
     command_log_offset: int
     daemon_version: str
+
+
+@dataclass(frozen=True)
+class HandbrakeReachabilityProbe:
+    """Evidence that the profile handbrake control plane is reachable."""
+
+    profile: str
+    probe_id: str
+    ok: bool
+    heartbeat_fresh: bool
+    hotkeys_active: bool
+    command_written: bool
+    command_consumed: bool
+    audit_applied: bool
+    detail: str
+    command_log_path: str
+    audit_log_path: str
+    stdout_log_path: str
+    stderr_log_path: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 def daemon_heartbeat_path(profile: str, *, base_dir: Path | str | None = None) -> Path:
@@ -110,6 +136,106 @@ def heartbeat_is_fresh(
     current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     age_seconds = (current - heartbeat_at).total_seconds()
     return 0 <= age_seconds <= max_age_seconds
+
+
+def run_handbrake_reachability_probe(
+    profile: str,
+    *,
+    base_dir: Path | str | None = None,
+    timeout_seconds: float = 2.0,
+    poll_interval_seconds: float = 0.1,
+    now: datetime | None = None,
+) -> HandbrakeReachabilityProbe:
+    """Queue a benign status command and prove daemon/audit reachability."""
+    probe_id = _new_probe_id()
+    stdout_log_path, stderr_log_path = _daemon_log_paths(profile, base_dir=base_dir)
+    command_path = command_log_path(profile, base_dir=base_dir)
+    audit_path = audit_log_path(profile, base_dir=base_dir)
+
+    start_offset = command_log_offset(profile, base_dir=base_dir)
+    append_control_command(
+        profile,
+        "status",
+        source="probe",
+        payload=sanitized_control_payload({"probe_id": probe_id}),
+        base_dir=base_dir,
+    )
+    new_commands, command_end_offset = read_control_commands(
+        profile,
+        offset=start_offset,
+        base_dir=base_dir,
+    )
+    command = next(
+        (
+            item
+            for item in reversed(new_commands)
+            if item.action == "status"
+            and item.source == "probe"
+            and item.payload.get("probe_id") == probe_id
+        ),
+        None,
+    )
+    command_written = command is not None
+    command_id = command.command_id if command else ""
+
+    deadline = time.monotonic() + max(0.0, float(timeout_seconds))
+    heartbeat_fresh = False
+    hotkeys_active = False
+    command_consumed = False
+    audit_applied = False
+
+    while True:
+        heartbeat = load_daemon_heartbeat(profile, base_dir=base_dir)
+        heartbeat_fresh = heartbeat_is_fresh(heartbeat, now=_probe_now(now))
+        hotkeys_active = bool(heartbeat and heartbeat.hotkeys_active)
+        command_consumed = bool(
+            heartbeat
+            and command_written
+            and heartbeat.command_log_offset >= command_end_offset
+        )
+        audit_applied = bool(
+            command_written
+            and _matching_probe_audit_exists(
+                profile,
+                probe_id=probe_id,
+                command_id=command_id,
+                base_dir=base_dir,
+            )
+        )
+        if (
+            heartbeat_fresh
+            and hotkeys_active
+            and command_written
+            and command_consumed
+            and audit_applied
+        ):
+            break
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(max(0.0, float(poll_interval_seconds)))
+
+    detail = _probe_detail(
+        heartbeat_fresh=heartbeat_fresh,
+        hotkeys_active=hotkeys_active,
+        command_written=command_written,
+        command_consumed=command_consumed,
+        audit_applied=audit_applied,
+    )
+    return HandbrakeReachabilityProbe(
+        profile=profile,
+        probe_id=probe_id,
+        ok=detail == "reachable",
+        heartbeat_fresh=heartbeat_fresh,
+        hotkeys_active=hotkeys_active,
+        command_written=command_written,
+        command_consumed=command_consumed,
+        audit_applied=audit_applied,
+        detail=detail,
+        command_log_path=str(command_path),
+        audit_log_path=str(audit_path),
+        stdout_log_path=str(stdout_log_path),
+        stderr_log_path=str(stderr_log_path),
+    )
 
 
 def run_control_daemon(
@@ -218,6 +344,78 @@ def _default_listener_factory():
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _new_probe_id() -> str:
+    return f"probe-{uuid.uuid4().hex[:16]}"
+
+
+def _probe_now(now: datetime | None) -> datetime:
+    return (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+
+
+def _daemon_log_paths(
+    profile: str,
+    *,
+    base_dir: Path | str | None = None,
+) -> tuple[Path, Path]:
+    label = f"com.saymo.call-control.{_safe_label_fragment(profile)}"
+    log_dir = live_control_dir(profile, base_dir=base_dir) / "logs"
+    return log_dir / f"{label}.out.log", log_dir / f"{label}.err.log"
+
+
+def _matching_probe_audit_exists(
+    profile: str,
+    *,
+    probe_id: str,
+    command_id: str,
+    base_dir: Path | str | None = None,
+) -> bool:
+    path = audit_log_path(profile, base_dir=base_dir)
+    if not path.exists():
+        return False
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+    for line in reversed(lines):
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("action") != "status":
+            continue
+        if event.get("source") != "probe":
+            continue
+        if command_id and event.get("command_id") != command_id:
+            continue
+        if event.get("probe_id") != probe_id:
+            continue
+        return bool(event.get("result"))
+    return False
+
+
+def _probe_detail(
+    *,
+    heartbeat_fresh: bool,
+    hotkeys_active: bool,
+    command_written: bool,
+    command_consumed: bool,
+    audit_applied: bool,
+) -> str:
+    if not heartbeat_fresh:
+        return "stale heartbeat"
+    if not hotkeys_active:
+        return "hotkeys blocked"
+    if not command_written:
+        return "command not written"
+    if not command_consumed:
+        return "command not consumed"
+    if not audit_applied:
+        return "missing audit"
+    return "reachable"
 
 
 def _parse_timestamp(value: str) -> datetime:

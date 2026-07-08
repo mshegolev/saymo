@@ -8,7 +8,11 @@ from subprocess import CalledProcessError
 
 import click
 
-from saymo.analysis.control_daemon import daemon_heartbeat_path, run_control_daemon
+from saymo.analysis.control_daemon import (
+    daemon_heartbeat_path,
+    run_control_daemon,
+    run_handbrake_reachability_probe,
+)
 from saymo.analysis.launch_agent import (
     LaunchAgentError,
     build_launch_agent_spec,
@@ -109,6 +113,38 @@ def call_control_action(profile, action_name, probe_id, base_dir):
     )
     console.print(f"queued: {action}")
     console.print(f"commands: {path}")
+
+
+@call_control.command("probe")
+@click.option("--profile", "-p", default="standup", show_default=True)
+@click.option(
+    "--base-dir",
+    default=None,
+    type=click.Path(path_type=Path),
+    help="Override live-control directory; defaults to ~/.saymo/live_control.",
+)
+@click.option(
+    "--timeout",
+    type=float,
+    default=2.0,
+    show_default=True,
+    help="Seconds to wait for daemon/audit evidence.",
+)
+@click.option("--json", "json_output", is_flag=True, help="Print machine-readable output.")
+def call_control_probe(profile, base_dir, timeout, json_output):
+    """Probe whether the call-control handbrake is reachable end-to-end."""
+    if timeout < 0:
+        raise click.ClickException("--timeout must be >= 0")
+    probe = run_handbrake_reachability_probe(
+        profile,
+        base_dir=base_dir,
+        timeout_seconds=timeout,
+    )
+    if json_output:
+        click.echo(json.dumps(probe.to_dict(), indent=2, sort_keys=True))
+    else:
+        _print_probe_summary(probe)
+    raise click.exceptions.Exit(0 if probe.ok else 1)
 
 
 @main.group("call-control-agent")
@@ -215,4 +251,22 @@ def _print_agent_summary(action: str, spec, *, extra: list[str] | None = None) -
         f"stderr: {spec.stderr_log_path}",
     ]
     lines.extend(extra or [])
+    console.print("\n".join(lines), markup=False, soft_wrap=True)
+
+
+def _print_probe_summary(probe) -> None:
+    lines = [
+        f"probe: {'reachable' if probe.ok else 'not reachable'}",
+        f"detail: {probe.detail}",
+        f"probe id: {probe.probe_id}",
+        f"heartbeat fresh: {'yes' if probe.heartbeat_fresh else 'no'}",
+        f"hotkeys active: {'yes' if probe.hotkeys_active else 'no'}",
+        f"command written: {'yes' if probe.command_written else 'no'}",
+        f"command consumed: {'yes' if probe.command_consumed else 'no'}",
+        f"audit applied: {'yes' if probe.audit_applied else 'no'}",
+        f"commands: {probe.command_log_path}",
+        f"audit: {probe.audit_log_path}",
+        f"stdout: {probe.stdout_log_path}",
+        f"stderr: {probe.stderr_log_path}",
+    ]
     console.print("\n".join(lines), markup=False, soft_wrap=True)

@@ -31,6 +31,9 @@ _LAUNCH_CHECK_ORDER = (
     "capture_route_blackhole",
     "recording_microphone_input",
     "provider_capabilities",
+    "call_control_agent",
+    "call_control_daemon",
+    "call_control_hotkeys",
 )
 
 
@@ -246,7 +249,141 @@ def _collect_phase36_checks(
             provider_name=provider_name,
         )
     )
+    checks.extend(_collect_call_control_checks(profile))
     return tuple(checks)
+
+
+def _collect_call_control_checks(profile: str) -> tuple[LaunchReadinessCheck, ...]:
+    from saymo.analysis.launch_agent import (
+        build_launch_agent_spec,
+        collect_call_control_agent_status,
+    )
+
+    try:
+        spec = build_launch_agent_spec(profile)
+        status = collect_call_control_agent_status(spec)
+    except Exception as exc:
+        detail = f"call-control status unavailable: {type(exc).__name__}"
+        metadata = {
+            "category": "call-control",
+            "error_type": type(exc).__name__,
+        }
+        return (
+            LaunchReadinessCheck(
+                key="call_control_agent",
+                label="call-control agent",
+                severity="block",
+                ok=False,
+                detail=detail,
+                action=f"saymo call-control-agent status -p {profile}",
+                rerun=f"saymo call-control-agent status -p {profile}",
+                metadata=metadata,
+            ),
+            LaunchReadinessCheck(
+                key="call_control_daemon",
+                label="call-control daemon",
+                severity="block",
+                ok=False,
+                detail=detail,
+                action=f"saymo call-control-agent status -p {profile}",
+                rerun=f"saymo call-control-agent status -p {profile}",
+                metadata=metadata,
+            ),
+            LaunchReadinessCheck(
+                key="call_control_hotkeys",
+                label="call-control hotkeys",
+                severity="block",
+                ok=False,
+                detail=detail,
+                action="Check LaunchAgent status before granting Accessibility.",
+                rerun=f"saymo call-control-agent status -p {profile}",
+                metadata={"category": "macos-permission", "error_type": type(exc).__name__},
+            ),
+        )
+
+    metadata = _call_control_metadata(status)
+    agent_ok = status.installed and status.loaded and status.plist_current
+    daemon_ok = status.running and status.heartbeat_fresh
+    hotkeys_ok = status.hotkeys_active
+    hotkey_category = (
+        "macos-permission"
+        if status.hotkey_registration_status == "blocked"
+        else "call-control"
+    )
+    return (
+        LaunchReadinessCheck(
+            key="call_control_agent",
+            label="call-control agent",
+            severity="block",
+            ok=agent_ok,
+            detail=status.detail,
+            action=status.action,
+            rerun=status.rerun,
+            metadata=metadata,
+        ),
+        LaunchReadinessCheck(
+            key="call_control_daemon",
+            label="call-control daemon",
+            severity="block",
+            ok=daemon_ok,
+            detail=status.detail,
+            action=_daemon_action(status),
+            rerun=f"saymo call-control probe -p {profile}",
+            metadata=metadata,
+        ),
+        LaunchReadinessCheck(
+            key="call_control_hotkeys",
+            label="call-control hotkeys",
+            severity="block",
+            ok=hotkeys_ok,
+            detail=status.detail,
+            action=_hotkey_action(status),
+            rerun=status.rerun,
+            metadata={**metadata, "category": hotkey_category},
+        ),
+    )
+
+
+def _call_control_metadata(status) -> dict[str, Any]:
+    return {
+        "category": "call-control",
+        "classification": status.classification,
+        "label": status.label,
+        "plist_path": status.plist_path,
+        "stdout_log_path": status.stdout_log_path,
+        "stderr_log_path": status.stderr_log_path,
+        "installed": status.installed,
+        "plist_current": status.plist_current,
+        "loaded": status.loaded,
+        "heartbeat_fresh": status.heartbeat_fresh,
+        "running": status.running,
+        "hotkeys_active": status.hotkeys_active,
+        "hotkey_registration_status": status.hotkey_registration_status,
+        **dict(status.metadata or {}),
+    }
+
+
+def _daemon_action(status) -> str:
+    if not status.installed:
+        return f"saymo call-control-agent install -p {status.profile}"
+    if not status.loaded:
+        return f"saymo call-control-agent start -p {status.profile}"
+    if status.classification in {"stale_heartbeat", "crash_loop"}:
+        return f"saymo call-control-agent restart -p {status.profile}"
+    if status.running:
+        return f"saymo call-control probe -p {status.profile}"
+    return status.action
+
+
+def _hotkey_action(status) -> str:
+    if status.hotkey_registration_status == "blocked":
+        return (
+            "grant Accessibility permission, then "
+            f"saymo call-control-agent restart -p {status.profile}"
+        )
+    if status.hotkeys_active:
+        return "none"
+    return status.action
 
 
 def _sanitize_value(value: Any) -> Any:

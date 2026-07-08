@@ -317,6 +317,10 @@ def _hint_for_check(name: str, detail: str, *, rerun: str) -> RemediationHint:
 
 
 def _launch_category_for_check(key: str) -> str:
+    if key in {"call_control_agent", "call_control_daemon"}:
+        return "call-control"
+    if key == "call_control_hotkeys":
+        return "macos-permission"
     if key in {"provider_meeting_tab", "provider_capabilities"}:
         return "provider"
     if key in {

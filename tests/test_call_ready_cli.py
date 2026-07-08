@@ -263,7 +263,7 @@ def test_call_ready_json_is_sanitized(tmp_path, monkeypatch):
 def test_call_ready_includes_provider_tab_readiness(tmp_path, monkeypatch):
     from unittest.mock import MagicMock
 
-    from saymo.analysis import launch_cache, launch_sources
+    from saymo.analysis import launch_agent, launch_cache, launch_sources
     from saymo.analysis.launch_readiness import LaunchReadinessCheck
     from saymo.audio.devices import AudioDevice
     import saymo.audio.devices as audio_devices
@@ -341,6 +341,34 @@ def test_call_ready_includes_provider_tab_readiness(tmp_path, monkeypatch):
             ok=True,
         ),
     )
+    monkeypatch.setattr(launch_agent, "build_launch_agent_spec", lambda profile: "fake-spec")
+    monkeypatch.setattr(
+        launch_agent,
+        "collect_call_control_agent_status",
+        lambda spec: type(
+            "Status",
+            (),
+            {
+                "profile": "standup",
+                "label": "com.saymo.call-control.standup",
+                "plist_path": "/tmp/com.saymo.call-control.standup.plist",
+                "stdout_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.out.log",
+                "stderr_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.err.log",
+                "installed": True,
+                "plist_current": True,
+                "loaded": True,
+                "heartbeat_fresh": True,
+                "running": True,
+                "hotkeys_active": True,
+                "hotkey_registration_status": "ok",
+                "classification": "running",
+                "detail": "LaunchAgent is loaded and daemon heartbeat is fresh.",
+                "action": "none",
+                "rerun": "saymo call-control-agent status -p standup",
+                "metadata": {"bindings_count": 3},
+            },
+        )(),
+    )
 
     json_result = CliRunner().invoke(
         main,
@@ -373,6 +401,7 @@ def test_call_ready_includes_provider_tab_readiness(tmp_path, monkeypatch):
 
 def test_call_ready_provider_audio_checks_are_non_destructive(tmp_path, monkeypatch):
     from saymo.analysis.live_control import HotkeyDoctorReport
+    from saymo.analysis import launch_agent
     import saymo.analysis.live_control as live_control
     import saymo.audio.devices as audio_devices
     import saymo.audio.macos_audio as macos_audio
@@ -428,6 +457,34 @@ def test_call_ready_provider_audio_checks_are_non_destructive(tmp_path, monkeypa
     monkeypatch.setattr(macos_audio, "bump_input_volume", forbidden)
     monkeypatch.setattr(command_tests, "_write_audio_settings_to_user_config", forbidden)
     monkeypatch.setattr(subprocess, "run", subprocess_run)
+    monkeypatch.setattr(launch_agent, "build_launch_agent_spec", lambda profile: "fake-spec")
+    monkeypatch.setattr(
+        launch_agent,
+        "collect_call_control_agent_status",
+        lambda spec: type(
+            "Status",
+            (),
+            {
+                "profile": "standup",
+                "label": "com.saymo.call-control.standup",
+                "plist_path": "/tmp/com.saymo.call-control.standup.plist",
+                "stdout_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.out.log",
+                "stderr_log_path": "/tmp/standup/logs/com.saymo.call-control.standup.err.log",
+                "installed": True,
+                "plist_current": True,
+                "loaded": True,
+                "heartbeat_fresh": True,
+                "running": True,
+                "hotkeys_active": True,
+                "hotkey_registration_status": "ok",
+                "classification": "running",
+                "detail": "LaunchAgent is loaded and daemon heartbeat is fresh.",
+                "action": "none",
+                "rerun": "saymo call-control-agent status -p standup",
+                "metadata": {"bindings_count": 3},
+            },
+        )(),
+    )
 
     result = CliRunner().invoke(
         main,
@@ -585,11 +642,18 @@ def test_call_ready_output_artifact_includes_provider_audio_checks(
         expected_phase37_order
     )
     assert expected_phase37_order == launch_readiness._LAUNCH_CHECK_ORDER[5:12]
-    assert tuple(keys[cloned_voice_index + 8 : cloned_voice_index + 11]) == (
+    first_call_control_index = keys.index("call_control_agent")
+    assert tuple(keys[first_call_control_index : first_call_control_index + 3]) == (
         "call_control_agent",
         "call_control_daemon",
         "call_control_hotkeys",
     )
+    provider_audio_tail = max(
+        keys.index(key)
+        for key in keys
+        if key in expected_phase37_order or key.endswith("_permission")
+    )
+    assert first_call_control_index > provider_audio_tail
     daemon = {check["key"]: check for check in payload["checks"]}["call_control_daemon"]
     assert daemon["metadata"]["stdout_log_path"].endswith(".out.log")
     assert daemon["metadata"]["stderr_log_path"].endswith(".err.log")

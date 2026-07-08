@@ -360,7 +360,7 @@ def test_handbrake_reachability_probe_reports_separate_failure_modes(
 
     commands, offset = read_control_commands("daily", base_dir=tmp_path)
     write_daemon_heartbeat(
-        replace(_heartbeat(now), command_log_offset=offset),
+        replace(_heartbeat(now), command_log_offset=offset + 10_000),
         base_dir=tmp_path,
     )
     missing_audit = run_handbrake_reachability_probe(

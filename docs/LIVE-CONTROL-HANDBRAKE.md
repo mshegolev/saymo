@@ -10,11 +10,28 @@ want to stay in charge.
 saymo auto-preflight -p personal
 saymo hotkey-doctor -p personal
 saymo takeover-check -p personal
+saymo call-control-agent status -p personal
 ```
 
 Global macOS hotkeys do not require the terminal window to be focused after
 `saymo auto` has registered them. They do require a running Saymo process and
 macOS Accessibility permission for the terminal app that launched Saymo.
+
+For a terminal-independent handbrake, install and start the per-profile
+LaunchAgent from your macOS GUI session:
+
+```bash
+saymo call-control-agent install -p personal
+saymo call-control-agent start -p personal
+saymo call-control-agent status -p personal
+saymo call-control probe -p personal
+```
+
+The plist is written under `~/Library/LaunchAgents/` and the daemon logs are
+under `~/.saymo/live_control/<profile>/logs/`. Status output prints the plist,
+stdout, stderr, heartbeat, loaded/running state, and the next action. If
+hotkeys are blocked, grant Accessibility permission to the app that launchd
+uses to run Saymo, then restart the agent and rerun status.
 
 ## During The Call
 
@@ -39,6 +56,7 @@ You can also queue one action from scripts or third-party macOS launchers:
 ```bash
 saymo live-control-action -p personal --action hard-disable
 saymo live-control-action -p personal --action skip
+saymo call-control action -p personal --action status
 ```
 
 ## Primary Controls
@@ -68,5 +86,29 @@ saymo live-control-action -p personal --action skip
   until Auto Answer is explicitly re-enabled.
 - Explicit buttons/hotkeys are audited locally under
   `~/.saymo/live_control/<profile>/audit.jsonl`.
-- Native menu bar, background launch agent, and voice-command handbrake are not
-  part of v1.6.
+- The call-control daemon is control-plane only. It queues existing actions and
+  writes heartbeat evidence; it does not transcribe, synthesize, play audio,
+  switch microphones, change provider state, or own the realtime loop.
+
+## LaunchAgent Smoke Check
+
+Run this from the user's macOS GUI session before relying on the background
+handbrake:
+
+```bash
+saymo call-control-agent install -p personal
+saymo call-control-agent start -p personal
+saymo call-control-agent status -p personal
+saymo call-ready -p personal --provider glip
+launchctl print gui/$(id -u)/com.saymo.call-control.personal
+saymo call-control probe -p personal
+```
+
+Expected result:
+
+- The LaunchAgent is loaded from `~/Library/LaunchAgents/`.
+- `daemon-heartbeat.json` is fresh.
+- Hotkey registration is `ok`, or status explains the Accessibility blocker.
+- `saymo call-control probe -p personal` reports heartbeat, command, audit,
+  stdout, and stderr paths.
+- Logs are available in `~/.saymo/live_control/<profile>/logs/`.
