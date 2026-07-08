@@ -1,211 +1,513 @@
-# v1.8 Research: Call-ready Voice Clone Architecture
+# Architecture Research: Saymo v1.9 Call Launch Readiness
 
-## Summary
+**Domain:** Local macOS live-call assistant readiness and realtime control loop
+**Researched:** 2026-07-08
+**Confidence:** HIGH for existing integration points, MEDIUM for daemon/LaunchAgent details until implemented on a live macOS session
 
-v1.8 should integrate as a thin voice-readiness layer around the existing Saymo
-runtime, not as a second playback stack. The current architecture already has
-the right runtime seam: text is composed in `saymo/commands/core.py`, audio is
-synthesized through `saymo/tts/factory.py`, and playback routes through the
-existing BlackHole-safe paths, approved-draft paths, rehearsal checks, and
-safety-soak gate. The milestone should keep those paths intact and add
-inventory, profile, benchmark, selector, and voice-readiness contracts around
-them.
+## Executive Recommendation
 
-Recommended direction: build a read-only asset inventory first, then a voice
-profile/reference manifest, then benchmark/review artifacts, then a runtime
-selector that chooses an approved engine chain before calling the existing TTS
-factory. Rehearsal, `auto-preflight`, prepared response-cache generation,
-approved-draft playback, and safety-soak should consume the same voice
-readiness result. This keeps the live-call safety boundary centralized and
-prevents benchmark-only code from leaking into production playback.
+v1.9 should integrate as a readiness and control layer around the current
+Saymo runtime. Do not build a second realtime call stack. The existing
+architecture already has the right seams:
 
-The most important boundary is fail-closed live playback. Preview and benchmark
-commands may use experimental engines, but `prepare`, `speak`, `saymo auto`,
-response-cache preparation, and `answer-cockpit action --action speak` should
-only use a voice profile plus engine/fallback chain that has passed explicit
-approval gates. Non-cloned fallbacks such as Piper or macOS `say` are useful for
-diagnostics, but they should not silently reach the call unless the selected
-profile marks them as call-ready fallbacks.
+- `saymo.commands.core._auto()` owns the live capture -> STT -> trigger ->
+  response -> playback loop.
+- `saymo.commands.tests._collect_auto_preflight()` owns most readiness checks,
+  but it currently lives in a CLI module and should be extracted into a shared
+  analysis module.
+- `saymo.analysis.live_control` owns the file-backed command/state/audit bus
+  under `~/.saymo/live_control/<profile>/`.
+- `saymo.providers.*` owns Chrome-tab provider automation.
+- `saymo.analysis.cache_metadata`, `saymo.analysis.response_cache`, and
+  `saymo.tts.selector` already enforce voice/cache freshness for call-ready
+  audio.
+- `saymo.analysis.rehearsal`, `session_scorecard`, `remediation`, and
+  `safety_soak` already provide the reliability evidence loop.
 
-## Existing Components
+The roadmap should build v1.9 in this order: extract shared preflight
+contracts, add the one call-ready command, extend provider/launchd readiness,
+add the local control daemon as a command producer on the existing live-control
+bus, then make the realtime loop consume a strict launch gate and emit runtime
+events that scorecard/safety-soak can read.
 
-| Component | Current Responsibility | v1.8 Reuse |
-|-----------|------------------------|------------|
-| `saymo/config.py` | Dataclass-backed YAML config with user-local `~/.saymo/config.yaml` precedence. Current TTS fields include `engine`, `realtime_engine`, `qwen3`, `f5tts`, `rvc`, and `voice_training`. | Extend `TTSConfig`; do not add ad hoc global config readers. |
-| `saymo/tts/base.py` | Minimal `TTSEngine` protocol: `synthesize(text) -> bytes`, `stop()`. | Keep protocol small; implement fallback selection outside engines. |
-| `saymo/tts/factory.py` | Single dispatch point for configured TTS engine; deferred imports protect optional dependencies. | Keep as engine constructor. Add a selector/wrapper above it instead of making callers import engines directly. |
-| `saymo/tts/f5tts.py` | F5-TTS clone engine via isolated venv, checkpoint/vocab config, shared default voice sample, and optional reference text. | Reuse for F5 runtime and benchmark; pass profile-resolved `voice_sample`/`ref_text` instead of hardcoding defaults. |
-| `saymo/tts/qwen3_tts.py` | Qwen3 clone engine via MLX with model and optional LoRA adapter. | Reuse as a candidate runtime engine once reference/profile resolution and benchmark gates exist. |
-| `saymo/commands/core.py` | Main runtime paths: `prepare`, `speak`, `auto`, `_synthesize`, `_speak_text`, cache playback, live handbrake, approved call routing. | Modify only at narrow synthesis/preflight seams so playback, provider, and handbrake behavior remains unchanged. |
-| `saymo/commands/tests.py` | Diagnostic/reliability commands: `test-tts`, `prepare-responses`, `auto-preflight`, `rehearsal`, `session-scorecard`, `safety-soak`, provider latency, trigger review, answer cockpit. | Add voice-readiness checks here or in a new command module following the same Click patterns. |
-| `saymo/commands/voice_train.py` | Mutating voice-sample and training commands: record sample, prepare dataset, rebuild, train XTTS/Qwen3, A/B train eval. | Keep training/download work here and explicit. v1.8 profile/inventory commands should not call training implicitly. |
-| `saymo/analysis/rehearsal.py` | Sanitized rehearsal artifact contracts and writer. Transcript is sanitized in JSON output. | Add voice-readiness checks to rehearsal artifacts without storing raw reference audio or full private text. |
-| `saymo/analysis/safety_soak.py` | Aggregates sanitized scorecards, detects playback safety violations and drift, exits nonzero on failure. | Add voice-readiness and voice-cache invariants to the same gate. |
-| `scripts/voice_clone_benchmark.py` | Current standalone shootout harness for F5 and Qwen3 Base dry-run/real runs. Writes WAV clips, `manifest.json`, and `blind-review.md`. | Promote core contracts into a reusable analysis module; keep the script as a thin CLI wrapper. |
+## Recommended Architecture
 
-## Proposed Components
+### System Overview
 
-| New/Modified Module | Type | Responsibility | Notes |
-|---------------------|------|----------------|-------|
-| `saymo/analysis/voice_inventory.py` | New | Read-only scan of voice samples, sidecar transcripts, training datasets, checkpoints, LoRA adapters, F5 venv/checkpoints, RVC/XTTS artifacts, response caches, and benchmark runs. | This is inventory only. It classifies assets as usable/missing/stale/protected but never deletes, trains, downloads, or rewrites. |
-| `saymo/analysis/voice_profile.py` | New | Voice profile manifest contracts: profile id, reference audio path, reference text path/inline override, language, sample hash, approved engines, fallback approvals, benchmark links, created/updated timestamps. | Store under `~/.saymo/voice_profiles/<profile_id>/profile.json`. Prefer references plus hashes over copying expensive audio. |
-| `saymo/analysis/voice_benchmark.py` | New | Reusable benchmark run/read/write/review contracts extracted from `scripts/voice_clone_benchmark.py`. | Script should call this module. Add `review.json` and `approval.json` beside existing `manifest.json` and `blind-review.md`. |
-| `saymo/analysis/voice_readiness.py` | New | Compute a single `VoiceReadinessReport` for runtime gates: selected profile, engine chain, reference status, benchmark approval, cache fingerprint, live eligibility, warnings/blockers. | Consumed by preflight, rehearsal, response-cache preparation, approved playback, and safety-soak. |
-| `saymo/tts/selector.py` | New | Resolve purpose-specific engine chain and synthesize with approved fallbacks while still instantiating engines through `get_tts_engine`. | Purposes: `preview`, `prepare`, `response_cache`, `realtime`, `approved_live`. Live purposes fail closed when no approved call-ready engine exists. |
-| `saymo/commands/voice_clone.py` | New | User-facing commands: `voice-inventory`, `voice-profile`, `voice-benchmark`, `voice-preview`, `voice-ab`, `voice-readiness`. | Keep separate from `voice_train.py` so read-only/profile/approval operations are not mixed with training. Import this module from command registration. |
-| `saymo/config.py` | Modified | Add typed config for voice profiles, fallback chains, benchmark thresholds, and approval behavior. | Keep config dataclass style and user-local precedence. Update `config.example.yaml`. |
-| `saymo/tts/factory.py` | Modified | Accept optional resolved engine override or copied config from selector, but remain single-engine construction. | Do not embed fallback policy here; selector owns policy. |
-| `saymo/commands/core.py` | Modified | Route `_synthesize`, `_speak_text`, `prepare`, and auto live fallback synthesis through `tts.selector.synthesize_with_fallback`. | Keep `_play_cached_audio`, provider automation, handbrake checks, and cache playback unchanged. |
-| `saymo/commands/tests.py` | Modified | Add voice checks to `_collect_auto_preflight`, rehearsal, `session-scorecard`, `safety-soak`, and `prepare-responses`. | The same readiness report should power all gates. |
-| `saymo/analysis/response_cache.py` and cache helpers | Modified | Include voice profile/engine fingerprint in cache metadata or namespace. | Prevent stale clips from an old engine/profile being treated as call-ready. |
+```text
+User / LaunchAgent / CLI
+    |
+    | saymo call-ready, saymo auto, saymo call-control-daemon
+    v
+Command Layer
+    |-- saymo.commands.call_launch       NEW: call-ready / call-start / launchd commands
+    |-- saymo.commands.core              MOD: auto uses shared readiness + strict response policy
+    |-- saymo.commands.tests             MOD: diagnostics delegate to shared readiness modules
+    |
+    v
+Readiness and Control Layer
+    |-- saymo.analysis.preflight         NEW: extracted auto-preflight checks
+    |-- saymo.analysis.launch_readiness  NEW: one green launch report
+    |-- saymo.analysis.live_control      MOD: existing state/command/audit bus
+    |-- saymo.analysis.live_events       NEW: runtime decision/event JSONL
+    |-- saymo.analysis.remediation       MOD: launch/provider/cache/daemon hints
+    |
+    v
+Runtime Layer
+    |-- capture + LocalWhisper + TurnDetector + addressing
+    |-- ResponseCache + voice metadata
+    |-- TTS selector + cached playback
+    |-- provider.unmute_speak_mute()
+    |
+    v
+Local Artifacts
+    |-- Obsidian daily note
+    |-- ~/.saymo/audio_cache/
+    |-- ~/.saymo/audio_cache/responses/
+    |-- ~/.saymo/live_control/<profile>/{state,commands,audit,events}.jsonl
+    |-- ~/.saymo/rehearsals/
+    |-- scorecard / safety-soak JSON
+    |-- ~/Library/LaunchAgents/<saymo label>.plist
+```
 
-## Data Flow
+## New vs Modified Components
 
-1. **Inventory:** `saymo voice-inventory` calls `voice_inventory.scan()` and prints a local report. It reads configured and conventional paths such as `~/.saymo/voice_samples`, `~/.saymo/training_dataset*`, `~/.saymo/models`, `~/F5TTS`, and `~/.saymo/voice_benchmarks`. It may write an optional report JSON, but it never mutates source assets.
+| Component | Status | Responsibility | Roadmap Notes |
+|-----------|--------|----------------|---------------|
+| `saymo/analysis/preflight.py` | New extraction | Own typed readiness checks currently implemented by `_collect_auto_preflight`. | Move `PreflightCheck` and collection logic out of `commands/tests.py`. CLI commands should render reports, not own readiness policy. |
+| `saymo/analysis/launch_readiness.py` | New | Compose one launch report from daily note, prepared standup audio, response cache, voice metadata, provider, BlackHole devices, hotkeys, daemon heartbeat, and profile tuning. | This is the central v1.9 contract. `call-ready`, `rehearsal`, `call-start`, and safety gates should consume the same result. |
+| `saymo/commands/call_launch.py` | New | User-facing commands: `call-ready`, `call-start`, `call-control-daemon`, `launch-agent install/status/start/stop` or equivalent names. | Keep as thin Click wrappers. Register from `saymo/commands/__init__.py`. Avoid adding more production flow into `commands/tests.py`. |
+| `saymo/obsidian/daily_notes.py` | Modified | Add `ensure_daily_note(config.obsidian, date)` package helper. | The existing script should delegate to this helper. Avoid a second YAML parser as the source of truth. |
+| `scripts/ensure_obsidian_daily_note.py` | Modified | Keep as standalone launchd/script entry point. | Use the package helper or remain a thin compatibility wrapper. |
+| `saymo/providers/base.py` | Modified | Extend `MeetingStatus` with readiness details that remediation can consume. | Keep provider interface small, but add structured fields for `detail`, `blockers`, `mic_switch_supported`, and `mic_is_correct` instead of parsing strings. |
+| `saymo/providers/_chrome_base.py` and provider modules | Modified | Report Chrome tab state and provider capabilities consistently. | Glip and MTS Link support mic switching; most providers currently return false. That should be an explicit capability, not an ambiguous failure. |
+| `saymo/analysis/live_control.py` | Modified | Keep command/state/audit primitives; add daemon heartbeat helpers if needed. | Do not replace the existing file-backed bus. The daemon should write commands and read state through this module. |
+| `saymo/analysis/live_events.py` | New | Append sanitized runtime events for launch start/end, preflight summary, cache hit/miss, fallback blocked, playback started/finished, and provider failures. | Keep separate from `audit.jsonl`, which is currently action-oriented and validates action names. |
+| `saymo/daemon/call_control.py` or `saymo/call_control_daemon.py` | New | Foreground daemon process run by LaunchAgent. Registers global hotkeys, appends live-control commands, publishes heartbeat/status. | It must not capture call audio, synthesize speech, or execute playback. `auto` remains the only realtime executor. |
+| `saymo/platform/launchd.py` | New | Generate, validate, bootstrap, kickstart, stop, and inspect LaunchAgent plist. | Use launchd, not cron. Keep plist generation deterministic and testable with command runner injection. |
+| `saymo/commands/core.py` | Modified | `_auto()` calls shared launch gate; response decision can block instead of falling back; runtime emits live events. | Keep capture/STT/provider/playback flow intact. No broad rewrite. |
+| `saymo/commands/__init__.py` | Modified | Register new command module. | Small import-only change. |
+| `saymo/commands/tests.py` | Modified | `auto-preflight`, `rehearsal`, provider diagnostics delegate to extracted modules. | Do not remove existing commands; keep backwards-compatible CLI. |
+| `saymo/config.py` | Modified | Add minimal launch/control/realtime policy fields. | Prefer `LiveConfig` additions and per-profile `meeting.live` overrides before adding many new config trees. |
+| `saymo/analysis/rehearsal.py` | Modified | Include launch readiness and realtime strictness checks in artifacts. | Keep transcript sanitization behavior. |
+| `saymo/analysis/session_scorecard.py` | Modified | Add launch/realtime/cache metrics from live events. | Preserve current sanitized JSON contract; add optional fields with defaults. |
+| `saymo/analysis/safety_soak.py` | Modified | Fail on launch readiness blockers, stale voice/cache metadata, unsafe fallback, and cache miss policies when `would_speak` is true. | Existing voice readiness violations already cover part of this. Extend, do not replace. |
+| `saymo/analysis/remediation.py` | Modified | Add hint families for daily note, launchd daemon, provider tab/mic, response cache completeness, permissions. | Reuse the current `RemediationHint` renderer. |
 
-2. **Profile/reference setup:** `saymo voice-profile create/set-reference` creates or updates a profile manifest that points to an existing reference WAV and transcript sidecar or configured reference text. The command records duration, sample rate, file size, and SHA-256 so later gates can detect drift. It does not copy, trim, or train unless a separate explicit recording/training command is run.
+## Component Boundaries
 
-3. **Benchmark shootout:** `saymo voice-benchmark run --profile <id> --engine <engine>` resolves the profile reference, then uses `voice_benchmark` to generate clips through candidate engines. The existing script remains usable but delegates to the same module. Each run writes:
-   - `manifest.json`: engine, profile id, reference hash, clip paths, latency, engine settings, dependency status.
-   - `blind-review.md`: randomized listening order.
-   - `review.json`: user-entered scores for similarity, naturalness, pronunciation, artifacts, and call readiness.
-   - `approval.json`: explicit approval tying a profile id, engine key, fallback role, manifest hash, and reviewer decision together.
+| Boundary | Communication | Rule |
+|----------|---------------|------|
+| CLI -> analysis | Dataclasses and return values | CLI renders output and exit codes. Readiness policy lives in `saymo.analysis.*`. |
+| Launch readiness -> preparation | Function calls into package helpers | `call-ready --prepare` may create daily note and run preparation. Dry checks should not mutate. |
+| Daemon -> live loop | `commands.jsonl` and `state.json` | Daemon queues commands; `_auto()` consumes commands and writes authoritative state. |
+| Runtime -> evidence | `events.jsonl` plus existing `audit.jsonl` | Runtime events capture automatic decisions. Audit remains for operator/control actions. |
+| Provider readiness -> remediation | Structured `MeetingStatus` fields | Avoid string matching for provider blockers where possible. |
+| Response cache -> realtime | `AutoResponseDecision` result | Strict launch mode blocks cache misses instead of silently playing generic standup audio. |
+| Voice selector/cache metadata -> launch gate | Existing metadata checks | Reuse `build_voice_cache_metadata` and `check_voice_cache_metadata`; do not invent a second voice-readiness mechanism. |
 
-4. **Selector configuration:** Once approved, `voice-profile approve` records the approved engine/fallback role in the profile manifest and optionally updates `config.yaml` to point at the active profile and chain. Runtime commands do not infer approval merely from a benchmark run existing.
+## Data Flows
 
-5. **Cache preparation:** `saymo prepare` and `saymo prepare-responses` synthesize through `tts.selector` for purpose `prepare`/`response_cache`. Cached audio gets a sidecar or namespace containing profile id, reference hash, engine key, fallback level, and selector fingerprint. `auto-preflight` fails or warns when cached audio does not match the active approved voice profile.
+### 1. Call-Ready Flow
 
-6. **Preview/A-B:** `saymo voice-preview` and `saymo voice-ab` synthesize to monitor/preview routes first. These commands may use experimental engines because they do not reach the call output unless the user explicitly asks for live playback and the readiness gate passes.
+```text
+saymo call-ready -p personal [--prepare]
+    |
+    v
+load_config()
+    |
+    v
+launch_readiness.collect(profile)
+    |-- ensure_daily_note()                 optional mutation
+    |-- prepared standup cache check        existing audio cache + metadata
+    |-- prepare / prepare-responses         optional mutation
+    |-- response cache completeness         ResponseCache + voice metadata
+    |-- voice selector readiness            live_call purpose
+    |-- audio devices                       capture/playback/BlackHole
+    |-- provider readiness                  provider.check_ready()
+    |-- hotkey readiness                    effective_hotkey_bindings()
+    |-- daemon/LaunchAgent status           heartbeat + launchctl status
+    v
+LaunchReadinessReport
+    |-- ready / not ready
+    |-- blocking checks
+    |-- warning checks
+    |-- exact rerun/remediation commands
+```
 
-7. **Runtime playback:** `speak`, `auto`, and `answer-cockpit action --action speak` continue using the existing playback and provider code. Their only v1.8 change is synthesis/eligibility: before audio generation or approved-draft playback, they ask `voice_readiness` whether the selected profile/engine/cache is call-ready. The handbrake, approval, timeout, and provider gates remain the final runtime boundary.
+This flow should be the single operator-facing source of truth before a call.
+`auto-preflight` can remain as a lower-level diagnostic, but roadmap phases
+should treat `call-ready` as the product workflow.
 
-8. **Rehearsal and soak:** `rehearsal` adds voice-readiness checks into `RehearsalCheck`. `session-scorecard` and `safety-soak` include voice profile, engine, cache fingerprint, benchmark approval, and fallback status as sanitized metrics. `safety-soak` fails on stale/unapproved engines or unexpected non-call-ready fallbacks.
+### 2. Realtime Start Flow
 
-## Config/Artifacts
+```text
+saymo call-start -p personal
+    |
+    v
+launch_readiness.collect(strict=True)
+    |
+    | if blockers -> print remediation, exit nonzero, do not start capture
+    v
+core._auto(config, model, profile, launch_report=...)
+    |
+    | capture -> STT -> trigger -> addressing
+    v
+resolve_auto_response_decision(strict_cache=True)
+    |-- response cache hit -> cached WAV
+    |-- cache miss -> block + event
+    |-- unsafe live fallback -> block + event
+    v
+provider.unmute_speak_mute(_play_cached_audio)
+    |
+    v
+live_events.append(...)
+```
 
-Recommended config additions in `saymo/config.py`:
+The existing `saymo auto` currently falls back to prepared standup audio on a
+question-shaped cache miss when live fallback is disabled. That is acceptable
+legacy behavior, but v1.9 call launch readiness should introduce strict mode
+for the call-start path: a cache miss or unapproved fallback becomes a blocked
+decision, not generic playback.
+
+### 3. Local Control Daemon Flow
+
+```text
+LaunchAgent
+    |
+    v
+saymo call-control-daemon -p personal
+    |-- registers global hotkeys
+    |-- writes heartbeat/status
+    |-- appends commands.jsonl entries
+    |-- reads state.json for status
+    v
+~/.saymo/live_control/personal/
+    |-- commands.jsonl      command queue
+    |-- state.json          authoritative state from auto
+    |-- audit.jsonl         operator action audit
+    |-- daemon.json         daemon heartbeat/capabilities
+    |-- events.jsonl        runtime launch/realtime events
+    |
+    v
+saymo auto / call-start
+    |-- reads commands after startup offset
+    |-- applies actions
+    |-- writes state and audit
+```
+
+Important boundary: the daemon is a control-plane process only. It must not
+attempt to speak, capture audio, transcribe, or own provider mute state. That
+keeps the live loop single-owner and prevents duplicate playback paths.
+
+### 4. Evidence Flow
+
+```text
+rehearsal / realtime run
+    |
+    | writes checks, live-control audit, live events
+    v
+session-scorecard
+    |-- launch readiness metrics
+    |-- cache hit/miss counts
+    |-- fallback blocked counts
+    |-- provider failures
+    |-- handbrake actions
+    v
+safety-soak
+    |-- fails on unsafe playback
+    |-- fails on strict cache miss with would_speak
+    |-- fails on stale/unapproved voice/cache metadata
+    |-- compares drift
+```
+
+The scorecard should stay sanitized. Store event types, timings, keys, and
+blocker names. Do not store raw private transcript windows beyond existing
+sanitized snippets.
+
+## Config Shape
+
+Keep config additions small and close to existing concepts:
 
 ```python
 @dataclass
-class VoiceProfileConfig:
-    active: str = "default"
-    profiles_dir: str = ""  # defaults to ~/.saymo/voice_profiles
-    require_call_ready_approval: bool = True
+class LiveConfig:
+    chunk_seconds: float = 4.0
+    overlap_seconds: float = 2.0
+    read_timeout_seconds: float = 3.0
+    trigger_cooldown_seconds: float = 45.0
+    silence_rms_threshold: float = 0.001
+    pre_speak_delay_seconds: float = 2.0
+    require_launch_readiness: bool = True
+    fail_on_cache_miss: bool = True
+    runtime_events: bool = True
 
 
 @dataclass
-class VoiceFallbackConfig:
-    prepare_chain: list[str] = field(default_factory=list)
-    response_cache_chain: list[str] = field(default_factory=list)
-    realtime_chain: list[str] = field(default_factory=list)
-    approved_live_chain: list[str] = field(default_factory=list)
-    preview_chain: list[str] = field(default_factory=list)
-    allow_non_clone_live_fallback: bool = False
-
-
-@dataclass
-class VoiceBenchmarkConfig:
-    out_root: str = ""  # defaults to ~/.saymo/voice_benchmarks
-    min_similarity: float = 4.0
-    min_naturalness: float = 4.0
-    max_realtime_latency_ms: int = 2500
+class CallControlConfig:
+    enabled: bool = True
+    heartbeat_timeout_seconds: float = 10.0
+    launch_agent_label: str = "com.saymo.call-control"
 ```
 
-Add these under `TTSConfig`:
+Add `call_control: CallControlConfig` to `SaymoConfig` only if daemon settings
+need global config. Per-profile differences should use the existing
+`MeetingProfile.live` override mechanism where possible.
+
+## Patterns to Follow
+
+### Pattern 1: Shared Check Contracts
+
+**What:** Use one dataclass for readiness checks across `call-ready`,
+`auto-preflight`, `rehearsal`, scorecard, and safety-soak.
+
+**Why:** Current preflight checks are useful but trapped in
+`saymo.commands.tests`. Moving them to `saymo.analysis.preflight` avoids
+duplicated readiness policy.
+
+**Recommended shape:**
 
 ```python
-voice_profile: VoiceProfileConfig = field(default_factory=VoiceProfileConfig)
-fallbacks: VoiceFallbackConfig = field(default_factory=VoiceFallbackConfig)
-benchmark: VoiceBenchmarkConfig = field(default_factory=VoiceBenchmarkConfig)
+@dataclass(frozen=True)
+class ReadinessCheck:
+    name: str
+    ok: bool
+    detail: str
+    blocking: bool = True
+    category: str = "retest"
+    remediation: str = ""
+    rerun: str = ""
 ```
 
-Example user config shape:
+### Pattern 2: File-Backed Control Bus
 
-```yaml
-tts:
-  engine: f5tts_clone
-  realtime_engine: qwen3_clone
-  voice_profile:
-    active: default
-    require_call_ready_approval: true
-  fallbacks:
-    prepare_chain: [f5tts_clone, qwen3_clone]
-    response_cache_chain: [f5tts_clone]
-    approved_live_chain: [f5tts_clone]
-    preview_chain: [f5tts_clone, qwen3_clone, macos_say]
-    allow_non_clone_live_fallback: false
+**What:** Continue using append-only JSONL commands and JSON state files under
+`~/.saymo/live_control/<profile>/`.
+
+**Why:** It already lets terminal UI, scriptable CLI actions, hotkeys, and the
+live loop communicate without a socket server. A LaunchAgent daemon can join
+this bus with low blast radius.
+
+**Rules:**
+
+- `commands.jsonl`: command producers append; `_auto()` consumes from startup
+  offset.
+- `state.json`: `_auto()` remains authoritative writer.
+- `audit.jsonl`: operator/control actions only.
+- `events.jsonl`: automatic runtime decisions and launch health.
+- `daemon.json`: daemon heartbeat and capabilities.
+
+### Pattern 3: Strict Runtime Decision
+
+**What:** Change response resolution from "always return an audio path" to a
+decision that may block.
+
+**Why:** v1.9 requires the realtime meeting loop to fail closed on cache miss
+or unsafe fallback. The current `AutoResponseDecision` can be extended without
+rewriting the loop.
+
+**Recommended shape:**
+
+```python
+@dataclass(frozen=True)
+class AutoResponseDecision:
+    allowed: bool
+    audio_path: Path | None
+    source: str
+    reason: str
+    blocked_reason: str = ""
 ```
 
-Primary artifacts:
+Legacy `saymo auto` can keep fallback behavior by passing
+`strict_cache=False`; `call-start` should pass `strict_cache=True`.
 
-| Artifact | Owner | Contents | Mutation Rule |
-|----------|-------|----------|---------------|
-| `~/.saymo/voice_profiles/<id>/profile.json` | `voice_profile.py` | Reference paths, hashes, language, approved engines/fallbacks, approval links. | Created/updated only by explicit profile commands. |
-| `~/.saymo/voice_benchmarks/<timestamp>-<engine>/manifest.json` | `voice_benchmark.py` | Clip records, latency, settings, profile/reference hash, dependency status. | Written incrementally during benchmark. |
-| `~/.saymo/voice_benchmarks/<timestamp>-<engine>/review.json` | `voice_benchmark.py` | User scores and notes per clip. | Written by review command. |
-| `~/.saymo/voice_benchmarks/<timestamp>-<engine>/approval.json` | `voice_benchmark.py` / `voice_profile.py` | Explicit call-ready approval or rejection. | Written only by approval command. |
-| `~/.saymo/audio_cache/.../*.voice.json` | response/prepared cache | Profile id, engine, fallback level, reference hash, selector fingerprint. | Written with generated audio; checked before live use. |
-| Rehearsal/scorecard/soak JSON | existing analysis modules | Sanitized voice readiness summary and blockers. | No raw reference transcript or audio. |
+### Pattern 4: LaunchAgent as Process Manager Only
 
-## Safety Boundaries
+**What:** LaunchAgent starts and restarts the control daemon, not the realtime
+meeting loop.
 
-| Boundary | Allowed | Blocked by Default |
-|----------|---------|--------------------|
-| Inventory | Read paths, hash files, classify missing/stale/protected assets, emit report. | Delete, move, deduplicate, train, download, or rewrite assets. |
-| Profile | Reference existing voice samples/datasets, store hashes, point to transcript sidecars, mark approvals. | Use call recordings as training data, copy/trim audio implicitly, overwrite training datasets. |
-| Benchmark | Generate new benchmark clips, write manifests/review/approval files, run dry-run gates. | Install/download heavy models without explicit command, mutate runtime config during a benchmark, hide failed clips. |
-| Runtime Selector | Choose approved engine chain per purpose, call `get_tts_engine`, record fallback use, fail closed for live purposes. | Silently fall back to macOS/Piper in a live call, bypass the approved-draft gate, instantiate engines directly in commands. |
-| Response Cache | Cache audio with profile/engine fingerprint, detect stale profile or engine drift. | Reuse old cache audio after profile/reference/engine changes without warning/failure. |
-| Rehearsal | Show voice readiness as pass/warn/fail beside capture, trigger, hotkey, and playback gate checks. | Treat a successful trigger dry run as call-ready when the voice engine/profile is unapproved. |
-| Safety Soak | Fail on unapproved/stale voice profile, stale cache, unexpected fallback, unsafe playback, or benchmark drift. | Store raw private transcript/reference text or perform destructive cleanup. |
+**Why:** The user should choose when call capture starts. The always-on piece
+is the handbrake/control plane, not transcription or audio playback.
 
-The runtime should treat voice approval like existing answer approval: benchmark
-generation proves that audio can be produced, but only a user approval artifact
-allows it into the live-call route. If `require_call_ready_approval` is true and
-no approved engine exists, live commands should produce a clear blocker and
-suggest `voice-preview`/`voice-benchmark review`, not synthesize with a surprise
-fallback.
+**Implementation boundary:**
 
-## Suggested Build Order
+- LaunchAgent command: `saymo call-control-daemon -p <profile>`.
+- Status command checks `launchctl`, plist existence, process liveness, and
+  `daemon.json` heartbeat.
+- No cron. No background capture. No hidden auto-answer.
 
-1. **Read-only inventory contracts and CLI**
-   - Add `voice_inventory.py` and `saymo voice-inventory`.
-   - Cover F5, Qwen, XTTS, RVC, voice samples, datasets, benchmark runs, and caches.
-   - Tests should create temp fake assets and prove no mutation happens.
+## Anti-Patterns to Avoid
 
-2. **Voice profile/reference manifests**
-   - Add `voice_profile.py`, config dataclasses, and `voice-profile status/create/set-reference`.
-   - Resolve shared reference audio/text for F5 and Qwen without changing runtime playback yet.
-   - Validate sidecar transcript handling and SHA drift detection.
+### Anti-Pattern 1: A Parallel Realtime Loop
 
-3. **Benchmark contracts around the existing harness**
-   - Extract manifest/review helpers from `scripts/voice_clone_benchmark.py` into `voice_benchmark.py`.
-   - Keep script behavior compatible, add profile id/reference hash, and add review/approval artifacts.
-   - Keep Qwen real execution gated until the known adapter risks are fixed.
+**What goes wrong:** New launch command implements its own capture, STT,
+provider playback, or hotkey state.
 
-4. **Selector and fallback chain**
-   - Add `saymo/tts/selector.py` with `resolve_engine_chain` and `synthesize_with_fallback`.
-   - Modify `_synthesize`, `_prepare_responses`, `_play_approved_draft_text`, and `test-tts` to use it where appropriate.
-   - Keep `factory.py` as single-engine construction.
+**Consequence:** Trigger decisions, handbrake semantics, cache policy, and
+scorecard evidence diverge.
 
-5. **Cache fingerprinting**
-   - Add sidecar metadata or namespace paths for prepared standup audio and response-cache entries.
-   - Update preflight to warn/fail on stale profile, stale reference hash, or fallback-generated cache.
+**Instead:** Make `call-start` run the shared readiness gate and then invoke
+the existing `_auto()` executor with stricter policy.
 
-6. **Preview/A-B approval commands**
-   - Add `voice-preview`, `voice-ab`, `voice-benchmark review`, and `voice-profile approve`.
-   - Default output to monitor/preview; live routing requires readiness pass.
+### Anti-Pattern 2: Daemon Executes Playback
 
-7. **Reliability integration**
-   - Add voice-readiness checks to `_collect_auto_preflight`, `rehearsal`, `session-scorecard`, and `safety-soak`.
-   - Safety-soak should fail on unapproved live voice, stale cache, or unexpected fallback chain use.
+**What goes wrong:** The LaunchAgent process tries to stop/start playback,
+switch provider mics, or synthesize speech.
 
-8. **Documentation and regression tests**
-   - Update `config.example.yaml`, CLI help, and voice-clone docs.
-   - Add tests for inventory, profile drift, benchmark approval, selector fallback, stale cache blocking, and safety-soak failure cases.
+**Consequence:** Two processes can fight over provider mute state and the
+operator loses a clear safety boundary.
 
-Build in this order because each later phase depends on a stable artifact
-contract from the prior phase. Runtime selector work should not start before
-profiles and approvals exist; otherwise the milestone will recreate the current
-risk: engines can synthesize audio, but the live system cannot prove which voice
-is safe to put into a call.
+**Instead:** Daemon only appends commands and publishes heartbeat. `_auto()`
+applies commands and writes authoritative state.
+
+### Anti-Pattern 3: Reusing the Standalone Daily-Note Parser as Core Logic
+
+**What goes wrong:** `scripts/ensure_obsidian_daily_note.py` parses YAML
+separately from `load_config()`.
+
+**Consequence:** Call-ready and launchd behavior can diverge from normal CLI
+config.
+
+**Instead:** Put `ensure_daily_note()` in `saymo.obsidian.daily_notes` and make
+the script a wrapper.
+
+### Anti-Pattern 4: Treating Partial Response Cache as Ready
+
+**What goes wrong:** Preflight reports ready when only one response-cache
+variant exists.
+
+**Consequence:** Strict realtime Q&A can hit an unprepared intent and either
+fall back incorrectly or block during the call.
+
+**Instead:** For `call-ready --prepare` and `call-start`, require all configured
+variants or at least one valid variant per enabled intent, with the rule stated
+in the readiness report. Keep lower-level `auto-preflight` warnings
+nonblocking if backwards compatibility needs it.
+
+### Anti-Pattern 5: String-Only Provider Failures
+
+**What goes wrong:** Provider readiness is inferred from printed text such as
+"tab not found" or "mic switch failed".
+
+**Consequence:** Remediation becomes brittle and provider-specific.
+
+**Instead:** Extend `MeetingStatus` with structured details and provider
+capabilities.
+
+## Suggested Phase Order
+
+1. **Shared Readiness Contracts**
+   - Extract `PreflightCheck` and `_collect_auto_preflight` into
+     `saymo.analysis.preflight`.
+   - Add `ReadinessCheck`/`LaunchReadinessReport`.
+   - Add package-level `ensure_daily_note()` and make the script delegate.
+   - Tests: pure unit tests with temp config, fake caches, fake providers.
+
+2. **One Call-Ready Command**
+   - Add `saymo call-ready -p <profile> [--prepare]`.
+   - It checks/creates the daily note, optionally runs existing prepare and
+     response-cache build, validates voice/cache metadata, and prints only
+     actionable blockers.
+   - Tests: CLI with monkeypatched `_prepare`, `_prepare_responses`, devices,
+     provider, and temp Obsidian vault.
+
+3. **Provider and Remediation Readiness**
+   - Extend `MeetingStatus` and provider readiness details.
+   - Add remediation hints for Chrome tab, mic switch unsupported, BlackHole
+     routing, permissions, stale provider tab, and provider latency history.
+   - Tests: provider fake objects and remediation rendering.
+
+4. **Control Daemon and LaunchAgent**
+   - Add foreground `call-control-daemon` that writes heartbeat and appends
+     commands from global hotkeys.
+   - Add launchd helper commands to install/status/start/stop the LaunchAgent.
+   - Make `hotkey-doctor` understand daemon heartbeat so it no longer assumes
+     `saymo auto` must own hotkeys.
+   - Tests: no real `launchctl` in unit tests; inject runner and assert plist,
+     labels, commands, heartbeat timeout behavior.
+
+5. **Strict Realtime Start**
+   - Add `call-start` or make `auto --require-ready` default for the new path.
+   - `_auto()` accepts a launch report or calls shared readiness itself.
+   - Extend `AutoResponseDecision` to support blocked decisions.
+   - Strict mode blocks cache misses and unsafe live fallbacks, then emits a
+     runtime event.
+   - Tests: cache hit speaks; cache miss blocks; handbrake still blocks; stale
+     voice metadata blocks.
+
+6. **Runtime Evidence Integration**
+   - Add `live_events.py` and event writes inside launch start, cache
+     decisions, provider playback, fallback blocks, and shutdown.
+   - Extend rehearsal artifacts and scorecards with launch/cache/provider
+     evidence.
+   - Safety-soak fails on unsafe fallback, strict cache miss, stale metadata,
+     and launch blockers.
+   - Tests: scorecard and safety-soak fixtures with sanitized events.
+
+7. **Docs and Operator Runbook**
+   - Update `docs/`, `config.example.yaml`, command help, and LaunchAgent
+     troubleshooting notes.
+   - Document the difference between `call-ready`, `auto-preflight`,
+     `call-control-daemon`, and `call-start`.
+   - Manual evidence: one local dry run with `call-ready`, daemon status,
+     rehearsal, scorecard, and safety-soak.
+
+## Test Boundaries
+
+| Area | Unit Tests | CLI Tests | Manual/Integration Evidence |
+|------|------------|-----------|-----------------------------|
+| Daily note helper | Temp vault creates/preserves note | `call-ready --prepare` calls helper | Actual Obsidian vault path check |
+| Launch readiness | Fake devices/providers/cache metadata | Ready/not-ready output and exit code | Run before real standup |
+| Provider readiness | Fake `MeetingStatus` variants | Provider blocker remediation | Chrome tab and BlackHole routing |
+| Daemon bus | Temp live-control dir, command offsets, heartbeat | `call-control-daemon --once` or test mode | LaunchAgent bootstrap/kickstart/status |
+| Strict response policy | Cache hit/miss decisions | `call-start` blocks on cache miss | Rehearsal with known question |
+| Runtime events | JSONL event serialization/sanitization | Scorecard consumes event file | Post-call scorecard |
+| Safety soak | Violations from synthetic scorecards/events | Nonzero failure on unsafe fallback | Baseline drift check |
+
+Unit tests should not require Chrome, BlackHole, launchctl, real hotkey
+permissions, real TTS, or real Obsidian. Those belong to explicit manual
+evidence and provider-latency style probes.
+
+## Roadmap Integration Points
+
+| Existing Feature | v1.9 Integration |
+|------------------|------------------|
+| `prepare` | Called by `call-ready --prepare`; its prepared audio metadata remains the live-call readiness source. |
+| `prepare-responses` | Called by `call-ready --prepare`; strict mode requires response-cache coverage before call start. |
+| `auto-preflight` | Delegates to shared preflight. It remains a diagnostic subset of `call-ready`. |
+| `rehearsal` | Adds launch readiness and strict response checks to the existing artifact. |
+| `session-scorecard` | Reads live events to report launch health, cache hit/miss, provider failures, and fallback blocks. |
+| `safety-soak` | Adds v1.9 violations without changing existing trigger/handbrake/voice checks. |
+| `live-control` TUI | Continues to read/write the same bus. Daemon is an additional command producer, not a replacement. |
+| Provider abstractions | Keep factory and Chrome base. Extend status detail and capabilities only. |
+
+## Confidence Assessment
+
+| Area | Confidence | Notes |
+|------|------------|-------|
+| Existing runtime integration | HIGH | `_auto`, response cache, voice metadata, provider playback, and live-control bus were inspected directly. |
+| Readiness extraction | HIGH | Current `_collect_auto_preflight` is already close to the desired shared contract. |
+| Daily note integration | HIGH | Existing package reader and standalone script can be unified with low risk. |
+| Strict cache miss policy | HIGH | Current response decision function is a narrow seam for this change. |
+| Daemon and LaunchAgent | MEDIUM | Architecture boundary is clear, but implementation must be verified against macOS permissions and launchctl behavior. |
+| Scorecard/safety-soak extension | HIGH | Current sanitized dataclasses and tests already support additive metrics and violations. |
+
+## Sources
+
+- `.planning/PROJECT.md` - v1.9 milestone scope and constraints.
+- `saymo/config.py` - config dataclasses, live tuning, meetings, safety, voice selector, response cache.
+- `saymo/commands/core.py` - `auto`, `prepare`, `speak`, live-control commands, response resolution, cache metadata gate.
+- `saymo/commands/tests.py` - `prepare-responses`, `auto-preflight`, `rehearsal`, `session-scorecard`, `safety-soak`, `provider-latency`, `hotkey-doctor`.
+- `saymo/analysis/live_control.py` - action catalog, command/state/audit file bus, hotkey diagnostics.
+- `saymo/analysis/remediation.py` - reusable remediation hint renderer and existing hint families.
+- `saymo/analysis/rehearsal.py` - sanitized rehearsal artifact contract.
+- `saymo/analysis/session_scorecard.py` - sanitized scorecard metrics and live-control audit parsing.
+- `saymo/analysis/cache_metadata.py` and `saymo/analysis/response_cache.py` - voice/cache freshness and runtime response-cache contracts.
+- `saymo/analysis/safety_soak.py` - current safety invariants and voice-readiness violations.
+- `saymo/providers/*` - Chrome provider abstraction and provider-specific mic switching.
+- `saymo/obsidian/daily_notes.py` and `scripts/ensure_obsidian_daily_note.py` - daily note read/create integration points.
+- Existing tests under `tests/` for preflight, rehearsal, live-control, response cache, provider latency, scorecard, and safety-soak.
+
+---
+*Architecture research for: Saymo v1.9 Call Launch Readiness*
+*Researched: 2026-07-08*
