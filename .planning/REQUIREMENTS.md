@@ -85,7 +85,7 @@ Requirements for milestone v1.9 Call Launch Readiness.
 
 ### Launch and Realtime Evidence
 
-- [ ] **EVID-01**: User can inspect a sanitized launch-readiness artifact that
+- [x] **EVID-01**: User can inspect a sanitized launch-readiness artifact that
   records checks, blocker categories, cache counts, voice/cache fingerprints,
   provider status, daemon status, mode, and rerun commands without raw meeting
   content.
@@ -173,7 +173,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REAL-04 | Phase 39 | Complete |
 | REAL-05 | Phase 39 | Complete |
 | REAL-06 | Phase 39 | Complete |
-| EVID-01 | Phase 40 | Pending |
+| EVID-01 | Phase 40 | Complete |
 | EVID-02 | Phase 40 | Pending |
 | EVID-03 | Phase 40 | Pending |
 | EVID-04 | Phase 40 | Pending |

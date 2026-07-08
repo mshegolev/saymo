@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.9
 milestone_name: milestone
-current_plan: 5
-status: ready_for_verification
-stopped_at: Completed 39-05-PLAN.md
-last_updated: "2026-07-08T18:03:48.487Z"
+current_plan: 2
+status: in_progress
+stopped_at: Completed 40-01-PLAN.md
+last_updated: "2026-07-08T18:59:02.291Z"
 last_activity: 2026-07-08
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 18
-  completed_plans: 18
-  percent: 100
+  total_plans: 22
+  completed_plans: 19
+  percent: 86
 ---
 
 # Project State
@@ -23,27 +23,27 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.9 Call Launch Readiness, Phase 39 is complete and ready
-for verification; Phase 40 remains not started.
+**Current focus:** v1.9 Call Launch Readiness, Phase 40 Launch and Realtime
+Evidence Feedback is in progress; Plan 40-01 is complete and Plan 40-02 is next.
 
 ## Current Position
 
-Phase: 39 (5 of 5) - Fail-Closed Realtime Meeting Loop
-Current Plan: 5
-Total Plans in Phase: 5
-Plans: 5 of 5 completed.
-Status: Phase 39 is complete and ready for verification; Phase 40 remains not started.
+Phase: 40 (5 of 5) - Launch and Realtime Evidence Feedback
+Current Plan: 2
+Total Plans in Phase: 4
+Plans: 1 of 4 completed.
+Status: Phase 40 Plan 01 is complete; ready to execute Plan 40-02.
 Last activity: 2026-07-08
 
-Progress: [██████████] 100%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: 18
-- Plans completed: 18
-- Average duration: 6 min
-- Total execution time: 115 min
+- Total plans planned: 22
+- Plans completed: 19
+- Average duration: 7 min
+- Total execution time: 127 min
 
 **Historical Velocity:**
 - v1.8 completed 22 plans across 5 phases.
@@ -72,6 +72,7 @@ Progress: [██████████] 100%
 | 39-03 | 5 min | 2 | 5 |
 | 39-04 | 4 min | 2 | 5 |
 | 39-05 | 6 min | 2 | 8 |
+| 40-01 | 12 min | 2 | 5 |
 
 **By Phase:**
 
@@ -81,7 +82,7 @@ Progress: [██████████] 100%
 | 37. Provider and Audio Remediation | Complete | 4/4 |
 | 38. Local Call-Control Daemon and LaunchAgent | Complete | 5/5 |
 | 39. Fail-Closed Realtime Meeting Loop | Complete | 5/5 |
-| 40. Launch and Realtime Evidence Feedback | Not started | 0/4 |
+| 40. Launch and Realtime Evidence Feedback | In Progress | 1/4 |
 
 ## Accumulated Context
 
@@ -156,10 +157,13 @@ Recent decisions affecting current work:
 - [Phase 39]: Plan 39-05: Decision conversion maps speak, block, and skip to spoke, blocked, and skipped event outcomes.
 - [Phase 39]: Plan 39-05: _auto event appends are best-effort and cannot crash the live loop.
 - [Phase 39]: Plan 39-05: Phase 39 writes minimal realtime JSONL evidence without Phase 40 reporting imports or aggregation.
+- [Phase 40]: Plan 40-01: Launch evidence is a read-only artifact consumer and does not call live provider, audio, launchd, probe, preparation, synthesis, playback, recording, or config mutation helpers.
+- [Phase 40]: Plan 40-01: call-ready --output writes enriched root-level JSON while call-ready --json continues printing the legacy report.to_dict payload without artifact_path or schema metadata.
+- [Phase 40]: Plan 40-01: Legacy launch-readiness JSON loads with schema_version=legacy and derives normalized summaries from sanitized check rows.
 
 ### Pending Todos
 
-Run Phase 39 verification or plan Phase 40 Launch and Realtime Evidence Feedback.
+Execute Phase 40 Plan 02.
 
 ### Blockers/Concerns
 
@@ -172,6 +176,6 @@ Run Phase 39 verification or plan Phase 40 Launch and Realtime Evidence Feedback
 
 ## Session Continuity
 
-Last session: 2026-07-08T18:03:48.484Z
-Stopped at: Completed 39-05-PLAN.md
+Last session: 2026-07-08T18:59:02.288Z
+Stopped at: Completed 40-01-PLAN.md
 Resume file: None
