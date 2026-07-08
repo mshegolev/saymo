@@ -2,10 +2,11 @@
 
 ## Overview
 
-Milestone v1.8 focuses on Call-ready Voice Clone: making Saymo's cloned voice
-safe and reproducible for the real live-call path through local asset
-inventory, protected voice profiles, comparable benchmark evidence, explicit
-engine/fallback selection, and preview/A-B/safety-soak gates.
+Milestone v1.9 focuses on Call Launch Readiness: making the pre-call path and
+realtime loop operationally reliable through one call-ready gate, provider and
+audio remediation, a terminal-independent local control daemon, fail-closed
+realtime behavior, and sanitized evidence that feeds rehearsal, scorecard, and
+safety-soak.
 
 ## Completed Milestones
 
@@ -35,197 +36,217 @@ engine/fallback selection, and preview/A-B/safety-soak gates.
 
 ## Active Milestone
 
-No active milestone. Start the next milestone with `$gsd-new-milestone`.
+- **v1.9 Call Launch Readiness** - Phases 36-40 planned.
 
 ## Phases
 
 **Phase Numbering:**
-- Integer phases (31, 32, 33, 34, 35): Planned milestone work
-- Decimal phases (32.1, 32.2): Urgent insertions if needed
+- Integer phases (36, 37, 38, 39, 40): Planned milestone work
+- Decimal phases (38.1, 38.2): Urgent insertions if needed
 
-- [x] **Phase 31: Voice Asset Inventory and Profile Setup** - Add read-only
-  inventory and protected voice profile/reference manifests.
-- [x] **Phase 32: Benchmark Scoring and F5 Baseline** - Turn the existing
-  shootout harness into scored, comparable F5 baseline evidence.
-- [x] **Phase 33: Candidate Shootout Gates** - Gate Qwen3 Base and later
-  challengers behind dry-run, transcript, score-report, and install boundaries.
-- [x] **Phase 34: Call-ready Engine Selector and Fallback Chain** - Wire
-  approved engine/fallback resolution into prepare/live synthesis without
-  bypassing existing safety paths.
-- [x] **Phase 35: Preview, A/B Approval, and Safety Soak** - Enforce local
-  preview, benchmark-backed approval, and voice-readiness safety gates before
-  real call use.
+- [ ] **Phase 36: Call-Ready Preflight and Cache Gate** - Create one
+  ready/not-ready launch gate for daily notes, prepared standup audio,
+  response-cache coverage, cloned-voice metadata, and actionable remediation.
+- [ ] **Phase 37: Provider and Audio Remediation** - Verify provider tab,
+  Chrome capability, BlackHole routing, microphone takeover, permissions, and
+  non-destructive remediation before realtime starts.
+- [ ] **Phase 38: Local Call-Control Daemon and LaunchAgent** - Keep hotkeys,
+  heartbeat, live-control status, and stop/takeover actions available outside
+  the terminal through a local daemon and per-profile LaunchAgent.
+- [ ] **Phase 39: Fail-Closed Realtime Meeting Loop** - Gate realtime startup
+  and automatic answers so cache misses, stale voice metadata, provider loss,
+  unsafe fallback, and handbrake state block playback.
+- [ ] **Phase 40: Launch and Realtime Evidence Feedback** - Record sanitized
+  launch and realtime evidence, then feed launch health and unsafe conditions
+  back into scorecards, troubleshooting, and safety-soak.
 
 ## Phase Details
 
-### Phase 31: Voice Asset Inventory and Profile Setup
-**Goal**: Let the user understand and protect local voice assets, then create
-an explicit voice profile that references existing samples/datasets without
-mutating them.
-**Depends on**: existing config loader, `train-status`, `test-voice-sample`,
-F5/Qwen docs, local `~/.saymo` asset layout
-**Requirements**: INV-01, INV-02, INV-03, INV-04, PROF-01, PROF-02, PROF-03,
-PROF-04
+### Phase 36: Call-Ready Preflight and Cache Gate
+**Goal**: User can run one call-ready flow that proves daily-note readiness,
+prepared standup audio, response-cache coverage, approved cloned voice
+metadata, and remediation before a call.
+**Depends on**: v1.8 voice profile/cache gates, daily note helper, prepare
+workflow, response cache, existing preflight/remediation patterns
+**Requirements**: LAUN-01, LAUN-02, LAUN-03, LAUN-04, LAUN-05, LAUN-06, LAUN-07
 **Success Criteria** (what must be TRUE):
-  1. User can run voice inventory and profile status commands that inspect
-     local voice assets without deletion, downloads, training, or metadata
-     rewrites.
-  2. Inventory reports active engines, model/checkpoint paths, voice samples,
-     transcript sidecars, datasets, caches, and benchmark runs with protected
-     asset classification.
-  3. User can create or update a voice profile in dry-run or explicit apply
-     mode, with reference hashes and transcript status.
-  4. Profile and inventory exports are sanitized and omit private transcript
-     text and secrets.
+  1. User can run one call-ready command for a profile and provider and see a
+     concise `ready` or `not ready` result.
+  2. User can have the launch flow create or verify today's Obsidian daily
+     note while separately blocking placeholder or empty standup content.
+  3. User can see whether prepared standup WAVs and response-cache variants
+     are current for the selected profile, voice, response library, and cloned
+     voice fingerprint.
+  4. User can read grouped `block`, `warn`, and `info` remediation with exact
+     actions and rerun commands for each failed launch check.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 31-01: Add voice inventory contracts and read-only scanner
-- [ ] 31-02: Add voice profile manifest model and atomic writer
-- [ ] 31-03: Add CLI commands for inventory, profile init/status, and reference checks
-- [ ] 31-04: Add docs and tests proving protected assets are not mutated
+- [ ] 36-01: Add shared launch-readiness contracts and `call-ready` command shell
+- [ ] 36-02: Integrate daily-note source and prepared standup audio checks
+- [ ] 36-03: Add response-cache coverage and cloned-voice metadata blockers
+- [ ] 36-04: Add grouped remediation output, artifacts, and launch-gate tests
 
-### Phase 32: Benchmark Scoring and F5 Baseline
-**Goal**: Produce comparable, scored F5 baseline evidence before evaluating or
-promoting any challenger engine.
-**Depends on**: Phase 31 profile/reference contracts,
-`scripts/voice_clone_benchmark.py`, docs/voice-clone-shootout.md
-**Requirements**: BEN-01, BEN-02, BEN-03, BEN-04, BEN-05
+### Phase 37: Provider and Audio Remediation
+**Goal**: User can verify provider, Chrome tab, BlackHole routing, microphone
+takeover, and macOS permission readiness without destructive provider or system
+audio actions.
+**Depends on**: Phase 36 launch-readiness contract, provider abstractions,
+Chrome automation helpers, audio routing/preflight checks, hotkey doctor
+permission checks
+**Requirements**: PROV-01, PROV-02, PROV-03, PROV-04, PROV-05
 **Success Criteria** (what must be TRUE):
-  1. F5 dry-run, smoke, and full benchmark runs use the same phrase ids,
-     reference metadata, manifest schema, and transcript-redaction rules.
-  2. Each benchmark run writes or updates WAV clips, `manifest.json`,
-     `blind-review.md`, `review.json`, and `score-report.md`.
-  3. User can enter blind-review scores and produce a report that marks the
-     run dry-run, partial, complete, rejected, or approved.
-  4. F5 baseline score evidence is required before challenger promotion gates
-     can pass.
+  1. User can see whether the configured provider and Chrome meeting tab are
+     present, identifiable, actionable, and safe to use before realtime mode.
+  2. User can verify BlackHole capture/playback routing and the real
+     microphone takeover route before joining or starting the live loop.
+  3. User can see provider capability limits, activation support, mic switching
+     support, mute recovery, and unsupported-provider blockers without parsing
+     raw errors.
+  4. User can run provider/audio readiness checks with targeted permission
+     remediation and no destructive Chrome, meeting, or system-route changes.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 32-01: Extract benchmark artifact contracts and preserve script compatibility
-- [ ] 32-02: Add review scoring and `score-report.md` generation
-- [ ] 32-03: Add F5 baseline gate and transcript-redaction tests
-- [ ] 32-04: Update shootout docs with baseline and scoring workflow
+- [ ] 37-01: Add provider and Chrome tab readiness checks to launch readiness
+- [ ] 37-02: Add BlackHole route and microphone takeover verification
+- [ ] 37-03: Add provider capability and macOS permission remediation output
+- [ ] 37-04: Prove provider/audio checks are non-destructive with tests and artifacts
 
-### Phase 33: Candidate Shootout Gates
-**Goal**: Evaluate Qwen3 Base and later candidates without accidental installs,
-downloads, runtime promotion, or training.
-**Depends on**: Phase 32 score reports, existing Qwen3 Base dry-run path,
-internal Nexus PyPI install convention
-**Requirements**: CAND-01, CAND-02, CAND-03, CAND-04, CAND-05
+### Phase 38: Local Call-Control Daemon and LaunchAgent
+**Goal**: User can keep the live-call handbrake reachable outside the terminal
+and prove daemon, hotkey, heartbeat, command, and audit health before realtime
+mode relies on it.
+**Depends on**: Phase 36 launch-readiness contract, Phase 37 permission checks,
+existing live-control command/state/audit files, global hotkey configuration,
+macOS LaunchAgent conventions
+**Requirements**: CTRL-01, CTRL-02, CTRL-03, CTRL-04, CTRL-05
 **Success Criteria** (what must be TRUE):
-  1. Qwen3 Base dry-run still produces benchmark-shaped artifacts without
-     importing `qwen_tts` or downloading model files.
-  2. Real Qwen3 Base benchmark fails fast without reference transcript and
-     records official Base-vs-runtime separation in artifacts and docs.
-  3. CosyVoice, GPT-SoVITS, and LoRA training remain blocked unless prior
-     score reports explicitly justify opening the next gate.
-  4. Approved package installs are documented as isolated-runtime commands,
-     preferring internal Nexus3 PyPI where applicable, without committed
-     package-index hardcoding.
-**Plans**: 4 plans
-
-Plans:
-- [x] 33-01: Harden Qwen3 Base dry-run and real-run prerequisite gates
-- [x] 33-02: Add candidate-gate checks against baseline and Qwen score reports
-- [x] 33-03: Document isolated runtime install flow with internal PyPI preference
-- [x] 33-04: Add tests/docs separating Qwen3 Base benchmark from `qwen3_clone`
-
-### Phase 34: Call-ready Engine Selector and Fallback Chain
-**Goal**: Let runtime synthesis use only approved voice profile engines and
-explicit fallbacks while preserving existing prepare, cache, handbrake, and
-provider safety behavior.
-**Depends on**: Phases 31-33, TTS factory, response cache, prepare/speak/auto
-paths
-**Requirements**: RUN-01, RUN-02, RUN-03, RUN-04, RUN-05
-**Success Criteria** (what must be TRUE):
-  1. User can configure purpose-specific approved engine/fallback chains for
-     preview, prepare, response cache, realtime, and approved live call.
-  2. Synthesis goes through one selector that constructs engines through the
-     existing factory and records selected/fallback metadata.
-  3. Prepared audio and response-cache entries carry voice profile, reference,
-     engine, fallback, and selector fingerprints.
-  4. Live-call paths fail closed on missing approval, stale cache, or
-     non-cloned fallback unless that fallback is explicitly approved.
+  1. User can install, start, stop, restart, and inspect a per-profile Saymo
+     call-control LaunchAgent from CLI commands.
+  2. User can run a foreground call-control daemon that registers configured
+     global hotkeys and publishes fresh heartbeat/status for the selected
+     profile.
+  3. User can see installed, loaded, running, stale, crash-looping, permission,
+     and outdated-plist status in one daemon readiness result.
+  4. User can queue existing live-control actions through daemon/status
+     surfaces with the same command semantics and audit trail as CLI/hotkeys.
+  5. User can prove handbrake reachability from heartbeat freshness, hotkey
+     registration, command write/consume, and latest applied action evidence.
 **Plans**: 5 plans
 
 Plans:
-- [x] 34-01: Add selector config and engine/fallback resolution contracts
-- [x] 34-02: Route prepare and response-cache synthesis through the selector
-- [x] 34-03: Route approved live synthesis through readiness and selector checks
-- [x] 34-04: Add cache voice-fingerprint metadata and stale-cache blockers
-- [x] 34-05: Add fallback audit metadata and non-cloned fallback safeguards
+- [ ] 38-01: Add foreground call-control daemon lifecycle and heartbeat model
+- [ ] 38-02: Add LaunchAgent install, start, stop, restart, and status commands
+- [ ] 38-03: Add daemon health diagnostics for stale heartbeat, crashes, permissions, and plist drift
+- [ ] 38-04: Route daemon/status actions through existing live-control command and audit semantics
+- [ ] 38-05: Add handbrake reachability probe, logs, docs, and tests
 
-### Phase 35: Preview, A/B Approval, and Safety Soak
-**Goal**: Prove that cloned voice output is previewed, approved, and covered by
-the same pre-call safety gates before it reaches a real call.
-**Depends on**: Phases 31-34, rehearsal, session-scorecard, safety-soak,
-answer cockpit approval gates
-**Requirements**: SAFE-01, SAFE-02, SAFE-03, SAFE-04, SAFE-05
+### Phase 39: Fail-Closed Realtime Meeting Loop
+**Goal**: User can start realtime mode only through the shared launch gate, and
+automatic speaking fails closed whenever cache, voice, provider, fallback, or
+handbrake state is unsafe.
+**Depends on**: Phases 36-38, existing `saymo auto` loop, response cache,
+voice selector metadata, provider runtime checks, live-control state
+**Requirements**: REAL-01, REAL-02, REAL-03, REAL-04, REAL-05, REAL-06
 **Success Criteria** (what must be TRUE):
-  1. User can preview cloned voice locally or to the monitor route without
-     sending unapproved audio to BlackHole/provider call output.
-  2. User can approve or reject a voice profile/engine by linking score
-     evidence and recording gate pass, rejection, or explicit override.
-  3. Real call output is blocked when profile approval, benchmark evidence,
-     reference fingerprint, cache fingerprint, or fallback consent is missing
-     or stale.
-  4. Auto-preflight, rehearsal, scorecard, and safety-soak report voice
-     readiness and fail on unapproved/stale/fallback hazards.
+  1. User can start realtime mode only after launch-readiness passes for the
+     selected profile, provider, cloned voice, cache, handbrake, trigger, and
+     audio route.
+  2. User can keep using the existing `saymo auto` workflow while any
+     realtime alias shares the same launch-readiness gate.
+  3. User can rely on automatic question handling to block cache misses, stale
+     voice metadata, unsafe fallback, provider loss, manual takeover,
+     hard-disable, and disabled auto-answer.
+  4. User can manually trigger allowed prepared standup playback without that
+     path becoming automatic cache-miss fallback.
+  5. User can inspect sanitized realtime decision reasons for spoke, skipped,
+     and blocked outcomes, while deterministic addressing and handbrake state
+     remain the safety boundary.
 **Plans**: 5 plans
 
 Plans:
-- [x] 35-01: Add preview command/path and monitor-route audit metadata
-- [x] 35-02: Add A/B approval artifacts and profile approval commands
-- [x] 35-03: Block real call output on missing or stale voice approval
-- [x] 35-04: Extend preflight, rehearsal, and scorecard with voice readiness
-- [x] 35-05: Extend safety-soak with voice readiness failure invariants
+- [ ] 39-01: Wrap `saymo auto` and any realtime alias in the shared launch gate
+- [ ] 39-02: Enforce fail-closed response-cache and cloned-voice metadata policy
+- [ ] 39-03: Block playback on provider loss, takeover, hard-disable, and disabled auto-answer
+- [ ] 39-04: Preserve explicit manual standup playback without automatic cache-miss fallback
+- [ ] 39-05: Emit sanitized realtime decision events and add regression tests
+
+### Phase 40: Launch and Realtime Evidence Feedback
+**Goal**: User can inspect sanitized launch and realtime evidence, see health
+signals in scorecards, and run safety-soak gates that fail on v1.9 launch or
+runtime safety regressions.
+**Depends on**: Phases 36-39, existing launch/rehearsal artifacts,
+session-scorecard, safety-soak, remediation hints
+**Requirements**: EVID-01, EVID-02, EVID-03, EVID-04, EVID-05
+**Success Criteria** (what must be TRUE):
+  1. User can inspect sanitized launch-readiness artifacts containing checks,
+     blocker categories, cache counts, voice/cache fingerprints, provider
+     status, daemon status, mode, and rerun commands.
+  2. User can inspect sanitized realtime events for launch start/end, cache
+     hits/misses, fallback blocks, provider failures, playback attempts,
+     handbrake actions, and stop reasons.
+  3. User can see launch health, daemon/control availability, cache hit/miss
+     counts, unsafe fallback blocks, and provider drift in rehearsal or
+     session scorecards.
+  4. User can run safety-soak against v1.9 evidence and get a failed gate for
+     unsafe playback, stale cache, missing daemon readiness, provider blockers,
+     or unapproved fallback conditions.
+  5. User can troubleshoot failures from sanitized evidence that includes
+     log/artifact paths and next rerun commands.
+**Plans**: 4 plans
+
+Plans:
+- [ ] 40-01: Define and write sanitized launch-readiness artifact schema
+- [ ] 40-02: Feed realtime and launch-health evidence into rehearsal/session scorecards
+- [ ] 40-03: Extend safety-soak with v1.9 readiness, daemon, cache, and fallback gates
+- [ ] 40-04: Add troubleshooting output, rerun commands, docs, and evidence tests
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 31 -> 32 -> 33 -> 34 -> 35
+Phases execute in numeric order: 36 -> 37 -> 38 -> 39 -> 40
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 31. Voice Asset Inventory and Profile Setup | v1.8 | 4/4 | Complete | 2026-07-07 |
-| 32. Benchmark Scoring and F5 Baseline | v1.8 | 4/4 | Complete | 2026-07-07 |
-| 33. Candidate Shootout Gates | v1.8 | 4/4 | Complete | 2026-07-07 |
-| 34. Call-ready Engine Selector and Fallback Chain | v1.8 | 5/5 | Complete | 2026-07-07 |
-| 35. Preview, A/B Approval, and Safety Soak | v1.8 | 5/5 | Complete | 2026-07-07 |
+| 36. Call-Ready Preflight and Cache Gate | v1.9 | 0/4 | Not started | - |
+| 37. Provider and Audio Remediation | v1.9 | 0/4 | Not started | - |
+| 38. Local Call-Control Daemon and LaunchAgent | v1.9 | 0/5 | Not started | - |
+| 39. Fail-Closed Realtime Meeting Loop | v1.9 | 0/5 | Not started | - |
+| 40. Launch and Realtime Evidence Feedback | v1.9 | 0/4 | Not started | - |
 
 ## Requirement Coverage
 
 | Requirement | Phase |
 |-------------|-------|
-| INV-01 | Phase 31 |
-| INV-02 | Phase 31 |
-| INV-03 | Phase 31 |
-| INV-04 | Phase 31 |
-| PROF-01 | Phase 31 |
-| PROF-02 | Phase 31 |
-| PROF-03 | Phase 31 |
-| PROF-04 | Phase 31 |
-| BEN-01 | Phase 32 |
-| BEN-02 | Phase 32 |
-| BEN-03 | Phase 32 |
-| BEN-04 | Phase 32 |
-| BEN-05 | Phase 32 |
-| CAND-01 | Phase 33 |
-| CAND-02 | Phase 33 |
-| CAND-03 | Phase 33 |
-| CAND-04 | Phase 33 |
-| CAND-05 | Phase 33 |
-| RUN-01 | Phase 34 |
-| RUN-02 | Phase 34 |
-| RUN-03 | Phase 34 |
-| RUN-04 | Phase 34 |
-| RUN-05 | Phase 34 |
-| SAFE-01 | Phase 35 |
-| SAFE-02 | Phase 35 |
-| SAFE-03 | Phase 35 |
-| SAFE-04 | Phase 35 |
-| SAFE-05 | Phase 35 |
+| LAUN-01 | Phase 36 |
+| LAUN-02 | Phase 36 |
+| LAUN-03 | Phase 36 |
+| LAUN-04 | Phase 36 |
+| LAUN-05 | Phase 36 |
+| LAUN-06 | Phase 36 |
+| LAUN-07 | Phase 36 |
+| PROV-01 | Phase 37 |
+| PROV-02 | Phase 37 |
+| PROV-03 | Phase 37 |
+| PROV-04 | Phase 37 |
+| PROV-05 | Phase 37 |
+| CTRL-01 | Phase 38 |
+| CTRL-02 | Phase 38 |
+| CTRL-03 | Phase 38 |
+| CTRL-04 | Phase 38 |
+| CTRL-05 | Phase 38 |
+| REAL-01 | Phase 39 |
+| REAL-02 | Phase 39 |
+| REAL-03 | Phase 39 |
+| REAL-04 | Phase 39 |
+| REAL-05 | Phase 39 |
+| REAL-06 | Phase 39 |
+| EVID-01 | Phase 40 |
+| EVID-02 | Phase 40 |
+| EVID-03 | Phase 40 |
+| EVID-04 | Phase 40 |
+| EVID-05 | Phase 40 |
 
-**Coverage:** 28/28 requirements mapped.
+**Coverage:** 28/28 v1.9 requirements mapped. No orphaned requirements. No
+duplicate requirement assignments.

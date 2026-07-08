@@ -150,40 +150,40 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LAUN-01 | Pending roadmap | Pending |
-| LAUN-02 | Pending roadmap | Pending |
-| LAUN-03 | Pending roadmap | Pending |
-| LAUN-04 | Pending roadmap | Pending |
-| LAUN-05 | Pending roadmap | Pending |
-| LAUN-06 | Pending roadmap | Pending |
-| LAUN-07 | Pending roadmap | Pending |
-| PROV-01 | Pending roadmap | Pending |
-| PROV-02 | Pending roadmap | Pending |
-| PROV-03 | Pending roadmap | Pending |
-| PROV-04 | Pending roadmap | Pending |
-| PROV-05 | Pending roadmap | Pending |
-| CTRL-01 | Pending roadmap | Pending |
-| CTRL-02 | Pending roadmap | Pending |
-| CTRL-03 | Pending roadmap | Pending |
-| CTRL-04 | Pending roadmap | Pending |
-| CTRL-05 | Pending roadmap | Pending |
-| REAL-01 | Pending roadmap | Pending |
-| REAL-02 | Pending roadmap | Pending |
-| REAL-03 | Pending roadmap | Pending |
-| REAL-04 | Pending roadmap | Pending |
-| REAL-05 | Pending roadmap | Pending |
-| REAL-06 | Pending roadmap | Pending |
-| EVID-01 | Pending roadmap | Pending |
-| EVID-02 | Pending roadmap | Pending |
-| EVID-03 | Pending roadmap | Pending |
-| EVID-04 | Pending roadmap | Pending |
-| EVID-05 | Pending roadmap | Pending |
+| LAUN-01 | Phase 36 | Pending |
+| LAUN-02 | Phase 36 | Pending |
+| LAUN-03 | Phase 36 | Pending |
+| LAUN-04 | Phase 36 | Pending |
+| LAUN-05 | Phase 36 | Pending |
+| LAUN-06 | Phase 36 | Pending |
+| LAUN-07 | Phase 36 | Pending |
+| PROV-01 | Phase 37 | Pending |
+| PROV-02 | Phase 37 | Pending |
+| PROV-03 | Phase 37 | Pending |
+| PROV-04 | Phase 37 | Pending |
+| PROV-05 | Phase 37 | Pending |
+| CTRL-01 | Phase 38 | Pending |
+| CTRL-02 | Phase 38 | Pending |
+| CTRL-03 | Phase 38 | Pending |
+| CTRL-04 | Phase 38 | Pending |
+| CTRL-05 | Phase 38 | Pending |
+| REAL-01 | Phase 39 | Pending |
+| REAL-02 | Phase 39 | Pending |
+| REAL-03 | Phase 39 | Pending |
+| REAL-04 | Phase 39 | Pending |
+| REAL-05 | Phase 39 | Pending |
+| REAL-06 | Phase 39 | Pending |
+| EVID-01 | Phase 40 | Pending |
+| EVID-02 | Phase 40 | Pending |
+| EVID-03 | Phase 40 | Pending |
+| EVID-04 | Phase 40 | Pending |
+| EVID-05 | Phase 40 | Pending |
 
 **Coverage:**
 - v1.9 requirements: 28 total
-- Mapped to phases: 0
-- Unmapped: 28
+- Mapped to phases: 28
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-07-08*
-*Last updated: 2026-07-08 after defining v1.9 requirements*
+*Last updated: 2026-07-08 after creating v1.9 roadmap*
