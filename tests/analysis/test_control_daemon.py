@@ -51,10 +51,21 @@ def _config_with_only(*actions: str) -> SaymoConfig:
         "status": "hotkey_status",
         "hard_disable": "hotkey_hard_disable",
     }
+    hotkeys_by_action = {
+        "toggle_auto_answer": "<cmd>+<shift>+m",
+        "speak": "<cmd>+<shift>+s",
+        "stop": "<cmd>+<shift>+x",
+        "takeover": "<cmd>+<shift>+u",
+        "approved_speak": "<cmd>+<shift>+a",
+        "skip_current": "<cmd>+<shift>+k",
+        "capture_marker": "<cmd>+<shift>+c",
+        "status": "<cmd>+<shift>+i",
+        "hard_disable": "<cmd>+<shift>+h",
+    }
     for field in fields_by_action.values():
         setattr(config.safety, field, "")
     for action in actions:
-        setattr(config.safety, fields_by_action[action], f"<cmd>+<shift>+{action[:1]}")
+        setattr(config.safety, fields_by_action[action], hotkeys_by_action[action])
     return config
 
 
