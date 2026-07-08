@@ -450,6 +450,85 @@ def test_permission_blockers_are_actionable(tmp_path, monkeypatch):
     _assert_provider_mutators_not_called(provider)
 
 
+def test_collect_provider_audio_checks_detects_default_permission_blockers(
+    tmp_path,
+    monkeypatch,
+):
+    from saymo.analysis.live_control import HotkeyDoctorReport
+    from saymo.analysis.provider_audio_readiness import collect_provider_audio_checks
+    import saymo.analysis.live_control as live_control
+    import saymo.audio.devices as audio_devices
+    import saymo.providers.factory as provider_factory
+    import sounddevice as sd
+
+    config = _config(tmp_path)
+    config.audio.recording_device = "MacBook Pro Microphone"
+    provider = _provider()
+    provider.check_ready.side_effect = RuntimeError(
+        "osascript: Not authorized to send Apple events to Google Chrome"
+    )
+    devices = {
+        ("BlackHole 16ch", "input"): _device(1, "BlackHole 16ch"),
+        ("BlackHole 2ch", "output"): _device(2, "BlackHole 2ch"),
+        ("MacBook Pro Microphone", "input"): _device(3, "MacBook Pro Microphone"),
+    }
+    input_checks = []
+    output_checks = []
+
+    def fake_find_device(name, kind="input"):
+        return devices.get((name, kind))
+
+    def fake_check_input_settings(*, device=None, samplerate=None):
+        input_checks.append((device, samplerate))
+        if device == 3:
+            raise RuntimeError("Input device unavailable: permission denied")
+
+    def fake_check_output_settings(*, device=None, samplerate=None):
+        output_checks.append((device, samplerate))
+        if device == 2:
+            raise RuntimeError("Output route unavailable: permission denied")
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("permission probes must not record or play audio")
+
+    monkeypatch.setattr(provider_factory, "get_provider", lambda name: provider)
+    monkeypatch.setattr(audio_devices, "find_device", fake_find_device)
+    monkeypatch.setattr(
+        live_control,
+        "build_hotkey_doctor_report",
+        lambda config, profile, *, probe=True: HotkeyDoctorReport(
+            profile=profile,
+            bindings={},
+            process_running=False,
+            registration_status="skipped",
+            registration_detail="",
+        ),
+    )
+    monkeypatch.setattr(sd, "check_input_settings", fake_check_input_settings)
+    monkeypatch.setattr(sd, "check_output_settings", fake_check_output_settings)
+    monkeypatch.setattr(sd, "rec", forbidden)
+
+    checks = collect_provider_audio_checks(
+        config,
+        profile="standup",
+        provider_name="glip",
+    )
+
+    by_key = {check.key: check for check in checks}
+    assert by_key["provider_meeting_tab"].detail == "provider_check_error"
+    assert by_key["chrome_automation_permission"].detail == "chrome_automation_blocked"
+    assert by_key["microphone_capture_permission"].detail == (
+        "microphone_capture_permission_blocked"
+    )
+    assert by_key["audio_routing_permission"].detail == (
+        "audio_routing_permission_blocked"
+    )
+    assert input_checks == [(1, 48000.0), (1, 48000.0), (3, 48000.0)]
+    assert output_checks == [(2, 48000.0), (2, 48000.0)]
+    provider.check_ready.assert_called_once_with()
+    _assert_provider_mutators_not_called(provider)
+
+
 def test_collect_provider_audio_checks_is_non_destructive(tmp_path, monkeypatch):
     from saymo.analysis.provider_audio_readiness import collect_provider_audio_checks
     import saymo.audio.devices as audio_devices
@@ -476,6 +555,8 @@ def test_collect_provider_audio_checks_is_non_destructive(tmp_path, monkeypatch)
     monkeypatch.setattr(audio_devices, "find_device", fake_find_device)
     monkeypatch.setattr(playback, "play_audio_bytes", forbidden)
     monkeypatch.setattr(multi_play, "play_bytes_to_devices", forbidden)
+    monkeypatch.setattr(sd, "check_input_settings", lambda **kwargs: None)
+    monkeypatch.setattr(sd, "check_output_settings", lambda **kwargs: None)
     monkeypatch.setattr(sd, "rec", forbidden)
     monkeypatch.setattr(macos_audio, "set_input_volume", forbidden)
     monkeypatch.setattr(macos_audio, "bump_input_volume", forbidden)
