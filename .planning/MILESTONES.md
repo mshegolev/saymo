@@ -58,11 +58,11 @@ Archives:
 - `.planning/milestones/v1.8-ROADMAP.md`
 - `.planning/milestones/v1.8-REQUIREMENTS.md`
 - `.planning/milestones/v1.8-MILESTONE-AUDIT.md`
-- `.planning/phases/31-voice-asset-inventory-and-profile-setup/`
-- `.planning/phases/32-benchmark-scoring-and-f5-baseline/`
-- `.planning/phases/33-candidate-shootout-gates/`
-- `.planning/phases/34-call-ready-engine-selector-and-fallback-chain/`
-- `.planning/phases/35-preview-a-b-approval-and-safety-soak/`
+- `.planning/milestones/v1.8-phases/31-voice-asset-inventory-and-profile-setup/`
+- `.planning/milestones/v1.8-phases/32-benchmark-scoring-and-f5-baseline/`
+- `.planning/milestones/v1.8-phases/33-candidate-shootout-gates/`
+- `.planning/milestones/v1.8-phases/34-call-ready-engine-selector-and-fallback-chain/`
+- `.planning/milestones/v1.8-phases/35-preview-a-b-approval-and-safety-soak/`
 
 ### v1.7 Live Reliability Rehearsal
 
