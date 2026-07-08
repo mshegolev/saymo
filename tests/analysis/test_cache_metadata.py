@@ -58,3 +58,32 @@ def test_voice_cache_metadata_check_rejects_missing_and_stale_sidecars(tmp_path)
     stale = check_voice_cache_metadata(audio, stale_expected)
     assert stale.valid is False
     assert stale.blocked_reason == "voice_metadata_stale"
+
+
+def test_voice_cache_metadata_records_source_digest_without_text(tmp_path):
+    from saymo.analysis.cache_metadata import (
+        build_voice_cache_metadata,
+        write_voice_cache_metadata,
+    )
+
+    config = SaymoConfig()
+    config.tts.engine = "f5tts_clone"
+    audio = tmp_path / "prepared.wav"
+    audio.write_bytes(b"RIFFfake")
+
+    metadata = build_voice_cache_metadata(
+        config,
+        purpose="prepare",
+        text="PRIVATE_DAILY_NOTE",
+    )
+    changed = build_voice_cache_metadata(
+        config,
+        purpose="prepare",
+        text="PRIVATE_DAILY_NOTE changed",
+    )
+    out = write_voice_cache_metadata(audio, metadata)
+    payload = json.loads(out.read_text(encoding="utf-8"))
+
+    assert payload["source_sha256"]
+    assert metadata.source_sha256 != changed.source_sha256
+    assert "PRIVATE_DAILY_NOTE" not in out.read_text(encoding="utf-8")

@@ -212,3 +212,50 @@ def test_variant_path_stable_and_unique(tiny_library, tmp_cache_dir):
     c = cache._variant_path("blockers_none", 0, "Other text.")
     assert a == b
     assert a != c
+
+
+def test_response_cache_coverage_reports_missing_and_stale_variants(
+    tiny_library,
+    tmp_cache_dir,
+):
+    from saymo.analysis.cache_metadata import (
+        VoiceCacheMetadata,
+        write_voice_cache_metadata,
+    )
+    from saymo.analysis.response_cache import response_cache_coverage
+
+    expected = VoiceCacheMetadata(
+        purpose="response_cache",
+        selected_engine="f5tts_clone",
+        attempted_engines=("f5tts_clone",),
+        fingerprint="current",
+    )
+    stale = VoiceCacheMetadata(
+        purpose="response_cache",
+        selected_engine="f5tts_clone",
+        attempted_engines=("f5tts_clone",),
+        fingerprint="old",
+    )
+    cache = ResponseCache(
+        library=tiny_library,
+        cache_dir=tmp_cache_dir,
+        voice_metadata=expected,
+    )
+
+    ready_path = cache._variant_path("blockers_none", 0, "Блокеров нет.")
+    ready_path.write_bytes(b"wav")
+    write_voice_cache_metadata(ready_path, expected)
+    stale_path = cache._variant_path(
+        "blockers_none",
+        1,
+        "Сейчас всё идёт без блокеров.",
+    )
+    stale_path.write_bytes(b"wav")
+    write_voice_cache_metadata(stale_path, stale)
+
+    coverage = response_cache_coverage(cache)
+
+    assert coverage.ready_count == 1
+    assert coverage.total_count == 3
+    assert coverage.missing == ("eta_today[0]",)
+    assert coverage.stale == ("blockers_none[1]:voice_metadata_stale",)
