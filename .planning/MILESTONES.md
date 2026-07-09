@@ -2,16 +2,37 @@
 
 ## Current
 
+No active milestone. Start the next milestone with `$gsd-new-milestone`.
+
+## Completed
+
 ### v1.13 F5 Prosody Metrics
 
 **Started:** 2026-07-09
-**Status:** Defining requirements
+**Completed:** 2026-07-09
+**Archived:** 2026-07-09
+**Status:** Complete
 
 Focus: make F5 voice timing comparisons more objective and context-aware by
 expanding preview coverage, measuring speech-rate and pause behavior, and
 supporting separate pause presets for different answer sources.
 
-## Completed
+Delivered:
+- Built-in sanitized F5 preview corpus with selected subset generation and
+  artifact privacy regressions.
+- Objective F5 timing metrics for duration, speech rate, pause distribution,
+  and current-vs-candidate deltas.
+- Per-source F5 pause presets for prepared audio, response-cache variants, and
+  spontaneous approved answers.
+- Source-aware F5 selector/cache metadata so affected prepared and response
+  cached WAVs go stale after timing changes.
+- Sanitized cache-status/readiness diagnostics and docs with targeted repair
+  commands and explicit no-retrain/no-audible-breath/no-cloud boundaries.
+
+Archives:
+- `.planning/milestones/v1.13-ROADMAP.md`
+- `.planning/milestones/v1.13-REQUIREMENTS.md`
+- `.planning/milestones/v1.13-MILESTONE-AUDIT.md`
 
 ### v1.12 F5 Voice Tuning Controls
 

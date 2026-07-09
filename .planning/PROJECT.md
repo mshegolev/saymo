@@ -23,7 +23,7 @@ enough that the call still feels live.
 
 ## Current State
 
-Saymo has shipped milestone v1.12 F5 Voice Tuning Controls. The product can build local
+Saymo has shipped milestone v1.13 F5 Prosody Metrics. The product can build local
 transcript ledgers from captured sessions, search and ask questions about those
 sessions with transcript citations, generate pending answer drafts grounded in
 meeting memory and configured sources, record explicit cockpit actions plus
@@ -70,23 +70,33 @@ candidate timing previews, preference review artifacts, read-only cache status
 with expensive-F5 regeneration warnings, targeted repair commands, and
 metadata-safe `saymo review`/response-cache lookup behavior.
 
-**Status:** Active milestone v1.13 F5 Prosody Metrics is defining requirements
-and roadmap.
+The v1.13 F5 prosody-metrics path added a richer sanitized preview corpus,
+objective speech-rate and pause-distribution metrics, per-source F5 pause
+presets, source-aware cache fingerprints, and sanitized cache-status/readiness
+diagnostics for targeted explicit regeneration.
 
-## Current Milestone: v1.13 F5 Prosody Metrics
+**Status:** v1.13 F5 Prosody Metrics is shipped and archived. No active
+milestone is currently open.
+
+## Last Completed Milestone: v1.13 F5 Prosody Metrics
 
 **Goal:** Make F5 voice timing comparisons more objective and context-aware by
 expanding preview coverage, measuring speech-rate and pause behavior, and
 supporting separate pause presets for different answer sources.
 
-**Target features:**
-- Richer phrase corpus for F5 prosody and pause tuning previews.
+**Delivered:**
+- Built-in sanitized preview corpus and subset generation for realistic F5
+  answer-shape timing checks.
 - Automatic speech-rate and pause-distribution metrics for timing preset
   comparison.
-- Separate pause preset selection per source type, such as standup notes versus
-  spontaneous approved answers.
+- Source-type F5 pause preset routing for prepared audio, response-cache
+  variants, and spontaneous approved answers.
+- Source-aware selector/cache metadata that marks only affected prepared audio
+  or response-cache artifacts stale.
+- Sanitized cache-status/readiness diagnostics and operator docs with targeted
+  repair commands and explicit no-retrain/no-audible-breath/no-cloud scope.
 
-## Last Completed Milestone: v1.12 F5 Voice Tuning Controls
+## Previous Milestone: v1.12 F5 Voice Tuning Controls
 
 **Goal:** Make F5 voice timing tunable, reviewable, and safe to apply without
 hand-editing config or accidentally breaking cache readiness.
@@ -397,6 +407,11 @@ playback, and regression replay.
 - v1.12 shipped with one known non-blocking tradeoff: per-profile F5 preset
   selection is persisted as profile metadata plus the global F5 runtime config,
   not independent per-profile runtime resolution.
+- v1.13 keeps preview/report artifacts sanitized by storing corpus ids, labels,
+  hashes, counts, numeric metrics, and deltas instead of raw preview phrases.
+- v1.13 resolves source-type F5 pause presets at metadata/fingerprint time on a
+  copied config, preserving profile/global fallback behavior and avoiding
+  automatic cache mutation.
 
 ## Constraints
 
@@ -438,6 +453,8 @@ playback, and regression replay.
 | Treat F5 timing as operator-tuned presets | User feedback is ear-based, so Saymo should support repeatable preset comparison and application instead of hardcoded one-off knob edits | Implemented in v1.12 |
 | Keep F5 cache repair read-only until explicit regeneration | Prepared and response caches can be expensive to rebuild, so diagnostics should warn and point at targeted commands instead of mutating cache state | Implemented in v1.12 |
 | Preserve voice metadata through manual review | Reviewed audio must not bypass call-ready sidecar checks after replacing the prepared WAV | Implemented in v1.12 |
+| Expand F5 timing review through sanitized corpora and numeric metrics | Operators need repeatable timing evidence without committing private meeting text or audio artifacts | Implemented in v1.13 |
+| Resolve pause presets by answer source | Prepared notes, response-cache variants, and spontaneous approved answers need different pacing while keeping profile/global fallback clear | Implemented in v1.13 |
 
 ---
-*Last updated: 2026-07-09 after starting milestone v1.13*
+*Last updated: 2026-07-09 after completing milestone v1.13*

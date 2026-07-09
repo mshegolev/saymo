@@ -198,6 +198,63 @@ future planning.*
 
 ---
 
+## Milestone: v1.13 — F5 Prosody Metrics
+
+**Shipped:** 2026-07-09
+**Phases:** 3 | **Plans:** 8 | **Sessions:** 1
+
+### What Was Built
+- Sanitized built-in F5 preview corpus with selected subset generation and
+  artifact raw-text privacy regressions.
+- Objective F5 timing metrics for estimated/measured duration, speech rate,
+  grouped pause distribution, and current-vs-candidate deltas.
+- Source-type F5 pause presets for prepared audio, response-cache variants, and
+  spontaneous approved answers.
+- Source-aware selector/cache metadata so relevant prepared and response cached
+  WAVs go stale after source-type timing changes.
+- Sanitized cache-status/readiness diagnostics and operator docs with targeted
+  repair commands.
+
+### What Worked
+- Splitting corpus, metrics, and source-type routing into separate phases kept
+  each verification surface small.
+- Full-suite verification caught two test fixture gaps that focused Phase 47
+  tests could not see: legacy auto-loop fakes and old prepared metadata setup.
+- Integration checking was effective at proving the privacy boundary across
+  docs, preview artifacts, cache metadata, and readiness diagnostics.
+
+### What Was Inefficient
+- `gsd-tools milestone complete` again needed manual cleanup for
+  MILESTONES/PROJECT/STATE accomplishments and current milestone text.
+- Phase 45 still needs optional ear-based non-dry-run listening when the
+  operator intentionally touches local approved F5 assets.
+- Nyquist discovery is enabled, but this milestone has no `*-VALIDATION.md`
+  artifacts, so audit recorded missing discovery coverage.
+
+### Patterns Established
+- F5 preview and report artifacts store ids, labels, hashes, counts, and numeric
+  metrics, never raw preview phrases or private meeting content.
+- Source-specific timing changes should flow through copied config overlays and
+  metadata fingerprints rather than mutating runtime config.
+- Cache/readiness diagnostics should show safe preset ids and targeted commands,
+  not repair caches automatically.
+
+### Key Lessons
+1. Source-aware metadata changes need full-suite verification because old tests
+   may patch legacy signatures directly.
+2. Documentation guards should distinguish explicit safety exclusions from
+   actual feature behavior so future docs can state what is out of scope.
+3. Voice-quality milestones can stay safe and useful without retraining or
+   real cache mutation when artifacts and diagnostics are sanitized.
+
+### Cost Observations
+- Model mix: not tracked in repo.
+- Sessions: 1 autonomous implementation, audit, and archive session.
+- Notable: targeted Phase 47 tests reached 99 cases; full suite ended at
+  `615 passed`.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -210,6 +267,7 @@ future planning.*
 | v1.10 | 1 | 1 | Added silent F5 breath pacing plus cache fingerprint invalidation. |
 | v1.11 | 1 | 1 | Added direct F5 cache-staleness, continuation-silence, and static/docs guards. |
 | v1.12 | 1 | 2 | Added operator F5 timing presets, cache status warnings, and review metadata safety. |
+| v1.13 | 1 | 3 | Added sanitized F5 preview corpus, timing metrics, and source-type pause presets. |
 
 ### Cumulative Quality
 
@@ -221,6 +279,7 @@ future planning.*
 | v1.10 | 552 full-suite tests | TTS/cache/selector plus full suite | silent-breath pacing and cache invalidation |
 | v1.11 | 557 full-suite tests | cache metadata, response cache, F5 TTS, static guards | audit-ready hardening metadata |
 | v1.12 | 574 full-suite tests | F5 presets, timing artifacts, cache advice, review metadata | read-only cache status and preset controls |
+| v1.13 | 615 full-suite tests | F5 corpus, timing metrics, source presets, cache/readiness diagnostics | source-aware preset metadata |
 
 ### Top Lessons (Verified Across Milestones)
 

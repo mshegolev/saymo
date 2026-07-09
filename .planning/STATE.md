@@ -5,9 +5,9 @@ milestone_name: F5 Prosody Metrics
 current_phase: 47 of 47
 current_phase_name: Source-Type Pause Presets
 current_plan: 3
-status: complete
-stopped_at: Completed Phase 47 verification
-last_updated: "2026-07-09T20:58:39.021Z"
+status: completed
+stopped_at: Completed v1.13 milestone archive
+last_updated: "2026-07-09T21:04:08.363Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 3
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Milestone v1.13 complete; ready for audit and lifecycle.
+**Current focus:** No active milestone; ready to start the next milestone with `$gsd-new-milestone`.
 
 ## Current Position
 
@@ -34,7 +34,7 @@ Current Phase Name: Source-Type Pause Presets
 Current Plan: 3
 Total Plans in Phase: 3
 Plans: 47-01-PLAN.md, 47-02-PLAN.md, 47-03-PLAN.md
-Status: Complete; ready for milestone audit
+Status: Complete and archived
 Last Activity: 2026-07-09
 
 Progress: [##########] 100%
@@ -94,6 +94,7 @@ Recent decisions affecting current work:
 - Deferred manual check: run one non-dry-run F5 corpus preview and listen to
   current/candidate WAVs when the operator explicitly wants to touch local
   approved F5 model assets.
+- Start next milestone with `$gsd-new-milestone` when ready.
 
 ### Blockers/Concerns
 
@@ -107,6 +108,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-07-09T20:58:39.021Z
-Stopped at: Completed Phase 47 verification
+Last session: 2026-07-09T21:04:08.363Z
+Stopped at: Completed v1.13 milestone archive
 Resume file: None
