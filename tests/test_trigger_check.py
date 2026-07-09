@@ -2937,7 +2937,13 @@ def test_auto_preflight_reports_ready_with_nonblocking_cache_warning(tmp_path, m
     config = load_config(config_path=str(config_path))
     write_voice_cache_metadata(
         cached,
-        build_voice_cache_metadata(config, purpose="prepare", text="standup"),
+        build_voice_cache_metadata(
+            config,
+            purpose="prepare",
+            text="standup",
+            profile="personal",
+            source_type="prepared",
+        ),
     )
 
     monkeypatch.setattr("saymo.commands._get_cached_audio_path", lambda team=False: cached)

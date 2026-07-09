@@ -221,7 +221,11 @@ def _install_auto_loop_fakes(
     monkeypatch.setattr("saymo.audio.capture.AudioCapture", FakeCapture)
     monkeypatch.setattr("saymo.stt.whisper_local.LocalWhisper", FakeWhisper)
     monkeypatch.setattr("saymo.analysis.turn_detector.TurnDetector", lambda *a, **k: detector)
-    monkeypatch.setattr(core, "build_realtime_response_cache", lambda config: None)
+    monkeypatch.setattr(
+        core,
+        "build_realtime_response_cache",
+        lambda config, **kwargs: None,
+    )
     monkeypatch.setattr("saymo.analysis.live_control.command_log_offset", lambda profile: 0)
     monkeypatch.setattr(
         "saymo.analysis.live_control.live_control_dir",
@@ -1240,7 +1244,7 @@ def test_auto_force_speak_uses_manual_standup_decision_without_automatic_paths(
         monkeypatch.setattr(
             core,
             "build_realtime_response_cache",
-            lambda config: forbidden_cache,
+            lambda config, **kwargs: forbidden_cache,
         )
         automatic_resolver = AsyncMock(
             side_effect=AssertionError("automatic resolver must not run")
