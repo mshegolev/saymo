@@ -60,7 +60,7 @@ Plans:
 Plans:
 - [x] 47-01-PLAN.md - Source-type preset configuration, fallback, and CLI apply support.
 - [x] 47-02-PLAN.md - Source-type preset fingerprint and cache metadata integration.
-- [ ] 47-03-PLAN.md - Sanitized cache-status/readiness diagnostics and operator docs.
+- [x] 47-03-PLAN.md - Sanitized cache-status/readiness diagnostics and operator docs.
 
 ## Requirement Coverage
 
@@ -88,4 +88,4 @@ Phases execute in numeric order: 45 -> 46 -> 47
 |-------|----------------|--------|-----------|
 | 45. Prosody Preview Corpus | 3/3 | Complete    | 2026-07-09 |
 | 46. Timing Metrics Reports | 2/2 | Complete    | 2026-07-09 |
-| 47. Source-Type Pause Presets | 3/3 | Complete   | 2026-07-09 |
+| 47. Source-Type Pause Presets | 3/3 | Complete    | 2026-07-09 |
