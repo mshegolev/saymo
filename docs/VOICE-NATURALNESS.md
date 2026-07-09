@@ -136,7 +136,9 @@ energy. These rules apply to *any* text you feed the engine.
   tuning; use `saymo f5-presets preview calm --corpus-id standup-blocked` when
   checking one stable corpus entry. Then use `saymo f5-presets apply` to
   persist the built-in `approved`, `crisp`, `calm`, and `deliberate` timing
-  sets.
+  sets. After `saymo f5-presets preview`, read `timing-report.md` for objective
+  duration, rate, and pause-distribution deltas before making a listening
+  decision.
   For the approved local F5 benchmark, `nfe_step: 16` was the baseline;
   prefer it for cache builds before raising quality/latency to 32+.
 * **Crossfade 20–30 ms** between sentence boundaries to kill

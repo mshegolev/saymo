@@ -63,6 +63,21 @@ samples, training data, secrets, or raw audio. Applying a preset writes both
 `tts.f5tts.pause_preset` and the concrete timing knobs, so prepared audio and
 response-cache metadata get a new voice fingerprint.
 
+Each preview record in `manifest.json` also includes sanitized timing metrics:
+`estimated_total_duration_seconds`, `audio_duration_seconds`,
+`chars_per_second`, `words_per_minute`, and `pause_distribution`. Dry-run
+records use deterministic estimated duration from the same F5 pacing splitter
+used for synthesis; `audio_duration_seconds appears only when a real WAV exists`
+in a non-dry-run preview. The companion `timing-report.md` repeats
+duration, rate, and pause groups per clip, then shows current-vs-candidate
+numeric deltas such as `duration_delta`, `chars_per_second_delta`,
+`words_per_minute_delta`, and `pause_total_delta`.
+
+The metrics and report artifacts stay numeric-only. They omit raw manual text,
+corpus phrase text, prompt and response text, audio bytes, private meeting
+content, secrets, voice samples, training data, and any other operator-local
+content that is not needed to compare preset timing.
+
 ## Reference Recordings
 
 Keep these files:
