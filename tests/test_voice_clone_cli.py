@@ -393,9 +393,13 @@ def test_f5_presets_cli_preview_and_review_are_sanitized(tmp_path):
     )
     assert review.exit_code == 0
     assert "recommended preset: calm" in review.output.lower()
-    assert "PRIVATE CLI TIMING TEXT" not in (run_dir / "timing-report.md").read_text(
-        encoding="utf-8"
-    )
+    report_text = (run_dir / "timing-report.md").read_text(encoding="utf-8")
+    assert "## Current vs Candidate Deltas" in report_text
+    assert "duration_delta=" in report_text
+    assert "chars_per_second_delta=" in report_text
+    assert "words_per_minute_delta=" in report_text
+    assert "pause_total_delta=" in report_text
+    assert "PRIVATE CLI TIMING TEXT" not in report_text
 
 
 def test_f5_presets_preview_selected_corpus_category(tmp_path):
@@ -501,8 +505,24 @@ def test_f5_presets_preview_selected_corpus_id_writes_sanitized_metrics(tmp_path
     artifact_text = "\n".join(
         (run_dir / name).read_text(encoding="utf-8") for name in artifact_names
     )
+    report_text = (run_dir / "timing-report.md").read_text(encoding="utf-8")
     assert entry.text not in artifact_text
     assert "PRIVATE MANUAL PREVIEW TEXT" not in artifact_text
+    assert "duration=" in report_text
+    assert "chars/s" in report_text
+    assert "wpm" in report_text
+    assert (
+        "sentence" in report_text
+        and "clause" in report_text
+        and "paragraph" in report_text
+        and "silent_breath" in report_text
+    )
+    assert "## Current vs Candidate Deltas" in report_text
+    assert "standup-blocked" in report_text
+    assert "duration_delta=" in report_text
+    assert "chars_per_second_delta=" in report_text
+    assert "words_per_minute_delta=" in report_text
+    assert "pause_total_delta=" in report_text
 
     manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
     records = manifest["records"]
@@ -688,3 +708,34 @@ def test_f5_timing_record_accepts_measured_audio_duration(tmp_path):
     assert record["metrics"]["estimated_total_duration_seconds"] > 0
     assert record["metrics"]["words_per_minute"] > 0
     assert "PRIVATE MEASURED TIMING TEXT" not in json.dumps(record)
+
+
+def test_f5_timing_report_older_records_without_metrics_are_backward_compatible():
+    from saymo.analysis.f5_timing_review import render_f5_timing_report
+
+    report = render_f5_timing_report(
+        {
+            "run_status": "complete",
+            "records": [
+                {
+                    "label": "current",
+                    "preset_id": "approved",
+                    "timing": {
+                        "sentence_pause_seconds": 0.38,
+                        "clause_pause_seconds": 0.18,
+                        "silent_breath_pause_seconds": 0.6,
+                    },
+                    "output_wav": "/tmp/current-approved.wav",
+                }
+            ],
+        },
+        {
+            "score_status": "unscored",
+            "preference": {"preferred": "", "notes": ""},
+            "recommendation": {"preset_id": ""},
+        },
+    )
+
+    assert "current" in report
+    assert "metrics=unavailable" in report
+    assert "## Current vs Candidate Deltas" in report
