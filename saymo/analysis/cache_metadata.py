@@ -27,6 +27,10 @@ class VoiceCacheMetadata:
     source_kind: str = ""
     source_profile: str = ""
     source_sha256: str = ""
+    source_type: str = ""
+    source_preset_id: str = ""
+    profile_preset_id: str = ""
+    source_override_preset_id: str = ""
     reference_audio_sha256: str = ""
     reference_text_sha256: str = ""
     non_cloned_allowed: bool = False
@@ -49,9 +53,17 @@ def build_voice_cache_metadata(
     source_kind: str = "",
     source_profile: str = "",
     source_sha256: str = "",
+    profile: str = "",
+    source_type: str | None = None,
 ) -> VoiceCacheMetadata:
-    payload = selector_fingerprint_payload(config, purpose=purpose)
+    payload = selector_fingerprint_payload(
+        config,
+        purpose=purpose,
+        profile=profile,
+        source_type=source_type,
+    )
     selector = payload["selector"]
+    source_preset = payload.get("source_preset") or {}
     fingerprint = _sha256_json(payload)
     resolved_source_sha256 = source_sha256
     if not resolved_source_sha256 and text:
@@ -69,6 +81,10 @@ def build_voice_cache_metadata(
         source_kind=source_kind,
         source_profile=source_profile,
         source_sha256=resolved_source_sha256,
+        source_type=str(source_preset.get("source_type") or source_type or ""),
+        source_preset_id=str(source_preset.get("resolved_preset_id") or ""),
+        profile_preset_id=str(source_preset.get("profile_preset_id") or ""),
+        source_override_preset_id=str(source_preset.get("override_preset_id") or ""),
         reference_audio_sha256=selector["reference_audio_sha256"],
         reference_text_sha256=selector["reference_text_sha256"],
         non_cloned_allowed=selector["non_cloned_allowed"],
@@ -134,6 +150,10 @@ def _metadata_from_json(data: dict[str, Any]) -> VoiceCacheMetadata:
         source_kind=str(data.get("source_kind") or ""),
         source_profile=str(data.get("source_profile") or ""),
         source_sha256=str(data.get("source_sha256") or ""),
+        source_type=str(data.get("source_type") or ""),
+        source_preset_id=str(data.get("source_preset_id") or ""),
+        profile_preset_id=str(data.get("profile_preset_id") or ""),
+        source_override_preset_id=str(data.get("source_override_preset_id") or ""),
         reference_audio_sha256=str(data.get("reference_audio_sha256") or ""),
         reference_text_sha256=str(data.get("reference_text_sha256") or ""),
         non_cloned_allowed=bool(data.get("non_cloned_allowed", False)),

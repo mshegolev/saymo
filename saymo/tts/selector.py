@@ -14,6 +14,10 @@ from saymo.analysis.voice_profile import (
 )
 from saymo.config import SaymoConfig, VoiceSelectorPurposeConfig
 from saymo.tts.factory import is_known_engine
+from saymo.tts.f5_presets import (
+    F5PresetResolution,
+    config_with_f5_pause_preset_for_source,
+)
 
 CLONED_ENGINES = frozenset({
     "coqui_clone",
@@ -157,18 +161,49 @@ def get_selected_tts_engine(
     )
 
 
-def selector_fingerprint_payload(config: SaymoConfig, *, purpose: str) -> dict[str, Any]:
+def selector_fingerprint_payload(
+    config: SaymoConfig,
+    *,
+    purpose: str,
+    profile: str = "",
+    source_type: str | None = None,
+) -> dict[str, Any]:
     """Return privacy-safe data that should invalidate voice audio caches."""
     decision = resolve_voice_selector(config, purpose=purpose)
     engine = decision.selected_engine
-    return {
+    source_config = config
+    source_resolution: F5PresetResolution | None = None
+    if engine == "f5tts_clone" and source_type:
+        source_config, source_resolution = config_with_f5_pause_preset_for_source(
+            config,
+            profile=profile or "standup",
+            source_type=source_type,
+        )
+        decision = resolve_voice_selector(source_config, purpose=purpose)
+        engine = decision.selected_engine
+
+    payload = {
         "selector": decision.to_metadata(),
         "tts": {
-            "engine": config.tts.engine,
-            "realtime_engine": config.tts.realtime_engine,
+            "engine": source_config.tts.engine,
+            "realtime_engine": source_config.tts.realtime_engine,
             "selected_engine": engine,
         },
-        "engine_config": _engine_config_payload(config, engine),
+        "engine_config": _engine_config_payload(source_config, engine),
+    }
+    if source_resolution is not None:
+        payload["source_preset"] = _source_preset_payload(source_resolution)
+    return payload
+
+
+def _source_preset_payload(resolution: F5PresetResolution) -> dict[str, str]:
+    return {
+        "profile": resolution.profile,
+        "source_type": resolution.source_type,
+        "purpose": resolution.purpose,
+        "profile_preset_id": resolution.profile_preset_id,
+        "override_preset_id": resolution.override_preset_id,
+        "resolved_preset_id": resolution.resolved_preset_id,
     }
 
 
