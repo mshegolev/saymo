@@ -1,41 +1,40 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.9
-milestone_name: Call Launch Readiness
+milestone: v1.10
+milestone_name: Silent Breath Natural Pacing
 current_plan: null
-status: complete
-stopped_at: Milestone v1.9 archived
-last_updated: "2026-07-08T20:09:31.902Z"
-last_activity: 2026-07-08
+status: defining requirements
+stopped_at: Milestone v1.10 started
+last_updated: "2026-07-09T08:30:00.000Z"
+last_activity: 2026-07-09
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 22
-  completed_plans: 22
-  percent: 100
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-08)
+See: .planning/PROJECT.md (updated 2026-07-09)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.9 Call Launch Readiness is shipped and archived. Next
-focus should be defined with `$gsd-new-milestone`.
+**Current focus:** v1.10 Silent Breath Natural Pacing.
 
 ## Current Position
 
-Phase: none - v1.9 milestone complete
+Phase: Not started (defining requirements)
 Current Plan: none
 Total Plans in Phase: 0
-Plans: 22 of 22 completed.
-Status: v1.9 archived; ready for next milestone definition.
-Last activity: 2026-07-08
+Plans: 0 of 0 completed.
+Status: Defining requirements.
+Last activity: 2026-07-09
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 

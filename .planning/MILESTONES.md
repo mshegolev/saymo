@@ -2,8 +2,17 @@
 
 ## Current
 
-No active milestone. Run `$gsd-new-milestone` to define the next requirements
-and roadmap.
+### v1.10 Silent Breath Natural Pacing
+
+**Started:** 2026-07-09
+**Status:** Active
+
+Focus: keep F5 natural pacing human-like without transmitting audible breath,
+hum, or buzz into the meeting microphone.
+
+Active artifacts:
+- `.planning/ROADMAP.md`
+- `.planning/REQUIREMENTS.md`
 
 ## Completed
 

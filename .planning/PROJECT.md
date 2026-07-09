@@ -58,6 +58,17 @@ call-ready verifies.
 
 **Status:** v1.9 Call Launch Readiness shipped on 2026-07-08.
 
+## Current Milestone: v1.10 Silent Breath Natural Pacing
+
+**Goal:** Keep F5-TTS natural pacing human-like without sending audible breath,
+hum, or buzz into the meeting microphone.
+
+**Target features:**
+- Silent breath pauses replace audible breath splices in F5 natural pacing.
+- F5 pacing settings distinguish sentence, clause, and silent-breath timing.
+- Automated tests prove generated WAV output contains silence at breath points,
+  not non-zero breath/noise samples.
+
 ## Last Completed Milestone: v1.9 Call Launch Readiness
 
 **Goal:** Make Saymo reliably go from daily note and prepared cloned-voice
@@ -232,8 +243,12 @@ playback, and regression replay.
 
 ### Active
 
-No active milestone requirements. Run `$gsd-new-milestone` to define the next
-focused requirements and roadmap.
+- [ ] User can keep F5 natural pacing pauses without audible breath, hum, or
+  buzz entering the generated microphone output.
+- [ ] User can preserve the feeling of a breath before continuation through
+  silence timing, not audio injection.
+- [ ] User can verify this behavior with focused tests and a short local
+  preview.
 
 ### Out of Scope
 
@@ -281,6 +296,9 @@ focused requirements and roadmap.
   strong at transcription, summaries, search, or meeting bots, while Saymo's
   differentiating direction is a local "listen and answer as me" flow with
   explicit user approval and source-backed answer drafts.
+- v1.10 follows direct user listening feedback after the first natural pacing
+  preview: the audible breath splice produced hum/buzz and should not be
+  transmitted into the meeting microphone.
 
 ## Constraints
 
@@ -316,6 +334,7 @@ focused requirements and roadmap.
 | Prove the live loop before trusting it | The next risk is not missing controls, but not knowing whether the whole loop is reliable for the next meeting | Implemented in v1.7 |
 | Treat voice-clone assets as protected local state | Model checkpoints and training datasets are costly to redownload or retrain, so cleanup/training must be explicit and auditable | Implemented in v1.8 |
 | Treat call launch as one green path | Daily note, prepare/cache, provider tab, voice readiness, and handbrake state fail in different places unless the operator sees one actionable readiness result | Implemented in v1.9 |
+| Use silent breath pauses instead of audible breath splices for live-call F5 pacing | User feedback identified hum/buzz in the breath layer; live-call output should feel paced without transmitting breath noise | Pending in v1.10 |
 
 ---
-*Last updated: 2026-07-08 after shipping milestone v1.9*
+*Last updated: 2026-07-09 after starting milestone v1.10*
