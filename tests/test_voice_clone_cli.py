@@ -326,6 +326,156 @@ def test_f5_presets_cli_list_show_and_apply_updates_config(tmp_path):
     assert f5["silent_breath_pause_seconds"] == 0.85
     assert f5["breath_interval_sentences"] == 2
     assert raw["meetings"]["standup"]["voice"]["f5_pause_preset"] == "deliberate"
+    assert "f5_pause_presets" not in raw["meetings"]["standup"]["voice"]
+
+
+def test_f5_presets_cli_apply_source_type_writes_profile_override_only(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    before = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+
+    applied = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "apply",
+            "calm",
+            "--profile",
+            "standup",
+            "--source-type",
+            "prepared",
+        ],
+    )
+
+    assert applied.exit_code == 0
+    assert "calm" in applied.output
+    assert "standup" in applied.output
+    assert "prepared" in applied.output
+    assert "config:" not in applied.output.lower()
+
+    raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert raw["tts"]["f5tts"] == before["tts"]["f5tts"]
+    voice = raw["meetings"]["standup"]["voice"]
+    assert "f5_pause_preset" not in voice
+    assert voice["f5_pause_presets"] == {"prepared": "calm"}
+
+
+def test_f5_presets_cli_apply_source_type_preserves_existing_profile_and_global(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    raw = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    raw["tts"]["f5tts"]["pause_preset"] = "approved"
+    raw["meetings"] = {
+        "standup": {
+            "voice": {
+                "f5_pause_preset": "calm",
+                "f5_pause_presets": {"prepared": "deliberate"},
+            }
+        }
+    }
+    config_path.write_text(
+        yaml.safe_dump(raw, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+
+    applied = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "apply",
+            "crisp",
+            "--profile",
+            "standup",
+            "--source-type",
+            "response_cache",
+        ],
+    )
+
+    assert applied.exit_code == 0
+    updated = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    assert updated["tts"]["f5tts"]["pause_preset"] == "approved"
+    voice = updated["meetings"]["standup"]["voice"]
+    assert voice["f5_pause_preset"] == "calm"
+    assert voice["f5_pause_presets"] == {
+        "prepared": "deliberate",
+        "response_cache": "crisp",
+    }
+
+
+def test_f5_presets_cli_apply_source_type_requires_profile_without_partial_write(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    before = config_path.read_text(encoding="utf-8")
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "apply",
+            "calm",
+            "--source-type",
+            "prepared",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--source-type requires --profile" in result.output
+    assert config_path.read_text(encoding="utf-8") == before
+
+
+def test_f5_presets_cli_apply_source_type_errors_do_not_partially_write(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    before = config_path.read_text(encoding="utf-8")
+
+    bad_preset = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "apply",
+            "robot",
+            "--profile",
+            "standup",
+            "--source-type",
+            "prepared",
+        ],
+    )
+    assert bad_preset.exit_code != 0
+    assert "Unknown F5 pause preset" in bad_preset.output
+    assert config_path.read_text(encoding="utf-8") == before
+
+    bad_source = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "apply",
+            "calm",
+            "--profile",
+            "standup",
+            "--source-type",
+            "cache",
+        ],
+    )
+    assert bad_source.exit_code != 0
+    assert "Unknown F5 source type" in bad_source.output
+    assert "prepared" in bad_source.output
+    assert "response_cache" in bad_source.output
+    assert "spontaneous" in bad_source.output
+    assert config_path.read_text(encoding="utf-8") == before
 
 
 def test_f5_presets_corpus_cli_list_shows_safe_metadata_only(tmp_path):
