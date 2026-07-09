@@ -8,16 +8,16 @@ and respond fast enough that the call still feels live.
 
 ### F5 Natural Pacing
 
-- [ ] **F5P-01**: User can generate F5 natural pacing output where breath
+- [x] **F5P-01**: User can generate F5 natural pacing output where breath
   moments are silent pauses and do not contain audible hum, buzz, or breath
   samples.
-- [ ] **F5P-02**: User can keep sentence and clause pauses while disabling
+- [x] **F5P-02**: User can keep sentence and clause pauses while disabling
   audio breath splicing for live-call microphone output.
-- [ ] **F5P-03**: User can configure silent breath timing separately from
+- [x] **F5P-03**: User can configure silent breath timing separately from
   sentence and clause pause timing.
-- [ ] **F5P-04**: User can verify with automated tests that breath points in a
+- [x] **F5P-04**: User can verify with automated tests that breath points in a
   stitched F5 WAV are zero-valued silence, not non-zero reference-sample audio.
-- [ ] **F5P-05**: User can produce a short local F5 preview for ear-based review
+- [x] **F5P-05**: User can produce a short local F5 preview for ear-based review
   of the silent-breath pacing behavior.
 
 ## Future Requirements
@@ -41,11 +41,11 @@ and respond fast enough that the call still feels live.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| F5P-01 | Phase 41 | Pending |
-| F5P-02 | Phase 41 | Pending |
-| F5P-03 | Phase 41 | Pending |
-| F5P-04 | Phase 41 | Pending |
-| F5P-05 | Phase 41 | Pending |
+| F5P-01 | Phase 41 | Complete |
+| F5P-02 | Phase 41 | Complete |
+| F5P-03 | Phase 41 | Complete |
+| F5P-04 | Phase 41 | Complete |
+| F5P-05 | Phase 41 | Complete |
 
 **Coverage:**
 - v1.10 requirements: 5 total
@@ -54,4 +54,4 @@ and respond fast enough that the call still feels live.
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after milestone definition*
+*Last updated: 2026-07-09 after phase verification*
