@@ -14,7 +14,7 @@ and respond fast enough that the call still feels live.
 - [x] **CORP-02**: User can generate A/B timing previews from selected corpus
   subsets so current and candidate presets are compared across realistic
   answer shapes.
-- [ ] **CORP-03**: User can extend or inspect the preview corpus without
+- [x] **CORP-03**: User can extend or inspect the preview corpus without
   copying private meeting transcript text, prompts, voice samples, training
   datasets, secrets, or raw audio into committed artifacts.
 
@@ -74,7 +74,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | CORP-01 | Phase 45 | Complete |
 | CORP-02 | Phase 45 | Complete |
-| CORP-03 | Phase 45 | Pending |
+| CORP-03 | Phase 45 | Complete |
 | METR-01 | Phase 46 | Pending |
 | METR-02 | Phase 46 | Pending |
 | METR-03 | Phase 46 | Pending |
@@ -91,4 +91,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after completing 45-01*
+*Last updated: 2026-07-09 after completing 45-03*
