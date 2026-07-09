@@ -264,6 +264,22 @@ def f5_presets_list():
     console.print(table)
 
 
+@f5_presets.group("corpus")
+def f5_presets_corpus():
+    """Inspect built-in F5 preview corpus entries."""
+
+
+@f5_presets_corpus.command("list")
+def f5_presets_corpus_list():
+    """List built-in F5 preview corpus metadata."""
+    from saymo.tts.f5_corpus import list_f5_preview_corpus
+
+    table = Table("ID", "Category", "Label")
+    for entry in list_f5_preview_corpus():
+        table.add_row(entry.id, entry.category, entry.label)
+    console.print(table)
+
+
 @f5_presets.command("show")
 @click.argument("preset")
 def f5_presets_show(preset):
