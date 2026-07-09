@@ -143,3 +143,63 @@ def test_f5tts_pacing_config_changes_selector_fingerprint_payload(tmp_path):
     assert changed["engine_config"]["sentence_pause_seconds"] == 0.5
     assert changed["engine_config"]["clause_pause_seconds"] == 0.25
     assert changed["engine_config"]["breath_interval_sentences"] == 3
+
+
+def test_f5tts_source_override_changes_selector_fingerprint_payload(tmp_path):
+    from saymo.tts.selector import selector_fingerprint_payload
+
+    config = _config(tmp_path, "f5tts_clone")
+    config.meetings = {
+        "standup": {
+            "voice": {
+                "f5_pause_preset": "crisp",
+                "f5_pause_presets": {"prepared": "calm"},
+            }
+        }
+    }
+
+    payload = selector_fingerprint_payload(
+        config,
+        purpose="prepare",
+        profile="standup",
+        source_type="prepared",
+    )
+
+    assert payload["engine_config"]["pause_preset"] == "calm"
+    assert payload["engine_config"]["sentence_pause_seconds"] == 0.44
+    assert payload["source_preset"] == {
+        "profile": "standup",
+        "source_type": "prepared",
+        "purpose": "prepare",
+        "profile_preset_id": "crisp",
+        "override_preset_id": "calm",
+        "resolved_preset_id": "calm",
+    }
+    assert config.tts.f5tts.pause_preset == "approved"
+
+
+def test_f5tts_source_selector_falls_back_to_profile_preset(tmp_path):
+    from saymo.tts.selector import selector_fingerprint_payload
+
+    config = _config(tmp_path, "f5tts_clone")
+    config.meetings = {
+        "standup": {
+            "voice": {
+                "f5_pause_preset": "crisp",
+                "f5_pause_presets": {"response_cache": "calm"},
+            }
+        }
+    }
+
+    payload = selector_fingerprint_payload(
+        config,
+        purpose="prepare",
+        profile="standup",
+        source_type="prepared",
+    )
+
+    assert payload["engine_config"]["pause_preset"] == "crisp"
+    assert payload["engine_config"]["sentence_pause_seconds"] == 0.26
+    assert payload["source_preset"]["profile_preset_id"] == "crisp"
+    assert payload["source_preset"]["override_preset_id"] == ""
+    assert payload["source_preset"]["resolved_preset_id"] == "crisp"
