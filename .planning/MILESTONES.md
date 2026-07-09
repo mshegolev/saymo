@@ -2,20 +2,35 @@
 
 ## Current
 
+No active milestone. Start the next milestone with `$gsd-new-milestone`.
+
+## Completed
+
 ### v1.12 F5 Voice Tuning Controls
 
 **Started:** 2026-07-09
-**Status:** Active
+**Completed:** 2026-07-09
+**Archived:** 2026-07-09
+**Status:** Complete
 
 Focus: make F5 voice timing tunable, reviewable, and safe to apply through
 named pause presets, A/B preview artifacts, and metadata-safe cache/review
 flows.
 
-Active artifacts:
-- `.planning/ROADMAP.md`
-- `.planning/REQUIREMENTS.md`
+Delivered:
+- Named F5 pause presets with list/show/apply commands.
+- Sanitized current-vs-candidate timing preview artifacts and preference review.
+- F5 timing presets participate in selector/cache fingerprints.
+- Read-only cache status and remediation warn about expensive F5 regeneration
+  and point at targeted repair commands.
+- `saymo review` preserves prepared-audio metadata sidecars, and response-cache
+  lookup paths enforce stale metadata checks.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.12-ROADMAP.md`
+- `.planning/milestones/v1.12-REQUIREMENTS.md`
+- `.planning/milestones/v1.12-MILESTONE-AUDIT.md`
+- `.planning/milestones/v1.12-phases/`
 
 ### v1.11 F5 Gap Hardening
 

@@ -2,13 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: F5 Voice Tuning Controls
-current_phase: null
-current_phase_name: null
-current_plan: null
-status: ready for milestone audit
-stopped_at: v1.12 phases complete; milestone audit next
-last_updated: "2026-07-09T18:20:21+04:00"
-last_activity: 2026-07-09 - Completed Phase 44 cache regeneration and metadata safety
+status: milestone complete
+stopped_at: v1.12 archived; next milestone not started
+last_updated: "2026-07-09T18:30:27+04:00"
+last_activity: 2026-07-09 - Archived v1.12 F5 Voice Tuning Controls
 progress:
   total_phases: 2
   completed_phases: 2
@@ -25,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.12 F5 Voice Tuning Controls.
+**Current focus:** Planning next milestone.
 
 ## Current Position
 
@@ -33,10 +30,9 @@ Phase: complete
 Plan: —
 Total Plans in Phase: —
 Plans: 4 of 4 completed.
-Status: Ready for milestone audit.
-Last activity: 2026-07-09 - Completed Phase 44 with read-only cache status,
-F5 regeneration warnings, targeted repair commands, review metadata sidecar
-preservation, and response-cache metadata lookup guards.
+Status: Milestone complete and archived.
+Last activity: 2026-07-09 - Archived v1.12 after audit passed with 10/10
+requirements satisfied, 2/2 phases complete, and full pytest green.
 
 Progress: [##########] 100%
 
@@ -78,7 +74,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Audit v1.12 milestone completion.
+- Start the next milestone with `$gsd-new-milestone`.
 - Optional: user can still listen to
   `~/.saymo/voice_benchmarks/20260709-silent-breath/f5tts-silent-breath-01.wav`
   and request subjective timing adjustments during v1.12.
@@ -95,6 +91,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-07-09T18:20:21+04:00
-Stopped at: v1.12 phases complete; milestone audit next.
+Last session: 2026-07-09T18:30:27+04:00
+Stopped at: v1.12 archived; next milestone not started.
 Resume file: None

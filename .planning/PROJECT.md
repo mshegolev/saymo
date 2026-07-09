@@ -23,7 +23,7 @@ enough that the call still feels live.
 
 ## Current State
 
-Saymo has shipped milestone v1.11 F5 Gap Hardening. The product can build local
+Saymo has shipped milestone v1.12 F5 Voice Tuning Controls. The product can build local
 transcript ledgers from captured sessions, search and ask questions about those
 sessions with transcript citations, generate pending answer drafts grounded in
 meeting memory and configured sources, record explicit cockpit actions plus
@@ -65,23 +65,30 @@ staleness regressions, verified continuation breath intervals as zero-valued
 silence, and added static/docs guards that keep F5 live-call output from
 reintroducing audible reference-sample breath audio.
 
-**Status:** v1.12 F5 Voice Tuning Controls is being defined on 2026-07-09.
+The v1.12 F5 voice-tuning path added named pause presets, sanitized current-vs-
+candidate timing previews, preference review artifacts, read-only cache status
+with expensive-F5 regeneration warnings, targeted repair commands, and
+metadata-safe `saymo review`/response-cache lookup behavior.
 
-## Current Milestone: v1.12 F5 Voice Tuning Controls
+**Status:** No active milestone. Start the next milestone with
+`$gsd-new-milestone`.
+
+## Last Completed Milestone: v1.12 F5 Voice Tuning Controls
 
 **Goal:** Make F5 voice timing tunable, reviewable, and safe to apply without
 hand-editing config or accidentally breaking cache readiness.
 
-**Target features:**
-- Named F5 pause presets that can be selected per meeting profile.
-- A/B preview and review flow for comparing current timing against candidate
-  presets before applying them.
-- Operator warnings and repair paths for stale or expensive cache
-  regeneration.
-- `saymo review` and legacy response-cache paths that preserve voice metadata
-  safety instead of bypassing or breaking readiness.
+**Delivered:**
+- Named F5 pause presets with list/show/apply commands.
+- Sanitized A/B timing preview and preference review artifacts.
+- Selected timing values participate in the existing F5 selector/cache
+  fingerprint path.
+- Read-only cache status, launch-readiness, and remediation warnings explain
+  expensive F5 regeneration and targeted repair commands.
+- `saymo review` preserves prepared-audio sidecars, and response-cache lookup
+  paths reject stale metadata.
 
-## Last Completed Milestone: v1.11 F5 Gap Hardening
+## Previous Milestone: v1.11 F5 Gap Hardening
 
 **Goal:** Close the remaining F5 silent-breath hardening gaps so cached audio,
 continuation pauses, and future F5 edits cannot bypass the no-audible-breath
@@ -298,21 +305,27 @@ playback, and regression replay.
   silence, not non-zero breath/noise samples.
 - ✓ User can rely on tests and static guards that prevent F5 live-call output
   from reintroducing audible reference breath injection.
+- ✓ User can select named F5 pause presets per meeting profile without
+  editing YAML by hand.
+- ✓ User can generate A/B voice timing previews and capture a simple
+  preference review before applying changes.
+- ✓ User can apply a selected timing preset and have prepared/response cache
+  metadata go stale through the existing fingerprint path.
+- ✓ User can see when regeneration will be expensive and choose the right
+  prepare/cache command instead of accidentally rebuilding everything.
+- ✓ User can run `saymo review` without losing the prepared-audio metadata
+  sidecar required by call-ready checks.
+- ✓ User can trust response-cache lookup helpers to enforce metadata checks
+  consistently across active and legacy code paths.
 
 ### Active
 
-- [ ] User can select named F5 pause presets per meeting profile without
-  editing YAML by hand.
-- [ ] User can generate A/B voice timing previews and capture a simple
-  preference review before applying changes.
-- [ ] User can apply a selected timing preset and have prepared/response cache
-  metadata go stale through the existing fingerprint path.
-- [ ] User can see when regeneration will be expensive and choose the right
-  prepare/cache command instead of accidentally rebuilding everything.
-- [ ] User can run `saymo review` without losing the prepared-audio metadata
-  sidecar required by call-ready checks.
-- [ ] User can trust response-cache lookup helpers to enforce metadata checks
-  consistently across active and legacy code paths.
+- [ ] User can tune prosody from a richer phrase corpus instead of a small
+  preview phrase set.
+- [ ] User can compare timing presets with automatic speech-rate and
+  pause-distribution metrics.
+- [ ] User can keep separate pause presets per source type, such as standup
+  notes versus spontaneous approved answers.
 
 ### Out of Scope
 
@@ -368,6 +381,9 @@ playback, and regression replay.
   guards for the F5 live-call no-audible-breath boundary.
 - v1.12 focuses on operator-controlled tuning and cache UX, not model
   retraining: the approved F5 voice profile remains the runtime baseline.
+- v1.12 shipped with one known non-blocking tradeoff: per-profile F5 preset
+  selection is persisted as profile metadata plus the global F5 runtime config,
+  not independent per-profile runtime resolution.
 
 ## Constraints
 
@@ -406,7 +422,9 @@ playback, and regression replay.
 | Use silent breath pauses instead of audible breath splices for live-call F5 pacing | User feedback identified hum/buzz in the breath layer; live-call output should feel paced without transmitting breath noise | Implemented in v1.10 |
 | Include F5 pacing knobs in voice-cache fingerprints | Prepared and response cached WAVs must go stale when silent-breath timing changes | Implemented in v1.10 |
 | Treat F5 audit gaps as a hardening milestone | The v1.10 integration checker passed after fixes, but follow-up direct regressions and static guards reduce future voice-cache drift risk | Implemented in v1.11 |
-| Treat F5 timing as operator-tuned presets | User feedback is ear-based, so Saymo should support repeatable preset comparison and application instead of hardcoded one-off knob edits | Pending in v1.12 |
+| Treat F5 timing as operator-tuned presets | User feedback is ear-based, so Saymo should support repeatable preset comparison and application instead of hardcoded one-off knob edits | Implemented in v1.12 |
+| Keep F5 cache repair read-only until explicit regeneration | Prepared and response caches can be expensive to rebuild, so diagnostics should warn and point at targeted commands instead of mutating cache state | Implemented in v1.12 |
+| Preserve voice metadata through manual review | Reviewed audio must not bypass call-ready sidecar checks after replacing the prepared WAV | Implemented in v1.12 |
 
 ---
-*Last updated: 2026-07-09 after starting milestone v1.12*
+*Last updated: 2026-07-09 after completing milestone v1.12*

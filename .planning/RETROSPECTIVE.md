@@ -147,6 +147,57 @@ future planning.*
 
 ---
 
+## Milestone: v1.12 — F5 Voice Tuning Controls
+
+**Shipped:** 2026-07-09
+**Phases:** 2 | **Plans:** 4 | **Sessions:** 1
+
+### What Was Built
+- Named F5 pause presets, config apply flow, per-profile annotation, and
+  selector fingerprint integration.
+- Sanitized current-vs-candidate F5 timing preview artifacts and preference
+  review output.
+- Read-only cache status advice with explicit expensive-F5 regeneration
+  warnings and targeted repair commands.
+- Prepared-audio metadata preservation after `saymo review`, plus stale
+  response-cache lookup guards for both active and classifier paths.
+
+### What Worked
+- Keeping tuning as presets matched the user's ear-based review workflow
+  without retraining or touching model assets.
+- Cache advice stayed read-only, which kept expensive rebuilds explicit.
+- Integration checker caught a date-sensitive test fixture before archive; the
+  fix kept the final full suite future-safe.
+
+### What Was Inefficient
+- `gsd-tools milestone complete` archived core files but still left current
+  milestone state and phase directories requiring manual cleanup.
+- The implementation had to patch planning metadata after the code was already
+  complete so the audit scanner could prove Nyquist compliance.
+
+### Patterns Established
+- Voice tuning commands should store hashes/counts and timing values, never raw
+  meeting or preview text.
+- Any command that can imply expensive F5 regeneration should explain the
+  narrowest safe repair command.
+- Review commands that overwrite WAVs must route through metadata helpers.
+
+### Key Lessons
+1. Preset application must affect cache fingerprints through concrete runtime
+   knobs, not only a friendly preset label.
+2. Read-only status commands are safer than automatic cache repair when local
+   model inference is expensive.
+3. Integration audit should include test-fixture durability, not only feature
+   wiring.
+
+### Cost Observations
+- Model mix: not tracked in repo.
+- Sessions: 1 autonomous implementation, audit, and archive session.
+- Notable: focused tests plus full `uv run pytest -q` remained fast enough for
+  repeated RED/GREEN and audit reruns.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -158,6 +209,7 @@ future planning.*
 | v1.2 | 1 | 3 | Added session-aware review, relabeling, readiness, and guarded live assist. |
 | v1.10 | 1 | 1 | Added silent F5 breath pacing plus cache fingerprint invalidation. |
 | v1.11 | 1 | 1 | Added direct F5 cache-staleness, continuation-silence, and static/docs guards. |
+| v1.12 | 1 | 2 | Added operator F5 timing presets, cache status warnings, and review metadata safety. |
 
 ### Cumulative Quality
 
@@ -168,6 +220,7 @@ future planning.*
 | v1.2 | 50 focused trigger review/readiness/classifier tests | phase-scoped | review/readiness/session helpers |
 | v1.10 | 552 full-suite tests | TTS/cache/selector plus full suite | silent-breath pacing and cache invalidation |
 | v1.11 | 557 full-suite tests | cache metadata, response cache, F5 TTS, static guards | audit-ready hardening metadata |
+| v1.12 | 574 full-suite tests | F5 presets, timing artifacts, cache advice, review metadata | read-only cache status and preset controls |
 
 ### Top Lessons (Verified Across Milestones)
 
