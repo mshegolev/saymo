@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping
 
+from saymo.analysis.f5_timing_metrics import build_f5_timing_metrics
 from saymo.config import SaymoConfig
 from saymo.tts.f5_presets import f5_timing_snapshot
 
@@ -26,6 +27,7 @@ def build_f5_timing_record(
     corpus_id: str | None = None,
     corpus_category: str | None = None,
     corpus_label: str | None = None,
+    audio_duration_seconds: float | None = None,
 ) -> dict[str, Any]:
     """Build one sanitized preview record without storing raw text."""
     record = {
@@ -38,6 +40,12 @@ def build_f5_timing_record(
         "text_sha256": _sha256_text(text),
         "text_chars": len(str(text or "")),
         "timing": f5_timing_snapshot(config, preset_id=preset_id),
+        "metrics": build_f5_timing_metrics(
+            config,
+            text=text,
+            preset_id=preset_id,
+            audio_duration_seconds=audio_duration_seconds,
+        ),
         "settings": {
             "dry_run": bool(dry_run),
         },

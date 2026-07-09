@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 import click
+import soundfile as sf
 import yaml
 from rich.table import Table
 
@@ -487,6 +488,7 @@ async def _write_f5_preset_preview(
             record_label = _f5_preview_record_label(preview_item, label)
             output_wav = _f5_preview_output_wav(run_dir, preview_item, label, preset_id)
             latency_ms = 0
+            audio_duration_seconds = None
             if not dry_run:
                 from saymo.commands.core import _synthesize
 
@@ -501,6 +503,7 @@ async def _write_f5_preset_preview(
                         f"F5 timing preview synthesis failed for {record_label}"
                     )
                 output_wav.write_bytes(audio)
+                audio_duration_seconds = round(float(sf.info(str(output_wav)).duration), 2)
                 latency_ms = int((time.perf_counter() - started) * 1000)
             records.append(
                 build_f5_timing_record(
@@ -515,6 +518,7 @@ async def _write_f5_preset_preview(
                     corpus_id=preview_item.corpus_id,
                     corpus_category=preview_item.corpus_category,
                     corpus_label=preview_item.corpus_label,
+                    audio_duration_seconds=audio_duration_seconds,
                 )
             )
 
