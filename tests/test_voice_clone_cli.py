@@ -327,6 +327,23 @@ def test_f5_presets_cli_list_show_and_apply_updates_config(tmp_path):
     assert raw["meetings"]["standup"]["voice"]["f5_pause_preset"] == "deliberate"
 
 
+def test_f5_presets_corpus_cli_list_shows_safe_metadata_only(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+
+    listed = CliRunner().invoke(
+        main,
+        ["--config", str(config_path), "f5-presets", "corpus", "list"],
+    )
+
+    assert listed.exit_code == 0
+    assert "standup-blocked" in listed.output
+    assert "clause_heavy" in listed.output
+    assert "Direct handoff" in listed.output
+    assert "I am blocked on one dependency" not in listed.output
+
+
 def test_f5_presets_cli_preview_and_review_are_sanitized(tmp_path):
     saymo_home = tmp_path / ".saymo"
     f5_root = tmp_path / "F5TTS"
