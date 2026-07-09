@@ -87,3 +87,36 @@ def test_cache_status_cli_warns_with_targeted_commands(tmp_path, monkeypatch):
     assert "voice_sample" not in result.output
     assert "training_dataset" not in result.output
     assert "secret" not in result.output.lower()
+
+
+def test_source_type_preset_docs_cover_usage_and_safety_boundary():
+    shootout = Path("docs/voice-clone-shootout.md").read_text(encoding="utf-8")
+    naturalness = Path("docs/VOICE-NATURALNESS.md").read_text(encoding="utf-8")
+    combined = f"{shootout}\n{naturalness}"
+
+    assert "saymo f5-presets apply calm --profile standup --source-type prepared" in shootout
+    assert "saymo f5-presets apply crisp --profile standup --source-type response_cache" in shootout
+    assert "saymo f5-presets apply deliberate --profile standup --source-type spontaneous" in shootout
+    assert "meetings.standup.voice.f5_pause_presets" in shootout
+    assert "source-type override -> profile-level f5_pause_preset -> global tts.f5tts.pause_preset" in shootout
+    assert "voice_metadata_stale" in shootout
+    assert "saymo prepare -p standup" in shootout
+    assert "saymo prepare-responses -p standup" in shootout
+
+    for phrase in (
+        "no retraining",
+        "no automatic cache rebuilding",
+        "no audible breath",
+        "no cloud services",
+        "no automatic preset recommendations",
+    ):
+        assert phrase in combined.lower()
+
+    for phrase in (
+        "prompt text",
+        "response text",
+        "audio bytes",
+        "private meeting",
+        "secrets",
+    ):
+        assert phrase in shootout.lower()
