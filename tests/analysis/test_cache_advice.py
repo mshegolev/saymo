@@ -43,6 +43,11 @@ def test_prepared_audio_cache_advice_reports_ready_without_regeneration(tmp_path
     assert advice.status == "ready"
     assert advice.expensive is False
     assert advice.action == "No regeneration needed; prepared audio is current."
+    assert advice.metadata["source_type"] == "prepared"
+    assert advice.metadata["purpose"] == "prepare"
+    assert advice.metadata["profile_preset_id"] == "crisp"
+    assert advice.metadata["source_override_preset_id"] == "calm"
+    assert advice.metadata["resolved_preset_id"] == "calm"
 
 
 def test_prepared_audio_cache_advice_warns_for_stale_f5_metadata(tmp_path: Path):
@@ -71,6 +76,8 @@ def test_prepared_audio_cache_advice_warns_for_stale_f5_metadata(tmp_path: Path)
     assert advice.expensive is True
     assert "F5" in advice.warning
     assert advice.action == "Run saymo prepare -p standup to rebuild prepared audio only."
+    assert advice.metadata["source_type"] == "prepared"
+    assert advice.metadata["resolved_preset_id"] == "approved"
     assert "PRIVATE_" not in json.dumps(advice.to_dict(), ensure_ascii=False)
 
 
@@ -112,12 +119,28 @@ def test_response_cache_advice_warns_for_stale_or_missing_variants(tmp_path: Pat
             "variants": ["PRIVATE RESPONSE TEXT"],
         }
     }
+    config.meetings = {
+        "standup": {
+            "voice": {
+                "f5_pause_preset": "crisp",
+                "f5_pause_presets": {"response_cache": "deliberate"},
+            }
+        }
+    }
     advice = response_cache_advice(config, profile="standup")
 
     assert advice.status in {"stale", "partial"}
     assert advice.expensive is True
-    assert advice.action == "Run saymo prepare-responses to rebuild only missing or stale variants."
+    assert advice.action == (
+        "Run saymo prepare-responses -p standup to rebuild only missing or stale variants."
+    )
     assert "prepare-responses --force" in advice.warning
+    assert advice.metadata["source_type"] == "response_cache"
+    assert advice.metadata["purpose"] == "response_cache"
+    assert advice.metadata["profile_preset_id"] == "crisp"
+    assert advice.metadata["source_override_preset_id"] == "deliberate"
+    assert advice.metadata["resolved_preset_id"] == "deliberate"
+    assert any("voice_metadata_stale" in item for item in advice.metadata["stale_examples"])
     assert "PRIVATE RESPONSE TEXT" not in json.dumps(advice.to_dict(), ensure_ascii=False)
 
 
@@ -162,3 +185,7 @@ def test_response_cache_advice_reports_ready_without_force(tmp_path: Path):
     assert advice.status == "ready"
     assert advice.expensive is False
     assert advice.action == "No regeneration needed; response cache is current."
+    assert advice.metadata["source_type"] == "response_cache"
+    assert advice.metadata["profile_preset_id"] == "crisp"
+    assert advice.metadata["source_override_preset_id"] == "calm"
+    assert advice.metadata["resolved_preset_id"] == "calm"

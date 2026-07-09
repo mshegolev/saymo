@@ -785,6 +785,10 @@ def test_response_cache_launch_check_blocks_disabled_and_partial_coverage(tmp_pa
 
     config = load_config(config_path=str(_write_config(tmp_path)))
     config.tts.engine = "f5tts_clone"
+    config.meetings["standup"]["voice"] = {
+        "f5_pause_preset": "crisp",
+        "f5_pause_presets": {"response_cache": "deliberate"},
+    }
 
     partial = collect_response_cache_check(
         config,
@@ -797,11 +801,16 @@ def test_response_cache_launch_check_blocks_disabled_and_partial_coverage(tmp_pa
     assert partial.ok is False
     assert partial.detail.endswith("variants ready")
     assert "expensive" in partial.action.lower()
-    assert "prepare-responses" in partial.action
+    assert "saymo prepare-responses -p standup" in partial.action
     assert partial.metadata["ready"] == 0
     assert partial.metadata["total"] > 0
     assert partial.metadata["missing_examples"]
     assert partial.metadata["cache_dir"] == str(tmp_path / "responses")
+    assert partial.metadata["source_type"] == "response_cache"
+    assert partial.metadata["purpose"] == "response_cache"
+    assert partial.metadata["profile_preset_id"] == "crisp"
+    assert partial.metadata["source_override_preset_id"] == "deliberate"
+    assert partial.metadata["resolved_preset_id"] == "deliberate"
     _assert_private_absent(json.dumps(partial.to_dict(), ensure_ascii=False))
 
     config.responses.enabled = False
@@ -813,7 +822,9 @@ def test_response_cache_launch_check_blocks_disabled_and_partial_coverage(tmp_pa
 
     assert disabled.ok is False
     assert disabled.detail == "response_cache_disabled"
-    assert disabled.action == "Set responses.enabled=true, then run saymo prepare-responses"
+    assert disabled.action == (
+        "Set responses.enabled=true, then run saymo prepare-responses -p standup"
+    )
     assert disabled.rerun == "saymo call-ready -p standup --provider glip"
 
 

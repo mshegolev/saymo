@@ -34,6 +34,11 @@ def _write_config(tmp_path: Path) -> Path:
               standup:
                 provider: glip
                 team: false
+                voice:
+                  f5_pause_preset: crisp
+                  f5_pause_presets:
+                    prepared: calm
+                    response_cache: deliberate
             """
         ),
         encoding="utf-8",
@@ -68,5 +73,17 @@ def test_cache_status_cli_warns_with_targeted_commands(tmp_path, monkeypatch):
     assert "response cache" in result.output.lower()
     assert "F5 regeneration can be expensive" in result.output
     assert "saymo prepare -p standup" in result.output
-    assert "saymo prepare-responses" in result.output
+    assert "saymo prepare-responses -p standup" in result.output
+    assert "preset: source_type=prepared" in result.output
+    assert "preset: source_type=response_cache" in result.output
+    assert "profile=crisp" in result.output
+    assert "override=calm" in result.output
+    assert "override=deliberate" in result.output
+    assert "resolved=calm" in result.output
+    assert "resolved=deliberate" in result.output
+    assert "voice_metadata_stale" in result.output
     assert "PRIVATE RESPONSE TEXT" not in result.output
+    assert "audio_bytes" not in result.output
+    assert "voice_sample" not in result.output
+    assert "training_dataset" not in result.output
+    assert "secret" not in result.output.lower()
