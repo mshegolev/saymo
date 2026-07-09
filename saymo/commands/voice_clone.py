@@ -6,12 +6,21 @@ import time
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
+from typing import NamedTuple
 
 import click
 import yaml
 from rich.table import Table
 
 from saymo.commands import console, main, run_async
+
+
+class _F5PreviewItem(NamedTuple):
+    text: str
+    source_kind: str
+    corpus_id: str | None = None
+    corpus_category: str | None = None
+    corpus_label: str | None = None
 
 
 @main.command("voice-inventory")
@@ -338,11 +347,35 @@ def f5_presets_apply(ctx, preset, profile, config_path):
 
 @f5_presets.command("preview")
 @click.argument("preset")
-@click.option("--text", required=True, help="Preview text. Stored only as hash/char count.")
+@click.option(
+    "--text",
+    default=None,
+    help="Manual one-off preview text. Stored only as hash/char count.",
+)
+@click.option(
+    "--corpus",
+    "corpus_categories",
+    multiple=True,
+    help="Built-in corpus category to preview. Use 'all' for every entry.",
+)
+@click.option(
+    "--corpus-id",
+    "corpus_ids",
+    multiple=True,
+    help="Built-in corpus entry id to preview.",
+)
 @click.option("--output-dir", type=click.Path(), default=None, help="Artifact directory.")
 @click.option("--dry-run", is_flag=True, help="Write sanitized artifacts without synthesis.")
 @click.pass_context
-def f5_presets_preview(ctx, preset, text, output_dir, dry_run):
+def f5_presets_preview(
+    ctx,
+    preset,
+    text,
+    corpus_categories,
+    corpus_ids,
+    output_dir,
+    dry_run,
+):
     """Generate current-vs-candidate F5 timing preview artifacts."""
     run_dir = (
         Path(output_dir).expanduser()
@@ -350,11 +383,16 @@ def f5_presets_preview(ctx, preset, text, output_dir, dry_run):
         else _default_f5_timing_run_dir()
     )
     try:
+        preview_items = _resolve_f5_preview_items(
+            text=text,
+            corpus_categories=corpus_categories,
+            corpus_ids=corpus_ids,
+        )
         manifest_path = run_async(
             _write_f5_preset_preview(
                 ctx.obj["config"],
                 preset=preset,
-                text=text,
+                preview_items=preview_items,
                 run_dir=run_dir,
                 dry_run=dry_run,
             )
@@ -387,7 +425,46 @@ def f5_presets_review(run_dir, preferred, notes):
     console.print(f"report: {Path(run_dir).expanduser() / 'timing-report.md'}")
 
 
-async def _write_f5_preset_preview(config, *, preset: str, text: str, run_dir: Path, dry_run: bool):
+def _resolve_f5_preview_items(
+    *,
+    text: str | None,
+    corpus_categories: tuple[str, ...],
+    corpus_ids: tuple[str, ...],
+) -> tuple[_F5PreviewItem, ...]:
+    has_text = text is not None
+    has_corpus = bool(corpus_categories or corpus_ids)
+    if has_text and has_corpus:
+        raise ValueError("Choose either --text or corpus options.")
+    if not has_text and not has_corpus:
+        raise ValueError("Provide --text, --corpus, or --corpus-id.")
+    if has_text:
+        return (_F5PreviewItem(text=text, source_kind="manual"),)
+
+    from saymo.tts.f5_corpus import resolve_f5_preview_corpus_selection
+
+    return tuple(
+        _F5PreviewItem(
+            text=entry.text,
+            source_kind="builtin_corpus",
+            corpus_id=entry.id,
+            corpus_category=entry.category,
+            corpus_label=entry.label,
+        )
+        for entry in resolve_f5_preview_corpus_selection(
+            categories=corpus_categories,
+            ids=corpus_ids,
+        )
+    )
+
+
+async def _write_f5_preset_preview(
+    config,
+    *,
+    preset: str,
+    preview_items: tuple[_F5PreviewItem, ...],
+    run_dir: Path,
+    dry_run: bool,
+):
     from saymo.analysis.f5_timing_review import (
         build_f5_timing_record,
         write_f5_timing_preview_artifacts,
@@ -405,36 +482,65 @@ async def _write_f5_preset_preview(config, *, preset: str, text: str, run_dir: P
         ("candidate", candidate_config, candidate.id),
     ]
     records = []
-    for label, candidate_config_item, preset_id in configs:
-        output_wav = run_dir / f"{label}-{preset_id}.wav"
-        latency_ms = 0
-        if not dry_run:
-            from saymo.commands.core import _synthesize
+    for preview_item in preview_items:
+        for label, candidate_config_item, preset_id in configs:
+            record_label = _f5_preview_record_label(preview_item, label)
+            output_wav = _f5_preview_output_wav(run_dir, preview_item, label, preset_id)
+            latency_ms = 0
+            if not dry_run:
+                from saymo.commands.core import _synthesize
 
-            started = time.perf_counter()
-            audio = await _synthesize(candidate_config_item, text, purpose="preview")
-            if audio is None:
-                raise ValueError(f"F5 timing preview synthesis failed for {label}")
-            output_wav.write_bytes(audio)
-            latency_ms = int((time.perf_counter() - started) * 1000)
-        records.append(
-            build_f5_timing_record(
-                candidate_config_item,
-                label=label,
-                preset_id=preset_id,
-                text=text,
-                output_wav=output_wav,
-                dry_run=dry_run,
-                latency_ms=latency_ms,
+                started = time.perf_counter()
+                audio = await _synthesize(
+                    candidate_config_item,
+                    preview_item.text,
+                    purpose="preview",
+                )
+                if audio is None:
+                    raise ValueError(
+                        f"F5 timing preview synthesis failed for {record_label}"
+                    )
+                output_wav.write_bytes(audio)
+                latency_ms = int((time.perf_counter() - started) * 1000)
+            records.append(
+                build_f5_timing_record(
+                    candidate_config_item,
+                    label=record_label,
+                    preset_id=preset_id,
+                    text=preview_item.text,
+                    output_wav=output_wav,
+                    dry_run=dry_run,
+                    latency_ms=latency_ms,
+                    source_kind=preview_item.source_kind,
+                    corpus_id=preview_item.corpus_id,
+                    corpus_category=preview_item.corpus_category,
+                    corpus_label=preview_item.corpus_label,
+                )
             )
-        )
 
     return write_f5_timing_preview_artifacts(
         run_dir,
         records,
         expected_clips=len(records),
-        source_text=text,
+        source_text=None,
     )
+
+
+def _f5_preview_record_label(preview_item: _F5PreviewItem, label: str) -> str:
+    if preview_item.corpus_id:
+        return f"{preview_item.corpus_id}:{label}"
+    return label
+
+
+def _f5_preview_output_wav(
+    run_dir: Path,
+    preview_item: _F5PreviewItem,
+    label: str,
+    preset_id: str,
+) -> Path:
+    if preview_item.corpus_id:
+        return run_dir / f"{preview_item.corpus_id}-{label}-{preset_id}.wav"
+    return run_dir / f"{label}-{preset_id}.wav"
 
 
 def _resolve_config_update_path(ctx, config_path: str | None) -> Path:
