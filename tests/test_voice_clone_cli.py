@@ -369,9 +369,12 @@ def test_f5_presets_cli_preview_and_review_are_sanitized(tmp_path):
     assert "timing preview" in preview.output.lower()
     assert "PRIVATE CLI TIMING TEXT" not in preview.output
     assert (run_dir / "manifest.json").exists()
-    assert "PRIVATE CLI TIMING TEXT" not in (run_dir / "manifest.json").read_text(
-        encoding="utf-8"
-    )
+    manifest_text = (run_dir / "manifest.json").read_text(encoding="utf-8")
+    assert "PRIVATE CLI TIMING TEXT" not in manifest_text
+    manifest = json.loads(manifest_text)
+    assert len(manifest["records"]) == 2
+    assert {record["source_kind"] for record in manifest["records"]} == {"manual"}
+    assert all("corpus" not in record for record in manifest["records"])
 
     review = CliRunner().invoke(
         main,
@@ -392,6 +395,119 @@ def test_f5_presets_cli_preview_and_review_are_sanitized(tmp_path):
     assert "PRIVATE CLI TIMING TEXT" not in (run_dir / "timing-report.md").read_text(
         encoding="utf-8"
     )
+
+
+def test_f5_presets_preview_selected_corpus_category(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    run_dir = tmp_path / "timing-preview-standup"
+
+    preview = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "preview",
+            "calm",
+            "--corpus",
+            "standup",
+            "--output-dir",
+            str(run_dir),
+            "--dry-run",
+        ],
+    )
+
+    assert preview.exit_code == 0
+    manifest_text = (run_dir / "manifest.json").read_text(encoding="utf-8")
+    manifest = json.loads(manifest_text)
+    assert len(manifest["records"]) == 4
+    assert {record["source_kind"] for record in manifest["records"]} == {
+        "builtin_corpus"
+    }
+    assert {record["corpus"]["category"] for record in manifest["records"]} == {
+        "standup"
+    }
+    assert "I am blocked on one dependency" not in manifest_text
+    assert "I am blocked on one dependency" not in (run_dir / "timing-report.md").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_f5_presets_preview_selected_corpus_id(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    run_dir = tmp_path / "timing-preview-id"
+
+    preview = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "preview",
+            "calm",
+            "--corpus-id",
+            "standup-blocked",
+            "--output-dir",
+            str(run_dir),
+            "--dry-run",
+        ],
+    )
+
+    assert preview.exit_code == 0
+    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    records = manifest["records"]
+    assert len(records) == 2
+    assert [record["label"] for record in records] == [
+        "standup-blocked:current",
+        "standup-blocked:candidate",
+    ]
+    assert [Path(record["output_wav"]).name for record in records] == [
+        "standup-blocked-current-approved.wav",
+        "standup-blocked-candidate-calm.wav",
+    ]
+    assert all(record["corpus"]["id"] == "standup-blocked" for record in records)
+
+
+def test_f5_presets_preview_selection_errors(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+
+    mixed = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "preview",
+            "calm",
+            "--text",
+            "PRIVATE CLI TIMING TEXT",
+            "--corpus",
+            "standup",
+            "--dry-run",
+        ],
+    )
+    assert mixed.exit_code != 0
+    assert "Choose either --text or corpus options" in mixed.output
+
+    missing = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "preview",
+            "calm",
+            "--dry-run",
+        ],
+    )
+    assert missing.exit_code != 0
+    assert "Provide --text, --corpus, or --corpus-id" in missing.output
 
 
 def test_f5_timing_record_manual_source_is_sanitized(tmp_path):
