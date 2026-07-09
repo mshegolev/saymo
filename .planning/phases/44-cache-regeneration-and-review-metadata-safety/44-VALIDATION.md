@@ -1,3 +1,13 @@
+---
+phase: 44
+slug: cache-regeneration-and-review-metadata-safety
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
+created: 2026-07-09
+requirements: [CACHE-01, CACHE-02, CACHE-03, CACHE-04]
+---
+
 # Phase 44 Validation
 
 ## Focused
