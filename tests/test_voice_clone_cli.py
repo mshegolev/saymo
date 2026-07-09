@@ -473,6 +473,54 @@ def test_f5_presets_preview_selected_corpus_id(tmp_path):
     assert all(record["corpus"]["id"] == "standup-blocked" for record in records)
 
 
+def test_f5_presets_preview_selected_corpus_id_writes_sanitized_metrics(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    entry = get_f5_preview_corpus_entry("standup-blocked")
+    run_dir = tmp_path / "timing-preview-id-metrics"
+    artifact_names = ("manifest.json", "review.json", "timing-report.md")
+
+    preview = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "preview",
+            "calm",
+            "--corpus-id",
+            "standup-blocked",
+            "--output-dir",
+            str(run_dir),
+            "--dry-run",
+        ],
+    )
+
+    assert preview.exit_code == 0
+    artifact_text = "\n".join(
+        (run_dir / name).read_text(encoding="utf-8") for name in artifact_names
+    )
+    assert entry.text not in artifact_text
+    assert "PRIVATE MANUAL PREVIEW TEXT" not in artifact_text
+
+    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    records = manifest["records"]
+    assert len(records) == 2
+    for record in records:
+        metrics = record["metrics"]
+        assert metrics["audio_duration_seconds"] is None
+        assert metrics["estimated_total_duration_seconds"] > 0
+        assert metrics["chars_per_second"] > 0
+        assert metrics["words_per_minute"] > 0
+        assert set(metrics["pause_distribution"]) == {
+            "sentence",
+            "clause",
+            "paragraph",
+            "silent_breath",
+        }
+
+
 def test_f5_presets_corpus_preview_artifacts_omit_raw_text(tmp_path):
     saymo_home = tmp_path / ".saymo"
     f5_root = tmp_path / "F5TTS"
@@ -618,3 +666,25 @@ def test_f5_timing_record_corpus_metadata_is_safe(tmp_path):
     assert record["text_sha256"]
     assert record["text_chars"] == len("PRIVATE CORPUS TIMING TEXT")
     assert "PRIVATE CORPUS TIMING TEXT" not in json.dumps(record)
+
+
+def test_f5_timing_record_accepts_measured_audio_duration(tmp_path):
+    from saymo.analysis.f5_timing_review import build_f5_timing_record
+    from saymo.config import load_config
+
+    config_path = _write_config(tmp_path, tmp_path / ".saymo", tmp_path / "F5TTS")
+    config = load_config(str(config_path))
+    record = build_f5_timing_record(
+        config,
+        label="candidate",
+        preset_id="calm",
+        text="PRIVATE MEASURED TIMING TEXT",
+        output_wav=tmp_path / "candidate-calm.wav",
+        dry_run=False,
+        audio_duration_seconds=1.234,
+    )
+
+    assert record["metrics"]["audio_duration_seconds"] == 1.23
+    assert record["metrics"]["estimated_total_duration_seconds"] > 0
+    assert record["metrics"]["words_per_minute"] > 0
+    assert "PRIVATE MEASURED TIMING TEXT" not in json.dumps(record)
