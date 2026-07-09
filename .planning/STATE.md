@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.13
 milestone_name: F5 Prosody Metrics
-status: defining requirements
+status: ready to plan
 stopped_at: not stopped
-last_updated: "2026-07-09T19:10:22+04:00"
-last_activity: 2026-07-09 - Milestone v1.13 F5 Prosody Metrics started
+last_updated: "2026-07-09T19:13:13+04:00"
+last_activity: 2026-07-09 - Roadmap created for Phases 45-47
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -22,17 +22,16 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.13 F5 Prosody Metrics.
+**Current focus:** Phase 45: Prosody Preview Corpus.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 45 of 47 (Prosody Preview Corpus)
 Plan: —
-Total Plans in Phase: —
-Plans: —
-Status: Defining requirements
-Last activity: 2026-07-09 - Milestone v1.13 started from remaining F5
-naturalness requirements.
+Total Plans in Phase: TBD
+Plans: TBD
+Status: Ready to plan
+Last activity: 2026-07-09 - Roadmap created for v1.13 F5 Prosody Metrics.
 
 Progress: [----------] 0%
 
@@ -53,7 +52,9 @@ Progress: [----------] 0%
 
 | Phase | Status | Plans |
 |-------|--------|-------|
-| — | Not started | — |
+| 45. Prosody Preview Corpus | Not started | TBD |
+| 46. Timing Metrics Reports | Not started | TBD |
+| 47. Source-Type Pause Presets | Not started | TBD |
 
 ## Accumulated Context
 
@@ -75,8 +76,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Define v1.13 requirements.
-- Create the v1.13 roadmap starting at Phase 45.
+- Plan Phase 45: Prosody Preview Corpus.
 
 ### Blockers/Concerns
 
@@ -90,6 +90,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-07-09T19:10:22+04:00
-Stopped at: v1.13 requirements definition.
+Last session: 2026-07-09T19:13:13+04:00
+Stopped at: v1.13 roadmap created; Phase 45 is ready to plan.
 Resume file: None

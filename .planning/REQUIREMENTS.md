@@ -72,22 +72,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORP-01 | TBD | Pending |
-| CORP-02 | TBD | Pending |
-| CORP-03 | TBD | Pending |
-| METR-01 | TBD | Pending |
-| METR-02 | TBD | Pending |
-| METR-03 | TBD | Pending |
-| SRCE-01 | TBD | Pending |
-| SRCE-02 | TBD | Pending |
-| SRCE-03 | TBD | Pending |
-| SRCE-04 | TBD | Pending |
+| CORP-01 | Phase 45 | Pending |
+| CORP-02 | Phase 45 | Pending |
+| CORP-03 | Phase 45 | Pending |
+| METR-01 | Phase 46 | Pending |
+| METR-02 | Phase 46 | Pending |
+| METR-03 | Phase 46 | Pending |
+| SRCE-01 | Phase 47 | Pending |
+| SRCE-02 | Phase 47 | Pending |
+| SRCE-03 | Phase 47 | Pending |
+| SRCE-04 | Phase 47 | Pending |
 
 **Coverage:**
 - v1.13 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10
+- Mapped to phases: 10
+- Unmapped: 0
+- Duplicate mappings: 0
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after initial definition*
+*Last updated: 2026-07-09 after roadmap creation*
