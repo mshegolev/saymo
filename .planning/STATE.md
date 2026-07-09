@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.12
 milestone_name: F5 Voice Tuning Controls
-current_phase: null
-current_phase_name: null
+current_phase: 43
+current_phase_name: F5 Pause Presets and A/B Timing Review
 current_plan: null
-status: defining requirements
-stopped_at: Milestone v1.12 started; requirements and roadmap are next.
-last_updated: "2026-07-09T12:00:00.000Z"
-last_activity: 2026-07-09 - Started v1.12 F5 Voice Tuning Controls
+status: ready to plan
+stopped_at: Roadmap created for Phase 43
+last_updated: "2026-07-09T12:05:00.000Z"
+last_activity: 2026-07-09 - Created v1.12 roadmap with Phases 43-44
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
-  total_plans: 0
+  total_plans: 4
   completed_plans: 0
   percent: 0
 ---
@@ -29,19 +29,20 @@ and respond fast enough that the call still feels live.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 43 of 44 (F5 Pause Presets and A/B Timing Review)
 Plan: —
-Total Plans in Phase: —
-Plans: —
-Status: Defining requirements for v1.12.
-Last activity: 2026-07-09 - Started v1.12 F5 Voice Tuning Controls.
+Total Plans in Phase: 2
+Plans: 0 of 2 completed.
+Status: Ready to plan Phase 43.
+Last activity: 2026-07-09 - Created v1.12 roadmap and mapped all 10
+requirements to Phases 43-44.
 
 Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: 0
+- Total plans planned: 4
 - Plans completed: 0
 - Average duration: n/a
 - Total execution time: 0 min
@@ -55,7 +56,8 @@ Progress: [----------] 0%
 
 | Phase | Status | Plans |
 |-------|--------|-------|
-| v1.12 | Defining requirements | 0/0 |
+| 43. F5 Pause Presets and A/B Timing Review | Not started | 0/2 |
+| 44. Cache Regeneration and Review Metadata Safety | Not started | 0/2 |
 
 ## Accumulated Context
 
@@ -75,7 +77,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Define v1.12 requirements and roadmap.
+- Plan Phase 43.
 - Optional: user can still listen to
   `~/.saymo/voice_benchmarks/20260709-silent-breath/f5tts-silent-breath-01.wav`
   and request subjective timing adjustments during v1.12.
@@ -92,6 +94,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-07-09T12:00:00.000Z
-Stopped at: Milestone v1.12 started.
+Last session: 2026-07-09T12:05:00.000Z
+Stopped at: Roadmap created for v1.12 Phase 43.
 Resume file: None
