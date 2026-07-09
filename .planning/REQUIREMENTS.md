@@ -32,10 +32,10 @@ and respond fast enough that the call still feels live.
 
 ### Source-Type Presets
 
-- [ ] **SRCE-01**: User can configure separate F5 pause presets per source
+- [x] **SRCE-01**: User can configure separate F5 pause presets per source
   type, such as prepared standup notes, response-cache variants, and
   spontaneous approved answers, without hand-editing YAML for normal changes.
-- [ ] **SRCE-02**: User can keep existing profile-level preset behavior when
+- [x] **SRCE-02**: User can keep existing profile-level preset behavior when
   no source-type override is configured.
 - [ ] **SRCE-03**: User can rely on source-type preset choices participating
   in voice/cache fingerprints so affected prepared audio and response-cache
@@ -78,8 +78,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | METR-01 | Phase 46 | Complete |
 | METR-02 | Phase 46 | Complete |
 | METR-03 | Phase 46 | Complete |
-| SRCE-01 | Phase 47 | Pending |
-| SRCE-02 | Phase 47 | Pending |
+| SRCE-01 | Phase 47 | Complete |
+| SRCE-02 | Phase 47 | Complete |
 | SRCE-03 | Phase 47 | Pending |
 | SRCE-04 | Phase 47 | Pending |
 
