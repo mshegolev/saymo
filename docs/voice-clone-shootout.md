@@ -20,14 +20,29 @@ samples, or touch training datasets.
 ```bash
 saymo f5-presets list
 saymo f5-presets show calm
+saymo f5-presets corpus list
+saymo f5-presets preview calm \
+  --corpus standup \
+  --output-dir ~/.saymo/voice_benchmarks/f5-standup-preview \
+  --dry-run
+saymo f5-presets preview calm \
+  --corpus-id standup-blocked \
+  --output-dir ~/.saymo/voice_benchmarks/f5-standup-blocked-preview \
+  --dry-run
+saymo f5-presets review ~/.saymo/voice_benchmarks/f5-standup-blocked-preview \
+  --preferred calm \
+  --notes "better pauses"
+saymo f5-presets apply calm --profile standup
+```
+
+For a one-off local preview, keep manual text explicit and do not reuse it as
+the repeatable tuning baseline:
+
+```bash
 saymo f5-presets preview calm \
   --text "Короткий тестовый текст для прослушивания." \
   --output-dir ~/.saymo/voice_benchmarks/f5-calm-preview \
   --dry-run
-saymo f5-presets review ~/.saymo/voice_benchmarks/f5-calm-preview \
-  --preferred calm \
-  --notes "better pauses"
-saymo f5-presets apply calm --profile standup
 ```
 
 Built-in presets:
@@ -39,10 +54,14 @@ Built-in presets:
 | `calm` | 0.44s | 0.22s | 0.68s | 2 |
 | `deliberate` | 0.55s | 0.28s | 0.85s | 2 |
 
-Preview artifacts live under `~/.saymo/voice_benchmarks/<run>/` and store text
-hashes plus timing values, not the raw meeting or preview text. Applying a
-preset writes both `tts.f5tts.pause_preset` and the concrete timing knobs, so
-prepared audio and response-cache metadata get a new voice fingerprint.
+Preview artifacts live under `~/.saymo/voice_benchmarks/<run>/` and store
+`text_sha256`, `text_chars`, timing snapshots, preset ids, artifact paths, and
+safe corpus metadata: corpus entry id (`corpus_id`, stored as JSON
+`corpus.id`), category, and label. They never store raw manual text, corpus
+phrase text, private meeting transcripts, prompts, response text, voice
+samples, training data, secrets, or raw audio. Applying a preset writes both
+`tts.f5tts.pause_preset` and the concrete timing knobs, so prepared audio and
+response-cache metadata get a new voice fingerprint.
 
 ## Reference Recordings
 
