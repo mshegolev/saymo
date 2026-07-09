@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import textwrap
 from pathlib import Path
 
@@ -919,4 +920,8 @@ def test_f5_timing_metrics_docs_contract_is_sanitized():
         "training data",
     ]:
         assert privacy_term in shootout
-    assert "automatic preset recommendation" not in combined
+    assert "no automatic preset recommendations" in combined.lower()
+    assert not re.search(
+        r"(?<!no )(?<!without )automatic preset recommendations?",
+        combined.lower(),
+    )
