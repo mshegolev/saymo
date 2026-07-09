@@ -2,8 +2,17 @@
 
 ## Current
 
-No active milestone. Run `$gsd-new-milestone` to define the next requirements
-and roadmap.
+### v1.11 F5 Gap Hardening
+
+**Started:** 2026-07-09
+**Status:** Active
+
+Focus: close the remaining F5 silent-breath hardening gaps around direct cache
+staleness tests, continuation-pause coverage, and no-audible-breath guards.
+
+Active artifacts:
+- `.planning/ROADMAP.md`
+- `.planning/REQUIREMENTS.md`
 
 ## Completed
 

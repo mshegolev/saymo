@@ -1,18 +1,18 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.10
-milestone_name: Silent Breath Natural Pacing
+milestone: v1.11
+milestone_name: F5 Gap Hardening
 current_plan: null
-status: completed
-stopped_at: Milestone v1.10 archived
-last_updated: "2026-07-09T10:02:47.173Z"
+status: defining requirements
+stopped_at: Milestone v1.11 started
+last_updated: "2026-07-09T10:35:38.000Z"
 last_activity: 2026-07-09
 progress:
   total_phases: 1
-  completed_phases: 1
+  completed_phases: 0
   total_plans: 1
-  completed_plans: 1
-  percent: 100
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -23,19 +23,20 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** v1.10 Silent Breath Natural Pacing is shipped and archived.
-Next focus should be defined with `$gsd-new-milestone`.
+**Current focus:** v1.11 F5 Gap Hardening is defining requirements for direct
+cache-staleness regressions, continuation-pause coverage, and F5
+no-audible-breath guards.
 
 ## Current Position
 
-Phase: none - v1.10 milestone complete
+Phase: not started - defining v1.11 requirements
 Current Plan: none
 Total Plans in Phase: 0
-Plans: 1 of 1 completed.
-Status: v1.10 archived; ready for next milestone definition.
+Plans: 0 of 1 completed.
+Status: Defining requirements for v1.11.
 Last activity: 2026-07-09
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 

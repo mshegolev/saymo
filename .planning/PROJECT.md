@@ -61,7 +61,21 @@ configurable silent pauses, kept sentence/clause timing controls, and added F5
 pacing knobs to selector/cache fingerprints so prepared and response cached WAVs
 go stale when pause behavior changes.
 
-**Status:** v1.10 Silent Breath Natural Pacing shipped on 2026-07-09.
+**Status:** v1.11 F5 Gap Hardening is being defined on 2026-07-09.
+
+## Current Milestone: v1.11 F5 Gap Hardening
+
+**Goal:** Close the remaining F5 silent-breath hardening gaps so cached audio,
+continuation pauses, and future F5 edits cannot bypass the no-audible-breath
+boundary.
+
+**Target features:**
+- Direct prepare and response-cache stale-metadata regressions for F5 pacing
+  knob changes.
+- Explicit zero-valued silence coverage for the continuation
+  `breath_interval_sentences` branch.
+- Static and documentation guards that keep the F5 live-call path from
+  reintroducing reference-sample breath audio.
 
 ## Last Completed Milestone: v1.10 Silent Breath Natural Pacing
 
@@ -258,7 +272,12 @@ playback, and regression replay.
 
 ### Active
 
-No active requirements. Define the next milestone with `$gsd-new-milestone`.
+- [ ] User can prove old prepared-audio and response-cache metadata become
+  stale after F5 pacing knobs change.
+- [ ] User can verify continuation breath-interval pauses are zero-valued
+  silence, not non-zero breath/noise samples.
+- [ ] User can rely on tests or static guards that prevent F5 live-call output
+  from reintroducing audible reference breath injection.
 
 ### Out of Scope
 
@@ -346,6 +365,7 @@ No active requirements. Define the next milestone with `$gsd-new-milestone`.
 | Treat call launch as one green path | Daily note, prepare/cache, provider tab, voice readiness, and handbrake state fail in different places unless the operator sees one actionable readiness result | Implemented in v1.9 |
 | Use silent breath pauses instead of audible breath splices for live-call F5 pacing | User feedback identified hum/buzz in the breath layer; live-call output should feel paced without transmitting breath noise | Implemented in v1.10 |
 | Include F5 pacing knobs in voice-cache fingerprints | Prepared and response cached WAVs must go stale when silent-breath timing changes | Implemented in v1.10 |
+| Treat F5 audit gaps as a hardening milestone | The v1.10 integration checker passed after fixes, but follow-up direct regressions and static guards reduce future voice-cache drift risk | Pending in v1.11 |
 
 ---
-*Last updated: 2026-07-09 after shipping milestone v1.10*
+*Last updated: 2026-07-09 after starting milestone v1.11*
