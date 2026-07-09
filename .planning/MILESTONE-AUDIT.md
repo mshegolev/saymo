@@ -1,116 +1,138 @@
 ---
-milestone: v1.8
-milestone_name: Call-ready Voice Clone
-audited: 2026-07-07
+milestone: v1.12
+milestone_name: F5 Voice Tuning Controls
+audited: 2026-07-09T18:20:21+04:00
 status: passed
 scores:
-  requirements: 28/28
-  phases: 5/5
-  integration: 5/5
+  requirements: 10/10
+  phases: 2/2
+  integration: 10/10
   flows: 5/5
 gaps:
   requirements: []
   integration: []
   flows: []
 tech_debt:
-  - phase: milestone
+  - phase: 43-f5-pause-presets-and-a-b-timing-review
     items:
-      - "Real audio/model quality still requires local user A/B scoring; v1.8 adds gates and evidence contracts, not an automatic subjective voice-quality verdict."
-      - "Real non-dry preview depends on installed local TTS runtimes; tests cover audit/selector behavior without loading large models."
+      - "Per-profile preset selection is persisted as meeting-profile metadata plus a global F5 config update; independent per-profile runtime resolution is deferred."
+      - "Real non-dry F5 preview depends on local F5 runtime/model availability; automated coverage uses dry-run artifacts."
 nyquist:
   compliant_phases:
-    - 31-voice-asset-inventory-and-profile-setup
-    - 32-benchmark-scoring-and-f5-baseline
-    - 33-candidate-shootout-gates
-    - 34-call-ready-engine-selector-and-fallback-chain
-    - 35-preview-a-b-approval-and-safety-soak
+    - 43-f5-pause-presets-and-a-b-timing-review
+    - 44-cache-regeneration-and-review-metadata-safety
+  partial_phases: []
+  missing_phases: []
   overall: complete
 ---
 
-# Milestone v1.8 Audit: Call-ready Voice Clone
+# Milestone v1.12 Audit: F5 Voice Tuning Controls
 
 ## Verdict
 
-Audit passed. All 28 milestone requirements are implemented, mapped to phases,
-and covered by phase verification evidence. The implementation keeps voice
-assets and training datasets protected, adds benchmark evidence, gates
-challenger engines, routes runtime synthesis through call-ready selector
-checks, and requires explicit preview/approval evidence before live-call use.
+Audit passed. All 10 v1.12 requirements are implemented, mapped to phases, and
+covered by phase verification evidence. Cross-phase integration passes for the
+operator tuning loop, cache metadata invalidation, read-only cache diagnostics,
+and review metadata safety.
 
 ## Scope
 
 | Phase | Name | Status | Verification |
 |-------|------|--------|--------------|
-| 31 | Voice Asset Inventory and Profile Setup | complete | `31-VERIFICATION.md` passed |
-| 32 | Benchmark Scoring and F5 Baseline | complete | `32-VERIFICATION.md` passed |
-| 33 | Candidate Shootout Gates | complete | `33-VERIFICATION.md` passed |
-| 34 | Call-ready Engine Selector and Fallback Chain | complete | `34-VERIFICATION.md` passed |
-| 35 | Preview, A/B Approval, and Safety Soak | complete | `35-VERIFICATION.md` passed |
+| 43 | F5 Pause Presets and A/B Timing Review | complete | `43-VERIFICATION.md` passed |
+| 44 | Cache Regeneration and Review Metadata Safety | complete | `44-VERIFICATION.md` passed |
 
 ## Requirement Coverage
 
-| Requirement Group | Requirements | Final Status | Evidence |
-|-------------------|--------------|--------------|----------|
-| Voice inventory | INV-01..INV-04 | satisfied | `voice-inventory`, protected classification, sanitized JSON/Markdown. |
-| Voice profile | PROF-01..PROF-04 | satisfied | Profile manifests reference existing WAV/TXT, hash references, dry-run/apply split. |
-| Benchmark baseline | BEN-01..BEN-05 | satisfied | Benchmark artifacts now include manifest, review, score report, and promotion readiness. |
-| Candidate gates | CAND-01..CAND-05 | satisfied | Qwen dry-run stays import-free; real Qwen requires transcript and F5 baseline report; heavier candidates stay gated. |
-| Runtime selector | RUN-01..RUN-05 | satisfied | Purpose-specific selector, metadata sidecars, stale-cache blockers, non-cloned live-call safeguards. |
-| Preview and safety | SAFE-01..SAFE-05 | satisfied | Preview audit, score-backed approval/rejection, voice readiness in preflight/safety-soak. |
+| Requirement | Phase | Final Status | Evidence |
+|-------------|-------|--------------|----------|
+| PAUSE-01 | 43 | satisfied | Preset catalog and CLI list/show tests cover named timing values. |
+| PAUSE-02 | 43 | satisfied | CLI apply test persists `meetings.<profile>.voice.f5_pause_preset` without hand-editing YAML. |
+| PAUSE-03 | 43 | satisfied | Selector fingerprint test covers `pause_preset` plus concrete F5 timing knobs. |
+| TUNE-01 | 43 | satisfied | CLI preview test writes current-vs-candidate timing artifacts. |
+| TUNE-02 | 43 | satisfied | Review helper and CLI review tests record preference and recommendation. |
+| TUNE-03 | 43 | satisfied | Artifact tests assert private text is absent from manifest, review JSON, report, and CLI output. |
+| CACHE-01 | 44 | satisfied | Cache advice, launch-readiness, remediation, and CLI tests cover expensive F5 regeneration warnings. |
+| CACHE-02 | 44 | satisfied | Advice/remediation tests cover targeted `saymo prepare -p` and `saymo prepare-responses` actions. |
+| CACHE-03 | 44 | satisfied | Review metadata tests cover current sidecar write and source-field preservation. |
+| CACHE-04 | 44 | satisfied | Response-cache tests cover stale metadata refusal in `lookup()` and `get_variant_by_key()`. |
 
-No orphaned requirements were found. All requirements in `.planning/REQUIREMENTS.md`
-traceability are covered by phase summaries and verification evidence.
+No orphaned requirements were found. Every requirement in `.planning/REQUIREMENTS.md`
+traceability appears in phase verification tables and summary frontmatter.
 
 ## Integration Check
 
-Cross-phase integration is coherent:
+Integration checker status: passed; no blocking gaps found.
 
-- Phase 31 profile hashes feed Phase 34 selector/cache metadata.
-- Phase 32 score reports feed Phase 33 Qwen gates and Phase 35 profile approval.
-- Phase 33 challenger artifacts remain separate from production runtime config.
-- Phase 34 selector blocks live-call use until Phase 35 approval marks the
-  profile call-ready.
-- Phase 35 safety-soak catches voice profile, metadata, and non-cloned live
-  fallback blockers.
+- F5 preset CLI is registered through the main command import path and wired to
+  list/show/apply/preview/review.
+- Apply writes YAML and in-memory F5 timing; concrete timing fields flow into
+  selector fingerprint payload and then into voice-cache metadata.
+- `cache-status` is read-only and shares the same advice helper used by launch
+  readiness.
+- `saymo review` writes reviewed audio through the metadata sidecar helper.
+- Response-cache runtime lookup and classifier lookup both use the shared
+  `_variant_ready()` metadata guard.
 
 ## E2E Flows
 
 | Flow | Status | Evidence |
 |------|--------|----------|
-| Inventory -> profile | pass | `voice-inventory`, `voice-profile init/show/check`. |
-| F5 baseline -> score report | pass | `voice_clone_benchmark.py` artifacts and scoring helpers. |
-| F5 score -> Qwen gate | pass | `--baseline-report` required before real Qwen generation. |
-| Profile approval -> live selector | pass | `voice-profile approve` writes approval; selector reads profile state. |
-| Prepared cache -> live-call playback gate | pass | `.meta.json` sidecars and live selector readiness checks. |
+| Preset inspect -> apply | pass | `saymo f5-presets list/show/apply`, config tests, CLI tests. |
+| Apply -> fingerprint -> stale cache detection | pass | selector fingerprint and cache metadata tests. |
+| Preview -> review -> recommendation | pass | F5 timing artifact and CLI review tests. |
+| Stale cache -> targeted repair command | pass | cache advice, launch-readiness, remediation, cache-status tests. |
+| Reviewed audio -> live-call metadata sidecar | pass | `_write_reviewed_audio_cache()` tests. |
 
 ## Verification Evidence
 
 Phase evidence:
 
-- Phase 31: focused 6 passed; full suite 386 passed, 1 skipped.
-- Phase 32: focused 11 passed; full suite 389 passed, 1 skipped.
-- Phase 33: focused 13 passed; full suite 391 passed, 1 skipped.
-- Phase 34: focused 102 passed and 110 passed; full suite 402 passed, 1 skipped.
-- Phase 35: focused 11 passed; full suite 407 passed, 1 skipped.
+- Phase 43 RED: `9 failed, 34 passed`; GREEN focused: `43 passed in 0.28s`; full: `564 passed in 7.81s`.
+- Phase 44 RED: `9 failed, 38 passed`; GREEN focused: `47 passed in 1.29s`; readiness-adjacent: `54 passed in 2.31s`; full: `574 passed in 7.80s`.
 
-Final verification:
+Final audit baseline:
+
+```bash
+uv run pytest tests/test_cache_status_cli.py tests/analysis/test_cache_advice.py tests/analysis/test_response_cache.py -q
+```
+
+Result: `22 passed in 0.21s`.
 
 ```bash
 uv run pytest -q
 ```
 
-Result: `407 passed, 1 skipped in 3.27s`
+Result: `574 passed in 7.62s`.
+
+```bash
+git diff --check
+```
+
+Result: passed with no whitespace errors.
+
+Integration checker verification:
+
+- Focused phase 43/44 integration suite: `90 passed in 1.39s`.
+- Files edited by integration checker: none.
+
+## Nyquist Coverage
+
+| Phase | VALIDATION.md | Compliant | Action |
+|-------|---------------|-----------|--------|
+| 43 | exists | true | none |
+| 44 | exists | true | none |
 
 ## Tech Debt
 
-- Actual voice-quality promotion still needs local listening and A/B scoring.
-  The system now enforces evidence and approval, but it cannot decide whether
-  the voice sounds like the user without the user's review.
-- Real preview/playback depends on local TTS runtimes and model files. Tests
-  cover selector, audit, and safety logic without loading large models.
+- Per-profile preset selection is currently a persisted annotation plus global
+  F5 config update, not independent per-profile runtime resolution. This matches
+  Phase 43's context and does not block v1.12.
+- Real non-dry preview depends on the local F5 runtime and model files; tests
+  intentionally use dry-run artifacts to avoid expensive inference.
+- The integration-checker date-sensitive test concern was fixed in
+  `f1304c1 test(cache): avoid date-sensitive cache-status fixture`.
 
 ## Next Step
 
-Run a real local F5 benchmark, fill `review.json`, approve the profile if the
-score gate passes, then run `saymo auto-preflight -p personal` before using the
-voice on a live call.
+Run `$gsd-complete-milestone v1.12` to archive the completed milestone.
