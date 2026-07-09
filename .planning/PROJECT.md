@@ -70,8 +70,21 @@ candidate timing previews, preference review artifacts, read-only cache status
 with expensive-F5 regeneration warnings, targeted repair commands, and
 metadata-safe `saymo review`/response-cache lookup behavior.
 
-**Status:** No active milestone. Start the next milestone with
-`$gsd-new-milestone`.
+**Status:** Active milestone v1.13 F5 Prosody Metrics is defining requirements
+and roadmap.
+
+## Current Milestone: v1.13 F5 Prosody Metrics
+
+**Goal:** Make F5 voice timing comparisons more objective and context-aware by
+expanding preview coverage, measuring speech-rate and pause behavior, and
+supporting separate pause presets for different answer sources.
+
+**Target features:**
+- Richer phrase corpus for F5 prosody and pause tuning previews.
+- Automatic speech-rate and pause-distribution metrics for timing preset
+  comparison.
+- Separate pause preset selection per source type, such as standup notes versus
+  spontaneous approved answers.
 
 ## Last Completed Milestone: v1.12 F5 Voice Tuning Controls
 
@@ -427,4 +440,4 @@ playback, and regression replay.
 | Preserve voice metadata through manual review | Reviewed audio must not bypass call-ready sidecar checks after replacing the prepared WAV | Implemented in v1.12 |
 
 ---
-*Last updated: 2026-07-09 after completing milestone v1.12*
+*Last updated: 2026-07-09 after starting milestone v1.13*

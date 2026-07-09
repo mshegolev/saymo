@@ -2,7 +2,14 @@
 
 ## Current
 
-No active milestone. Start the next milestone with `$gsd-new-milestone`.
+### v1.13 F5 Prosody Metrics
+
+**Started:** 2026-07-09
+**Status:** Defining requirements
+
+Focus: make F5 voice timing comparisons more objective and context-aware by
+expanding preview coverage, measuring speech-rate and pause behavior, and
+supporting separate pause presets for different answer sources.
 
 ## Completed
 
