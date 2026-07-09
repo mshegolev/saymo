@@ -33,6 +33,7 @@ Archives:
 - `.planning/milestones/v1.13-ROADMAP.md`
 - `.planning/milestones/v1.13-REQUIREMENTS.md`
 - `.planning/milestones/v1.13-MILESTONE-AUDIT.md`
+- `.planning/milestones/v1.13-phases/`
 
 ### v1.12 F5 Voice Tuning Controls
 
