@@ -1,6 +1,6 @@
 ---
 phase: 41-silent-breath-f5-pacing
-verified: 2026-07-09T08:50:00Z
+verified: 2026-07-09T09:35:00Z
 status: passed
 score: 5/5 must-haves verified
 ---
@@ -9,7 +9,7 @@ score: 5/5 must-haves verified
 
 **Phase Goal:** Replace audible breath splices with configurable silent breath
 pauses and prove generated F5 WAV output contains silence at breath points.
-**Verified:** 2026-07-09T08:50:00Z
+**Verified:** 2026-07-09T09:35:00Z
 **Status:** passed
 
 ## Goal Achievement
@@ -21,6 +21,7 @@ pauses and prove generated F5 WAV output contains silence at breath points.
 | 3 | Sentence and clause pauses remain configurable. | VERIFIED | `F5TTSConfig` exposes `sentence_pause_seconds`, `clause_pause_seconds`, and `silent_breath_pause_seconds`; config loading test covers YAML overrides. |
 | 4 | F5 natural pacing still batches spoken chunks once. | VERIFIED | `test_f5tts_natural_pacing_batches_spoken_chunks_once` forbids per-sentence CLI calls. |
 | 5 | Real local preview exists for ear review. | VERIFIED | `~/.saymo/voice_benchmarks/20260709-silent-breath/f5tts-silent-breath-01.wav` generated successfully. |
+| 6 | Cached live/response audio goes stale when F5 pacing changes. | VERIFIED | `selector_fingerprint_payload()` now includes F5 natural pacing knobs; regression test proves the payload changes. |
 
 ## Requirements Coverage
 
@@ -37,10 +38,23 @@ pauses and prove generated F5 WAV output contains silence at breath points.
 | Command | Result |
 |---------|--------|
 | `uv run pytest tests/tts/test_f5tts.py::test_f5tts_natural_pacing_uses_silent_breath_pause_for_paragraph_break -q` | 1 passed after RED/GREEN cycle |
+| `uv run pytest tests/tts/test_selector.py::test_f5tts_pacing_config_changes_selector_fingerprint_payload -q` | 1 failed before fix, then 1 passed after fix |
+| `uv run pytest tests/tts/test_selector.py tests/analysis/test_cache_metadata.py -q` | 10 passed |
+| `uv run pytest tests/tts/test_selector.py tests/tts/test_f5tts.py tests/tts/test_naturalness.py tests/test_config.py tests/analysis/test_cache_metadata.py -q` | 42 passed |
 | `uv run pytest tests/tts/test_f5tts.py tests/tts/test_naturalness.py tests/test_config.py -q` | 32 passed |
 | `uv run pytest tests/tts -q` | 64 passed |
-| `uv run pytest -q` | 551 passed |
+| `uv run pytest -q` | 552 passed |
 | `git diff --check` | passed |
+
+## Integration Recheck
+
+Initial milestone audit found an E2E cache gap: F5 pacing knobs were not part of
+the selector fingerprint payload, so prepared or response cached WAVs could
+remain valid after silent-breath timing changed. The fix adds
+`natural_pacing`, `sentence_pause_seconds`, `clause_pause_seconds`,
+`silent_breath_pause_seconds`, and `breath_interval_sentences` to the F5
+`engine_config` payload. A manual cache metadata probe confirmed the fingerprint
+changes when those knobs change.
 
 ## Manual Evidence
 
@@ -67,7 +81,8 @@ Preview metadata:
 ## Residual Risk
 
 Ear-based approval is still subjective. The implementation now removes the
-audible breath/noise source; remaining tuning is pause duration only.
+audible breath/noise source and invalidates cached audio when F5 pause behavior
+changes; remaining tuning is pause duration only.
 
 ---
 *Verified: 2026-07-09*

@@ -238,6 +238,11 @@ def _engine_config_payload(config: SaymoConfig, engine: str) -> dict[str, Any]:
             "nfe_step": f5.nfe_step,
             "speed": f5.speed,
             "device": f5.device,
+            "natural_pacing": f5.natural_pacing,
+            "sentence_pause_seconds": f5.sentence_pause_seconds,
+            "clause_pause_seconds": f5.clause_pause_seconds,
+            "silent_breath_pause_seconds": f5.silent_breath_pause_seconds,
+            "breath_interval_sentences": f5.breath_interval_sentences,
         }
     if engine == "qwen3_clone":
         qwen = config.tts.qwen3

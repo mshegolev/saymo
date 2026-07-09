@@ -23,7 +23,9 @@ key-files:
     - saymo/config.py
     - config.example.yaml
     - docs/VOICE-NATURALNESS.md
+    - saymo/tts/selector.py
     - tests/tts/test_f5tts.py
+    - tests/tts/test_selector.py
     - tests/test_config.py
 
 requirements-completed: [F5P-01, F5P-02, F5P-03, F5P-04, F5P-05]
@@ -41,6 +43,8 @@ completed: 2026-07-09
 - Replaced audible breath splicing with silent breath pauses.
 - Added `silent_breath_pause_seconds` and removed `breath_gain` from the F5
   config path.
+- Added F5 natural-pacing knobs to selector/cache fingerprints so prepared and
+  response cached WAVs go stale when pause behavior changes.
 - Updated local `~/.saymo/config.yaml` after creating
   `~/.saymo/config.yaml.bak-20260709-silent-breath`.
 - Generated preview:
@@ -52,7 +56,13 @@ completed: 2026-07-09
   `test_f5tts_natural_pacing_uses_silent_breath_pause_for_paragraph_break`.
 - GREEN focused suite passed: `32 passed`.
 - TTS suite passed: `64 passed`.
-- Full suite passed: `551 passed`.
+- Full suite passed after cache-fingerprint fix: `552 passed`.
+- RED/GREEN cache fingerprint regression:
+  `test_f5tts_pacing_config_changes_selector_fingerprint_payload`.
+- Focused selector/cache/F5 config suite passed: `42 passed`.
+- Manual fingerprint probe changed after tuning `silent_breath_pause_seconds`,
+  `sentence_pause_seconds`, `clause_pause_seconds`, and
+  `breath_interval_sentences`.
 - Preview sanity check found `longest_quiet_s=0.753`, confirming a silent
   pause exists in the real generated WAV.
 
@@ -60,6 +70,7 @@ completed: 2026-07-09
 
 - `77e91c1 docs: start milestone v1.10 silent breath natural pacing`
 - `15b5ede feat(tts): add silent F5 natural pacing`
+- `fix(tts): fingerprint F5 pacing cache config`
 
 ## User Review
 
@@ -71,4 +82,3 @@ afplay ~/.saymo/voice_benchmarks/20260709-silent-breath/f5tts-silent-breath-01.w
 
 If timing feels too long or too short, tune `silent_breath_pause_seconds`,
 `sentence_pause_seconds`, or `clause_pause_seconds`.
-
