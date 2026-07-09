@@ -8,21 +8,21 @@ and respond fast enough that the call still feels live.
 
 ### F5 Gap Hardening
 
-- [ ] **F5G-01**: User can verify prepared standup audio metadata created
+- [x] **F5G-01**: User can verify prepared standup audio metadata created
   before an F5 pacing change is treated as stale after any F5 pacing knob
   changes.
-- [ ] **F5G-02**: User can verify response-cache metadata created before an
+- [x] **F5G-02**: User can verify response-cache metadata created before an
   F5 pacing change is treated as stale after any F5 pacing knob changes.
-- [ ] **F5G-03**: User can verify F5 pacing cache-staleness diagnostics report
+- [x] **F5G-03**: User can verify F5 pacing cache-staleness diagnostics report
   stable reasons such as `voice_metadata_stale` without exposing prompt text,
   response text, audio bytes, or private meeting content.
-- [ ] **F5G-04**: User can verify `breath_interval_sentences` continuation
+- [x] **F5G-04**: User can verify `breath_interval_sentences` continuation
   pauses in F5 natural pacing are zero-valued silence, not non-zero
   breath/noise samples.
-- [ ] **F5G-05**: User can run a regression or static guard proving the F5
+- [x] **F5G-05**: User can run a regression or static guard proving the F5
   live-call synthesis path does not import, call, or splice
   `load_breath_sample()` output.
-- [ ] **F5G-06**: User can read the voice-naturalness documentation and config
+- [x] **F5G-06**: User can read the voice-naturalness documentation and config
   examples and see that F5 live-call "breath" behavior means silent timing,
   not audible breath injection.
 
@@ -50,12 +50,12 @@ and respond fast enough that the call still feels live.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| F5G-01 | Phase 42 | Pending |
-| F5G-02 | Phase 42 | Pending |
-| F5G-03 | Phase 42 | Pending |
-| F5G-04 | Phase 42 | Pending |
-| F5G-05 | Phase 42 | Pending |
-| F5G-06 | Phase 42 | Pending |
+| F5G-01 | Phase 42 | Complete |
+| F5G-02 | Phase 42 | Complete |
+| F5G-03 | Phase 42 | Complete |
+| F5G-04 | Phase 42 | Complete |
+| F5G-05 | Phase 42 | Complete |
+| F5G-06 | Phase 42 | Complete |
 
 **Coverage:**
 - v1.11 requirements: 6 total
@@ -64,4 +64,4 @@ and respond fast enough that the call still feels live.
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after milestone definition*
+*Last updated: 2026-07-09 after Phase 42 completion*

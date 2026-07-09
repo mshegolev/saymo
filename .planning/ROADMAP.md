@@ -10,9 +10,9 @@ clear that F5 "breath" behavior means silent timing only.
 
 ## Phases
 
-- [ ] **Phase 42: F5 Cache and Silence Gap Hardening** - Prove F5 prepared
+- [x] **Phase 42: F5 Cache and Silence Gap Hardening** - Prove F5 prepared
   audio, response cache, diagnostics, continuation pauses, static guards, and
-  docs/config all enforce the silent-breath boundary.
+  docs/config all enforce the silent-breath boundary. (completed 2026-07-09)
 
 ## Phase Details
 
@@ -39,19 +39,19 @@ covered, and future audible-breath regressions guarded.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 42-01-PLAN.md - Implement F5 cache stale checks, silence guards,
+- [x] 42-01-PLAN.md - Implement F5 cache stale checks, silence guards,
   sanitized diagnostics, and docs/config clarity.
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| F5G-01 | Phase 42 | Pending |
-| F5G-02 | Phase 42 | Pending |
-| F5G-03 | Phase 42 | Pending |
-| F5G-04 | Phase 42 | Pending |
-| F5G-05 | Phase 42 | Pending |
-| F5G-06 | Phase 42 | Pending |
+| F5G-01 | Phase 42 | Complete |
+| F5G-02 | Phase 42 | Complete |
+| F5G-03 | Phase 42 | Complete |
+| F5G-04 | Phase 42 | Complete |
+| F5G-05 | Phase 42 | Complete |
+| F5G-06 | Phase 42 | Complete |
 
 **Coverage:**
 - v1.11 requirements: 6 total
@@ -64,8 +64,8 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 42. F5 Cache and Silence Gap Hardening | 0/1 | Not started | - |
+| 42. F5 Cache and Silence Gap Hardening | 1/1 | Complete | 2026-07-09 |
 
 ## Next
 
-Run `$gsd-plan-phase 42`.
+Run `$gsd-audit-milestone`, then `$gsd-complete-milestone` if the audit passes.
