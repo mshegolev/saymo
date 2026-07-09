@@ -23,14 +23,13 @@ enough that the call still feels live.
 
 ## Current State
 
-Saymo has shipped milestone v1.10 Silent Breath Natural Pacing. The product can build
-local transcript ledgers from captured sessions, search and ask questions about
-those sessions with transcript citations, generate pending answer drafts
-grounded in meeting memory and configured sources, record explicit cockpit
-actions plus sanitized audit trails, review real captured sessions, reduce
-incidental name-handoff false positives, bootstrap speaker labels, play only
-approved generated drafts, and replay saved sessions as local regression
-fixtures.
+Saymo has shipped milestone v1.11 F5 Gap Hardening. The product can build local
+transcript ledgers from captured sessions, search and ask questions about those
+sessions with transcript citations, generate pending answer drafts grounded in
+meeting memory and configured sources, record explicit cockpit actions plus
+sanitized audit trails, review real captured sessions, reduce incidental
+name-handoff false positives, bootstrap speaker labels, play only approved
+generated drafts, and replay saved sessions as local regression fixtures.
 
 It can expose an operator handbrake during live calls: guide, hotkey doctor,
 local control panel, scriptable action queue, shared runtime state, expanded
@@ -61,23 +60,38 @@ configurable silent pauses, kept sentence/clause timing controls, and added F5
 pacing knobs to selector/cache fingerprints so prepared and response cached WAVs
 go stale when pause behavior changes.
 
-**Status:** v1.11 F5 Gap Hardening is being defined on 2026-07-09.
+The v1.11 F5 gap-hardening path added direct prepared-audio and response-cache
+staleness regressions, verified continuation breath intervals as zero-valued
+silence, and added static/docs guards that keep F5 live-call output from
+reintroducing audible reference-sample breath audio.
 
-## Current Milestone: v1.11 F5 Gap Hardening
+**Status:** v1.11 F5 Gap Hardening shipped on 2026-07-09. No active milestone
+is currently defined.
+
+## Current Milestone
+
+No active milestone. Start the next milestone with `$gsd-new-milestone`.
+
+## Last Completed Milestone: v1.11 F5 Gap Hardening
 
 **Goal:** Close the remaining F5 silent-breath hardening gaps so cached audio,
 continuation pauses, and future F5 edits cannot bypass the no-audible-breath
 boundary.
 
-**Target features:**
-- Direct prepare and response-cache stale-metadata regressions for F5 pacing
-  knob changes.
-- Explicit zero-valued silence coverage for the continuation
-  `breath_interval_sentences` branch.
-- Static and documentation guards that keep the F5 live-call path from
-  reintroducing reference-sample breath audio.
+**Delivered:**
+- Prepared standup audio metadata created before F5 pacing changes is treated
+  as stale afterward.
+- Response-cache metadata created before F5 pacing changes is treated as stale
+  afterward.
+- Stale diagnostics expose stable sanitized reasons such as
+  `voice_metadata_stale` without private prompt, response, audio, or meeting
+  content.
+- `breath_interval_sentences` continuation pauses are verified as zero-valued
+  silence.
+- Static and documentation guards keep the F5 live-call path from importing,
+  calling, or splicing `load_breath_sample()` output.
 
-## Last Completed Milestone: v1.10 Silent Breath Natural Pacing
+## Previous Milestone: v1.10 Silent Breath Natural Pacing
 
 **Goal:** Keep F5-TTS natural pacing human-like without sending audible breath,
 hum, or buzz into the meeting microphone.
@@ -269,15 +283,16 @@ playback, and regression replay.
   silence timing, not audio injection.
 - ✓ User can verify silent-breath behavior with focused tests and a short
   local preview.
+- ✓ User can prove old prepared-audio and response-cache metadata become
+  stale after F5 pacing knobs change.
+- ✓ User can verify continuation breath-interval pauses are zero-valued
+  silence, not non-zero breath/noise samples.
+- ✓ User can rely on tests and static guards that prevent F5 live-call output
+  from reintroducing audible reference breath injection.
 
 ### Active
 
-- [ ] User can prove old prepared-audio and response-cache metadata become
-  stale after F5 pacing knobs change.
-- [ ] User can verify continuation breath-interval pauses are zero-valued
-  silence, not non-zero breath/noise samples.
-- [ ] User can rely on tests or static guards that prevent F5 live-call output
-  from reintroducing audible reference breath injection.
+- None. Define the next active set with `$gsd-new-milestone`.
 
 ### Out of Scope
 
@@ -328,6 +343,9 @@ playback, and regression replay.
 - v1.10 follows direct user listening feedback after the first natural pacing
   preview: the audible breath splice produced hum/buzz and should not be
   transmitted into the meeting microphone.
+- v1.11 closes the follow-up hardening gaps with direct cache-staleness tests,
+  sanitized diagnostic checks, continuation-silence coverage, and static/docs
+  guards for the F5 live-call no-audible-breath boundary.
 
 ## Constraints
 
@@ -365,7 +383,7 @@ playback, and regression replay.
 | Treat call launch as one green path | Daily note, prepare/cache, provider tab, voice readiness, and handbrake state fail in different places unless the operator sees one actionable readiness result | Implemented in v1.9 |
 | Use silent breath pauses instead of audible breath splices for live-call F5 pacing | User feedback identified hum/buzz in the breath layer; live-call output should feel paced without transmitting breath noise | Implemented in v1.10 |
 | Include F5 pacing knobs in voice-cache fingerprints | Prepared and response cached WAVs must go stale when silent-breath timing changes | Implemented in v1.10 |
-| Treat F5 audit gaps as a hardening milestone | The v1.10 integration checker passed after fixes, but follow-up direct regressions and static guards reduce future voice-cache drift risk | Pending in v1.11 |
+| Treat F5 audit gaps as a hardening milestone | The v1.10 integration checker passed after fixes, but follow-up direct regressions and static guards reduce future voice-cache drift risk | Implemented in v1.11 |
 
 ---
-*Last updated: 2026-07-09 after starting milestone v1.11*
+*Last updated: 2026-07-09 after completing milestone v1.11*

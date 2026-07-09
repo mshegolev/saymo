@@ -2,19 +2,36 @@
 
 ## Current
 
+No active milestone. Start the next one with `$gsd-new-milestone`.
+
+## Completed
+
 ### v1.11 F5 Gap Hardening
 
 **Started:** 2026-07-09
-**Status:** Active
+**Completed:** 2026-07-09
+**Archived:** 2026-07-09
+**Status:** Complete
 
 Focus: close the remaining F5 silent-breath hardening gaps around direct cache
-staleness tests, continuation-pause coverage, and no-audible-breath guards.
+staleness tests, continuation-pause coverage, sanitized diagnostics, and
+no-audible-breath guards.
 
-Active artifacts:
-- `.planning/ROADMAP.md`
-- `.planning/REQUIREMENTS.md`
+Delivered:
+- Prepared audio cache metadata goes stale after F5 pacing knob changes.
+- Response-cache metadata goes stale after F5 pacing knob changes.
+- Stale diagnostics report stable sanitized reasons without prompt text,
+  response text, audio bytes, or private meeting content.
+- `breath_interval_sentences` continuation pauses are verified as zero-valued
+  silence.
+- Static/docs guards keep the F5 live-call path from using audible reference
+  breath samples.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.11-ROADMAP.md`
+- `.planning/milestones/v1.11-REQUIREMENTS.md`
+- `.planning/milestones/v1.11-MILESTONE-AUDIT.md`
+- `.planning/milestones/v1.11-phases/`
 
 ### v1.10 Silent Breath Natural Pacing
 

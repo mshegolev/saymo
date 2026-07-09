@@ -98,6 +98,55 @@ future planning.*
 
 ---
 
+## Milestone: v1.11 — F5 Gap Hardening
+
+**Shipped:** 2026-07-09
+**Phases:** 1 | **Plans:** 1 | **Sessions:** 1
+
+### What Was Built
+- Direct prepared-audio cache staleness regression for F5 pacing knob changes.
+- Direct response-cache staleness regression for F5 pacing knob changes.
+- Sanitized stale diagnostics checks for stable `voice_metadata_stale` reasons.
+- Deterministic continuation-pause test proving `breath_interval_sentences`
+  inserts zero-valued silence.
+- Static/docs guard that keeps audible breath samples out of the F5 live-call
+  synthesis path.
+
+### What Worked
+- The v1.10 audit output translated cleanly into one narrow hardening phase.
+- The tests stayed fast enough to prove RED/GREEN behavior before a full-suite
+  run.
+- Adding `requirements-completed` metadata made the GSD milestone audit
+  machine-checkable instead of prose-only.
+
+### What Was Inefficient
+- Phase summary metadata had to be added after initial completion because the
+  first summary did not expose `requirements-completed` or `one_liner` fields.
+- `gsd-tools milestone complete` still left active PROJECT/MILESTONES/ROADMAP
+  cleanup for manual follow-up.
+
+### Patterns Established
+- F5 voice-quality hardening should cover both prepared-audio and
+  response-cache invalidation, not only generated WAV samples.
+- Breath-related live-call regressions need static path guards in addition to
+  runtime audio assertions.
+
+### Key Lessons
+1. A passing integration check is stronger when every requirement has
+   three-source evidence: requirements, summary metadata, and verification
+   table.
+2. Silence contracts should be expressed in sample windows so future audio
+   changes cannot hide non-zero breath/noise layers.
+3. Planning summaries should include extractor-friendly metadata before audit.
+
+### Cost Observations
+- Model mix: not tracked in repo.
+- Sessions: 1 autonomous implementation, audit, and archive session.
+- Notable: focused tests plus one full `uv run pytest -q` were sufficient for
+  this hardening milestone.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -108,6 +157,7 @@ future planning.*
 | v1.1 | 1 | 3 | Added speaker context, classifier shadow mode, and provider probes. |
 | v1.2 | 1 | 3 | Added session-aware review, relabeling, readiness, and guarded live assist. |
 | v1.10 | 1 | 1 | Added silent F5 breath pacing plus cache fingerprint invalidation. |
+| v1.11 | 1 | 1 | Added direct F5 cache-staleness, continuation-silence, and static/docs guards. |
 
 ### Cumulative Quality
 
@@ -117,6 +167,7 @@ future planning.*
 | v1.1 | focused trigger/provider tests | phase-scoped | speaker labels/classifier metadata |
 | v1.2 | 50 focused trigger review/readiness/classifier tests | phase-scoped | review/readiness/session helpers |
 | v1.10 | 552 full-suite tests | TTS/cache/selector plus full suite | silent-breath pacing and cache invalidation |
+| v1.11 | 557 full-suite tests | cache metadata, response cache, F5 TTS, static guards | audit-ready hardening metadata |
 
 ### Top Lessons (Verified Across Milestones)
 
