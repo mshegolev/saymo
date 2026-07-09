@@ -313,19 +313,65 @@ def f5_presets_show(preset):
 @f5_presets.command("apply")
 @click.argument("preset")
 @click.option("--profile", "-p", default=None, help="Meeting profile to annotate.")
+@click.option("--source-type", default=None, help="Profile source type to annotate.")
 @click.option("--config-path", type=click.Path(), default=None, help="Config YAML to update.")
 @click.pass_context
-def f5_presets_apply(ctx, preset, profile, config_path):
+def f5_presets_apply(ctx, preset, profile, source_type, config_path):
     """Apply an F5 pause preset to config.yaml."""
-    from saymo.tts.f5_presets import apply_f5_pause_preset, get_f5_pause_preset
+    from saymo.tts.f5_presets import (
+        apply_f5_pause_preset,
+        get_f5_pause_preset,
+        normalize_f5_source_type,
+    )
 
     try:
         resolved = get_f5_pause_preset(preset)
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
+    try:
+        resolved_source_type = (
+            normalize_f5_source_type(source_type) if source_type is not None else None
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    if resolved_source_type and not profile:
+        raise click.ClickException(
+            "--source-type requires --profile because source-type overrides live "
+            "under a meeting profile."
+        )
 
     target = _resolve_config_update_path(ctx, config_path)
     raw = _read_yaml_config(target)
+    if resolved_source_type:
+        meetings = raw.setdefault("meetings", {})
+        if not isinstance(meetings, dict):
+            raise click.ClickException("Config 'meetings' must be a mapping.")
+        meeting = meetings.setdefault(profile, {})
+        if not isinstance(meeting, dict):
+            raise click.ClickException(f"Meeting profile must be a mapping: {profile}")
+        voice = meeting.setdefault("voice", {})
+        if not isinstance(voice, dict):
+            raise click.ClickException(
+                f"Meeting profile voice config must be a mapping: {profile}"
+            )
+        source_presets = voice.setdefault("f5_pause_presets", {})
+        if not isinstance(source_presets, dict):
+            raise click.ClickException(
+                f"meetings.{profile}.voice.f5_pause_presets must be a mapping."
+            )
+        source_presets[resolved_source_type] = resolved.id
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            yaml.safe_dump(raw, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+
+        console.print(f"[bold green]Applied F5 pause preset:[/] {resolved.id}")
+        console.print(f"profile: {profile}")
+        console.print(f"source type: {resolved_source_type}")
+        return
+
     f5 = raw.setdefault("tts", {}).setdefault("f5tts", {})
     f5.update(resolved.to_config_update())
     if profile:

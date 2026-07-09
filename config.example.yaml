@@ -199,6 +199,19 @@ meetings:
     #   chunk_seconds: 3.0
     #   overlap_seconds: 1.0
     #   trigger_cooldown_seconds: 25.0
+  # standup:
+  #   description: "Standup with per-source F5 timing"
+  #   provider: glip
+  #   team: false
+  #   source: obsidian
+  #   voice:
+  #     # Fallback when a source-specific preset is not configured:
+  #     f5_pause_preset: calm
+  #     # Optional source-specific overrides:
+  #     f5_pause_presets:
+  #       prepared: calm
+  #       response_cache: crisp
+  #       spontaneous: deliberate
   team:
     description: "Team update — you + teammates"
     provider: glip
