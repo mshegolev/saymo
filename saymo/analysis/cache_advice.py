@@ -43,7 +43,12 @@ def prepared_audio_cache_advice(
 ) -> CacheAdvice:
     """Return read-only repair advice for one prepared standup WAV."""
     path = Path(audio_path).expanduser()
-    expected = build_voice_cache_metadata(config, purpose="prepare")
+    expected = build_voice_cache_metadata(
+        config,
+        purpose="prepare",
+        profile=profile,
+        source_type="prepared",
+    )
     check = check_voice_cache_metadata(path, expected)
     if check.valid:
         return CacheAdvice(
@@ -100,7 +105,12 @@ def response_cache_advice(config, *, profile: str) -> CacheAdvice:
         library=library,
         cache_dir=cache_dir,
         confidence_threshold=config.responses.confidence_threshold,
-        voice_metadata=build_voice_cache_metadata(config, purpose="response_cache"),
+        voice_metadata=build_voice_cache_metadata(
+            config,
+            purpose="response_cache",
+            profile=profile,
+            source_type="response_cache",
+        ),
     )
     coverage = response_cache_coverage(cache)
     missing_count = len(coverage.missing)

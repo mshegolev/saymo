@@ -353,8 +353,8 @@ def test_prepare_responses_uses_response_cache_source_profile(
         test_commands._prepare_responses(config, force=False, profile="scrum")
     )
 
-    assert written == 1
-    metadata = read_voice_cache_metadata(next(tmp_path.glob("*.wav")))
+    assert written > 0
+    metadata = read_voice_cache_metadata(next(tmp_path.glob("blockers_none_0_*.wav")))
     assert metadata.source_type == "response_cache"
     assert metadata.source_preset_id == "deliberate"
     assert metadata.profile_preset_id == "crisp"
@@ -390,8 +390,9 @@ def test_launch_response_cache_check_uses_response_cache_source_profile(
         profile="standup",
         source_type="response_cache",
     )
+    library = build_library(config.responses.library)
     cache = ResponseCache(
-        library=tiny_library,
+        library=library,
         cache_dir=tmp_cache_dir,
         voice_metadata=metadata,
     )

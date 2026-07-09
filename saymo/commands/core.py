@@ -576,7 +576,7 @@ async def _auto(
         fuzzy_expansions=(config.vocabulary or {}).get("fuzzy_expansions"),
     )
 
-    response_cache = build_realtime_response_cache(config)
+    response_cache = build_realtime_response_cache(config, profile=profile)
     if response_cache is not None:
         console.print(
             f"[dim]Q&A cache: {len(response_cache.library)} intents[/]"
@@ -1406,15 +1406,31 @@ def speak(ctx, profile, source, composer, provider, glip, team):
         config.speech.source = source
     if composer:
         config.speech.composer = composer
-    run_async(_speak(config, provider_name=provider, team_mode=team))
+    run_async(
+        _speak(
+            config,
+            provider_name=provider,
+            team_mode=team,
+            profile_name=profile or "standup",
+        )
+    )
 
 
-async def _speak(config, provider_name: str | None = None, team_mode: bool = False):
+async def _speak(
+    config,
+    provider_name: str | None = None,
+    team_mode: bool = False,
+    profile_name: str = "standup",
+):
 
     # Step 0: Check for pre-generated audio cache (instant playback)
     cached_audio = _get_cached_audio_path(team=team_mode)
     if cached_audio.exists():
-        ready, reason = _call_ready_cached_audio(config, cached_audio)
+        ready, reason = _call_ready_cached_audio(
+            config,
+            cached_audio,
+            profile_name=profile_name,
+        )
         if ready:
             console.print(f"[green]Using cached audio from prepare ({cached_audio.stat().st_size // 1024} KB)[/]")
             await _play_cached_audio(config, cached_audio, provider_name)
@@ -1623,7 +1639,12 @@ async def _synthesize(config, text: str, *, purpose: str = "prepare") -> bytes |
         return None
 
 
-def _call_ready_cached_audio(config, audio_path) -> tuple[bool, str]:
+def _call_ready_cached_audio(
+    config,
+    audio_path,
+    *,
+    profile_name: str = "standup",
+) -> tuple[bool, str]:
     """Check cached prepare audio before treating it as live-call ready."""
     from saymo.analysis.cache_metadata import (
         build_voice_cache_metadata,
@@ -1635,7 +1656,12 @@ def _call_ready_cached_audio(config, audio_path) -> tuple[bool, str]:
     if not live_decision.allowed:
         return False, live_decision.blocked_reason
 
-    expected = build_voice_cache_metadata(config, purpose="prepare")
+    expected = build_voice_cache_metadata(
+        config,
+        purpose="prepare",
+        profile=profile_name,
+        source_type="prepared",
+    )
     metadata_check = check_voice_cache_metadata(audio_path, expected)
     if not metadata_check.valid:
         return False, metadata_check.blocked_reason
@@ -1753,7 +1779,7 @@ def prepare(ctx, profile, source, save, team, skip_responses):
     if not skip_responses and config.responses.enabled:
         console.print("")
         from saymo.commands.tests import _prepare_responses
-        run_async(_prepare_responses(config, force=False))
+        run_async(_prepare_responses(config, force=False, profile=profile_name))
 
 
 def _source_notes_sha256(notes: dict) -> str:
@@ -1832,6 +1858,8 @@ async def _prepare(config, save: bool, *, profile_name: str = "standup"):
                 source_kind=config.speech.source,
                 source_profile=profile_name,
                 source_sha256=source_sha256,
+                profile=profile_name,
+                source_type="prepared",
             ),
         )
         console.print(f"[green]Audio cached: {audio_path} ({len(audio_bytes) // 1024} KB)[/]")
@@ -1934,6 +1962,8 @@ async def _prepare_team(config, save: bool, *, profile_name: str = "standup"):
                 source_kind=config.speech.source,
                 source_profile=profile_name,
                 source_sha256=source_sha256,
+                profile=profile_name,
+                source_type="prepared",
             ),
         )
         console.print(f"[green]Audio cached: {audio_path} ({len(audio_bytes) // 1024} KB)[/]")
@@ -2092,6 +2122,7 @@ def _write_reviewed_audio_cache(
         else profile_name
     )
     source_sha256 = existing.source_sha256 if existing and existing.source_sha256 else ""
+    metadata_profile = source_profile or profile_name
     write_voice_cache_metadata(
         audio_path,
         build_voice_cache_metadata(
@@ -2101,6 +2132,8 @@ def _write_reviewed_audio_cache(
             source_kind=source_kind,
             source_profile=source_profile,
             source_sha256=source_sha256,
+            profile=metadata_profile,
+            source_type="prepared",
         ),
     )
 

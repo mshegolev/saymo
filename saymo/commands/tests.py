@@ -295,8 +295,9 @@ async def _test_ollama(config):
 
 @main.command("prepare-responses")
 @click.option("--force", is_flag=True, help="Regenerate all cached responses (ignore existing files)")
+@click.option("--profile", "-p", default="standup", help="Meeting profile for response-cache metadata")
 @click.pass_context
-def prepare_responses(ctx, force):
+def prepare_responses(ctx, force, profile):
     """Pre-synthesise the Tier-A response library for real-time Q&A.
 
     Synthesises every entry of DEFAULT_RESPONSE_LIBRARY (plus any
@@ -306,10 +307,15 @@ def prepare_responses(ctx, force):
     synthesis), which is what makes real-time Q&A work on CPU-only
     machines.
     """
-    run_async(_prepare_responses(ctx.obj["config"], force=force))
+    run_async(_prepare_responses(ctx.obj["config"], force=force, profile=profile))
 
 
-async def _prepare_responses(config, force: bool = False) -> int:
+async def _prepare_responses(
+    config,
+    force: bool = False,
+    *,
+    profile: str = "standup",
+) -> int:
     from pathlib import Path
     from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
     from saymo.analysis.cache_metadata import build_voice_cache_metadata
@@ -327,7 +333,12 @@ async def _prepare_responses(config, force: bool = False) -> int:
         library=library,
         cache_dir=cache_dir,
         confidence_threshold=config.responses.confidence_threshold,
-        voice_metadata=build_voice_cache_metadata(config, purpose="response_cache"),
+        voice_metadata=build_voice_cache_metadata(
+            config,
+            purpose="response_cache",
+            profile=profile,
+            source_type="response_cache",
+        ),
     )
 
     total_variants = sum(len(e.variants) for e in library.values())
@@ -584,7 +595,11 @@ def _collect_auto_preflight(config, profile: str, provider_name: str | None = No
     cached_audio_ready = cached_audio.exists()
     prepared_detail = str(cached_audio)
     if cached_audio_ready:
-        cached_audio_ready, cached_reason = _call_ready_cached_audio(config, cached_audio)
+        cached_audio_ready, cached_reason = _call_ready_cached_audio(
+            config,
+            cached_audio,
+            profile_name=profile,
+        )
         if not cached_audio_ready:
             prepared_detail = f"{cached_audio} ({cached_reason})"
     checks.append(
@@ -672,7 +687,12 @@ def _collect_auto_preflight(config, profile: str, provider_name: str | None = No
             library=library,
             cache_dir=cache_dir,
             confidence_threshold=config.responses.confidence_threshold,
-            voice_metadata=build_voice_cache_metadata(config, purpose="response_cache"),
+            voice_metadata=build_voice_cache_metadata(
+                config,
+                purpose="response_cache",
+                profile=profile,
+                source_type="response_cache",
+            ),
         )
         total_variants = sum(len(entry.variants) for entry in library.values())
         cached_variants = sum(

@@ -48,7 +48,12 @@ def collect_response_cache_check(
         library=library,
         cache_dir=cache_dir,
         confidence_threshold=config.responses.confidence_threshold,
-        voice_metadata=build_voice_cache_metadata(config, purpose="response_cache"),
+        voice_metadata=build_voice_cache_metadata(
+            config,
+            purpose="response_cache",
+            profile=profile,
+            source_type="response_cache",
+        ),
     )
     coverage = response_cache_coverage(cache)
     ok = coverage.ready == coverage.total

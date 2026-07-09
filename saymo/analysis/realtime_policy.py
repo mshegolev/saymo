@@ -50,7 +50,11 @@ class RealtimeResponseDecision:
         )
 
 
-def build_realtime_response_cache(config) -> ResponseCache | None:
+def build_realtime_response_cache(
+    config,
+    *,
+    profile: str = "standup",
+) -> ResponseCache | None:
     """Build the metadata-aware response cache used by automatic realtime answers."""
     if not getattr(config.responses, "enabled", True):
         return None
@@ -60,7 +64,12 @@ def build_realtime_response_cache(config) -> ResponseCache | None:
         library=build_library(config.responses.library),
         cache_dir=cache_dir,
         confidence_threshold=config.responses.confidence_threshold,
-        voice_metadata=build_voice_cache_metadata(config, purpose="response_cache"),
+        voice_metadata=build_voice_cache_metadata(
+            config,
+            purpose="response_cache",
+            profile=profile,
+            source_type="response_cache",
+        ),
     )
 
 
