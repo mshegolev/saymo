@@ -5,16 +5,16 @@ milestone_name: F5 Prosody Metrics
 current_phase: 47 of 47
 current_phase_name: Source-Type Pause Presets
 current_plan: 3
-status: executing
-stopped_at: Completed 47-02-PLAN.md
-last_updated: "2026-07-09T20:44:31.844Z"
-last_activity: 2026-07-09 - Completed Phase 47 Plan 02; Phase 47 is ready to execute Plan 03.
+status: ready_for_verification
+stopped_at: Completed 47-03-PLAN.md
+last_updated: "2026-07-09T20:53:09.683Z"
+last_activity: 2026-07-09
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 8
-  completed_plans: 7
-  percent: 88
+  completed_plans: 8
+  percent: 100
 ---
 
 # Project State
@@ -34,10 +34,10 @@ Current Phase Name: Source-Type Pause Presets
 Current Plan: 3
 Total Plans in Phase: 3
 Plans: 47-01-PLAN.md, 47-02-PLAN.md, 47-03-PLAN.md
-Status: Ready to execute
-Last Activity: 2026-07-09 - Completed Phase 47 Plan 02; Phase 47 is ready to execute Plan 03.
+Status: Ready for verification
+Last Activity: 2026-07-09
 
-Progress: [#########-] 88%
+Progress: [##########] 100%
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Progress: [#########-] 88%
 | Phase 46 P02 | 4 min | 2 tasks | 4 files |
 | Phase 47 P01 | 5 min | 2 tasks | 6 files |
 | Phase 47 P02 | 9 min | 2 tasks | 13 files |
+| Phase 47 P03 | 6 min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -84,10 +85,12 @@ Recent decisions affecting current work:
 - [Phase 47]: Source-type F5 fingerprinting resolves presets on a copied config so metadata changes never mutate loaded runtime config.
 - [Phase 47]: Reviewed prepared audio reuses preserved source_profile for preset fingerprinting so review saves keep the prepare-time source context.
 - [Phase 47]: prepare-responses now accepts -p/--profile and defaults to standup for backward-compatible response-cache metadata.
+- [Phase 47]: Cache-status renders compact resolver-backed preset ids only: source_type, profile, override, and resolved.
+- [Phase 47]: Response-cache diagnostics use profile-targeted saymo prepare-responses -p <profile> advice and keep --force only as an avoid-unless-intentional warning.
+- [Phase 47]: Source-type preset docs explicitly exclude retraining, automatic cache rebuilding, audible breath/noise, cloud services, and automatic preset recommendations.
 
 ### Pending Todos
 
-- Execute Phase 47 Plan 03: Sanitized cache-status/readiness diagnostics and operator docs.
 - Deferred manual check: run one non-dry-run F5 corpus preview and listen to
   current/candidate WAVs when the operator explicitly wants to touch local
   approved F5 model assets.
@@ -104,6 +107,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-07-09T20:44:31.842Z
-Stopped at: Completed 47-02-PLAN.md
+Last session: 2026-07-09T20:53:09.681Z
+Stopped at: Completed 47-03-PLAN.md
 Resume file: None

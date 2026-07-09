@@ -40,7 +40,7 @@ and respond fast enough that the call still feels live.
 - [x] **SRCE-03**: User can rely on source-type preset choices participating
   in voice/cache fingerprints so affected prepared audio and response-cache
   artifacts become stale after timing changes.
-- [ ] **SRCE-04**: User can see which profile preset and source-type override
+- [x] **SRCE-04**: User can see which profile preset and source-type override
   are active in cache-status, review, and readiness diagnostics, with targeted
   regeneration or review commands when artifacts are stale.
 
@@ -81,7 +81,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SRCE-01 | Phase 47 | Complete |
 | SRCE-02 | Phase 47 | Complete |
 | SRCE-03 | Phase 47 | Complete |
-| SRCE-04 | Phase 47 | Pending |
+| SRCE-04 | Phase 47 | Complete |
 
 **Coverage:**
 - v1.13 requirements: 10 total

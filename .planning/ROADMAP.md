@@ -15,7 +15,7 @@ presets by answer source while preserving profile defaults and cache safety.
 
 - [x] **Phase 45: Prosody Preview Corpus** - Users can tune F5 timing against richer sanitized answer-shape previews. (completed 2026-07-09)
 - [x] **Phase 46: Timing Metrics Reports** - Users can compare presets with speech-rate and pause-distribution metrics. (completed 2026-07-09)
-- [ ] **Phase 47: Source-Type Pause Presets** - Users can choose, diagnose, and cache-track pause presets per answer source.
+- [x] **Phase 47: Source-Type Pause Presets** - Users can choose, diagnose, and cache-track pause presets per answer source. (completed 2026-07-09)
 
 ## Phase Details
 
@@ -88,4 +88,4 @@ Phases execute in numeric order: 45 -> 46 -> 47
 |-------|----------------|--------|-----------|
 | 45. Prosody Preview Corpus | 3/3 | Complete    | 2026-07-09 |
 | 46. Timing Metrics Reports | 2/2 | Complete    | 2026-07-09 |
-| 47. Source-Type Pause Presets | 2/3 | In Progress|  |
+| 47. Source-Type Pause Presets | 3/3 | Complete   | 2026-07-09 |
