@@ -23,7 +23,7 @@ enough that the call still feels live.
 
 ## Current State
 
-Saymo has shipped milestone v1.9 Call Launch Readiness. The product can build
+Saymo has shipped milestone v1.10 Silent Breath Natural Pacing. The product can build
 local transcript ledgers from captured sessions, search and ask questions about
 those sessions with transcript citations, generate pending answer drafts
 grounded in meeting memory and configured sources, record explicit cockpit
@@ -56,20 +56,29 @@ and safety-soak. Runtime evidence now includes lifecycle/playback/stop labels,
 and prepared-audio freshness uses the same saved daily-note hash that
 call-ready verifies.
 
-**Status:** v1.9 Call Launch Readiness shipped on 2026-07-08.
+The v1.10 F5 natural-pacing path replaced audible breath splices with
+configurable silent pauses, kept sentence/clause timing controls, and added F5
+pacing knobs to selector/cache fingerprints so prepared and response cached WAVs
+go stale when pause behavior changes.
 
-## Current Milestone: v1.10 Silent Breath Natural Pacing
+**Status:** v1.10 Silent Breath Natural Pacing shipped on 2026-07-09.
+
+## Last Completed Milestone: v1.10 Silent Breath Natural Pacing
 
 **Goal:** Keep F5-TTS natural pacing human-like without sending audible breath,
 hum, or buzz into the meeting microphone.
 
-**Target features:**
+**Delivered:**
 - Silent breath pauses replace audible breath splices in F5 natural pacing.
 - F5 pacing settings distinguish sentence, clause, and silent-breath timing.
-- Automated tests prove generated WAV output contains silence at breath points,
-  not non-zero breath/noise samples.
+- F5 pacing settings participate in cache fingerprints, preventing stale
+  cached audio after timing changes.
+- Automated tests prove generated WAV output contains silence at breath points
+  and that F5 pacing changes invalidate cache metadata.
+- Local preview exists at
+  `~/.saymo/voice_benchmarks/20260709-silent-breath/f5tts-silent-breath-01.wav`.
 
-## Last Completed Milestone: v1.9 Call Launch Readiness
+## Previous Milestone: v1.9 Call Launch Readiness
 
 **Goal:** Make Saymo reliably go from daily note and prepared cloned-voice
 cache to a controlled realtime call loop with provider readiness, launchd
@@ -240,15 +249,16 @@ playback, and regression replay.
 - ✓ User can inspect post-call or rehearsal evidence for launch health,
   live-loop decisions, cache hits/misses, handbrake actions, and unsafe
   fallback blocks.
+- ✓ User can keep F5 natural pacing pauses without audible breath, hum, or
+  buzz entering the generated microphone output.
+- ✓ User can preserve the feeling of a breath before continuation through
+  silence timing, not audio injection.
+- ✓ User can verify silent-breath behavior with focused tests and a short
+  local preview.
 
 ### Active
 
-- [ ] User can keep F5 natural pacing pauses without audible breath, hum, or
-  buzz entering the generated microphone output.
-- [ ] User can preserve the feeling of a breath before continuation through
-  silence timing, not audio injection.
-- [ ] User can verify this behavior with focused tests and a short local
-  preview.
+No active requirements. Define the next milestone with `$gsd-new-milestone`.
 
 ### Out of Scope
 
@@ -334,7 +344,8 @@ playback, and regression replay.
 | Prove the live loop before trusting it | The next risk is not missing controls, but not knowing whether the whole loop is reliable for the next meeting | Implemented in v1.7 |
 | Treat voice-clone assets as protected local state | Model checkpoints and training datasets are costly to redownload or retrain, so cleanup/training must be explicit and auditable | Implemented in v1.8 |
 | Treat call launch as one green path | Daily note, prepare/cache, provider tab, voice readiness, and handbrake state fail in different places unless the operator sees one actionable readiness result | Implemented in v1.9 |
-| Use silent breath pauses instead of audible breath splices for live-call F5 pacing | User feedback identified hum/buzz in the breath layer; live-call output should feel paced without transmitting breath noise | Pending in v1.10 |
+| Use silent breath pauses instead of audible breath splices for live-call F5 pacing | User feedback identified hum/buzz in the breath layer; live-call output should feel paced without transmitting breath noise | Implemented in v1.10 |
+| Include F5 pacing knobs in voice-cache fingerprints | Prepared and response cached WAVs must go stale when silent-breath timing changes | Implemented in v1.10 |
 
 ---
-*Last updated: 2026-07-09 after starting milestone v1.10*
+*Last updated: 2026-07-09 after shipping milestone v1.10*

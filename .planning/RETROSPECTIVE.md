@@ -53,6 +53,51 @@ future planning.*
 
 ---
 
+## Milestone: v1.10 — Silent Breath Natural Pacing
+
+**Shipped:** 2026-07-09
+**Phases:** 1 | **Plans:** 1 | **Sessions:** 1
+
+### What Was Built
+- F5 natural pacing now uses silent pauses instead of audible breath splices.
+- Sentence, clause, paragraph, and continuation pauses stay configurable.
+- F5 pacing knobs participate in selector/cache fingerprints so stale cached
+  WAVs are rejected after timing changes.
+- A local F5 preview was generated for ear-based timing review.
+
+### What Worked
+- The initial RED test caught non-zero breath audio in the stitching path.
+- The milestone audit found a real E2E cache invalidation gap before archive.
+- Re-running the integration checker after the fix confirmed prepared and
+  response cache flows now go stale correctly.
+
+### What Was Inefficient
+- `gsd-tools milestone complete` archived files but still required manual
+  cleanup of active ROADMAP/REQUIREMENTS/MILESTONES state.
+- Summary extraction did not populate one-line accomplishments automatically.
+
+### Patterns Established
+- Voice-quality changes must include cache fingerprint review, not only WAV
+  output inspection.
+- Live-call "breathing" behavior should be modeled as silence timing unless the
+  user explicitly approves audible breath injection.
+
+### Key Lessons
+1. Generated audio fixes can be bypassed by stale caches unless synthesis
+   parameters are part of metadata fingerprints.
+2. Ear-review artifacts are useful, but the safety gate needs deterministic
+   tests around sample values and cache invalidation.
+3. Milestone audit should run before archive even when a phase-level
+   verification already passed.
+
+### Cost Observations
+- Model mix: not tracked in repo.
+- Sessions: 1 autonomous implementation and audit session.
+- Notable: focused TTS/cache tests stayed fast enough to run repeatedly before
+  the full suite.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -62,6 +107,7 @@ future planning.*
 | v1.0 | 1 | 4 | Introduced measured catch/say latency and sample review basics. |
 | v1.1 | 1 | 3 | Added speaker context, classifier shadow mode, and provider probes. |
 | v1.2 | 1 | 3 | Added session-aware review, relabeling, readiness, and guarded live assist. |
+| v1.10 | 1 | 1 | Added silent F5 breath pacing plus cache fingerprint invalidation. |
 
 ### Cumulative Quality
 
@@ -70,6 +116,7 @@ future planning.*
 | v1.0 | focused trigger/playback tests | phase-scoped | latency/sample tooling |
 | v1.1 | focused trigger/provider tests | phase-scoped | speaker labels/classifier metadata |
 | v1.2 | 50 focused trigger review/readiness/classifier tests | phase-scoped | review/readiness/session helpers |
+| v1.10 | 552 full-suite tests | TTS/cache/selector plus full suite | silent-breath pacing and cache invalidation |
 
 ### Top Lessons (Verified Across Milestones)
 

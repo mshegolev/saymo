@@ -2,19 +2,36 @@
 
 ## Current
 
+No active milestone. Run `$gsd-new-milestone` to define the next requirements
+and roadmap.
+
+## Completed
+
 ### v1.10 Silent Breath Natural Pacing
 
 **Started:** 2026-07-09
-**Status:** Active
+**Completed:** 2026-07-09
+**Archived:** 2026-07-09
+**Status:** Complete
 
 Focus: keep F5 natural pacing human-like without transmitting audible breath,
 hum, or buzz into the meeting microphone.
 
-Active artifacts:
-- `.planning/ROADMAP.md`
-- `.planning/REQUIREMENTS.md`
+Delivered:
+- F5 natural pacing now uses silent pauses instead of audible breath splices.
+- Sentence, clause, paragraph, and continuation pauses remain configurable.
+- F5 pacing knobs are included in selector/cache fingerprints, so stale
+  prepared and response cached WAVs are rejected after timing changes.
+- Regression tests prove zero-valued breath pauses and cache fingerprint
+  invalidation.
+- Local preview generated at
+  `~/.saymo/voice_benchmarks/20260709-silent-breath/f5tts-silent-breath-01.wav`.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.10-ROADMAP.md`
+- `.planning/milestones/v1.10-REQUIREMENTS.md`
+- `.planning/milestones/v1.10-MILESTONE-AUDIT.md`
+- `.planning/milestones/v1.10-phases/`
 
 ### v1.9 Call Launch Readiness
 

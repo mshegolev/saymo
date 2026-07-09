@@ -1,55 +1,58 @@
-# Roadmap: Saymo v1.10 Silent Breath Natural Pacing
+# Roadmap: Saymo
 
 ## Overview
 
-This milestone removes audible breath/noise from the F5 natural pacing path
-while preserving the perceived pause behavior that makes speech feel human.
+Saymo is a local macOS voice assistant for live calls. Current shipped planning
+history is archived per milestone so this roadmap stays small.
 
-## Phases
+## Completed Milestones
 
-- [x] **Phase 41: Silent Breath F5 Pacing** - Replace audible breath splices
-  with configurable silent breath pauses and prove generated F5 WAV output
-  contains silence at breath points. (completed 2026-07-09)
+- ✅ **v1.10 Silent Breath Natural Pacing** — Phase 41 shipped 2026-07-09.
+  Archives: `.planning/milestones/v1.10-ROADMAP.md`,
+  `.planning/milestones/v1.10-REQUIREMENTS.md`,
+  `.planning/milestones/v1.10-MILESTONE-AUDIT.md`,
+  `.planning/milestones/v1.10-phases/`
+- ✅ **v1.9 Call Launch Readiness** — Phases 36-40 shipped 2026-07-08.
+  Archives: `.planning/milestones/v1.9-ROADMAP.md`,
+  `.planning/milestones/v1.9-REQUIREMENTS.md`,
+  `.planning/milestones/v1.9-MILESTONE-AUDIT.md`,
+  `.planning/milestones/v1.9-phases/`
+- ✅ **v1.8 Call-ready Voice Clone** — Phases 31-35 shipped 2026-07-07.
+  Archives: `.planning/milestones/v1.8-ROADMAP.md`,
+  `.planning/milestones/v1.8-REQUIREMENTS.md`,
+  `.planning/milestones/v1.8-MILESTONE-AUDIT.md`,
+  `.planning/milestones/v1.8-phases/`
+- ✅ **v1.7 Live Reliability Rehearsal** — Phases 27-30 shipped 2026-07-07.
+  Archives: `.planning/milestones/v1.7-ROADMAP.md`,
+  `.planning/milestones/v1.7-REQUIREMENTS.md`,
+  `.planning/milestones/v1.7-MILESTONE-AUDIT.md`,
+  `.planning/milestones/v1.7-phases/`
+- ✅ **v1.6 Live Control Handbrake** — Phases 23-26 shipped 2026-05-22.
+  Archives: `.planning/milestones/v1.6-ROADMAP.md`,
+  `.planning/milestones/v1.6-REQUIREMENTS.md`,
+  `.planning/milestones/v1.6-MILESTONE-AUDIT.md`,
+  `.planning/milestones/v1.6-phases/`
 
-## Phase 41: Silent Breath F5 Pacing
+## Active Milestone
 
-**Goal:** Replace audible breath splices with configurable silent breath pauses
-and prove generated F5 WAV output contains silence at breath points.
-**Status:** Complete (2026-07-09)
+No active milestone. Start the next milestone with `$gsd-new-milestone`.
 
-**Requirements:** F5P-01, F5P-02, F5P-03, F5P-04, F5P-05
+## Phase Numbering
 
-**Success Criteria:**
-1. F5 natural pacing no longer calls `load_breath_sample()` for live-call output
-   stitching.
-2. Breath/paragraph/continuation points are materialized as zero-valued silence.
-3. Config exposes silent breath pause timing without implying audible breath
-   injection.
-4. Tests fail against the current non-zero breath behavior and pass after the
-   fix.
-5. A short local F5 preview can be generated for ear-based review.
+- Completed phases through v1.10: 1-41.
+- Next planned milestone should continue with Phase 42 unless a new roadmap
+  deliberately chooses a different numbering scheme.
 
-## Traceability
+## Current Archives
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| F5P-01 | Phase 41 | Complete |
-| F5P-02 | Phase 41 | Complete |
-| F5P-03 | Phase 41 | Complete |
-| F5P-04 | Phase 41 | Complete |
-| F5P-05 | Phase 41 | Complete |
-
-**Coverage:**
-- v1.10 requirements: 5 total
-- Mapped to phases: 5
-- Unmapped: 0
-
-## Progress
-
-| Phase | Status | Started | Completed |
-|-------|--------|---------|-----------|
-| 41. Silent Breath F5 Pacing | Complete | 2026-07-09 | 2026-07-09 |
+| Milestone | Roadmap | Requirements | Audit | Phases |
+|---|---|---|---|---|
+| v1.10 | `.planning/milestones/v1.10-ROADMAP.md` | `.planning/milestones/v1.10-REQUIREMENTS.md` | `.planning/milestones/v1.10-MILESTONE-AUDIT.md` | `.planning/milestones/v1.10-phases/` |
+| v1.9 | `.planning/milestones/v1.9-ROADMAP.md` | `.planning/milestones/v1.9-REQUIREMENTS.md` | `.planning/milestones/v1.9-MILESTONE-AUDIT.md` | `.planning/milestones/v1.9-phases/` |
+| v1.8 | `.planning/milestones/v1.8-ROADMAP.md` | `.planning/milestones/v1.8-REQUIREMENTS.md` | `.planning/milestones/v1.8-MILESTONE-AUDIT.md` | `.planning/milestones/v1.8-phases/` |
+| v1.7 | `.planning/milestones/v1.7-ROADMAP.md` | `.planning/milestones/v1.7-REQUIREMENTS.md` | `.planning/milestones/v1.7-MILESTONE-AUDIT.md` | `.planning/milestones/v1.7-phases/` |
+| v1.6 | `.planning/milestones/v1.6-ROADMAP.md` | `.planning/milestones/v1.6-REQUIREMENTS.md` | `.planning/milestones/v1.6-MILESTONE-AUDIT.md` | `.planning/milestones/v1.6-phases/` |
 
 ## Next
 
-Run milestone audit and archive v1.10 through `$gsd-complete-milestone`.
+Run `$gsd-new-milestone` to define the next scoped requirements and roadmap.
