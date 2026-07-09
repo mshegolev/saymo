@@ -79,6 +79,6 @@ Phases execute in numeric order: 45 -> 46 -> 47
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 45. Prosody Preview Corpus | 1/3 | In Progress |  |
+| 45. Prosody Preview Corpus | 2/3 | In Progress |  |
 | 46. Timing Metrics Reports | 0/TBD | Not started | - |
 | 47. Source-Type Pause Presets | 0/TBD | Not started | - |

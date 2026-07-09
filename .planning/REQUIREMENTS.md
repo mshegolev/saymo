@@ -11,7 +11,7 @@ and respond fast enough that the call still feels live.
 - [x] **CORP-01**: User can use a richer sanitized phrase corpus for F5 timing
   previews that covers short acknowledgements, standup updates, multi-sentence
   answers, clause-heavy responses, and direct handoff replies.
-- [ ] **CORP-02**: User can generate A/B timing previews from selected corpus
+- [x] **CORP-02**: User can generate A/B timing previews from selected corpus
   subsets so current and candidate presets are compared across realistic
   answer shapes.
 - [ ] **CORP-03**: User can extend or inspect the preview corpus without
@@ -73,7 +73,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CORP-01 | Phase 45 | Complete |
-| CORP-02 | Phase 45 | Pending |
+| CORP-02 | Phase 45 | Complete |
 | CORP-03 | Phase 45 | Pending |
 | METR-01 | Phase 46 | Pending |
 | METR-02 | Phase 46 | Pending |
