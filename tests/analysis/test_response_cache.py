@@ -305,3 +305,57 @@ def test_response_cache_reports_stale_when_f5_pacing_changes(
         "eta_today[0]:voice_metadata_stale",
     )
     assert "PRIVATE_" not in repr(coverage)
+
+
+def test_lookup_refuses_stale_voice_metadata(tiny_library, tmp_cache_dir):
+    from saymo.analysis.cache_metadata import VoiceCacheMetadata, write_voice_cache_metadata
+
+    expected = VoiceCacheMetadata(
+        purpose="response_cache",
+        selected_engine="f5tts_clone",
+        attempted_engines=("f5tts_clone",),
+        fingerprint="current",
+    )
+    stale = VoiceCacheMetadata(
+        purpose="response_cache",
+        selected_engine="f5tts_clone",
+        attempted_engines=("f5tts_clone",),
+        fingerprint="old",
+    )
+    cache = ResponseCache(
+        library=tiny_library,
+        cache_dir=tmp_cache_dir,
+        voice_metadata=expected,
+    )
+    path = cache.variant_path("blockers_none", 0, "Блокеров нет.")
+    path.write_bytes(b"RIFF")
+    write_voice_cache_metadata(path, stale)
+
+    assert cache.lookup("а есть блокеры какие-то?") is None
+
+
+def test_get_variant_by_key_refuses_stale_voice_metadata(tiny_library, tmp_cache_dir):
+    from saymo.analysis.cache_metadata import VoiceCacheMetadata, write_voice_cache_metadata
+
+    expected = VoiceCacheMetadata(
+        purpose="response_cache",
+        selected_engine="f5tts_clone",
+        attempted_engines=("f5tts_clone",),
+        fingerprint="current",
+    )
+    stale = VoiceCacheMetadata(
+        purpose="response_cache",
+        selected_engine="f5tts_clone",
+        attempted_engines=("f5tts_clone",),
+        fingerprint="old",
+    )
+    cache = ResponseCache(
+        library=tiny_library,
+        cache_dir=tmp_cache_dir,
+        voice_metadata=expected,
+    )
+    path = cache.variant_path("blockers_none", 0, "Блокеров нет.")
+    path.write_bytes(b"RIFF")
+    write_voice_cache_metadata(path, stale)
+
+    assert cache.get_variant_by_key("blockers_none") is None

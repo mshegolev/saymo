@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from saymo.analysis.cache_advice import response_cache_advice
 from saymo.analysis.cache_metadata import build_voice_cache_metadata
 from saymo.analysis.launch_readiness import LaunchReadinessCheck
 from saymo.analysis.response_cache import (
@@ -51,19 +52,23 @@ def collect_response_cache_check(
     )
     coverage = response_cache_coverage(cache)
     ok = coverage.ready == coverage.total
+    advice = response_cache_advice(config, profile=profile)
     return LaunchReadinessCheck(
         key="response_cache_coverage",
         label="response cache coverage",
         severity="block",
         ok=ok,
         detail=f"{coverage.ready}/{coverage.total} variants ready",
-        action="" if ok else "Run saymo prepare-responses",
+        action="" if ok else _response_cache_action(advice),
         rerun="" if ok else rerun,
         metadata={
             "ready": coverage.ready,
             "total": coverage.total,
             "missing_examples": list(coverage.missing),
             "stale_examples": list(coverage.stale),
+            "missing_count": len(coverage.missing),
+            "stale_count": len(coverage.stale),
+            "cost_warning": advice.warning,
             "cache_dir": str(coverage.cache_dir) if coverage.cache_dir else "",
         },
     )
@@ -113,3 +118,9 @@ def _voice_blocked_reason(decision) -> str:
 
 def _rerun_command(profile: str, provider_name: str) -> str:
     return f"saymo call-ready -p {profile} --provider {provider_name}"
+
+
+def _response_cache_action(advice) -> str:
+    if advice.warning:
+        return f"{advice.action} {advice.warning}"
+    return advice.action

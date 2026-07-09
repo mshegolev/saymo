@@ -13,7 +13,7 @@ import click
 from rich.table import Table
 
 from saymo.analysis.trigger_sessions import SESSION_LEDGER_DIR
-from saymo.commands import console, main, run_async
+from saymo.commands import _get_cached_audio_path, console, main, run_async
 
 
 _TRIGGER_SAMPLE_CATEGORIES = (
@@ -757,6 +757,42 @@ def _print_auto_preflight(profile: str, checks: list[PreflightCheck]) -> None:
         console.print(f"{label}: {check.name}: {check.detail}")
     console.print(f"preflight: {'ready' if ready else 'not ready'}")
     console.print(render_remediation_hints(hints_from_preflight_checks(profile, checks)), markup=False)
+
+
+@main.command("cache-status")
+@click.option("--profile", "-p", default="standup", help="Meeting profile to inspect")
+@click.pass_context
+def cache_status(ctx, profile):
+    """Show read-only prepared/response cache status and repair commands."""
+    from saymo.analysis.cache_advice import (
+        prepared_audio_cache_advice,
+        response_cache_advice,
+    )
+
+    config = ctx.obj["config"]
+    meeting = config.get_meeting(profile)
+    team_mode = bool(meeting.team) if meeting else False
+    prepared = prepared_audio_cache_advice(
+        config,
+        _get_cached_audio_path(team=team_mode),
+        profile=profile,
+        team=team_mode,
+    )
+    response = response_cache_advice(config, profile=profile)
+
+    console.print(f"cache status: {profile}")
+    for advice in (prepared, response):
+        label = "ok" if advice.ok else "warn"
+        detail = advice.status
+        if advice.reason:
+            detail += f" ({advice.reason})"
+        console.print(f"{label}: {advice.title}: {detail}")
+        if advice.warning:
+            console.print(f"warning: {advice.warning}")
+        if advice.action:
+            console.print(f"action: {advice.action}")
+        if advice.rerun:
+            console.print(f"rerun: {advice.rerun}")
 
 
 @main.command("rehearsal")

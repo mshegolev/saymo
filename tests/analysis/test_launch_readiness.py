@@ -784,6 +784,7 @@ def test_response_cache_launch_check_blocks_disabled_and_partial_coverage(tmp_pa
     from saymo.analysis.launch_cache import collect_response_cache_check
 
     config = load_config(config_path=str(_write_config(tmp_path)))
+    config.tts.engine = "f5tts_clone"
 
     partial = collect_response_cache_check(
         config,
@@ -795,6 +796,8 @@ def test_response_cache_launch_check_blocks_disabled_and_partial_coverage(tmp_pa
     assert partial.severity == "block"
     assert partial.ok is False
     assert partial.detail.endswith("variants ready")
+    assert "expensive" in partial.action.lower()
+    assert "prepare-responses" in partial.action
     assert partial.metadata["ready"] == 0
     assert partial.metadata["total"] > 0
     assert partial.metadata["missing_examples"]

@@ -1946,17 +1946,18 @@ async def _prepare_team(config, save: bool, *, profile_name: str = "standup"):
 # ---------------------------------------------------------------------------
 
 @main.command()
+@click.option("--profile", "-p", "profile_name", default="standup", help="Meeting profile for metadata.")
 @click.pass_context
-def review(ctx):
+def review(ctx, profile_name):
     """Review cached audio sentence-by-sentence.
 
     Plays each sentence, asks if quality is OK.
     Bad sentences get regenerated with adjusted parameters.
     """
-    run_async(_review(ctx.obj["config"]))
+    run_async(_review(ctx.obj["config"], profile_name=profile_name))
 
 
-async def _review(config):
+async def _review(config, *, profile_name: str = "standup"):
     import asyncio
     import io
     import numpy as np
@@ -2037,13 +2038,71 @@ async def _review(config):
     sample_rate = final_chunks[0][1]
     all_audio = np.concatenate([chunk for chunk, _ in final_chunks])
 
-    # Save
     audio_path = _get_cached_audio_path()
-    audio_path.parent.mkdir(parents=True, exist_ok=True)
-    sf.write(str(audio_path), all_audio, sample_rate)
+    _write_reviewed_audio_cache(
+        config,
+        audio_path,
+        all_audio,
+        sample_rate=sample_rate,
+        normalized_text=normalized,
+        profile_name=profile_name,
+    )
 
     console.print(f"\n[bold green]Saved reviewed audio: {audio_path} ({audio_path.stat().st_size // 1024} KB)[/]")
     console.print(f"[dim]Accepted {len(final_chunks)}/{len(sentences)} sentences[/]")
+
+
+def _write_reviewed_audio_cache(
+    config,
+    audio_path,
+    audio,
+    *,
+    sample_rate: int,
+    normalized_text: str,
+    profile_name: str = "standup",
+) -> None:
+    from pathlib import Path
+
+    import soundfile as sf
+
+    from saymo.analysis.cache_metadata import (
+        build_voice_cache_metadata,
+        read_voice_cache_metadata,
+        write_voice_cache_metadata,
+    )
+
+    audio_path = Path(audio_path)
+    existing = None
+    if audio_path.exists():
+        try:
+            existing = read_voice_cache_metadata(audio_path)
+        except Exception:
+            existing = None
+
+    audio_path.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(audio_path), audio, sample_rate)
+    source_kind = (
+        existing.source_kind
+        if existing and existing.source_kind
+        else config.speech.source
+    )
+    source_profile = (
+        existing.source_profile
+        if existing and existing.source_profile
+        else profile_name
+    )
+    source_sha256 = existing.source_sha256 if existing and existing.source_sha256 else ""
+    write_voice_cache_metadata(
+        audio_path,
+        build_voice_cache_metadata(
+            config,
+            purpose="prepare",
+            text=normalized_text,
+            source_kind=source_kind,
+            source_profile=source_profile,
+            source_sha256=source_sha256,
+        ),
+    )
 
 
 def _review_read_key() -> str:

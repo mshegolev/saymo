@@ -71,6 +71,36 @@ def test_preflight_hints_classify_next_actions():
     assert all("saymo auto-preflight -p personal" in hint.rerun for hint in hints)
 
 
+def test_preflight_cache_hints_use_targeted_expensive_regeneration_actions():
+    hints = hints_from_preflight_checks(
+        "standup",
+        [
+            PreflightCheck(
+                "prepared standup",
+                False,
+                "/tmp/audio.wav (voice_metadata_stale)",
+            ),
+            PreflightCheck(
+                "response cache",
+                False,
+                "0/48 variants; stale=48 voice_metadata_stale",
+                blocking=False,
+            ),
+        ],
+    )
+
+    actions = {hint.title: hint.action for hint in hints}
+
+    assert actions["Regenerate prepared audio"] == (
+        "Run saymo prepare -p standup to rebuild prepared audio only. "
+        "F5 regeneration can be expensive; do not rebuild response cache unless needed."
+    )
+    assert actions["Prepare response cache"] == (
+        "Run saymo prepare-responses to rebuild only missing or stale variants. "
+        "Avoid --force unless intentionally rebuilding every response."
+    )
+
+
 def test_launch_provider_audio_hints_classify_permissions():
     from saymo.analysis.launch_readiness import (
         LaunchReadinessCheck,

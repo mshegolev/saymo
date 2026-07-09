@@ -52,7 +52,7 @@ def hints_from_preflight_checks(profile: str, checks: Iterable[Any]) -> list[Rem
             continue
         name = str(getattr(check, "name", "") or "")
         detail = str(getattr(check, "detail", "") or "")
-        hints.append(_hint_for_check(name, detail, rerun=rerun))
+        hints.append(_hint_for_check(name, detail, rerun=rerun, profile=profile))
     return _dedupe(hints)
 
 
@@ -87,7 +87,14 @@ def hints_from_rehearsal(artifact: RehearsalArtifact) -> list[RemediationHint]:
         if check.status == "pass":
             continue
         name = check.name.removeprefix("preflight: ").strip()
-        hints.append(_hint_for_check(name, check.detail, rerun=rerun))
+        hints.append(
+            _hint_for_check(
+                name,
+                check.detail,
+                rerun=rerun,
+                profile=artifact.profile,
+            )
+        )
     blocked = str(artifact.decision.blocked_reason or "")
     if blocked and "confirmation required" in blocked.lower():
         hints.append(
@@ -462,14 +469,41 @@ def hint_for_takeover_failure(
     )
 
 
-def _hint_for_check(name: str, detail: str, *, rerun: str) -> RemediationHint:
+def _hint_for_check(
+    name: str,
+    detail: str,
+    *,
+    rerun: str,
+    profile: str = "personal",
+) -> RemediationHint:
     lower = name.lower()
     if "capture" in lower:
         return RemediationHint("audio-device", "Fix capture input", detail, "Select a valid capture input device.", rerun)
     if "playback" in lower or "provider output" in lower:
         return RemediationHint("audio-device", "Fix playback routing", detail, "Select BlackHole/output devices visible to macOS.", rerun)
-    if "prepared standup" in lower or "response cache" in lower:
-        return RemediationHint("source-data", "Prepare response cache", detail, "Run saymo prepare for this profile or accept prepared-standup fallback.", rerun)
+    if "prepared standup" in lower:
+        safe_profile = _safe_profile(profile)
+        return RemediationHint(
+            "source-data",
+            "Regenerate prepared audio",
+            detail,
+            (
+                f"Run saymo prepare -p {safe_profile} to rebuild prepared audio only. "
+                "F5 regeneration can be expensive; do not rebuild response cache unless needed."
+            ),
+            rerun,
+        )
+    if "response cache" in lower:
+        return RemediationHint(
+            "source-data",
+            "Prepare response cache",
+            detail,
+            (
+                "Run saymo prepare-responses to rebuild only missing or stale variants. "
+                "Avoid --force unless intentionally rebuilding every response."
+            ),
+            rerun,
+        )
     if "provider tab" in lower:
         return RemediationHint("retest", "Open provider meeting tab", detail, "Open the meeting in Chrome and rerun the check.", rerun)
     if "profile trigger" in lower:
