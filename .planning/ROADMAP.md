@@ -27,7 +27,11 @@ presets by answer source while preserving profile defaults and cache safety.
   1. User can use sanitized preview phrases that cover short acknowledgements, standup updates, multi-sentence answers, clause-heavy responses, and direct handoff replies.
   2. User can generate current-vs-candidate A/B timing previews for selected corpus subsets.
   3. User can inspect or extend the preview corpus without committed artifacts containing private meeting transcript text, prompt text, response text, voice samples, training data, secrets, or raw audio.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 45-01-PLAN.md - Built-in sanitized F5 preview corpus and inspection CLI.
+- [ ] 45-02-PLAN.md - Selected corpus subset preview support with safe metadata.
+- [ ] 45-03-PLAN.md - Artifact raw-text privacy regression and operator docs.
 
 ### Phase 46: Timing Metrics Reports
 **Goal**: Users can compare F5 timing presets with objective speech-rate and pause-distribution evidence.
