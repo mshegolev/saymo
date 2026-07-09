@@ -22,11 +22,16 @@ def build_f5_timing_record(
     output_wav: str | Path,
     dry_run: bool,
     latency_ms: int = 0,
+    source_kind: str = "manual",
+    corpus_id: str | None = None,
+    corpus_category: str | None = None,
+    corpus_label: str | None = None,
 ) -> dict[str, Any]:
     """Build one sanitized preview record without storing raw text."""
-    return {
+    record = {
         "label": label,
         "preset_id": preset_id,
+        "source_kind": source_kind,
         "engine": "f5tts_clone",
         "output_wav": str(output_wav),
         "latency_ms": int(latency_ms or 0),
@@ -37,6 +42,13 @@ def build_f5_timing_record(
             "dry_run": bool(dry_run),
         },
     }
+    if corpus_id is not None:
+        record["corpus"] = {
+            "id": corpus_id,
+            "category": corpus_category,
+            "label": corpus_label,
+        }
+    return record
 
 
 def write_f5_timing_preview_artifacts(
