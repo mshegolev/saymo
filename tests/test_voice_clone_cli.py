@@ -392,3 +392,55 @@ def test_f5_presets_cli_preview_and_review_are_sanitized(tmp_path):
     assert "PRIVATE CLI TIMING TEXT" not in (run_dir / "timing-report.md").read_text(
         encoding="utf-8"
     )
+
+
+def test_f5_timing_record_manual_source_is_sanitized(tmp_path):
+    from saymo.analysis.f5_timing_review import build_f5_timing_record
+    from saymo.config import load_config
+
+    config_path = _write_config(tmp_path, tmp_path / ".saymo", tmp_path / "F5TTS")
+    config = load_config(str(config_path))
+    record = build_f5_timing_record(
+        config,
+        label="current",
+        preset_id="approved",
+        text="PRIVATE MANUAL TIMING TEXT",
+        output_wav=tmp_path / "current-approved.wav",
+        dry_run=True,
+    )
+
+    assert record["source_kind"] == "manual"
+    assert "corpus" not in record
+    assert record["text_sha256"]
+    assert record["text_chars"] == len("PRIVATE MANUAL TIMING TEXT")
+    assert "PRIVATE MANUAL TIMING TEXT" not in json.dumps(record)
+
+
+def test_f5_timing_record_corpus_metadata_is_safe(tmp_path):
+    from saymo.analysis.f5_timing_review import build_f5_timing_record
+    from saymo.config import load_config
+
+    config_path = _write_config(tmp_path, tmp_path / ".saymo", tmp_path / "F5TTS")
+    config = load_config(str(config_path))
+    record = build_f5_timing_record(
+        config,
+        label="standup-blocked:current",
+        preset_id="approved",
+        text="PRIVATE CORPUS TIMING TEXT",
+        output_wav=tmp_path / "standup-blocked-current-approved.wav",
+        dry_run=True,
+        source_kind="builtin_corpus",
+        corpus_id="standup-blocked",
+        corpus_category="standup",
+        corpus_label="Standup blocked",
+    )
+
+    assert record["source_kind"] == "builtin_corpus"
+    assert record["corpus"] == {
+        "id": "standup-blocked",
+        "category": "standup",
+        "label": "Standup blocked",
+    }
+    assert record["text_sha256"]
+    assert record["text_chars"] == len("PRIVATE CORPUS TIMING TEXT")
+    assert "PRIVATE CORPUS TIMING TEXT" not in json.dumps(record)
