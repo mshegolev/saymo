@@ -65,12 +65,21 @@ staleness regressions, verified continuation breath intervals as zero-valued
 silence, and added static/docs guards that keep F5 live-call output from
 reintroducing audible reference-sample breath audio.
 
-**Status:** v1.11 F5 Gap Hardening shipped on 2026-07-09. No active milestone
-is currently defined.
+**Status:** v1.12 F5 Voice Tuning Controls is being defined on 2026-07-09.
 
-## Current Milestone
+## Current Milestone: v1.12 F5 Voice Tuning Controls
 
-No active milestone. Start the next milestone with `$gsd-new-milestone`.
+**Goal:** Make F5 voice timing tunable, reviewable, and safe to apply without
+hand-editing config or accidentally breaking cache readiness.
+
+**Target features:**
+- Named F5 pause presets that can be selected per meeting profile.
+- A/B preview and review flow for comparing current timing against candidate
+  presets before applying them.
+- Operator warnings and repair paths for stale or expensive cache
+  regeneration.
+- `saymo review` and legacy response-cache paths that preserve voice metadata
+  safety instead of bypassing or breaking readiness.
 
 ## Last Completed Milestone: v1.11 F5 Gap Hardening
 
@@ -292,7 +301,18 @@ playback, and regression replay.
 
 ### Active
 
-- None. Define the next active set with `$gsd-new-milestone`.
+- [ ] User can select named F5 pause presets per meeting profile without
+  editing YAML by hand.
+- [ ] User can generate A/B voice timing previews and capture a simple
+  preference review before applying changes.
+- [ ] User can apply a selected timing preset and have prepared/response cache
+  metadata go stale through the existing fingerprint path.
+- [ ] User can see when regeneration will be expensive and choose the right
+  prepare/cache command instead of accidentally rebuilding everything.
+- [ ] User can run `saymo review` without losing the prepared-audio metadata
+  sidecar required by call-ready checks.
+- [ ] User can trust response-cache lookup helpers to enforce metadata checks
+  consistently across active and legacy code paths.
 
 ### Out of Scope
 
@@ -346,6 +366,8 @@ playback, and regression replay.
 - v1.11 closes the follow-up hardening gaps with direct cache-staleness tests,
   sanitized diagnostic checks, continuation-silence coverage, and static/docs
   guards for the F5 live-call no-audible-breath boundary.
+- v1.12 focuses on operator-controlled tuning and cache UX, not model
+  retraining: the approved F5 voice profile remains the runtime baseline.
 
 ## Constraints
 
@@ -384,6 +406,7 @@ playback, and regression replay.
 | Use silent breath pauses instead of audible breath splices for live-call F5 pacing | User feedback identified hum/buzz in the breath layer; live-call output should feel paced without transmitting breath noise | Implemented in v1.10 |
 | Include F5 pacing knobs in voice-cache fingerprints | Prepared and response cached WAVs must go stale when silent-breath timing changes | Implemented in v1.10 |
 | Treat F5 audit gaps as a hardening milestone | The v1.10 integration checker passed after fixes, but follow-up direct regressions and static guards reduce future voice-cache drift risk | Implemented in v1.11 |
+| Treat F5 timing as operator-tuned presets | User feedback is ear-based, so Saymo should support repeatable preset comparison and application instead of hardcoded one-off knob edits | Pending in v1.12 |
 
 ---
-*Last updated: 2026-07-09 after completing milestone v1.11*
+*Last updated: 2026-07-09 after starting milestone v1.12*

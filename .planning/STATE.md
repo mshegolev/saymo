@@ -1,17 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.11
-milestone_name: F5 Gap Hardening
-status: archived
-stopped_at: Milestone v1.11 completed, audited, archived, and ready for next milestone planning.
-last_updated: "2026-07-09T11:53:41.611Z"
-last_activity: 2026-07-09 - Archived v1.11 F5 Gap Hardening
+milestone: v1.12
+milestone_name: F5 Voice Tuning Controls
+current_phase: null
+current_phase_name: null
+current_plan: null
+status: defining requirements
+stopped_at: Milestone v1.12 started; requirements and roadmap are next.
+last_updated: "2026-07-09T12:00:00.000Z"
+last_activity: 2026-07-09 - Started v1.12 F5 Voice Tuning Controls
 progress:
-  total_phases: 1
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -22,28 +25,26 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** No active milestone; start the next one with
-`$gsd-new-milestone`.
+**Current focus:** v1.12 F5 Voice Tuning Controls.
 
 ## Current Position
 
-Phase: 42 of 42 (F5 Cache and Silence Gap Hardening)
-Plan: 42-01
-Total Plans in Phase: 1
-Plans: 1 of 1 completed.
-Status: Milestone archived.
-Last activity: 2026-07-09 - Completed, audited, and archived v1.11 F5 Gap
-Hardening.
+Phase: Not started (defining requirements)
+Plan: —
+Total Plans in Phase: —
+Plans: —
+Status: Defining requirements for v1.12.
+Last activity: 2026-07-09 - Started v1.12 F5 Voice Tuning Controls.
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
 **Current Milestone Velocity:**
-- Total plans planned: 1
-- Plans completed: 1
-- Average duration: same-day completion
-- Total execution time: one autonomous session
+- Total plans planned: 0
+- Plans completed: 0
+- Average duration: n/a
+- Total execution time: 0 min
 
 **Historical Context:**
 - v1.10 completed Phase 41 on 2026-07-09.
@@ -54,7 +55,7 @@ Progress: [##########] 100%
 
 | Phase | Status | Plans |
 |-------|--------|-------|
-| 42. F5 Cache and Silence Gap Hardening | Complete | 1/1 |
+| v1.12 | Defining requirements | 0/0 |
 
 ## Accumulated Context
 
@@ -69,13 +70,15 @@ Recent decisions affecting current work:
   and response cached WAVs go stale after timing changes.
 - v1.11: Direct F5 cache-staleness, continuation-silence, and static/docs
   guards are the contract for preserving silent-breath behavior.
+- v1.12: Focus on repeatable operator tuning and metadata-safe cache/review
+  flows, not retraining or adding audible breath.
 
 ### Pending Todos
 
-- Start the next milestone with `$gsd-new-milestone` when new scope is ready.
+- Define v1.12 requirements and roadmap.
 - Optional: user can still listen to
   `~/.saymo/voice_benchmarks/20260709-silent-breath/f5tts-silent-breath-01.wav`
-  and request subjective timing adjustments in a later milestone.
+  and request subjective timing adjustments during v1.12.
 
 ### Blockers/Concerns
 
@@ -89,6 +92,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-07-09T11:53:41.611Z
-Stopped at: Milestone v1.11 archived.
+Last session: 2026-07-09T12:00:00.000Z
+Stopped at: Milestone v1.12 started.
 Resume file: None

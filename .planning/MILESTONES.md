@@ -2,7 +2,18 @@
 
 ## Current
 
-No active milestone. Start the next one with `$gsd-new-milestone`.
+### v1.12 F5 Voice Tuning Controls
+
+**Started:** 2026-07-09
+**Status:** Active
+
+Focus: make F5 voice timing tunable, reviewable, and safe to apply through
+named pause presets, A/B preview artifacts, and metadata-safe cache/review
+flows.
+
+Active artifacts:
+- `.planning/ROADMAP.md`
+- `.planning/REQUIREMENTS.md`
 
 ## Completed
 
