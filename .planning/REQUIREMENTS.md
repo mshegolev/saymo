@@ -8,21 +8,21 @@ and respond fast enough that the call still feels live.
 
 ### F5 Pause Presets
 
-- [ ] **PAUSE-01**: User can list named F5 pause presets with their sentence,
+- [x] **PAUSE-01**: User can list named F5 pause presets with their sentence,
   clause, paragraph, and silent-breath timing values.
-- [ ] **PAUSE-02**: User can select a named F5 pause preset per meeting
+- [x] **PAUSE-02**: User can select a named F5 pause preset per meeting
   profile without hand-editing YAML.
-- [ ] **PAUSE-03**: User can apply a selected preset so prepared-audio and
+- [x] **PAUSE-03**: User can apply a selected preset so prepared-audio and
   response-cache metadata use the updated F5 pacing fingerprint.
 
 ### Voice Timing Review
 
-- [ ] **TUNE-01**: User can generate A/B preview WAVs comparing current F5
+- [x] **TUNE-01**: User can generate A/B preview WAVs comparing current F5
   timing against a candidate preset without changing the approved voice
   profile.
-- [ ] **TUNE-02**: User can record a simple preference review for A/B timing
+- [x] **TUNE-02**: User can record a simple preference review for A/B timing
   clips and see which preset/knobs are recommended.
-- [ ] **TUNE-03**: User can keep preview and review artifacts sanitized, with
+- [x] **TUNE-03**: User can keep preview and review artifacts sanitized, with
   no raw meeting transcript, prompt text, secrets, or training data copied into
   committed files.
 
@@ -63,12 +63,12 @@ and respond fast enough that the call still feels live.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PAUSE-01 | Phase 43 | Pending |
-| PAUSE-02 | Phase 43 | Pending |
-| PAUSE-03 | Phase 43 | Pending |
-| TUNE-01 | Phase 43 | Pending |
-| TUNE-02 | Phase 43 | Pending |
-| TUNE-03 | Phase 43 | Pending |
+| PAUSE-01 | Phase 43 | Complete |
+| PAUSE-02 | Phase 43 | Complete |
+| PAUSE-03 | Phase 43 | Complete |
+| TUNE-01 | Phase 43 | Complete |
+| TUNE-02 | Phase 43 | Complete |
+| TUNE-03 | Phase 43 | Complete |
 | CACHE-01 | Phase 44 | Pending |
 | CACHE-02 | Phase 44 | Pending |
 | CACHE-03 | Phase 44 | Pending |
@@ -81,4 +81,4 @@ and respond fast enough that the call still feels live.
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after milestone definition*
+*Last updated: 2026-07-09 after Phase 43 completion*

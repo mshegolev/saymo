@@ -12,9 +12,9 @@ audible breath/noise, or automatically delete/rebuild real caches.
 
 ## Phases
 
-- [ ] **Phase 43: F5 Pause Presets and A/B Timing Review** - Add named F5
+- [x] **Phase 43: F5 Pause Presets and A/B Timing Review** - Add named F5
   pause presets, profile selection, A/B preview artifacts, preference review,
-  and safe apply behavior.
+  and safe apply behavior. (completed 2026-07-09)
 - [ ] **Phase 44: Cache Regeneration and Review Metadata Safety** - Add
   operator warnings for expensive stale-cache regeneration, targeted
   remediation, `saymo review` sidecar preservation, and metadata-safe legacy
@@ -43,9 +43,9 @@ config edits, retraining, or breaking the existing cache fingerprint contract.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 43-01-PLAN.md - Implement preset catalog, profile selection, config
+- [x] 43-01-PLAN.md - Implement preset catalog, profile selection, config
   persistence, and fingerprint integration.
-- [ ] 43-02-PLAN.md - Implement A/B preview generation, review recording,
+- [x] 43-02-PLAN.md - Implement A/B preview generation, review recording,
   recommendation output, and sanitized artifact checks.
 
 ### Phase 44: Cache Regeneration and Review Metadata Safety
@@ -77,12 +77,12 @@ Plans:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PAUSE-01 | Phase 43 | Pending |
-| PAUSE-02 | Phase 43 | Pending |
-| PAUSE-03 | Phase 43 | Pending |
-| TUNE-01 | Phase 43 | Pending |
-| TUNE-02 | Phase 43 | Pending |
-| TUNE-03 | Phase 43 | Pending |
+| PAUSE-01 | Phase 43 | Complete |
+| PAUSE-02 | Phase 43 | Complete |
+| PAUSE-03 | Phase 43 | Complete |
+| TUNE-01 | Phase 43 | Complete |
+| TUNE-02 | Phase 43 | Complete |
+| TUNE-03 | Phase 43 | Complete |
 | CACHE-01 | Phase 44 | Pending |
 | CACHE-02 | Phase 44 | Pending |
 | CACHE-03 | Phase 44 | Pending |
@@ -99,10 +99,10 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 43. F5 Pause Presets and A/B Timing Review | 0/2 | Not started | - |
+| 43. F5 Pause Presets and A/B Timing Review | 2/2 | Complete | 2026-07-09 |
 | 44. Cache Regeneration and Review Metadata Safety | 0/2 | Not started | - |
 
 ## Next
 
-Run `$gsd-discuss-phase 43` to gather implementation context, or
-`$gsd-plan-phase 43` to plan directly.
+Run `$gsd-discuss-phase 44` to gather implementation context, or
+`$gsd-plan-phase 44` to plan directly.
