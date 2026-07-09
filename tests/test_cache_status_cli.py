@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import textwrap
+from datetime import date
 from pathlib import Path
 
 from click.testing import CliRunner
@@ -43,7 +44,7 @@ def _write_config(tmp_path: Path) -> Path:
 def test_cache_status_cli_warns_with_targeted_commands(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     config_path = _write_config(tmp_path)
-    prepared = tmp_path / ".saymo" / "audio_cache" / "2026-07-09.wav"
+    prepared = tmp_path / ".saymo" / "audio_cache" / f"{date.today().isoformat()}.wav"
     prepared.parent.mkdir(parents=True, exist_ok=True)
     prepared.write_bytes(b"RIFF")
     write_voice_cache_metadata(
