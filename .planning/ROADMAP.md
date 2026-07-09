@@ -14,7 +14,7 @@ presets by answer source while preserving profile defaults and cache safety.
 - Decimal phases (45.1, 45.2): Urgent insertions, if needed later
 
 - [x] **Phase 45: Prosody Preview Corpus** - Users can tune F5 timing against richer sanitized answer-shape previews. (completed 2026-07-09)
-- [ ] **Phase 46: Timing Metrics Reports** - Users can compare presets with speech-rate and pause-distribution metrics.
+- [x] **Phase 46: Timing Metrics Reports** - Users can compare presets with speech-rate and pause-distribution metrics. (completed 2026-07-09)
 - [ ] **Phase 47: Source-Type Pause Presets** - Users can choose, diagnose, and cache-track pause presets per answer source.
 
 ## Phase Details
@@ -44,8 +44,8 @@ Plans:
   4. User can review timing metrics without exposing prompt text, response text, audio bytes, private meeting content, or secrets.
 **Plans**: 2 plans
 Plans:
-- [ ] 46-01-PLAN.md - F5 preview timing metrics contract and record integration.
-- [ ] 46-02-PLAN.md - Sanitized timing report metrics and current-vs-candidate deltas.
+- [x] 46-01-PLAN.md - F5 preview timing metrics contract and record integration.
+- [x] 46-02-PLAN.md - Sanitized timing report metrics and current-vs-candidate deltas.
 
 ### Phase 47: Source-Type Pause Presets
 **Goal**: Users can apply F5 pause presets by answer source while profile defaults, diagnostics, and cache staleness remain clear.
@@ -83,5 +83,5 @@ Phases execute in numeric order: 45 -> 46 -> 47
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 45. Prosody Preview Corpus | 3/3 | Complete    | 2026-07-09 |
-| 46. Timing Metrics Reports | 1/2 | In Progress | - |
+| 46. Timing Metrics Reports | 2/2 | Complete   | 2026-07-09 |
 | 47. Source-Type Pause Presets | 0/TBD | Not started | - |

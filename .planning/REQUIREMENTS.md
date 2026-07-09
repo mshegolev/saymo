@@ -25,7 +25,7 @@ and respond fast enough that the call still feels live.
   timing presets.
 - [x] **METR-02**: User can see pause-distribution metrics grouped by sentence,
   clause, paragraph, and silent-breath continuation pauses.
-- [ ] **METR-03**: User can compare current and candidate presets in a
+- [x] **METR-03**: User can compare current and candidate presets in a
   sanitized report that highlights meaningful pace and pause changes without
   exposing prompt text, response text, audio bytes, private meeting content, or
   secrets.
@@ -77,7 +77,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORP-03 | Phase 45 | Complete |
 | METR-01 | Phase 46 | Complete |
 | METR-02 | Phase 46 | Complete |
-| METR-03 | Phase 46 | Pending |
+| METR-03 | Phase 46 | Complete |
 | SRCE-01 | Phase 47 | Pending |
 | SRCE-02 | Phase 47 | Pending |
 | SRCE-03 | Phase 47 | Pending |
@@ -91,4 +91,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after completing 46-01*
+*Last updated: 2026-07-09 after completing 46-02*
