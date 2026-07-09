@@ -11,6 +11,7 @@ import yaml
 from click.testing import CliRunner
 
 from saymo.commands import main
+from saymo.tts.f5_corpus import get_f5_preview_corpus_entry
 
 
 def _write_wav(path: Path) -> None:
@@ -470,6 +471,63 @@ def test_f5_presets_preview_selected_corpus_id(tmp_path):
         "standup-blocked-candidate-calm.wav",
     ]
     assert all(record["corpus"]["id"] == "standup-blocked" for record in records)
+
+
+def test_f5_presets_corpus_preview_artifacts_omit_raw_text(tmp_path):
+    saymo_home = tmp_path / ".saymo"
+    f5_root = tmp_path / "F5TTS"
+    config_path = _write_config(tmp_path, saymo_home, f5_root)
+    entry = get_f5_preview_corpus_entry("standup-blocked")
+    corpus_run = tmp_path / "timing-preview-corpus"
+    manual_run = tmp_path / "timing-preview-manual"
+    artifact_names = ("manifest.json", "review.json", "timing-report.md")
+
+    corpus_preview = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "preview",
+            "calm",
+            "--corpus-id",
+            "standup-blocked",
+            "--output-dir",
+            str(corpus_run),
+            "--dry-run",
+        ],
+    )
+
+    assert corpus_preview.exit_code == 0
+    corpus_artifacts = "\n".join(
+        (corpus_run / name).read_text(encoding="utf-8") for name in artifact_names
+    )
+    assert "standup-blocked" in corpus_artifacts
+    assert "standup" in corpus_artifacts
+    assert "Standup blocked" in corpus_artifacts
+    assert entry.text not in corpus_artifacts
+
+    manual_preview = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "f5-presets",
+            "preview",
+            "calm",
+            "--text",
+            "PRIVATE MANUAL PREVIEW TEXT",
+            "--output-dir",
+            str(manual_run),
+            "--dry-run",
+        ],
+    )
+
+    assert manual_preview.exit_code == 0
+    manual_artifacts = "\n".join(
+        (manual_run / name).read_text(encoding="utf-8") for name in artifact_names
+    )
+    assert "PRIVATE MANUAL PREVIEW TEXT" not in manual_artifacts
 
 
 def test_f5_presets_preview_selection_errors(tmp_path):
