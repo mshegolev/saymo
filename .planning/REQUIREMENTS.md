@@ -20,10 +20,10 @@ and respond fast enough that the call still feels live.
 
 ### Timing Metrics
 
-- [ ] **METR-01**: User can see automatic speech-rate metrics for each preview
+- [x] **METR-01**: User can see automatic speech-rate metrics for each preview
   clip, including total duration and a normalized rate suitable for comparing
   timing presets.
-- [ ] **METR-02**: User can see pause-distribution metrics grouped by sentence,
+- [x] **METR-02**: User can see pause-distribution metrics grouped by sentence,
   clause, paragraph, and silent-breath continuation pauses.
 - [ ] **METR-03**: User can compare current and candidate presets in a
   sanitized report that highlights meaningful pace and pause changes without
@@ -75,8 +75,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORP-01 | Phase 45 | Complete |
 | CORP-02 | Phase 45 | Complete |
 | CORP-03 | Phase 45 | Complete |
-| METR-01 | Phase 46 | Pending |
-| METR-02 | Phase 46 | Pending |
+| METR-01 | Phase 46 | Complete |
+| METR-02 | Phase 46 | Complete |
 | METR-03 | Phase 46 | Pending |
 | SRCE-01 | Phase 47 | Pending |
 | SRCE-02 | Phase 47 | Pending |
@@ -91,4 +91,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after completing 45-03*
+*Last updated: 2026-07-09 after completing 46-01*
