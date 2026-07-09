@@ -38,7 +38,7 @@ def test_f5_timing_metrics_are_json_safe_and_sanitized():
 def test_f5_timing_metrics_count_pause_distribution_from_natural_pacing():
     metrics = build_f5_timing_metrics(
         F5TTSConfig(),
-        text="One. Two. Three.\n\nFour - five.",
+        text="One. Two. Three.\n\nFour — five.",
     )
 
     assert metrics["pause_distribution"] == {
