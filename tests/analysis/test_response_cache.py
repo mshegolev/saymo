@@ -259,3 +259,49 @@ def test_response_cache_coverage_reports_missing_and_stale_variants(
     assert coverage.total_count == 3
     assert coverage.missing == ("eta_today[0]",)
     assert coverage.stale == ("blockers_none[1]:voice_metadata_stale",)
+
+
+def test_response_cache_reports_stale_when_f5_pacing_changes(
+    tiny_library,
+    tmp_cache_dir,
+):
+    from saymo.analysis.cache_metadata import build_voice_cache_metadata
+    from saymo.analysis.response_cache import response_cache_coverage
+    from saymo.config import SaymoConfig
+
+    config = SaymoConfig()
+    config.tts.engine = "f5tts_clone"
+    old_metadata = build_voice_cache_metadata(config, purpose="response_cache")
+    cache = ResponseCache(
+        library=tiny_library,
+        cache_dir=tmp_cache_dir,
+        voice_metadata=old_metadata,
+    )
+
+    async def synth(_text: str) -> bytes:
+        return b"wav"
+
+    written = asyncio.run(cache.build(synth, voice_metadata=old_metadata))
+    assert len(written) == 3
+
+    config.tts.f5tts.silent_breath_pause_seconds = 0.9
+    config.tts.f5tts.sentence_pause_seconds = 0.5
+    config.tts.f5tts.clause_pause_seconds = 0.25
+    config.tts.f5tts.breath_interval_sentences = 3
+    changed_metadata = build_voice_cache_metadata(config, purpose="response_cache")
+    changed_cache = ResponseCache(
+        library=tiny_library,
+        cache_dir=tmp_cache_dir,
+        voice_metadata=changed_metadata,
+    )
+
+    coverage = response_cache_coverage(changed_cache)
+
+    assert coverage.ready_count == 0
+    assert coverage.total_count == 3
+    assert coverage.stale == (
+        "blockers_none[0]:voice_metadata_stale",
+        "blockers_none[1]:voice_metadata_stale",
+        "eta_today[0]:voice_metadata_stale",
+    )
+    assert "PRIVATE_" not in repr(coverage)

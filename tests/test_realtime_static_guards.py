@@ -28,6 +28,10 @@ PHASE40_NEW_REPORTING_FILES = [
     Path("saymo/analysis/remediation.py"),
 ]
 
+F5_LIVE_CALL_FILES = [
+    Path("saymo/tts/f5tts.py"),
+]
+
 
 def _source(paths: list[Path]) -> str:
     return "\n".join(path.read_text(encoding="utf-8") for path in paths)
@@ -146,3 +150,21 @@ def test_core_does_not_restore_legacy_automatic_fallback():
 
     assert "_resolve_auto_response_decision" not in source
     assert "answer_question(" not in source
+
+
+def test_f5_live_call_path_does_not_use_audible_breath_samples():
+    source = _source(F5_LIVE_CALL_FILES)
+
+    assert "load_breath_sample" not in source
+    assert "breath_gain" not in source
+
+
+def test_f5_voice_naturalness_docs_define_breath_as_silent_timing():
+    docs = Path("docs/VOICE-NATURALNESS.md").read_text(encoding="utf-8")
+    example = Path("config.example.yaml").read_text(encoding="utf-8")
+
+    assert "For non-F5 engines" in docs
+    assert "F5 live-call pacing" in docs
+    assert "does not transmit breath audio" in docs
+    assert "Breath behavior is timing-only" in example
+    assert "silent_breath_pause_seconds" in example

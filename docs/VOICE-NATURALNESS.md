@@ -119,8 +119,8 @@ energy. These rules apply to *any* text you feed the engine.
 * **Sentence-by-sentence chunking.** XTTS quality drops past ~250
   characters per call. Always split.
 * **Inter-sentence silence**: 200–300 ms.
-* **Inter-paragraph break**: splice a real inhale from the reference
-  sample, not `np.zeros(...)`. Use
+* **Inter-paragraph break**: For non-F5 engines, splice a real inhale from the
+  reference sample, not `np.zeros(...)`. Use
   `saymo.tts.naturalness.load_breath_sample()` — it scans the first
   1.5 s of the reference for the quietest 250 ms window, normalises
   and attenuates it, and applies a 30 ms fade in/out.

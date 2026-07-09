@@ -91,3 +91,45 @@ def test_voice_cache_metadata_records_source_digest_without_text(tmp_path):
     assert source_stale.valid is False
     assert source_stale.blocked_reason == "source_metadata_stale"
     assert "PRIVATE_DAILY_NOTE" not in out.read_text(encoding="utf-8")
+
+
+def test_prepare_metadata_goes_stale_when_f5_pacing_changes(tmp_path):
+    from saymo.analysis.cache_metadata import (
+        build_voice_cache_metadata,
+        check_voice_cache_metadata,
+        write_voice_cache_metadata,
+    )
+
+    config = SaymoConfig()
+    config.tts.engine = "f5tts_clone"
+    audio = tmp_path / "prepared.wav"
+    audio.write_bytes(b"RIFFfake")
+
+    metadata = build_voice_cache_metadata(
+        config,
+        purpose="prepare",
+        text="PRIVATE_PREPARED_TEXT",
+        source_kind="obsidian",
+        source_profile="standup",
+    )
+    out = write_voice_cache_metadata(audio, metadata)
+
+    config.tts.f5tts.silent_breath_pause_seconds = 0.9
+    config.tts.f5tts.sentence_pause_seconds = 0.5
+    config.tts.f5tts.clause_pause_seconds = 0.25
+    config.tts.f5tts.breath_interval_sentences = 3
+    changed = build_voice_cache_metadata(
+        config,
+        purpose="prepare",
+        text="PRIVATE_PREPARED_TEXT",
+        source_kind="obsidian",
+        source_profile="standup",
+    )
+
+    stale = check_voice_cache_metadata(audio, changed)
+    sidecar_text = out.read_text(encoding="utf-8")
+
+    assert stale.valid is False
+    assert stale.blocked_reason == "voice_metadata_stale"
+    assert "PRIVATE_PREPARED_TEXT" not in sidecar_text
+    assert "audio_bytes" not in sidecar_text

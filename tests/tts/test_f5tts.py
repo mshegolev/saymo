@@ -66,6 +66,25 @@ def test_f5tts_natural_pacing_uses_silent_breath_pause_for_paragraph_break(tmp_p
     np.testing.assert_allclose(data[700:], -0.5, atol=0.01)
 
 
+def test_f5tts_natural_pacing_uses_silent_breath_pause_for_continuation_interval(tmp_path):
+    engine, calls = _fake_engine(tmp_path)
+    engine.cfg.sentence_pause_seconds = 0.1
+    engine.cfg.silent_breath_pause_seconds = 0.6
+    engine.cfg.breath_interval_sentences = 2
+
+    audio = asyncio.run(engine.synthesize("Первое. Второе. Третье."))
+
+    data, sr = sf.read(io.BytesIO(audio), dtype="float32")
+    assert sr == 1000
+    assert calls == ["Первое.", "Второе.", "Третье."]
+    assert len(data) == 1000
+    np.testing.assert_allclose(data[:100], 0.5, atol=0.01)
+    np.testing.assert_allclose(data[100:200], 0.0, atol=0.001)
+    np.testing.assert_allclose(data[200:300], -0.5, atol=0.01)
+    np.testing.assert_allclose(data[300:900], 0.0, atol=0.001)
+    np.testing.assert_allclose(data[900:], -0.5, atol=0.01)
+
+
 def test_f5tts_natural_pacing_batches_spoken_chunks_once(tmp_path):
     engine, _ = _fake_engine(tmp_path)
     batches: list[tuple[str, ...]] = []
