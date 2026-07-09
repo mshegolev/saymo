@@ -15,6 +15,7 @@ from saymo.analysis.response_cache import (
     build_library,
     response_cache_coverage,
 )
+from saymo.tts.f5_presets import resolve_f5_pause_preset_for_source
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,11 @@ def prepared_audio_cache_advice(
         profile=profile,
         source_type="prepared",
     )
+    preset_metadata = _preset_context_metadata(
+        config,
+        profile=profile,
+        source_type="prepared",
+    )
     check = check_voice_cache_metadata(path, expected)
     if check.valid:
         return CacheAdvice(
@@ -57,7 +63,11 @@ def prepared_audio_cache_advice(
             status="ready",
             ok=True,
             action="No regeneration needed; prepared audio is current.",
-            metadata={"team": bool(team), "path_name": path.name},
+            metadata={
+                **preset_metadata,
+                "team": bool(team),
+                "path_name": path.name,
+            },
         )
 
     status = _status_from_reason(check.blocked_reason)
@@ -77,6 +87,7 @@ def prepared_audio_cache_advice(
         action=f"Run saymo prepare -p {profile} to rebuild prepared audio only.",
         rerun=f"saymo auto-preflight -p {profile}",
         metadata={
+            **preset_metadata,
             "team": bool(team),
             "path_name": path.name,
             "blocked_reason": check.blocked_reason,
@@ -86,6 +97,11 @@ def prepared_audio_cache_advice(
 
 def response_cache_advice(config, *, profile: str) -> CacheAdvice:
     """Return read-only repair advice for the response cache."""
+    preset_metadata = _preset_context_metadata(
+        config,
+        profile=profile,
+        source_type="response_cache",
+    )
     if not config.responses.enabled:
         return CacheAdvice(
             key="response_cache",
@@ -94,9 +110,17 @@ def response_cache_advice(config, *, profile: str) -> CacheAdvice:
             reason="response_cache_disabled",
             ok=False,
             expensive=False,
-            action="Set responses.enabled=true, then run saymo prepare-responses.",
+            action=(
+                f"Set responses.enabled=true, then run saymo prepare-responses -p {profile}."
+            ),
             rerun=f"saymo auto-preflight -p {profile}",
-            metadata={"ready": 0, "total": 0, "missing_count": 0, "stale_count": 0},
+            metadata={
+                **preset_metadata,
+                "ready": 0,
+                "total": 0,
+                "missing_count": 0,
+                "stale_count": 0,
+            },
         )
 
     library = build_library(config.responses.library)
@@ -123,6 +147,7 @@ def response_cache_advice(config, *, profile: str) -> CacheAdvice:
             ok=True,
             action="No regeneration needed; response cache is current.",
             metadata={
+                **preset_metadata,
                 "ready": coverage.ready,
                 "total": coverage.total,
                 "missing_count": 0,
@@ -147,9 +172,13 @@ def response_cache_advice(config, *, profile: str) -> CacheAdvice:
         )
         if expensive
         else "",
-        action="Run saymo prepare-responses to rebuild only missing or stale variants.",
+        action=(
+            f"Run saymo prepare-responses -p {profile} "
+            "to rebuild only missing or stale variants."
+        ),
         rerun=f"saymo auto-preflight -p {profile}",
         metadata={
+            **preset_metadata,
             "ready": coverage.ready,
             "total": coverage.total,
             "missing_count": missing_count,
@@ -159,6 +188,21 @@ def response_cache_advice(config, *, profile: str) -> CacheAdvice:
             "cache_dir": str(coverage.cache_dir),
         },
     )
+
+
+def _preset_context_metadata(config, *, profile: str, source_type: str) -> dict[str, str]:
+    resolution = resolve_f5_pause_preset_for_source(
+        config,
+        profile=profile,
+        source_type=source_type,
+    )
+    return {
+        "source_type": resolution.source_type,
+        "purpose": resolution.purpose,
+        "profile_preset_id": resolution.profile_preset_id,
+        "source_override_preset_id": resolution.override_preset_id,
+        "resolved_preset_id": resolution.resolved_preset_id,
+    }
 
 
 def _status_from_reason(reason: str) -> str:

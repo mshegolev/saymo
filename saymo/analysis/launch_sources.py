@@ -100,6 +100,8 @@ def prepared_audio_status(
         source_kind=config.speech.source,
         source_profile=profile,
         source_sha256=source_sha256,
+        profile=profile,
+        source_type="prepared",
     )
     metadata_check = check_voice_cache_metadata(audio_path, expected)
 

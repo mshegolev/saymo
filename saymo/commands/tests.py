@@ -807,12 +807,31 @@ def cache_status(ctx, profile):
         if advice.reason:
             detail += f" ({advice.reason})"
         console.print(f"{label}: {advice.title}: {detail}")
+        preset_line = _cache_status_preset_line(advice.metadata)
+        if preset_line:
+            console.print(preset_line)
         if advice.warning:
             console.print(f"warning: {advice.warning}")
         if advice.action:
             console.print(f"action: {advice.action}")
         if advice.rerun:
             console.print(f"rerun: {advice.rerun}")
+
+
+def _cache_status_preset_line(metadata: dict) -> str:
+    source_type = str(metadata.get("source_type") or "")
+    if not source_type:
+        return ""
+    profile_preset = str(metadata.get("profile_preset_id") or "(none)")
+    override_preset = str(metadata.get("source_override_preset_id") or "(none)")
+    resolved_preset = str(metadata.get("resolved_preset_id") or "(none)")
+    return (
+        "preset: "
+        f"source_type={source_type} "
+        f"profile={profile_preset} "
+        f"override={override_preset} "
+        f"resolved={resolved_preset}"
+    )
 
 
 @main.command("rehearsal")

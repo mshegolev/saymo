@@ -23,6 +23,7 @@ def collect_response_cache_check(
 ) -> LaunchReadinessCheck:
     """Build a strict, privacy-safe response-cache coverage check."""
     rerun = _rerun_command(profile, provider_name)
+    advice = response_cache_advice(config, profile=profile)
     cache_dir = Path(config.responses.cache_dir) if config.responses.cache_dir else None
 
     if not config.responses.enabled:
@@ -32,9 +33,10 @@ def collect_response_cache_check(
             severity="block",
             ok=False,
             detail="response_cache_disabled",
-            action="Set responses.enabled=true, then run saymo prepare-responses",
+            action=advice.action.rstrip("."),
             rerun=rerun,
             metadata={
+                **advice.metadata,
                 "ready": 0,
                 "total": 0,
                 "missing_examples": [],
@@ -57,7 +59,6 @@ def collect_response_cache_check(
     )
     coverage = response_cache_coverage(cache)
     ok = coverage.ready == coverage.total
-    advice = response_cache_advice(config, profile=profile)
     return LaunchReadinessCheck(
         key="response_cache_coverage",
         label="response cache coverage",
@@ -67,6 +68,7 @@ def collect_response_cache_check(
         action="" if ok else _response_cache_action(advice),
         rerun="" if ok else rerun,
         metadata={
+            **advice.metadata,
             "ready": coverage.ready,
             "total": coverage.total,
             "missing_examples": list(coverage.missing),
