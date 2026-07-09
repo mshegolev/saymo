@@ -109,6 +109,10 @@ energy. These rules apply to *any* text you feed the engine.
 * **`[pause:N]` markers** are honoured by
   `synthesize_presentation.py`'s splitter — drop `[pause:1.5]`
   anywhere in the text to inject N seconds of silence.
+* **F5 natural pacing** also honours `[pause:N]` markers and runs
+  `prepare_for_natural_pacing()` before splitting. The primer is
+  conservative: spaced em dashes, semicolons, and non-time colons get
+  short pause markers; commas stay untouched to avoid choppy Russian.
 
 ## C. Synthesis-time rules
 
@@ -120,6 +124,15 @@ energy. These rules apply to *any* text you feed the engine.
   `saymo.tts.naturalness.load_breath_sample()` — it scans the first
   1.5 s of the reference for the quietest 250 ms window, normalises
   and attenuates it, and applies a 30 ms fade in/out.
+* **F5 live-call pacing**: `F5TTSCloneTTS` applies the same pause idea
+  directly in the engine path. It does not transmit breath audio into
+  the microphone output; breath moments are silent pauses. Defaults are:
+  `sentence_pause_seconds: 0.38`, `clause_pause_seconds: 0.18`,
+  `silent_breath_pause_seconds: 0.6`, and `breath_interval_sentences: 2`.
+  The timing should feel like taking air before continuing, without hum,
+  buzz, or audible inhale samples.
+  For the approved local F5 benchmark, `nfe_step: 16` was the baseline;
+  prefer it for cache builds before raising quality/latency to 32+.
 * **Crossfade 20–30 ms** between sentence boundaries to kill
   micro-clicks (optional polish).
 * **Loudness normalisation**: peak –3 dB, average ≈ –18 dB.

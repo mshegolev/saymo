@@ -190,6 +190,32 @@ def load_breath_sample(
 PAUSE_TOKEN = re.compile(r"\[pause:(\d+(?:\.\d+)?)\]")
 
 
+def prepare_for_natural_pacing(
+    text: str,
+    *,
+    clause_pause_seconds: float = 0.18,
+) -> str:
+    """Add conservative pause markers at high-confidence clause boundaries.
+
+    This is intentionally narrower than a full punctuation normalizer. Commas
+    stay untouched because a pause after every comma makes live-call Russian
+    sound clipped. Explicit ``[pause:N]`` markers are preserved.
+    """
+    marker = f"[pause:{max(0.0, float(clause_pause_seconds)):.2f}]"
+    lines: list[str] = []
+    for raw_line in str(text or "").splitlines():
+        line = re.sub(r"[ \t]+", " ", raw_line.strip())
+        if not line:
+            lines.append("")
+            continue
+        line = re.sub(r"\s+[—–]\s+", f" {marker} ", line)
+        line = re.sub(r";\s*", f" {marker} ", line)
+        line = re.sub(r"(?<!\d):\s+(?!\d)", f" {marker} ", line)
+        line = re.sub(r"[ \t]{2,}", " ", line).strip()
+        lines.append(line)
+    return "\n".join(lines).strip()
+
+
 def split_for_tts(text: str) -> list[str | float]:
     """Split source text into TTS-friendly chunks.
 
@@ -263,6 +289,7 @@ __all__ = [
     "VOICE_SAMPLES_DIR",
     "resolve_voice_sample",
     "load_breath_sample",
+    "prepare_for_natural_pacing",
     "split_for_tts",
     "PAUSE_TOKEN",
     "ENGLISH_DISCOURSE_MARKERS",

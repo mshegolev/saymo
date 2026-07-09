@@ -162,10 +162,15 @@ class F5TTSConfig:
     model_name: str = "F5TTS_v1_Base"  # which architecture preset
     ckpt_file: str = ""                # path to .pt checkpoint (Russian fine-tune)
     vocab_file: str = ""               # path to vocab.txt
-    nfe_step: int = 32                 # denoising steps; 16 fast, 32 default, 64 highest quality
+    nfe_step: int = 16                 # denoising steps; 16 matched the approved F5 voice benchmark
     speed: float = 1.0                 # 0.5-2.0; 1.0 = natural
     device: str = "cpu"                # cpu | mps | cuda; mps may have issues, default to cpu
     ref_text: str = ""                 # optional transcript override for the reference WAV
+    natural_pacing: bool = True        # split text and insert human-like pauses after F5 chunks
+    sentence_pause_seconds: float = 0.38
+    clause_pause_seconds: float = 0.18
+    silent_breath_pause_seconds: float = 0.6
+    breath_interval_sentences: int = 2 # insert a longer silent pause after this many continuation sentences; 0 disables
 
 
 @dataclass

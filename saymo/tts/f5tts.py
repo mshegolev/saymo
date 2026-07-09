@@ -14,15 +14,22 @@ provided via config.f5tts.ref_text.
 import asyncio
 import io
 import logging
+import re
 import subprocess
 import tempfile
 from pathlib import Path
 
+import numpy as np
 import sounddevice as sd
 import soundfile as sf
 
 from saymo.audio.devices import find_device
 from saymo.config import F5TTSConfig
+from saymo.tts.naturalness import (
+    INTER_SENTENCE_PAUSE_S,
+    prepare_for_natural_pacing,
+    split_for_tts,
+)
 
 logger = logging.getLogger("saymo.tts.f5tts")
 
@@ -128,14 +135,141 @@ class F5TTSCloneTTS:
             raise RuntimeError(f"F5-TTS produced no output at {out_path}")
         return out_path
 
-    async def synthesize(self, text: str) -> bytes:
-        """Clone voice and synthesize text to WAV bytes."""
+    def _synthesize_chunks_sync(self, chunks: list[str], output_dir: Path) -> list[Path]:
+        """Run one F5 CLI process for multiple chunks and return chunk WAVs."""
+        cli = self._venv_python.parent / "f5-tts_infer-cli"
+        gen_file = output_dir / "gen_chunks.txt"
+        gen_file.write_text(
+            "\n".join(f"[main]{chunk}" for chunk in chunks),
+            encoding="utf-8",
+        )
+        output_file = "out.wav"
+        cmd = [
+            str(cli),
+            "-m", self.cfg.model_name,
+            "-p", str(self._ckpt),
+            "-r", str(self.voice_sample),
+            "-s", self._ref_text,
+            "-f", str(gen_file),
+            "-o", str(output_dir),
+            "-w", output_file,
+            "--save_chunk",
+            "--no_legacy_text",
+            "--nfe_step", str(self.cfg.nfe_step),
+            "--speed", str(self.cfg.speed),
+            "--device", self.cfg.device,
+        ]
+        if self._vocab:
+            cmd.extend(["-v", str(self._vocab)])
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"F5-TTS batch inference failed (exit {result.returncode}): "
+                f"{result.stderr[-500:] if result.stderr else 'no stderr'}"
+            )
+
+        chunk_dir = output_dir / f"{Path(output_file).stem}_chunks"
+        chunk_paths = sorted(
+            chunk_dir.glob("*.wav"),
+            key=lambda path: _chunk_sort_key(path.name),
+        )
+        if len(chunk_paths) != len(chunks):
+            raise RuntimeError(
+                "F5-TTS batch inference produced "
+                f"{len(chunk_paths)} chunks for {len(chunks)} requested chunks"
+            )
+        return chunk_paths
+
+    def _synthesize_raw_sync(self, text: str) -> bytes:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
-            out = await asyncio.to_thread(self._synthesize_sync, text, tmp_path)
+            out = self._synthesize_sync(text, tmp_path)
             audio_bytes = out.read_bytes()
             logger.info(f"F5-TTS generated {len(audio_bytes)} bytes")
             return audio_bytes
+
+    def _synthesize_natural_sync(self, text: str) -> bytes:
+        prepared = prepare_for_natural_pacing(
+            text,
+            clause_pause_seconds=getattr(self.cfg, "clause_pause_seconds", 0.18),
+        )
+        chunks = split_for_tts(prepared)
+        spoken = [chunk for chunk in chunks if isinstance(chunk, str) and chunk]
+        has_explicit_pacing = any(
+            isinstance(chunk, float) or (isinstance(chunk, str) and chunk == "")
+            for chunk in chunks
+        )
+        if len(spoken) <= 1 and not has_explicit_pacing:
+            return self._synthesize_raw_sync(spoken[0] if spoken else text)
+
+        segments: list[np.ndarray | tuple[str, float]] = []
+        sample_rate: int | None = None
+        spoken_since_breath = 0
+        sentence_pause = max(
+            0.0,
+            float(getattr(self.cfg, "sentence_pause_seconds", INTER_SENTENCE_PAUSE_S)),
+        )
+        breath_interval = max(
+            0,
+            int(getattr(self.cfg, "breath_interval_sentences", 0) or 0),
+        )
+        silent_breath_pause = max(
+            0.0,
+            float(getattr(self.cfg, "silent_breath_pause_seconds", 0.6)),
+        )
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            spoken_paths = iter(self._synthesize_chunks_sync(spoken, tmp_path))
+            for idx, chunk in enumerate(chunks):
+                if isinstance(chunk, float):
+                    segments.append(("silence", max(0.0, float(chunk))))
+                    continue
+                if chunk == "":
+                    segments.append(("silence", silent_breath_pause))
+                    spoken_since_breath = 0
+                    continue
+
+                out = next(spoken_paths)
+                audio, sr = _read_wav_mono(out)
+                if sample_rate is None:
+                    sample_rate = sr
+                elif sr != sample_rate:
+                    audio = _resample_audio(audio, from_sr=sr, to_sr=sample_rate)
+                segments.append(audio)
+                spoken_since_breath += 1
+
+                if _next_chunk_is_adjacent_speech(chunks, idx):
+                    if breath_interval and spoken_since_breath >= breath_interval:
+                        segments.append(("silence", silent_breath_pause))
+                        spoken_since_breath = 0
+                    else:
+                        segments.append(("silence", sentence_pause))
+
+        if sample_rate is None:
+            return self._synthesize_raw_sync(text)
+
+        materialized = [
+            _materialize_segment(segment, sample_rate=sample_rate)
+            for segment in segments
+        ]
+        audio = np.concatenate(materialized) if materialized else np.zeros(0, dtype=np.float32)
+        with io.BytesIO() as buffer:
+            sf.write(buffer, audio, sample_rate, format="WAV", subtype="PCM_16")
+            audio_bytes = buffer.getvalue()
+        logger.info(
+            "F5-TTS natural pacing generated %s bytes from %s spoken chunks",
+            len(audio_bytes),
+            len(spoken),
+        )
+        return audio_bytes
+
+    async def synthesize(self, text: str) -> bytes:
+        """Clone voice and synthesize text to WAV bytes."""
+        if getattr(self.cfg, "natural_pacing", True):
+            return await asyncio.to_thread(self._synthesize_natural_sync, text)
+        return await asyncio.to_thread(self._synthesize_raw_sync, text)
 
     async def synthesize_sentences(self, sentences: list[str]) -> list[bytes]:
         results = []
@@ -160,3 +294,57 @@ class F5TTSCloneTTS:
 
     async def stop(self) -> None:
         sd.stop()
+
+
+def _read_wav_mono(path: Path) -> tuple[np.ndarray, int]:
+    data, sr = sf.read(str(path), dtype="float32")
+    if data.ndim > 1:
+        data = data.mean(axis=1)
+    return data.astype(np.float32), int(sr)
+
+
+def _resample_audio(
+    data: np.ndarray,
+    *,
+    from_sr: int,
+    to_sr: int,
+) -> np.ndarray:
+    if from_sr <= 0 or to_sr <= 0 or from_sr == to_sr:
+        return data.astype(np.float32)
+    ratio = to_sr / from_sr
+    return np.interp(
+        np.arange(int(len(data) * ratio)),
+        np.arange(len(data)) * ratio,
+        data,
+    ).astype(np.float32)
+
+
+def _next_chunk_is_adjacent_speech(chunks: list[str | float], idx: int) -> bool:
+    for later in chunks[idx + 1 :]:
+        if isinstance(later, float):
+            return False
+        if later == "":
+            return False
+        return True
+    return False
+
+
+def _materialize_segment(
+    segment: np.ndarray | tuple[str, float],
+    *,
+    sample_rate: int,
+) -> np.ndarray:
+    if isinstance(segment, np.ndarray):
+        return segment.astype(np.float32)
+
+    kind, seconds = segment
+    if kind == "silence":
+        return np.zeros(int(sample_rate * seconds), dtype=np.float32)
+    raise ValueError(f"unknown F5 natural pacing segment: {kind}")
+
+
+def _chunk_sort_key(name: str) -> tuple[int, str]:
+    match = re.match(r"(\d+)_", name)
+    if match:
+        return int(match.group(1)), name
+    return 10_000_000, name

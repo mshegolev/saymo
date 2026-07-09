@@ -190,6 +190,29 @@ def test_load_config_populates_voice_selector_section(tmp_path):
     assert cfg.voice_selector.realtime.engine == "qwen3_clone"
 
 
+def test_load_config_populates_f5_natural_pacing_section(tmp_path):
+    yaml_content = textwrap.dedent("""\
+        tts:
+          engine: f5tts_clone
+          f5tts:
+            natural_pacing: false
+            sentence_pause_seconds: 0.42
+            clause_pause_seconds: 0.21
+            silent_breath_pause_seconds: 0.7
+            breath_interval_sentences: 3
+    """)
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(yaml_content)
+
+    cfg = load_config(config_path=str(cfg_file))
+
+    assert cfg.tts.f5tts.natural_pacing is False
+    assert cfg.tts.f5tts.sentence_pause_seconds == 0.42
+    assert cfg.tts.f5tts.clause_pause_seconds == 0.21
+    assert cfg.tts.f5tts.silent_breath_pause_seconds == 0.7
+    assert cfg.tts.f5tts.breath_interval_sentences == 3
+
+
 def test_load_config_populates_diarization_section(tmp_path, monkeypatch):
     monkeypatch.setenv("SAYMO_DIAR_TOKEN", "hf-secret")
     yaml_content = textwrap.dedent("""\

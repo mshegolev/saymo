@@ -91,6 +91,17 @@ tts:
     model_path: ""
   macos_say:
     voice: Milena
+  f5tts:
+    nfe_step: 16
+    speed: 1.0
+    device: cpu
+    # Natural pacing splits F5 output into phrase chunks and adds audio-level
+    # pauses. Breath behavior is timing-only: no breath sample is transmitted.
+    natural_pacing: true
+    sentence_pause_seconds: 0.38
+    clause_pause_seconds: 0.18
+    silent_breath_pause_seconds: 0.6
+    breath_interval_sentences: 2   # 0 disables longer silent pause between continuation sentences
 
 voice_selector:
   # Call-ready engine/fallback policy. `live_call` is intentionally stricter
