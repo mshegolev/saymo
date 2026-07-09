@@ -739,3 +739,34 @@ def test_f5_timing_report_older_records_without_metrics_are_backward_compatible(
     assert "current" in report
     assert "metrics=unavailable" in report
     assert "## Current vs Candidate Deltas" in report
+
+
+def test_f5_timing_metrics_docs_contract_is_sanitized():
+    shootout = Path("docs/voice-clone-shootout.md").read_text(encoding="utf-8")
+    naturalness = Path("docs/VOICE-NATURALNESS.md").read_text(encoding="utf-8")
+    combined = f"{shootout}\n{naturalness}"
+
+    for term in [
+        "estimated_total_duration_seconds",
+        "audio_duration_seconds",
+        "chars_per_second",
+        "words_per_minute",
+        "pause_distribution",
+        "timing-report.md",
+        "duration_delta",
+        "pause_total_delta",
+    ]:
+        assert term in combined
+
+    assert "audio_duration_seconds appears only when a real WAV exists" in shootout
+    for privacy_term in [
+        "raw manual text",
+        "corpus phrase text",
+        "audio bytes",
+        "private meeting",
+        "secrets",
+        "voice samples",
+        "training data",
+    ]:
+        assert privacy_term in shootout
+    assert "automatic preset recommendation" not in combined
