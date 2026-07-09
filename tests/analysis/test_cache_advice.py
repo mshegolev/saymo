@@ -18,9 +18,25 @@ def test_prepared_audio_cache_advice_reports_ready_without_regeneration(tmp_path
 
     config = SaymoConfig()
     config.tts.engine = "f5tts_clone"
+    config.meetings = {
+        "standup": {
+            "voice": {
+                "f5_pause_preset": "crisp",
+                "f5_pause_presets": {"prepared": "calm"},
+            }
+        }
+    }
     audio = tmp_path / "prepared.wav"
     audio.write_bytes(b"RIFF")
-    write_voice_cache_metadata(audio, build_voice_cache_metadata(config, purpose="prepare"))
+    write_voice_cache_metadata(
+        audio,
+        build_voice_cache_metadata(
+            config,
+            purpose="prepare",
+            profile="standup",
+            source_type="prepared",
+        ),
+    )
 
     advice = prepared_audio_cache_advice(config, audio, profile="standup")
 
@@ -119,8 +135,21 @@ def test_response_cache_advice_reports_ready_without_force(tmp_path: Path):
             "variants": ["Блокеров нет."],
         }
     }
+    config.meetings = {
+        "standup": {
+            "voice": {
+                "f5_pause_preset": "crisp",
+                "f5_pause_presets": {"response_cache": "calm"},
+            }
+        }
+    }
     library = build_library(config.responses.library)
-    metadata = build_voice_cache_metadata(config, purpose="response_cache")
+    metadata = build_voice_cache_metadata(
+        config,
+        purpose="response_cache",
+        profile="standup",
+        source_type="response_cache",
+    )
     cache = ResponseCache(library=library, cache_dir=tmp_path, voice_metadata=metadata)
 
     async def synth(_text: str) -> bytes:

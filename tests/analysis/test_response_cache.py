@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 
 import pytest
+from click.testing import CliRunner
 
 from saymo.analysis.response_cache import (
     DEFAULT_RESPONSE_LIBRARY,
@@ -305,6 +306,109 @@ def test_response_cache_reports_stale_when_f5_pacing_changes(
         "eta_today[0]:voice_metadata_stale",
     )
     assert "PRIVATE_" not in repr(coverage)
+
+
+def test_prepare_responses_help_exposes_profile_option():
+    from saymo.commands import main
+
+    result = CliRunner().invoke(main, ["prepare-responses", "--help"])
+
+    assert result.exit_code == 0
+    assert "-p, --profile" in result.output
+
+
+def test_prepare_responses_uses_response_cache_source_profile(
+    monkeypatch,
+    tmp_path,
+):
+    from saymo.analysis.cache_metadata import read_voice_cache_metadata
+    from saymo.commands import tests as test_commands
+    from saymo.config import SaymoConfig
+
+    config = SaymoConfig()
+    config.tts.engine = "f5tts_clone"
+    config.responses.cache_dir = str(tmp_path)
+    config.responses.library = {
+        "blockers_none": {
+            "triggers": ["есть блокеры"],
+            "variants": ["Блокеров нет."],
+        }
+    }
+    config.meetings = {
+        "scrum": {
+            "voice": {
+                "f5_pause_preset": "crisp",
+                "f5_pause_presets": {"response_cache": "deliberate"},
+            }
+        }
+    }
+
+    async def fake_synthesize(_config, _text, *, purpose="response_cache"):
+        assert purpose == "response_cache"
+        return b"RIFF response"
+
+    monkeypatch.setattr("saymo.commands.core._synthesize", fake_synthesize)
+
+    written = asyncio.run(
+        test_commands._prepare_responses(config, force=False, profile="scrum")
+    )
+
+    assert written == 1
+    metadata = read_voice_cache_metadata(next(tmp_path.glob("*.wav")))
+    assert metadata.source_type == "response_cache"
+    assert metadata.source_preset_id == "deliberate"
+    assert metadata.profile_preset_id == "crisp"
+    assert metadata.source_override_preset_id == "deliberate"
+
+
+def test_launch_response_cache_check_uses_response_cache_source_profile(
+    tiny_library,
+    tmp_cache_dir,
+):
+    from saymo.analysis.cache_metadata import build_voice_cache_metadata
+    from saymo.analysis.launch_cache import collect_response_cache_check
+    from saymo.config import SaymoConfig
+
+    config = SaymoConfig()
+    config.tts.engine = "f5tts_clone"
+    config.responses.cache_dir = str(tmp_cache_dir)
+    config.responses.library = {
+        key: {"triggers": entry.triggers, "variants": entry.variants}
+        for key, entry in tiny_library.items()
+    }
+    config.meetings = {
+        "standup": {
+            "voice": {
+                "f5_pause_preset": "crisp",
+                "f5_pause_presets": {"response_cache": "calm"},
+            }
+        }
+    }
+    metadata = build_voice_cache_metadata(
+        config,
+        purpose="response_cache",
+        profile="standup",
+        source_type="response_cache",
+    )
+    cache = ResponseCache(
+        library=tiny_library,
+        cache_dir=tmp_cache_dir,
+        voice_metadata=metadata,
+    )
+
+    async def synth(_text: str) -> bytes:
+        return b"RIFF"
+
+    asyncio.run(cache.build(synth, voice_metadata=metadata))
+
+    check = collect_response_cache_check(
+        config,
+        profile="standup",
+        provider_name="glip",
+    )
+
+    assert check.ok is True
+    assert check.metadata["stale_count"] == 0
 
 
 def test_lookup_refuses_stale_voice_metadata(tiny_library, tmp_cache_dir):

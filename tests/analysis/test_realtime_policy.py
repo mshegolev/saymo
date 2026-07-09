@@ -65,10 +65,18 @@ def test_build_realtime_response_cache_uses_response_cache_voice_metadata(
     monkeypatch.setattr(
         realtime_policy,
         "build_voice_cache_metadata",
-        lambda cfg, *, purpose: expected,
+        lambda cfg, *, purpose, profile, source_type: (
+            expected
+            if (
+                purpose == "response_cache"
+                and profile == "standup"
+                and source_type == "response_cache"
+            )
+            else None
+        ),
     )
 
-    cache = build_realtime_response_cache(config)
+    cache = build_realtime_response_cache(config, profile="standup")
 
     assert isinstance(cache, ResponseCache)
     assert cache.cache_dir == tmp_path
