@@ -15,10 +15,10 @@ audible breath/noise, or automatically delete/rebuild real caches.
 - [x] **Phase 43: F5 Pause Presets and A/B Timing Review** - Add named F5
   pause presets, profile selection, A/B preview artifacts, preference review,
   and safe apply behavior. (completed 2026-07-09)
-- [ ] **Phase 44: Cache Regeneration and Review Metadata Safety** - Add
+- [x] **Phase 44: Cache Regeneration and Review Metadata Safety** - Add
   operator warnings for expensive stale-cache regeneration, targeted
   remediation, `saymo review` sidecar preservation, and metadata-safe legacy
-  lookup behavior.
+  lookup behavior. (completed 2026-07-09)
 
 ## Phase Details
 
@@ -68,9 +68,9 @@ metadata safety.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 44-01-PLAN.md - Implement stale-cache cost warnings and targeted
+- [x] 44-01-PLAN.md - Implement stale-cache cost warnings and targeted
   remediation commands.
-- [ ] 44-02-PLAN.md - Preserve `saymo review` metadata sidecars and harden
+- [x] 44-02-PLAN.md - Preserve `saymo review` metadata sidecars and harden
   legacy response-cache lookup metadata checks.
 
 ## Traceability
@@ -83,10 +83,10 @@ Plans:
 | TUNE-01 | Phase 43 | Complete |
 | TUNE-02 | Phase 43 | Complete |
 | TUNE-03 | Phase 43 | Complete |
-| CACHE-01 | Phase 44 | Pending |
-| CACHE-02 | Phase 44 | Pending |
-| CACHE-03 | Phase 44 | Pending |
-| CACHE-04 | Phase 44 | Pending |
+| CACHE-01 | Phase 44 | Complete |
+| CACHE-02 | Phase 44 | Complete |
+| CACHE-03 | Phase 44 | Complete |
+| CACHE-04 | Phase 44 | Complete |
 
 **Coverage:**
 - v1.12 requirements: 10 total
@@ -100,9 +100,8 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 43. F5 Pause Presets and A/B Timing Review | 2/2 | Complete | 2026-07-09 |
-| 44. Cache Regeneration and Review Metadata Safety | 0/2 | Not started | - |
+| 44. Cache Regeneration and Review Metadata Safety | 2/2 | Complete | 2026-07-09 |
 
 ## Next
 
-Run `$gsd-discuss-phase 44` to gather implementation context, or
-`$gsd-plan-phase 44` to plan directly.
+Run `$gsd-audit-milestone`, then `$gsd-complete-milestone` if the audit passes.

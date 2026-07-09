@@ -28,14 +28,14 @@ and respond fast enough that the call still feels live.
 
 ### Cache and Review Safety
 
-- [ ] **CACHE-01**: User can see an explicit warning when prepared audio or
+- [x] **CACHE-01**: User can see an explicit warning when prepared audio or
   response cache is stale and regeneration may be expensive.
-- [ ] **CACHE-02**: User can choose a targeted prepare/cache command that
+- [x] **CACHE-02**: User can choose a targeted prepare/cache command that
   avoids unnecessary regeneration when existing cache artifacts are still
   current.
-- [ ] **CACHE-03**: User can run `saymo review` without losing the
+- [x] **CACHE-03**: User can run `saymo review` without losing the
   prepared-audio voice metadata sidecar required by call-ready checks.
-- [ ] **CACHE-04**: User can trust response-cache lookup helpers to enforce
+- [x] **CACHE-04**: User can trust response-cache lookup helpers to enforce
   metadata checks consistently across active and legacy code paths.
 
 ## Future Requirements
@@ -69,10 +69,10 @@ and respond fast enough that the call still feels live.
 | TUNE-01 | Phase 43 | Complete |
 | TUNE-02 | Phase 43 | Complete |
 | TUNE-03 | Phase 43 | Complete |
-| CACHE-01 | Phase 44 | Pending |
-| CACHE-02 | Phase 44 | Pending |
-| CACHE-03 | Phase 44 | Pending |
-| CACHE-04 | Phase 44 | Pending |
+| CACHE-01 | Phase 44 | Complete |
+| CACHE-02 | Phase 44 | Complete |
+| CACHE-03 | Phase 44 | Complete |
+| CACHE-04 | Phase 44 | Complete |
 
 **Coverage:**
 - v1.12 requirements: 10 total
@@ -81,4 +81,4 @@ and respond fast enough that the call still feels live.
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after Phase 43 completion*
+*Last updated: 2026-07-09 after Phase 44 completion*
