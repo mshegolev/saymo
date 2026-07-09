@@ -35,6 +35,50 @@ saymo f5-presets review ~/.saymo/voice_benchmarks/f5-standup-blocked-preview \
 saymo f5-presets apply calm --profile standup
 ```
 
+### Source-Type Pause Presets
+
+Use source-type overrides when prepared standup audio, cached responses, and
+spontaneous approved-answer playback need different silent F5 timing while
+sharing the same profile voice. Allowed source types are `prepared`,
+`response_cache`, and `spontaneous`:
+
+```bash
+saymo f5-presets apply calm --profile standup --source-type prepared
+saymo f5-presets apply crisp --profile standup --source-type response_cache
+saymo f5-presets apply deliberate --profile standup --source-type spontaneous
+```
+
+The CLI writes profile-local YAML under
+`meetings.standup.voice.f5_pause_presets`:
+
+```yaml
+meetings:
+  standup:
+    voice:
+      f5_pause_preset: approved
+      f5_pause_presets:
+        prepared: calm
+        response_cache: crisp
+        spontaneous: deliberate
+```
+
+Fallback order is: source-type override -> profile-level f5_pause_preset -> global tts.f5tts.pause_preset. A source-type timing change affects only
+artifacts for that source type. Prepared audio and response-cache variants go
+stale through sanitized metadata such as `voice_metadata_stale`; Saymo does not
+rebuild them automatically. Run the targeted commands explicitly:
+
+```bash
+saymo cache-status -p standup
+saymo prepare -p standup
+saymo review -p standup
+saymo prepare-responses -p standup
+```
+
+`cache-status` and readiness diagnostics show safe preset ids and repair
+commands only. They do not show prompt text, response text, audio bytes,
+private meeting content, secrets, voice samples, training data, or raw audio.
+This scope is config and metadata only: no retraining, no automatic cache rebuilding, no audible breath/noise, no cloud services, and no automatic preset recommendations.
+
 For a one-off local preview, keep manual text explicit and do not reuse it as
 the repeatable tuning baseline:
 

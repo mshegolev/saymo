@@ -139,6 +139,10 @@ energy. These rules apply to *any* text you feed the engine.
   sets. After `saymo f5-presets preview`, read `timing-report.md` for objective
   duration, rate, and pause-distribution deltas before making a listening
   decision.
+  Source-type presets route only silent F5 pause timing for `prepared`,
+  `response_cache`, and `spontaneous` output. They mean no retraining, no
+  automatic cache rebuilding, no audible breath/noise, no cloud services, and
+  no automatic preset recommendations.
   For the approved local F5 benchmark, `nfe_step: 16` was the baseline;
   prefer it for cache builds before raising quality/latency to 32+.
 * **Crossfade 20–30 ms** between sentence boundaries to kill
