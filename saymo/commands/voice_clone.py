@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import time
+from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 
 import click
+import yaml
 from rich.table import Table
 
-from saymo.commands import console, main
+from saymo.commands import console, main, run_async
 
 
 @main.command("voice-inventory")
@@ -235,6 +239,213 @@ def voice_preview(ctx, profile, profiles_dir, text, dry_run):
     from saymo.commands.core import _speak_text, run_async
 
     run_async(_speak_text(config, text, purpose="preview"))
+
+
+@main.group("f5-presets")
+def f5_presets():
+    """Compare and apply F5-TTS pause timing presets."""
+
+
+@f5_presets.command("list")
+def f5_presets_list():
+    """List built-in F5 pause presets."""
+    from saymo.tts.f5_presets import list_f5_pause_presets
+
+    table = Table("Preset", "Sentence", "Clause", "Paragraph", "Silent breath", "Interval")
+    for preset in list_f5_pause_presets():
+        table.add_row(
+            preset.id,
+            _seconds(preset.sentence_pause_seconds),
+            _seconds(preset.clause_pause_seconds),
+            _seconds(preset.paragraph_pause_seconds),
+            _seconds(preset.silent_breath_pause_seconds),
+            str(preset.breath_interval_sentences),
+        )
+    console.print(table)
+
+
+@f5_presets.command("show")
+@click.argument("preset")
+def f5_presets_show(preset):
+    """Show one F5 pause preset."""
+    from saymo.tts.f5_presets import get_f5_pause_preset
+
+    try:
+        resolved = get_f5_pause_preset(preset)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    table = Table("Field", "Value")
+    table.add_row("preset", resolved.id)
+    table.add_row("label", resolved.label)
+    table.add_row("description", resolved.description)
+    for key, value in resolved.to_timing_dict().items():
+        table.add_row(key, str(value))
+    console.print(table)
+
+
+@f5_presets.command("apply")
+@click.argument("preset")
+@click.option("--profile", "-p", default=None, help="Meeting profile to annotate.")
+@click.option("--config-path", type=click.Path(), default=None, help="Config YAML to update.")
+@click.pass_context
+def f5_presets_apply(ctx, preset, profile, config_path):
+    """Apply an F5 pause preset to config.yaml."""
+    from saymo.tts.f5_presets import apply_f5_pause_preset, get_f5_pause_preset
+
+    try:
+        resolved = get_f5_pause_preset(preset)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    target = _resolve_config_update_path(ctx, config_path)
+    raw = _read_yaml_config(target)
+    f5 = raw.setdefault("tts", {}).setdefault("f5tts", {})
+    f5.update(resolved.to_config_update())
+    if profile:
+        meeting = raw.setdefault("meetings", {}).setdefault(profile, {})
+        voice = meeting.setdefault("voice", {})
+        voice["f5_pause_preset"] = resolved.id
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        yaml.safe_dump(raw, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    apply_f5_pause_preset(ctx.obj["config"], resolved.id)
+
+    console.print(f"[bold green]Applied F5 pause preset:[/] {resolved.id}")
+    console.print(f"config: {target}")
+    if profile:
+        console.print(f"profile: {profile}")
+
+
+@f5_presets.command("preview")
+@click.argument("preset")
+@click.option("--text", required=True, help="Preview text. Stored only as hash/char count.")
+@click.option("--output-dir", type=click.Path(), default=None, help="Artifact directory.")
+@click.option("--dry-run", is_flag=True, help="Write sanitized artifacts without synthesis.")
+@click.pass_context
+def f5_presets_preview(ctx, preset, text, output_dir, dry_run):
+    """Generate current-vs-candidate F5 timing preview artifacts."""
+    run_dir = (
+        Path(output_dir).expanduser()
+        if output_dir
+        else _default_f5_timing_run_dir()
+    )
+    try:
+        manifest_path = run_async(
+            _write_f5_preset_preview(
+                ctx.obj["config"],
+                preset=preset,
+                text=text,
+                run_dir=run_dir,
+                dry_run=dry_run,
+            )
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    console.print(f"[bold green]F5 timing preview:[/] {manifest_path.parent}")
+    console.print(f"manifest: {manifest_path}")
+
+
+@f5_presets.command("review")
+@click.argument("run_dir", type=click.Path(exists=True))
+@click.option("--preferred", required=True, help="Preferred clip label or preset id.")
+@click.option("--notes", default="", help="Short operator notes.")
+def f5_presets_review(run_dir, preferred, notes):
+    """Record a preference for an F5 timing preview run."""
+    from saymo.analysis.f5_timing_review import record_f5_timing_preference
+
+    try:
+        review = record_f5_timing_preference(
+            run_dir,
+            preferred=preferred,
+            notes=notes,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+    recommended = review.get("recommendation", {}).get("preset_id") or "none"
+    console.print(f"[bold green]Recommended preset:[/] {recommended}")
+    console.print(f"report: {Path(run_dir).expanduser() / 'timing-report.md'}")
+
+
+async def _write_f5_preset_preview(config, *, preset: str, text: str, run_dir: Path, dry_run: bool):
+    from saymo.analysis.f5_timing_review import (
+        build_f5_timing_record,
+        write_f5_timing_preview_artifacts,
+    )
+    from saymo.tts.f5_presets import apply_f5_pause_preset, get_f5_pause_preset
+
+    candidate = get_f5_pause_preset(preset)
+    current_config = deepcopy(config)
+    candidate_config = deepcopy(config)
+    apply_f5_pause_preset(candidate_config, candidate.id)
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    configs = [
+        ("current", current_config, current_config.tts.f5tts.pause_preset),
+        ("candidate", candidate_config, candidate.id),
+    ]
+    records = []
+    for label, candidate_config_item, preset_id in configs:
+        output_wav = run_dir / f"{label}-{preset_id}.wav"
+        latency_ms = 0
+        if not dry_run:
+            from saymo.commands.core import _synthesize
+
+            started = time.perf_counter()
+            audio = await _synthesize(candidate_config_item, text, purpose="preview")
+            if audio is None:
+                raise ValueError(f"F5 timing preview synthesis failed for {label}")
+            output_wav.write_bytes(audio)
+            latency_ms = int((time.perf_counter() - started) * 1000)
+        records.append(
+            build_f5_timing_record(
+                candidate_config_item,
+                label=label,
+                preset_id=preset_id,
+                text=text,
+                output_wav=output_wav,
+                dry_run=dry_run,
+                latency_ms=latency_ms,
+            )
+        )
+
+    return write_f5_timing_preview_artifacts(
+        run_dir,
+        records,
+        expected_clips=len(records),
+        source_text=text,
+    )
+
+
+def _resolve_config_update_path(ctx, config_path: str | None) -> Path:
+    if config_path:
+        return Path(config_path).expanduser()
+    loaded = (ctx.obj or {}).get("config_path")
+    if loaded:
+        return Path(loaded).expanduser()
+    return Path.home() / ".saymo" / "config.yaml"
+
+
+def _read_yaml_config(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(raw, dict):
+        raise click.ClickException(f"Config YAML must be a mapping: {path}")
+    return raw
+
+
+def _default_f5_timing_run_dir() -> Path:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return Path.home() / ".saymo" / "voice_benchmarks" / f"{stamp}-f5timing"
+
+
+def _seconds(value: float) -> str:
+    return f"{float(value):.2f}s"
 
 
 def _print_profile_summary(manifest) -> None:

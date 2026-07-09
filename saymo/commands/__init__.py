@@ -376,6 +376,7 @@ def main(ctx, config_path, verbose):
     from saymo.utils.logger import setup_logging
     setup_logging(level=logging.DEBUG if verbose else logging.INFO)
     ctx.ensure_object(dict)
+    ctx.obj["config_path"] = config_path
     ctx.obj["config"] = load_config(config_path)
 
 

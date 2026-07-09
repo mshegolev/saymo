@@ -130,6 +130,7 @@ def test_f5tts_pacing_config_changes_selector_fingerprint_payload(tmp_path):
     config = _config(tmp_path, "f5tts_clone")
     first = selector_fingerprint_payload(config, purpose="prepare")
 
+    config.tts.f5tts.pause_preset = "deliberate"
     config.tts.f5tts.silent_breath_pause_seconds = 0.9
     config.tts.f5tts.sentence_pause_seconds = 0.5
     config.tts.f5tts.clause_pause_seconds = 0.25
@@ -137,6 +138,7 @@ def test_f5tts_pacing_config_changes_selector_fingerprint_payload(tmp_path):
     changed = selector_fingerprint_payload(config, purpose="prepare")
 
     assert first != changed
+    assert changed["engine_config"]["pause_preset"] == "deliberate"
     assert changed["engine_config"]["silent_breath_pause_seconds"] == 0.9
     assert changed["engine_config"]["sentence_pause_seconds"] == 0.5
     assert changed["engine_config"]["clause_pause_seconds"] == 0.25

@@ -97,6 +97,7 @@ tts:
     device: cpu
     # Natural pacing splits F5 output into phrase chunks and adds audio-level
     # pauses. Breath behavior is timing-only: no breath sample is transmitted.
+    pause_preset: approved
     natural_pacing: true
     sentence_pause_seconds: 0.38
     clause_pause_seconds: 0.18

@@ -166,6 +166,7 @@ class F5TTSConfig:
     speed: float = 1.0                 # 0.5-2.0; 1.0 = natural
     device: str = "cpu"                # cpu | mps | cuda; mps may have issues, default to cpu
     ref_text: str = ""                 # optional transcript override for the reference WAV
+    pause_preset: str = "approved"     # named timing preset; concrete knobs below are the cache fingerprint
     natural_pacing: bool = True        # split text and insert human-like pauses after F5 chunks
     sentence_pause_seconds: float = 0.38
     clause_pause_seconds: float = 0.18

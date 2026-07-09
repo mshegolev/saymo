@@ -238,6 +238,7 @@ def _engine_config_payload(config: SaymoConfig, engine: str) -> dict[str, Any]:
             "nfe_step": f5.nfe_step,
             "speed": f5.speed,
             "device": f5.device,
+            "pause_preset": f5.pause_preset,
             "natural_pacing": f5.natural_pacing,
             "sentence_pause_seconds": f5.sentence_pause_seconds,
             "clause_pause_seconds": f5.clause_pause_seconds,

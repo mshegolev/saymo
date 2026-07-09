@@ -12,6 +12,38 @@ The current baseline is F5-TTS Russian:
 
 Do not change production config until a challenger wins blind A/B.
 
+## Tune F5 Pause Presets
+
+F5 pause tuning is config-only. It does not retrain the model, rewrite voice
+samples, or touch training datasets.
+
+```bash
+saymo f5-presets list
+saymo f5-presets show calm
+saymo f5-presets preview calm \
+  --text "Короткий тестовый текст для прослушивания." \
+  --output-dir ~/.saymo/voice_benchmarks/f5-calm-preview \
+  --dry-run
+saymo f5-presets review ~/.saymo/voice_benchmarks/f5-calm-preview \
+  --preferred calm \
+  --notes "better pauses"
+saymo f5-presets apply calm --profile standup
+```
+
+Built-in presets:
+
+| Preset | Sentence | Clause | Silent breath / paragraph | Interval |
+|--------|----------|--------|----------------------------|----------|
+| `approved` | 0.38s | 0.18s | 0.60s | 2 |
+| `crisp` | 0.26s | 0.12s | 0.42s | 2 |
+| `calm` | 0.44s | 0.22s | 0.68s | 2 |
+| `deliberate` | 0.55s | 0.28s | 0.85s | 2 |
+
+Preview artifacts live under `~/.saymo/voice_benchmarks/<run>/` and store text
+hashes plus timing values, not the raw meeting or preview text. Applying a
+preset writes both `tts.f5tts.pause_preset` and the concrete timing knobs, so
+prepared audio and response-cache metadata get a new voice fingerprint.
+
 ## Reference Recordings
 
 Keep these files:

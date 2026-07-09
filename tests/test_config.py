@@ -195,6 +195,7 @@ def test_load_config_populates_f5_natural_pacing_section(tmp_path):
         tts:
           engine: f5tts_clone
           f5tts:
+            pause_preset: deliberate
             natural_pacing: false
             sentence_pause_seconds: 0.42
             clause_pause_seconds: 0.21
@@ -206,6 +207,7 @@ def test_load_config_populates_f5_natural_pacing_section(tmp_path):
 
     cfg = load_config(config_path=str(cfg_file))
 
+    assert cfg.tts.f5tts.pause_preset == "deliberate"
     assert cfg.tts.f5tts.natural_pacing is False
     assert cfg.tts.f5tts.sentence_pause_seconds == 0.42
     assert cfg.tts.f5tts.clause_pause_seconds == 0.21

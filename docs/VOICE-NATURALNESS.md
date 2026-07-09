@@ -131,6 +131,9 @@ energy. These rules apply to *any* text you feed the engine.
   `silent_breath_pause_seconds: 0.6`, and `breath_interval_sentences: 2`.
   The timing should feel like taking air before continuing, without hum,
   buzz, or audible inhale samples.
+  Use `saymo f5-presets list`, `saymo f5-presets preview`, and
+  `saymo f5-presets apply` to compare and persist the built-in
+  `approved`, `crisp`, `calm`, and `deliberate` timing sets.
   For the approved local F5 benchmark, `nfe_step: 16` was the baseline;
   prefer it for cache builds before raising quality/latency to 32+.
 * **Crossfade 20–30 ms** between sentence boundaries to kill
