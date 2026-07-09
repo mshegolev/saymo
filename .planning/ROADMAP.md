@@ -29,7 +29,7 @@ presets by answer source while preserving profile defaults and cache safety.
   3. User can inspect or extend the preview corpus without committed artifacts containing private meeting transcript text, prompt text, response text, voice samples, training data, secrets, or raw audio.
 **Plans**: 3 plans
 Plans:
-- [ ] 45-01-PLAN.md - Built-in sanitized F5 preview corpus and inspection CLI.
+- [x] 45-01-PLAN.md - Built-in sanitized F5 preview corpus and inspection CLI.
 - [ ] 45-02-PLAN.md - Selected corpus subset preview support with safe metadata.
 - [ ] 45-03-PLAN.md - Artifact raw-text privacy regression and operator docs.
 
@@ -79,6 +79,6 @@ Phases execute in numeric order: 45 -> 46 -> 47
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 45. Prosody Preview Corpus | 0/TBD | Not started | - |
+| 45. Prosody Preview Corpus | 1/3 | In Progress |  |
 | 46. Timing Metrics Reports | 0/TBD | Not started | - |
 | 47. Source-Type Pause Presets | 0/TBD | Not started | - |

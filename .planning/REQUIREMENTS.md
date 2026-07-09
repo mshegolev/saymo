@@ -8,7 +8,7 @@ and respond fast enough that the call still feels live.
 
 ### Prosody Corpus
 
-- [ ] **CORP-01**: User can use a richer sanitized phrase corpus for F5 timing
+- [x] **CORP-01**: User can use a richer sanitized phrase corpus for F5 timing
   previews that covers short acknowledgements, standup updates, multi-sentence
   answers, clause-heavy responses, and direct handoff replies.
 - [ ] **CORP-02**: User can generate A/B timing previews from selected corpus
@@ -72,7 +72,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORP-01 | Phase 45 | Pending |
+| CORP-01 | Phase 45 | Complete |
 | CORP-02 | Phase 45 | Pending |
 | CORP-03 | Phase 45 | Pending |
 | METR-01 | Phase 46 | Pending |
@@ -91,4 +91,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-07-09*
-*Last updated: 2026-07-09 after roadmap creation*
+*Last updated: 2026-07-09 after completing 45-01*
