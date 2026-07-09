@@ -293,6 +293,8 @@ class MeetingProfile:
     provider: str = "glip"
     team: bool = False
     source: str = "confluence"
+    # Optional per-profile voice overrides, including F5 pause preset choices.
+    voice: dict = field(default_factory=dict)
     trigger_phrases: list[str] = field(default_factory=list)
     # Optional per-profile overrides for the live call loop. Supported keys
     # mirror LiveConfig below.
