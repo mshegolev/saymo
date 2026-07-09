@@ -42,7 +42,10 @@ Plans:
   2. User can see pause-distribution metrics grouped by sentence, clause, paragraph, and silent-breath continuation pauses.
   3. User can compare current and candidate presets in a sanitized report that highlights meaningful pace and pause changes.
   4. User can review timing metrics without exposing prompt text, response text, audio bytes, private meeting content, or secrets.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 46-01-PLAN.md - F5 preview timing metrics contract and record integration.
+- [ ] 46-02-PLAN.md - Sanitized timing report metrics and current-vs-candidate deltas.
 
 ### Phase 47: Source-Type Pause Presets
 **Goal**: Users can apply F5 pause presets by answer source while profile defaults, diagnostics, and cache staleness remain clear.
@@ -80,5 +83,5 @@ Phases execute in numeric order: 45 -> 46 -> 47
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 45. Prosody Preview Corpus | 3/3 | Complete    | 2026-07-09 |
-| 46. Timing Metrics Reports | 0/TBD | Not started | - |
+| 46. Timing Metrics Reports | 0/2 | Not started | - |
 | 47. Source-Type Pause Presets | 0/TBD | Not started | - |
