@@ -1,3 +1,14 @@
+---
+phase: 42-f5-cache-and-silence-gap-hardening
+plan: "01"
+subsystem: f5-natural-pacing
+tags: [saymo, f5tts, cache-metadata, silent-breath, pytest]
+requirements-completed: [F5G-01, F5G-02, F5G-03, F5G-04, F5G-05, F5G-06]
+one-liner: "Hardened F5 cache invalidation and silent-breath regression coverage without changing runtime synthesis behavior."
+one_liner: "Hardened F5 cache invalidation and silent-breath regression coverage without changing runtime synthesis behavior."
+completed: 2026-07-09
+---
+
 # Phase 42 Plan 01 Summary: F5 Cache and Silence Gap Hardening
 
 **Completed:** 2026-07-09
@@ -17,6 +28,11 @@
   `load_breath_sample()` or `breath_gain`.
 - Tightened voice-naturalness docs so audible breath splicing is scoped to
   non-F5 engines while F5 live-call breath behavior remains silent timing.
+
+## Accomplishments
+
+- Hardened F5 cache invalidation and silent-breath regression coverage without
+  changing runtime synthesis behavior.
 
 ## Requirement Coverage
 

@@ -52,3 +52,14 @@ Result: passed with no whitespace errors.
 - Continuation gaps remain zero-valued silence: passed.
 - F5 live-call path has no audible breath sample dependency: passed.
 - Docs/config describe F5 breath behavior as silent timing only: passed.
+
+## Requirements Verification
+
+| Requirement | Source Plan | Description | Status | Evidence |
+|-------------|-------------|-------------|--------|----------|
+| F5G-01 | 42-01-PLAN.md | Prepared standup audio metadata goes stale after F5 pacing changes. | passed | `test_prepare_metadata_goes_stale_when_f5_pacing_changes` |
+| F5G-02 | 42-01-PLAN.md | Response-cache metadata goes stale after F5 pacing changes. | passed | `test_response_cache_reports_stale_when_f5_pacing_changes` |
+| F5G-03 | 42-01-PLAN.md | Stale diagnostics use stable sanitized reasons and avoid private text/audio content. | passed | cache stale tests assert `voice_metadata_stale` and no private text/audio leakage |
+| F5G-04 | 42-01-PLAN.md | `breath_interval_sentences` continuation pauses are zero-valued silence. | passed | `test_f5tts_natural_pacing_uses_silent_breath_pause_for_continuation_interval` |
+| F5G-05 | 42-01-PLAN.md | F5 live-call path does not import/call/splice `load_breath_sample()` output. | passed | `test_f5_live_call_path_does_not_use_audible_breath_samples` |
+| F5G-06 | 42-01-PLAN.md | Docs/config state F5 breath behavior is silent timing only. | passed | `test_f5_voice_naturalness_docs_define_breath_as_silent_timing` |
