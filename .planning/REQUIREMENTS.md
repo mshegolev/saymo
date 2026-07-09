@@ -37,7 +37,7 @@ and respond fast enough that the call still feels live.
   spontaneous approved answers, without hand-editing YAML for normal changes.
 - [x] **SRCE-02**: User can keep existing profile-level preset behavior when
   no source-type override is configured.
-- [ ] **SRCE-03**: User can rely on source-type preset choices participating
+- [x] **SRCE-03**: User can rely on source-type preset choices participating
   in voice/cache fingerprints so affected prepared audio and response-cache
   artifacts become stale after timing changes.
 - [ ] **SRCE-04**: User can see which profile preset and source-type override
@@ -80,7 +80,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | METR-03 | Phase 46 | Complete |
 | SRCE-01 | Phase 47 | Complete |
 | SRCE-02 | Phase 47 | Complete |
-| SRCE-03 | Phase 47 | Pending |
+| SRCE-03 | Phase 47 | Complete |
 | SRCE-04 | Phase 47 | Pending |
 
 **Coverage:**
