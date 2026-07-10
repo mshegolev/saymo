@@ -109,6 +109,7 @@ def collect_launch_readiness(
     profile: str,
     provider_name: str | None,
     prepare: bool = False,
+    mode: str = "call-ready",
 ) -> LaunchReadinessReport:
     """Collect the full Phase 36 launch-readiness checks."""
     meeting = config.get_meeting(profile)
@@ -118,6 +119,7 @@ def collect_launch_readiness(
         profile=profile,
         provider_name=provider,
         prepare=prepare,
+        mode=mode,
     ))
     return LaunchReadinessReport(
         profile=profile,
@@ -227,6 +229,7 @@ def _collect_phase36_checks(
     profile: str,
     provider_name: str,
     prepare: bool,
+    mode: str,
 ) -> tuple[LaunchReadinessCheck, ...]:
     """Collect launch checks in the operator-facing order."""
     from saymo.analysis.launch_cache import (
@@ -239,11 +242,22 @@ def _collect_phase36_checks(
         collect_prepared_audio_check,
     )
 
+    rerun_command = _launch_rerun_command(mode, profile, provider_name)
+    create_note_action = _source_prepare_action(mode, profile, provider_name)
+    source_kwargs = (
+        {
+            "rerun_command": rerun_command,
+            "create_note_action": create_note_action,
+        }
+        if mode == "dry-run"
+        else {}
+    )
     checks = list(collect_daily_note_checks(
         config,
         profile,
         provider_name=provider_name,
         prepare=prepare,
+        **source_kwargs,
     ))
     source_sha256 = ""
     for check in checks:
@@ -259,6 +273,7 @@ def _collect_phase36_checks(
             provider_name=provider_name,
             team_mode=team_mode,
             source_sha256=source_sha256,
+            **({"rerun_command": rerun_command} if mode == "dry-run" else {}),
         )
     )
     checks.append(
@@ -266,6 +281,7 @@ def _collect_phase36_checks(
             config,
             profile=profile,
             provider_name=provider_name,
+            **({"rerun_command": rerun_command} if mode == "dry-run" else {}),
         )
     )
     checks.append(
@@ -273,6 +289,7 @@ def _collect_phase36_checks(
             config,
             profile=profile,
             provider_name=provider_name,
+            **({"rerun_command": rerun_command} if mode == "dry-run" else {}),
         )
     )
     checks.extend(
@@ -284,6 +301,21 @@ def _collect_phase36_checks(
     )
     checks.extend(_collect_call_control_checks(profile))
     return tuple(checks)
+
+
+def _launch_rerun_command(mode: str, profile: str, provider_name: str) -> str:
+    if mode == "dry-run":
+        return f"saymo dry-run -p {profile} --provider {provider_name}"
+    return f"saymo call-ready -p {profile} --provider {provider_name}"
+
+
+def _source_prepare_action(mode: str, profile: str, provider_name: str) -> str:
+    if mode == "dry-run":
+        return (
+            f"Run saymo dry-run -p {profile} --provider {provider_name} "
+            "--prepare-source"
+        )
+    return f"Run saymo call-ready -p {profile} --provider {provider_name} --prepare"
 
 
 def _collect_call_control_checks(profile: str) -> tuple[LaunchReadinessCheck, ...]:

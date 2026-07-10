@@ -16,6 +16,7 @@ from saymo.commands import console, main
 @main.command("dry-run")
 @click.option("--profile", "-p", default="standup", show_default=True)
 @click.option("--provider", default=None, help="Override provider from profile")
+@click.option("--prepare-source", is_flag=True, help="Create the selected daily note if missing")
 @click.option("--json", "json_output", is_flag=True, help="Print JSON output")
 @click.option(
     "--output",
@@ -24,7 +25,7 @@ from saymo.commands import console, main
     help="Write sanitized JSON artifact to this path",
 )
 @click.pass_context
-def dry_run(ctx, profile, provider, json_output, output):
+def dry_run(ctx, profile, provider, prepare_source, json_output, output):
     """Check dry-run launch readiness for a profile/provider."""
     config = ctx.obj["config"]
     meeting = config.get_meeting(profile)
@@ -33,7 +34,8 @@ def dry_run(ctx, profile, provider, json_output, output):
         config,
         profile=profile,
         provider_name=resolved_provider,
-        prepare=False,
+        prepare=prepare_source,
+        mode="dry-run",
     )
     artifact_path = (
         write_launch_readiness_artifact(report, output, mode="dry-run")

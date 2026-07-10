@@ -31,6 +31,8 @@ def collect_daily_note_checks(
     *,
     provider_name: str,
     prepare: bool,
+    rerun_command: str | None = None,
+    create_note_action: str | None = None,
 ) -> tuple[LaunchReadinessCheck, ...]:
     """Collect daily-note presence and usable-source readiness checks."""
     note_path = daily_note_path(config.obsidian)
@@ -38,14 +40,14 @@ def collect_daily_note_checks(
         note_path = ensure_daily_note(config.obsidian)
 
     readiness = inspect_standup_source(note_path)
-    create_note_action = (
+    create_note_action = create_note_action or (
         f"Run saymo call-ready -p {profile} --provider {provider_name} --prepare"
     )
     source_action = (
         f"Add usable standup content to {readiness.path}, "
         f"then run saymo prepare -p {profile}"
     )
-    rerun = f"saymo call-ready -p {profile} --provider {provider_name}"
+    rerun = rerun_command or f"saymo call-ready -p {profile} --provider {provider_name}"
     metadata = {
         "note_path": str(readiness.path),
         "exists": readiness.exists,
@@ -126,6 +128,11 @@ def prepared_audio_status(
             "selected_engine": expected.selected_engine,
             "voice_profile": expected.profile,
             "profile_approved": expected.profile_approved,
+            "purpose": expected.purpose,
+            "source_type": expected.source_type,
+            "profile_preset_id": expected.profile_preset_id,
+            "source_override_preset_id": expected.source_override_preset_id,
+            "resolved_preset_id": expected.source_preset_id,
         },
     )
 
@@ -137,6 +144,7 @@ def collect_prepared_audio_check(
     provider_name: str,
     team_mode: bool,
     source_sha256: str,
+    rerun_command: str | None = None,
 ) -> LaunchReadinessCheck:
     """Collect the blocking prepared standup audio readiness check."""
     status = prepared_audio_status(
@@ -153,6 +161,6 @@ def collect_prepared_audio_check(
         ok=status.ok,
         detail="ready" if status.ok else status.reason,
         action="" if status.ok else action,
-        rerun=f"saymo call-ready -p {profile} --provider {provider_name}",
+        rerun=rerun_command or f"saymo call-ready -p {profile} --provider {provider_name}",
         metadata=status.metadata,
     )
