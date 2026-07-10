@@ -112,6 +112,102 @@ def _check_by_key(report, key: str):
     return matches[0]
 
 
+def _patch_inert_launch_tail(monkeypatch, *, prepared: bool = True) -> None:
+    from saymo.analysis import (
+        launch_agent,
+        launch_cache,
+        launch_sources,
+        provider_audio_readiness,
+    )
+    from saymo.analysis.launch_readiness import LaunchReadinessCheck
+
+    if prepared:
+        monkeypatch.setattr(
+            launch_sources,
+            "collect_prepared_audio_check",
+            lambda config,
+            profile,
+            *,
+            provider_name,
+            team_mode,
+            source_sha256,
+            rerun_command=None: LaunchReadinessCheck(
+                key="prepared_standup_audio",
+                label="prepared standup audio",
+                severity="block",
+                ok=True,
+                rerun=rerun_command or "",
+            ),
+        )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_response_cache_check",
+        lambda config,
+        *,
+        profile,
+        provider_name,
+        rerun_command=None: LaunchReadinessCheck(
+            key="response_cache_coverage",
+            label="response cache coverage",
+            severity="block",
+            ok=True,
+            rerun=rerun_command or "",
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_voice_metadata_check",
+        lambda config,
+        *,
+        profile,
+        provider_name,
+        rerun_command=None: LaunchReadinessCheck(
+            key="cloned_voice_metadata",
+            label="cloned voice metadata",
+            severity="block",
+            ok=True,
+            rerun=rerun_command or "",
+        ),
+    )
+    monkeypatch.setattr(
+        provider_audio_readiness,
+        "collect_provider_audio_checks",
+        lambda config, *, profile, provider_name: (),
+    )
+    monkeypatch.setattr(
+        launch_agent,
+        "build_launch_agent_spec",
+        lambda profile: "fake-spec",
+    )
+    monkeypatch.setattr(
+        launch_agent,
+        "collect_call_control_agent_status",
+        lambda spec: type(
+            "Status",
+            (),
+            {
+                "profile": "standup",
+                "label": "com.saymo.call-control.standup",
+                "plist_path": "/tmp/com.saymo.call-control.standup.plist",
+                "stdout_log_path": "/tmp/standup/out.log",
+                "stderr_log_path": "/tmp/standup/err.log",
+                "installed": True,
+                "plist_current": True,
+                "loaded": True,
+                "heartbeat_fresh": True,
+                "running": True,
+                "hotkeys_active": True,
+                "hotkey_registration_status": "ok",
+                "classification": "running",
+                "detail": "LaunchAgent is loaded and daemon heartbeat is fresh.",
+                "action": "none",
+                "rerun": "saymo call-control-agent status -p standup",
+                "metadata": {"bindings_count": 3},
+            },
+        )(),
+    )
+
+
 def _rich_launch_evidence_report():
     from saymo.analysis.launch_readiness import (
         LaunchReadinessCheck,
@@ -356,6 +452,100 @@ def test_placeholder_daily_note_blocks_source_readiness(tmp_path):
     _assert_private_absent(json.dumps(report.to_dict(), ensure_ascii=False))
 
 
+def test_collect_launch_readiness_dry_run_prepare_source_creates_missing_daily_note_without_overwrite(
+    tmp_path,
+    monkeypatch,
+):
+    from saymo.analysis.launch_readiness import collect_launch_readiness
+
+    _patch_inert_launch_tail(monkeypatch)
+    vault = tmp_path / "Vault"
+    config = load_config(config_path=str(_write_config(tmp_path, vault_path=vault)))
+    note_path = vault / f"{date.today().strftime('%Y-%m-%d')}.md"
+
+    read_only = collect_launch_readiness(
+        config,
+        profile="standup",
+        provider_name="glip",
+        prepare=False,
+        mode="dry-run",
+    )
+
+    assert not note_path.exists()
+    missing = _check_by_key(read_only, "daily_note_present")
+    assert missing.action == (
+        "Run saymo dry-run -p standup --provider glip --prepare-source"
+    )
+    assert missing.rerun == "saymo dry-run -p standup --provider glip"
+
+    prepared = collect_launch_readiness(
+        config,
+        profile="standup",
+        provider_name="glip",
+        prepare=True,
+        mode="dry-run",
+    )
+
+    assert note_path.exists()
+    assert "## Standup" in note_path.read_text(encoding="utf-8")
+    assert _check_by_key(prepared, "daily_note_present").ok is True
+
+    existing = "EXISTING DAILY NOTE CONTENT"
+    note_path.write_text(existing, encoding="utf-8")
+    collect_launch_readiness(
+        config,
+        profile="standup",
+        provider_name="glip",
+        prepare=True,
+        mode="dry-run",
+    )
+
+    assert note_path.read_text(encoding="utf-8") == existing
+
+
+def test_collect_launch_readiness_dry_run_reruns_point_to_dry_run_without_breaking_call_ready(
+    tmp_path,
+    monkeypatch,
+):
+    from saymo.analysis.launch_readiness import collect_launch_readiness
+
+    _patch_inert_launch_tail(monkeypatch)
+    vault = tmp_path / "Vault"
+    config = load_config(config_path=str(_write_config(tmp_path, vault_path=vault)))
+
+    dry_run = collect_launch_readiness(
+        config,
+        profile="standup",
+        provider_name="glip",
+        prepare=False,
+        mode="dry-run",
+    )
+
+    assert _check_by_key(dry_run, "daily_note_present").rerun == (
+        "saymo dry-run -p standup --provider glip"
+    )
+    assert _check_by_key(dry_run, "daily_note_source_ready").rerun == (
+        "saymo dry-run -p standup --provider glip"
+    )
+    assert _check_by_key(dry_run, "daily_note_present").action == (
+        "Run saymo dry-run -p standup --provider glip --prepare-source"
+    )
+
+    call_ready = collect_launch_readiness(
+        config,
+        profile="standup",
+        provider_name="glip",
+        prepare=False,
+    )
+
+    assert _check_by_key(call_ready, "daily_note_present").rerun == (
+        "saymo call-ready -p standup --provider glip"
+    )
+    assert _check_by_key(call_ready, "daily_note_source_ready").rerun == (
+        "saymo call-ready -p standup --provider glip"
+    )
+
+
 def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
     from saymo.analysis.launch_readiness import collect_launch_readiness
 
@@ -383,6 +573,51 @@ def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
     assert prepared.action == "Run saymo prepare -p standup"
     assert prepared.rerun == "saymo call-ready -p standup --provider glip"
     _assert_private_absent(json.dumps(report.to_dict(), ensure_ascii=False))
+
+
+def test_dry_run_prepared_audio_reports_source_and_preset_metadata(
+    tmp_path,
+    monkeypatch,
+):
+    from saymo.analysis.launch_readiness import collect_launch_readiness
+
+    _patch_inert_launch_tail(monkeypatch, prepared=False)
+    vault = tmp_path / "Vault"
+    vault.mkdir()
+    note_path = vault / f"{date.today().strftime('%Y-%m-%d')}.md"
+    note_path.write_text(
+        "# Standup\n\nYesterday shipped. Today dry-run readiness.\n",
+        encoding="utf-8",
+    )
+    config = load_config(config_path=str(_write_config(tmp_path, vault_path=vault)))
+    config.tts.engine = "f5tts_clone"
+    config.voice_selector.profiles_dir = str(_write_voice_profile(tmp_path, approved=True))
+    config.meetings["standup"]["voice"] = {
+        "f5_pause_preset": "crisp",
+        "f5_pause_presets": {"prepared": "calm"},
+    }
+
+    report = collect_launch_readiness(
+        config,
+        profile="standup",
+        provider_name="glip",
+        prepare=False,
+        mode="dry-run",
+    )
+    prepared = _check_by_key(report, "prepared_standup_audio")
+
+    assert prepared.action == "Run saymo prepare -p standup"
+    assert prepared.rerun == "saymo dry-run -p standup --provider glip"
+    assert prepared.metadata["source_sha256"]
+    assert prepared.metadata["selected_engine"] == "f5tts_clone"
+    assert prepared.metadata["voice_profile"] == "personal"
+    assert prepared.metadata["profile_approved"] is True
+    assert prepared.metadata["source_type"] == "prepared"
+    assert prepared.metadata["purpose"] == "prepare"
+    assert prepared.metadata["profile_preset_id"] == "crisp"
+    assert prepared.metadata["source_override_preset_id"] == "calm"
+    assert prepared.metadata["resolved_preset_id"] == "calm"
+    _assert_private_absent(json.dumps(prepared.to_dict(), ensure_ascii=False))
 
 
 def test_prepare_saved_standup_metadata_matches_daily_note_hash(tmp_path, monkeypatch):
@@ -778,6 +1013,48 @@ def test_voice_metadata_is_sanitized_and_actionable(tmp_path):
     serialized = json.dumps(voice.to_dict(), ensure_ascii=False)
     _assert_private_absent(serialized)
     assert "PRIVATE_REFERENCE_TEXT" not in serialized
+
+
+def test_dry_run_voice_metadata_is_read_only_and_actionable(tmp_path):
+    from saymo.analysis.launch_cache import collect_voice_metadata_check
+
+    config = load_config(config_path=str(_write_config(tmp_path)))
+    config.tts.engine = "f5tts_clone"
+    config.voice_selector.profiles_dir = str(_write_voice_profile(tmp_path, approved=False))
+
+    voice = collect_voice_metadata_check(
+        config,
+        profile="standup",
+        provider_name="glip",
+        rerun_command="saymo dry-run -p standup --provider glip",
+    )
+
+    assert voice.key == "cloned_voice_metadata"
+    assert voice.severity == "block"
+    assert voice.ok is False
+    assert voice.rerun == "saymo dry-run -p standup --provider glip"
+    assert "saymo voice-profile check --profile personal" in voice.action
+    assert "saymo prepare -p standup" in voice.action
+    assert "selected_engine" in voice.metadata
+    assert "voice_profile" in voice.metadata
+    assert "profile_approved" in voice.metadata
+    assert voice.metadata["selected_engine"] == "f5tts_clone"
+    assert voice.metadata["voice_profile"] == "personal"
+    assert voice.metadata["profile_approved"] is False
+    serialized = json.dumps(voice.to_dict(), ensure_ascii=False)
+    _assert_private_absent(serialized)
+    assert "PRIVATE_REFERENCE_TEXT" not in serialized
+    for forbidden in (
+        "trainer",
+        "dataset",
+        "checkpoint",
+        "download",
+        "cleanup",
+        "delete",
+        "unlink",
+        "rmtree",
+    ):
+        assert forbidden not in serialized.lower()
 
 
 def test_response_cache_launch_check_blocks_disabled_and_partial_coverage(tmp_path):

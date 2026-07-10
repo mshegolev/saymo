@@ -144,6 +144,29 @@ def test_response_cache_advice_warns_for_stale_or_missing_variants(tmp_path: Pat
     assert "PRIVATE RESPONSE TEXT" not in json.dumps(advice.to_dict(), ensure_ascii=False)
 
 
+def test_response_cache_guidance_uses_profile_without_default_force(tmp_path: Path):
+    from saymo.analysis.cache_advice import response_cache_advice
+
+    config = SaymoConfig()
+    config.tts.engine = "f5tts_clone"
+    config.responses.cache_dir = str(tmp_path)
+    config.responses.library = {
+        "blockers_none": {
+            "triggers": ["есть блокеры"],
+            "variants": ["PRIVATE RESPONSE TEXT"],
+        }
+    }
+
+    advice = response_cache_advice(config, profile="standup")
+
+    assert advice.status in {"missing", "partial"}
+    assert advice.action == (
+        "Run saymo prepare-responses -p standup to rebuild only missing or stale variants."
+    )
+    assert "saymo prepare-responses -p standup --force" not in advice.action
+    assert "PRIVATE RESPONSE TEXT" not in json.dumps(advice.to_dict(), ensure_ascii=False)
+
+
 def test_response_cache_advice_reports_ready_without_force(tmp_path: Path):
     from saymo.analysis.cache_advice import response_cache_advice
     from saymo.analysis.cache_metadata import build_voice_cache_metadata

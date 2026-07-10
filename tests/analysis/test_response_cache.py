@@ -1,6 +1,7 @@
 """Tests for the Tier-A response cache (CPU-only real-time Q&A)."""
 
 import asyncio
+import json
 from pathlib import Path
 
 import pytest
@@ -410,6 +411,83 @@ def test_launch_response_cache_check_uses_response_cache_source_profile(
 
     assert check.ok is True
     assert check.metadata["stale_count"] == 0
+
+
+def test_dry_run_response_cache_reports_source_aware_coverage(tmp_cache_dir):
+    from saymo.analysis.cache_metadata import (
+        VoiceCacheMetadata,
+        build_voice_cache_metadata,
+        write_voice_cache_metadata,
+    )
+    from saymo.analysis.launch_cache import collect_response_cache_check
+    from saymo.config import SaymoConfig
+
+    config = SaymoConfig()
+    config.tts.engine = "f5tts_clone"
+    config.responses.cache_dir = str(tmp_cache_dir)
+    config.responses.library = {
+        "blockers_none": {
+            "triggers": ["есть блокеры"],
+            "variants": ["Блокеров нет.", "PRIVATE RESPONSE TEXT"],
+        }
+    }
+    config.meetings = {
+        "standup": {
+            "voice": {
+                "f5_pause_preset": "crisp",
+                "f5_pause_presets": {"response_cache": "deliberate"},
+            }
+        }
+    }
+    expected = build_voice_cache_metadata(
+        config,
+        purpose="response_cache",
+        profile="standup",
+        source_type="response_cache",
+    )
+    stale = VoiceCacheMetadata(
+        purpose="response_cache",
+        selected_engine="f5tts_clone",
+        attempted_engines=("f5tts_clone",),
+        fingerprint="old",
+    )
+    cache = ResponseCache(
+        library=build_library(config.responses.library),
+        cache_dir=tmp_cache_dir,
+        voice_metadata=expected,
+    )
+    ready_path = cache.variant_path("blockers_none", 0, "Блокеров нет.")
+    ready_path.write_bytes(b"RIFF")
+    write_voice_cache_metadata(ready_path, expected)
+    stale_path = cache.variant_path("blockers_none", 1, "PRIVATE RESPONSE TEXT")
+    stale_path.write_bytes(b"RIFF")
+    write_voice_cache_metadata(stale_path, stale)
+
+    check = collect_response_cache_check(
+        config,
+        profile="standup",
+        provider_name="glip",
+        rerun_command="saymo dry-run -p standup --provider glip",
+    )
+
+    assert check.key == "response_cache_coverage"
+    assert check.severity == "block"
+    assert check.ok is False
+    assert check.rerun == "saymo dry-run -p standup --provider glip"
+    assert "saymo prepare-responses -p standup" in check.action
+    assert "saymo prepare-responses -p standup --force" not in check.action
+    assert check.metadata["ready"] == 1
+    assert check.metadata["total"] > 1
+    assert check.metadata["missing_count"] > 0
+    assert check.metadata["stale_count"] >= 1
+    assert check.metadata["missing_examples"]
+    assert "blockers_none[1]:voice_metadata_stale" in check.metadata["stale_examples"]
+    assert check.metadata["source_type"] == "response_cache"
+    assert check.metadata["purpose"] == "response_cache"
+    assert check.metadata["profile_preset_id"] == "crisp"
+    assert check.metadata["source_override_preset_id"] == "deliberate"
+    assert check.metadata["resolved_preset_id"] == "deliberate"
+    assert "PRIVATE RESPONSE TEXT" not in json.dumps(check.to_dict(), ensure_ascii=False)
 
 
 def test_lookup_refuses_stale_voice_metadata(tiny_library, tmp_cache_dir):
