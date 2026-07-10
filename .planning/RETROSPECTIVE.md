@@ -255,6 +255,63 @@ future planning.*
 
 ---
 
+## Milestone: v1.14 — Call Dry-Run To Real Call
+
+**Shipped:** 2026-07-10
+**Phases:** 4 | **Plans:** 8 | **Sessions:** 1
+
+### What Was Built
+- One non-destructive `saymo dry-run` command with ready/not-ready output,
+  grouped blockers, exact actions, rerun commands, JSON, and sanitized
+  launch-readiness artifacts.
+- Source, prepared-audio, response-cache, cloned-voice, provider/audio, and
+  call-control readiness checks all flow into one dry-run report.
+- `saymo dry-run-compare` compares saved current/previous launch artifacts
+  without rerunning checks or emitting raw check details.
+- `saymo rehearsal --launch-json` records compact launch evidence, and
+  scorecard/safety-soak can consume the recorded path.
+
+### What Worked
+- RED/GREEN split kept the dry-run surface safe: every production change had
+  an explicit contract before implementation.
+- Reusing the launch-readiness artifact schema avoided duplicate redaction and
+  made scorecard/safety-soak integration small.
+- Integration checking proved the E2E path from dry-run to evidence comparison,
+  rehearsal, scorecard, and safety-soak.
+
+### What Was Inefficient
+- `gsd-tools milestone complete` still required manual cleanup of
+  MILESTONES/PROJECT/STATE accomplishments and active milestone text.
+- Phase 50 can only be fully proven with a live macOS/Chrome/BlackHole run, so
+  the automated audit has to carry a human-only residual.
+- Nyquist validation was present only for phases 49 and 51, leaving phase 48
+  and 50 validation files as historical process gaps.
+
+### Patterns Established
+- Dry-run launch proof should remain read-only by default and point at targeted
+  repair commands instead of repairing provider, cache, model, or launchd
+  state automatically.
+- Saved launch evidence should be sanitized once, normalized through
+  `LaunchEvidence`, and reused by compare/rehearsal/scorecard/soak paths.
+- Rehearsal artifacts should store compact evidence references rather than raw
+  readiness checks.
+
+### Key Lessons
+1. Evidence reuse is safer when comparison and downstream gates load normalized
+   artifacts instead of parsing raw check rows repeatedly.
+2. Static safety grep is useful, but source-literal false positives need
+   explicit hygiene when guard strings overlap benign identifiers.
+3. Real launch confidence still needs one final operator environment run even
+   when code-level provider/audio/launchd boundaries are well tested.
+
+### Cost Observations
+- Model mix: not tracked in repo.
+- Sessions: 1 autonomous implementation, audit, and archive session.
+- Notable: focused Phase 51 evidence tests reached 43 cases; full suite ended
+  at `645 passed`.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -268,6 +325,7 @@ future planning.*
 | v1.11 | 1 | 1 | Added direct F5 cache-staleness, continuation-silence, and static/docs guards. |
 | v1.12 | 1 | 2 | Added operator F5 timing presets, cache status warnings, and review metadata safety. |
 | v1.13 | 1 | 3 | Added sanitized F5 preview corpus, timing metrics, and source-type pause presets. |
+| v1.14 | 1 | 4 | Added non-destructive call dry-run, saved evidence, comparison, and rehearsal/soak reuse. |
 
 ### Cumulative Quality
 
@@ -280,6 +338,7 @@ future planning.*
 | v1.11 | 557 full-suite tests | cache metadata, response cache, F5 TTS, static guards | audit-ready hardening metadata |
 | v1.12 | 574 full-suite tests | F5 presets, timing artifacts, cache advice, review metadata | read-only cache status and preset controls |
 | v1.13 | 615 full-suite tests | F5 corpus, timing metrics, source presets, cache/readiness diagnostics | source-aware preset metadata |
+| v1.14 | 645 full-suite tests | dry-run CLI, readiness, evidence, rehearsal, scorecard, safety-soak | launch-readiness evidence reuse |
 
 ### Top Lessons (Verified Across Milestones)
 

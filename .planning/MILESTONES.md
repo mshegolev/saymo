@@ -2,24 +2,38 @@
 
 ## Current
 
+No active milestone. Next milestone should start with `$gsd-new-milestone`.
+
+## Completed
+
 ### v1.14 Call Dry-Run To Real Call
 
 **Started:** 2026-07-10
-**Status:** Active
+**Completed:** 2026-07-10
+**Archived:** 2026-07-10
+**Status:** Complete
 
 Focus: make Saymo reliably prepare, validate, and prove a real standup launch
 path through one operator dry-run flow before starting `saymo auto`.
 
-Planned:
-- One profile/provider dry-run command with a concise ready/not-ready result.
-- Read-only source, prepared-audio, response-cache, and cloned-voice readiness
-  diagnostics with targeted explicit repair commands.
-- Provider, audio-routing, and call-control health checks with no automatic
-  provider repair.
-- Sanitized dry-run evidence that feeds rehearsal, scorecard, safety-soak, and
-  latest-vs-previous readiness comparison.
+Delivered:
+- One non-destructive `saymo dry-run` command with concise ready/not-ready
+  output, grouped blockers, exact actions, rerun commands, JSON, and sanitized
+  artifacts.
+- Source, prepared-audio, response-cache, and cloned-voice readiness checks
+  with targeted explicit repair guidance and no automatic rebuilds, retraining,
+  model downloads, or protected `.saymo` mutation.
+- Provider, Chrome tab, BlackHole routing, audio-device, and call-control
+  LaunchAgent diagnostics that keep provider repair explicit.
+- Sanitized dry-run evidence that feeds rehearsal, session scorecards,
+  safety-soak, and latest-vs-previous readiness comparison.
+- Milestone audit passed 15/15 requirements; final full suite was
+  `645 passed`.
 
-## Completed
+Archives:
+- `.planning/milestones/v1.14-ROADMAP.md`
+- `.planning/milestones/v1.14-REQUIREMENTS.md`
+- `.planning/milestones/v1.14-MILESTONE-AUDIT.md`
 
 ### v1.13 F5 Prosody Metrics
 

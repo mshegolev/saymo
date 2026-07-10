@@ -23,7 +23,7 @@ enough that the call still feels live.
 
 ## Current State
 
-Saymo has shipped milestone v1.13 F5 Prosody Metrics. The product can build local
+Saymo has shipped milestone v1.14 Call Dry-Run To Real Call. The product can build local
 transcript ledgers from captured sessions, search and ask questions about those
 sessions with transcript citations, generate pending answer drafts grounded in
 meeting memory and configured sources, record explicit cockpit actions plus
@@ -75,27 +75,34 @@ objective speech-rate and pause-distribution metrics, per-source F5 pause
 presets, source-aware cache fingerprints, and sanitized cache-status/readiness
 diagnostics for targeted explicit regeneration.
 
-**Status:** Active milestone v1.14 Call Dry-Run To Real Call is defining a
-one-command operator path from local readiness checks to safe real-call launch.
+The v1.14 call dry-run path added one non-destructive `saymo dry-run` command
+that checks source data, prepared audio, response cache, cloned voice metadata,
+provider/audio readiness, and call-control health before a real standup. It
+writes sanitized launch-readiness evidence, compares latest-vs-previous dry-run
+artifacts, and feeds rehearsal, session-scorecard, and safety-soak gates without
+starting realtime mode or mutating protected assets automatically.
 
-## Current Milestone: v1.14 Call Dry-Run To Real Call
+**Status:** v1.14 is archived. No active milestone is open; the next milestone
+should start with `$gsd-new-milestone`.
+
+## Last Completed Milestone: v1.14 Call Dry-Run To Real Call
 
 **Goal:** Make Saymo reliably prepare, validate, and prove a real standup
 launch path through one operator dry-run flow before starting `saymo auto`.
 
-**Target features:**
-- One profile/provider dry-run command that verifies daily note, prepared audio,
-  response cache, cloned-voice metadata, provider tab, audio routing, and
-  call-control health.
-- Safe source-data repair guidance for Obsidian daily notes and prepared
-  standup audio without overwriting existing notes or touching protected voice
-  assets automatically.
-- Profile-targeted cache repair prompts for prepared audio and response-cache
-  variants, using existing source-aware F5 metadata and no automatic rebuilds.
-- Sanitized dry-run/rehearsal evidence that feeds scorecards and safety-soak so
-  the operator can see whether the next real call is launch-ready.
+**Delivered:**
+- One profile/provider dry-run command with concise ready/not-ready output,
+  grouped blockers, exact actions, rerun commands, JSON, and sanitized
+  launch-readiness artifacts.
+- Source, prepared-audio, response-cache, and cloned-voice readiness checks
+  with targeted explicit repair guidance and no automatic rebuilds,
+  retraining, model downloads, or protected `.saymo` mutation.
+- Provider, Chrome tab, BlackHole routing, audio-device, and call-control
+  LaunchAgent diagnostics that keep provider repair explicit.
+- Sanitized dry-run evidence that feeds rehearsal, session scorecards,
+  safety-soak, and latest-vs-previous readiness comparison.
 
-## Last Completed Milestone: v1.13 F5 Prosody Metrics
+## Previous Milestone: v1.13 F5 Prosody Metrics
 
 **Goal:** Make F5 voice timing comparisons more objective and context-aware by
 expanding preview coverage, measuring speech-rate and pause behavior, and
@@ -357,15 +364,43 @@ playback, and regression replay.
   sidecar required by call-ready checks.
 - ✓ User can trust response-cache lookup helpers to enforce metadata checks
   consistently across active and legacy code paths.
+- ✓ User can tune prosody from a richer phrase corpus instead of a small
+  preview phrase set.
+- ✓ User can compare timing presets with automatic speech-rate and
+  pause-distribution metrics.
+- ✓ User can keep separate pause presets per source type, such as standup
+  notes versus spontaneous approved answers.
+- ✓ User can run one profile/provider dry-run command that verifies whether
+  Saymo is ready for the next real standup without starting realtime mode.
+- ✓ User can see one concise dry-run ready/not-ready result with grouped
+  blockers, warnings, exact actions, and rerun commands.
+- ✓ User can run dry-run without synthesizing audio, playing audio, deleting
+  cache artifacts, retraining, downloading voice models, or mutating protected
+  `.saymo` assets automatically.
+- ✓ User can have dry-run verify or create the selected Obsidian daily note
+  for the active profile without overwriting existing note content.
+- ✓ User can see whether prepared standup audio matches the selected
+  daily-note/source hash, voice profile, and F5 source-type preset metadata.
+- ✓ User can get targeted repair commands for missing or stale prepared audio,
+  prepared response cache, and cloned-voice metadata without automatic rebuilds.
+- ✓ User can verify provider tab readiness, Chrome/provider state, BlackHole
+  routing, audio devices, and call-control daemon health in one dry-run result.
+- ✓ User can keep provider repair explicit: dry-run diagnostics suggest safe
+  commands but do not kill apps, change meeting state, or switch devices.
+- ✓ User can save sanitized dry-run evidence, feed it into rehearsal,
+  session-scorecard, and safety-soak, and compare latest-vs-previous readiness.
 
 ### Active
 
-- [ ] User can tune prosody from a richer phrase corpus instead of a small
-  preview phrase set.
-- [ ] User can compare timing presets with automatic speech-rate and
-  pause-distribution metrics.
-- [ ] User can keep separate pause presets per source type, such as standup
-  notes versus spontaneous approved answers.
+- [ ] Live Answer Policy: confidence gates, manual approval mode, skip/takeover
+  telemetry, and protection against incidental name mentions.
+- [ ] Voice Naturalness Feedback Loop: store preference-review outcomes and
+  recommend candidate presets without auto-apply.
+- [ ] Meeting Memory Quality: source priority, stale source warnings, better
+  standup summarization, and answer citations.
+- [ ] Operational polish: `saymo doctor`, cleanup/status commands, clearer
+  remediation, launchd logs, config migration checks, and read-only local asset
+  inventory.
 
 ### Out of Scope
 
@@ -429,6 +464,13 @@ playback, and regression replay.
 - v1.13 resolves source-type F5 pause presets at metadata/fingerprint time on a
   copied config, preserving profile/global fallback behavior and avoiding
   automatic cache mutation.
+- v1.14 proves call launch through saved dry-run evidence: artifacts,
+  comparison output, rehearsal references, scorecards, and safety-soak all use
+  sanitized launch-readiness data without embedding raw checks or private
+  meeting content.
+- v1.14 keeps provider/audio/control repair explicit. Dry-run can recommend
+  commands, but does not focus Chrome, change meeting state, switch devices,
+  play/record audio, mutate launchd, or rebuild cache/model assets.
 
 ## Constraints
 
@@ -472,6 +514,9 @@ playback, and regression replay.
 | Preserve voice metadata through manual review | Reviewed audio must not bypass call-ready sidecar checks after replacing the prepared WAV | Implemented in v1.12 |
 | Expand F5 timing review through sanitized corpora and numeric metrics | Operators need repeatable timing evidence without committing private meeting text or audio artifacts | Implemented in v1.13 |
 | Resolve pause presets by answer source | Prepared notes, response-cache variants, and spontaneous approved answers need different pacing while keeping profile/global fallback clear | Implemented in v1.13 |
+| Keep dry-run as a non-destructive launch proof | The operator needs one trusted pre-call result without accidentally starting realtime, repairing providers, rebuilding caches, or touching protected assets | Implemented in v1.14 |
+| Reuse launch-readiness artifacts for dry-run evidence | A second evidence schema would duplicate sanitization and break scorecard/safety-soak reuse | Implemented in v1.14 |
+| Store compact launch evidence in rehearsal artifacts | Rehearsal should correlate with dry-run state without embedding raw checks or private local paths/content | Implemented in v1.14 |
 
 ---
-*Last updated: 2026-07-10 after starting milestone v1.14*
+*Last updated: 2026-07-10 after completing milestone v1.14*

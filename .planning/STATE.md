@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.14
 milestone_name: Call Dry-Run To Real Call
-current_phase: 51
-current_phase_name: Dry-Run Evidence And Rehearsal Feedback
-current_plan: 02
-status: verified
-stopped_at: Verified 51-dry-run-evidence-and-rehearsal-feedback
-last_updated: "2026-07-10T14:55:48Z"
-last_activity: 2026-07-10 - Verified Phase 51 dry-run evidence and rehearsal feedback; v1.14 is ready for milestone archive.
+current_phase: null
+current_phase_name: null
+current_plan: null
+status: archived
+stopped_at: Archived v1.14 Call Dry-Run To Real Call
+last_updated: "2026-07-10T15:08:00Z"
+last_activity: 2026-07-10 - Archived v1.14 Call Dry-Run To Real Call after passing milestone audit.
 progress:
   total_phases: 4
   completed_phases: 4
@@ -25,17 +25,17 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Phase 51 Dry-Run Evidence And Rehearsal Feedback is verified; v1.14 is ready for milestone archive.
+**Current focus:** No active milestone. Start the next one with `$gsd-new-milestone`.
 
 ## Current Position
 
-Current Phase: 51
-Current Phase Name: Dry-Run Evidence And Rehearsal Feedback
+Current Phase: None
+Current Phase Name: None
 Total Phases: 4
-Current Plan: 02
+Current Plan: None
 Total Plans in Phase: 2
-Status: Phase 51 verified; v1.14 ready for milestone archive
-Last activity: 2026-07-10 - Verified Phase 51 dry-run evidence and rehearsal feedback.
+Status: v1.14 archived
+Last activity: 2026-07-10 - Archived v1.14 Call Dry-Run To Real Call after passing milestone audit.
 
 Progress: [██████████] 100%
 
@@ -102,7 +102,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Verify completed v1.14 milestone or archive milestone if accepted.
+- Start the next milestone with `$gsd-new-milestone` when ready.
 
 ### Blockers/Concerns
 
@@ -114,6 +114,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-07-10T14:50:30.545Z
-Stopped at: Completed 51-dry-run-evidence-and-rehearsal-feedback-02-PLAN.md
+Last session: 2026-07-10T15:08:00Z
+Stopped at: Archived v1.14 Call Dry-Run To Real Call
 Resume file: None
