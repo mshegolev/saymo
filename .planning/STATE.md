@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.14
 milestone_name: Call Dry-Run To Real Call
-current_phase: 49
-current_phase_name: Source, Prepared Audio, Cache, And Voice Readiness
+current_phase: 50
+current_phase_name: Provider, Audio, And Call-Control Health
 current_plan: 02
-status: ready_for_verification
-stopped_at: Completed 49-02-PLAN.md
-last_updated: "2026-07-10T13:15:32.962Z"
-last_activity: 2026-07-10 - Completed 49-02 GREEN implementation for source, prepared audio, response-cache, and voice readiness.
+status: ready_for_execution
+stopped_at: Completed 50-01-PLAN.md
+last_updated: "2026-07-10T13:57:24.127Z"
+last_activity: 2026-07-10 - Completed 50-01 RED tests for provider/audio/call-control health.
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_plans: 6
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -25,26 +25,26 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Phase 49 Source, Prepared Audio, Cache, And Voice Readiness is ready for verification.
+**Current focus:** Phase 50 Provider, Audio, And Call-Control Health is in progress; Plan 50-02 is next.
 
 ## Current Position
 
-Current Phase: 49
-Current Phase Name: Source, Prepared Audio, Cache, And Voice Readiness
+Current Phase: 50
+Current Phase Name: Provider, Audio, And Call-Control Health
 Total Phases: 4
 Current Plan: 02
 Total Plans in Phase: 2
-Status: Ready for Phase 49 verification after completing Plan 49-02
-Last activity: 2026-07-10 - Completed 49-02 GREEN implementation for source, prepared audio, response-cache, and voice readiness.
+Status: Ready for Plan 50-02 after completing Plan 50-01 RED tests
+Last activity: 2026-07-10 - Completed 50-01 RED tests for provider/audio/call-control health.
 
-Progress: [██████████] 100%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4 in v1.14
-- Average duration: 5.5min
-- Total execution time: 22min
+- Total plans completed: 5 in v1.14
+- Average duration: 5.8min
+- Total execution time: 29min
 
 **By Phase:**
 
@@ -52,10 +52,11 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 48. Dry-Run Orchestrator And Result Contract | 2/2 | 7min | 3.5min |
 | 49. Source, Prepared Audio, Cache, And Voice Readiness | 2/2 | 15min | 7.5min |
-| 50. Provider, Audio, And Call-Control Health | TBD | - | - |
+| 50. Provider, Audio, And Call-Control Health | 1/2 | 7min | 7min |
 | 51. Dry-Run Evidence And Rehearsal Feedback | TBD | - | - |
 | Phase 49 P01 | 6min | 2 tasks | 4 files |
 | Phase 49 P02 | 9min | 2 tasks | 4 files |
+| Phase 50-provider-audio-and-call-control-health P01 | 7min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -86,10 +87,13 @@ Recent decisions affecting current work:
 - [Phase 49]: Kept prepare=true scoped to selected daily-note creation through existing Obsidian helpers.
 - [Phase 49]: Kept response-cache force rebuild as warning-only guidance, never the default repair command.
 - [Phase 49]: Used selector/manifest metadata for cloned-voice readiness and avoided training, dataset, checkpoint, model, provider, and audio mutation paths.
+- [Phase 50-provider-audio-and-call-control-health]: Kept Plan 50-01 strictly RED/test-only; production code remains untouched for Plan 50-02.
+- [Phase 50-provider-audio-and-call-control-health]: Used optional rerun_command and mode as the dry-run provider/audio caller context expected by the GREEN plan.
+- [Phase 50-provider-audio-and-call-control-health]: Kept call-control probe, LaunchAgent lifecycle, and command/audit writes out of dry-run diagnostics.
 
 ### Pending Todos
 
-- Run Phase 49 verification, then continue to Phase 50 planning/execution.
+- Continue with Phase 50 Plan 50-02 GREEN implementation for provider/audio dry-run context and call-control action clarity.
 
 ### Blockers/Concerns
 
@@ -101,6 +105,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-07-10T13:15:32.960Z
-Stopped at: Completed 49-02-PLAN.md
+Last session: 2026-07-10T13:57:24.124Z
+Stopped at: Completed 50-01-PLAN.md
 Resume file: None

@@ -41,13 +41,13 @@ launch path through one operator dry-run flow before starting `saymo auto`.
 
 ### Provider, Audio, And Control Health
 
-- [ ] **ENV-01**: User can verify provider tab readiness, Chrome/provider
+- [x] **ENV-01**: User can verify provider tab readiness, Chrome/provider
   state, BlackHole capture/playback devices, and audio routing prerequisites in
   one dry-run result.
-- [ ] **ENV-02**: User can verify call-control daemon and LaunchAgent health,
+- [x] **ENV-02**: User can verify call-control daemon and LaunchAgent health,
   including heartbeat freshness, hotkey availability, stale plist status, and
   exact restart/probe commands.
-- [ ] **ENV-03**: User can keep provider repair explicit: dry-run diagnostics
+- [x] **ENV-03**: User can keep provider repair explicit: dry-run diagnostics
   may suggest safe commands but must not kill apps, change meeting state, or
   switch devices automatically.
 
@@ -102,9 +102,9 @@ launch path through one operator dry-run flow before starting `saymo auto`.
 | CACHE-01 | Phase 49 | Complete |
 | CACHE-02 | Phase 49 | Complete |
 | VOICE-01 | Phase 49 | Complete |
-| ENV-01 | Phase 50 | Pending |
-| ENV-02 | Phase 50 | Pending |
-| ENV-03 | Phase 50 | Pending |
+| ENV-01 | Phase 50 | Complete |
+| ENV-02 | Phase 50 | Complete |
+| ENV-03 | Phase 50 | Complete |
 | EVID-01 | Phase 51 | Pending |
 | EVID-02 | Phase 51 | Pending |
 | EVID-03 | Phase 51 | Pending |
