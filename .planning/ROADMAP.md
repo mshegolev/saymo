@@ -65,7 +65,10 @@ Plans:
   2. User can see call-control daemon and LaunchAgent health, including heartbeat freshness, hotkey availability, and stale plist status.
   3. User can get exact restart, probe, and safe remediation commands for provider, audio, and control blockers.
   4. User can trust dry-run diagnostics not to kill apps, change meeting state, switch devices, or automatically repair provider state.
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 50-01-PLAN.md - RED tests for dry-run provider/audio/control diagnostics, exact remediation commands, call-ready compatibility, and no-auto-repair guards.
+- [ ] 50-02-PLAN.md - GREEN implementation for provider/audio dry-run rerun/action routing and call-control action clarity/safety.
 
 ### Phase 51: Dry-Run Evidence And Rehearsal Feedback
 **Goal**: User can inspect sanitized dry-run evidence, reuse it in rehearsal/scorecard/safety-soak gates, and compare readiness changes before the real call.
@@ -109,5 +112,5 @@ Phases execute in numeric order: 48 -> 49 -> 50 -> 51
 |-------|----------------|--------|-----------|
 | 48. Dry-Run Orchestrator And Result Contract | 2/2 | Complete   | 2026-07-10 |
 | 49. Source, Prepared Audio, Cache, And Voice Readiness | 2/2 | Complete   | 2026-07-10 |
-| 50. Provider, Audio, And Call-Control Health | 0/TBD | Not started | - |
+| 50. Provider, Audio, And Call-Control Health | 0/2 | Not started | - |
 | 51. Dry-Run Evidence And Rehearsal Feedback | 0/TBD | Not started | - |
