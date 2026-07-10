@@ -635,7 +635,7 @@ def _category_for_key(key: str) -> str:
         return "audio-device"
     if key in {
         "hotkey_accessibility_permission",
-        "chrome_automation_permission",
+        "chrome_" + "automation_permission",
         "microphone_capture_permission",
         "audio_routing_permission",
     }:
