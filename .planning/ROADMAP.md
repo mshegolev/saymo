@@ -36,7 +36,10 @@ scorecards, and safety-soak.
   1. User can run one dry-run command for a selected profile and provider without starting `saymo auto` or realtime capture/playback.
   2. User can see one concise `ready` or `not ready` result with grouped blockers, warnings, exact actions, and rerun commands.
   3. User can trust dry-run mode to avoid synthesis, playback, cache deletion, retraining, voice model downloads, and protected `.saymo` asset mutation.
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 48-01-PLAN.md - RED tests for dry-run CLI, result, artifact, and non-destructive contracts.
+- [ ] 48-02-PLAN.md - GREEN implementation of dry-run command, renderer/artifact parameters, and command registration.
 
 ### Phase 49: Source, Prepared Audio, Cache, And Voice Readiness
 **Goal**: User can prove source data, prepared standup audio, response-cache coverage, and approved cloned-voice metadata are launch-ready or receive targeted explicit repair commands.
