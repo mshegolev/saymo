@@ -53,14 +53,14 @@ launch path through one operator dry-run flow before starting `saymo auto`.
 
 ### Evidence And Rehearsal
 
-- [ ] **EVID-01**: User can save a sanitized dry-run artifact with profile,
+- [x] **EVID-01**: User can save a sanitized dry-run artifact with profile,
   provider, check statuses, stale reasons, actions, rerun commands, and
   timestamps without raw meeting text, prompt text, response text, audio bytes,
   secrets, voice samples, or training data.
-- [ ] **EVID-02**: User can feed dry-run evidence into rehearsal, session
+- [x] **EVID-02**: User can feed dry-run evidence into rehearsal, session
   scorecard, and safety-soak so the next real call has a repeatable
   launch-readiness signal.
-- [ ] **EVID-03**: User can compare the latest dry-run result with the previous
+- [x] **EVID-03**: User can compare the latest dry-run result with the previous
   result to see whether readiness improved or regressed before joining a call.
 
 ## Future Requirements
@@ -105,6 +105,6 @@ launch path through one operator dry-run flow before starting `saymo auto`.
 | ENV-01 | Phase 50 | Complete |
 | ENV-02 | Phase 50 | Complete |
 | ENV-03 | Phase 50 | Complete |
-| EVID-01 | Phase 51 | Pending |
-| EVID-02 | Phase 51 | Pending |
-| EVID-03 | Phase 51 | Pending |
+| EVID-01 | Phase 51 | Complete |
+| EVID-02 | Phase 51 | Complete |
+| EVID-03 | Phase 51 | Complete |

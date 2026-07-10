@@ -24,7 +24,7 @@ scorecards, and safety-soak.
 - [x] **Phase 48: Dry-Run Orchestrator And Result Contract** - Users can run one non-destructive profile/provider dry-run and see a concise ready/not-ready result. (completed 2026-07-10)
 - [x] **Phase 49: Source, Prepared Audio, Cache, And Voice Readiness** - Users can verify daily notes, prepared audio, response-cache coverage, and cloned-voice metadata with targeted repair guidance. (completed 2026-07-10)
 - [x] **Phase 50: Provider, Audio, And Call-Control Health** - Users can verify provider, Chrome, BlackHole, audio routing, and LaunchAgent health without automatic provider repair. (completed 2026-07-10)
-- [ ] **Phase 51: Dry-Run Evidence And Rehearsal Feedback** - Users can save sanitized dry-run evidence, feed it into reliability tools, and compare readiness changes.
+- [x] **Phase 51: Dry-Run Evidence And Rehearsal Feedback** - Users can save sanitized dry-run evidence, feed it into reliability tools, and compare readiness changes. (completed 2026-07-10)
 
 ## Phase Details
 
@@ -79,10 +79,10 @@ Plans:
   2. User can confirm dry-run artifacts exclude raw meeting text, prompt text, response text, audio bytes, secrets, voice samples, training data, and protected local assets.
   3. User can feed dry-run evidence into rehearsal, session scorecard, and safety-soak for a repeatable launch-readiness signal.
   4. User can compare the latest dry-run result with the previous result to see readiness improvements or regressions before joining a call.
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 Plans:
-- [ ] 51-01-PLAN.md - RED tests for dry-run evidence artifacts, comparison contracts, and rehearsal/scorecard/safety-soak reuse.
-- [ ] 51-02-PLAN.md - GREEN implementation of normalized comparison, flat dry-run-compare CLI, and rehearsal evidence wiring.
+- [x] 51-01-PLAN.md - RED tests for dry-run evidence artifacts, comparison contracts, and rehearsal/scorecard/safety-soak reuse.
+- [x] 51-02-PLAN.md - GREEN implementation of normalized comparison, flat dry-run-compare CLI, and rehearsal evidence wiring.
 
 ## Requirement Coverage
 
@@ -116,4 +116,4 @@ Phases execute in numeric order: 48 -> 49 -> 50 -> 51
 | 48. Dry-Run Orchestrator And Result Contract | 2/2 | Complete   | 2026-07-10 |
 | 49. Source, Prepared Audio, Cache, And Voice Readiness | 2/2 | Complete   | 2026-07-10 |
 | 50. Provider, Audio, And Call-Control Health | 2/2 | Complete   | 2026-07-10 |
-| 51. Dry-Run Evidence And Rehearsal Feedback | 0/2 | Not started | - |
+| 51. Dry-Run Evidence And Rehearsal Feedback | 2/2 | Complete   | 2026-07-10 |

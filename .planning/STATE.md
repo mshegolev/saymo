@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.14
 milestone_name: Call Dry-Run To Real Call
-current_phase: 50
-current_phase_name: Provider, Audio, And Call-Control Health
+current_phase: 51
+current_phase_name: Dry-Run Evidence And Rehearsal Feedback
 current_plan: 02
 status: ready_for_verification
-stopped_at: Completed 50-provider-audio-and-call-control-health-02-PLAN.md
-last_updated: "2026-07-10T14:06:43.868Z"
-last_activity: 2026-07-10 - Completed 50-02 GREEN implementation for provider/audio/control dry-run health.
+stopped_at: Completed 51-dry-run-evidence-and-rehearsal-feedback-02-PLAN.md
+last_updated: "2026-07-10T14:50:30.549Z"
+last_activity: 2026-07-10 - Completed 51-02 GREEN implementation for dry-run evidence comparison and rehearsal feedback.
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 4
+  total_plans: 8
+  completed_plans: 8
   percent: 100
 ---
 
@@ -25,26 +25,26 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Phase 50 Provider, Audio, And Call-Control Health is complete and ready for verification.
+**Current focus:** Phase 51 Dry-Run Evidence And Rehearsal Feedback is complete and ready for verification.
 
 ## Current Position
 
-Current Phase: 50
-Current Phase Name: Provider, Audio, And Call-Control Health
+Current Phase: 51
+Current Phase Name: Dry-Run Evidence And Rehearsal Feedback
 Total Phases: 4
 Current Plan: 02
 Total Plans in Phase: 2
-Status: Ready for Phase 50 verification after completing Plan 50-02
-Last activity: 2026-07-10 - Completed 50-02 GREEN implementation for provider/audio/control dry-run health.
+Status: Ready for Phase 51 verification after completing Plan 51-02
+Last activity: 2026-07-10 - Completed 51-02 GREEN implementation for dry-run evidence comparison and rehearsal feedback.
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6 in v1.14
-- Average duration: 5.7min
-- Total execution time: 34min
+- Total plans completed: 8 in v1.14
+- Average duration: 6.3min
+- Total execution time: 50min
 
 **By Phase:**
 
@@ -53,11 +53,12 @@ Progress: [██████████] 100%
 | 48. Dry-Run Orchestrator And Result Contract | 2/2 | 7min | 3.5min |
 | 49. Source, Prepared Audio, Cache, And Voice Readiness | 2/2 | 15min | 7.5min |
 | 50. Provider, Audio, And Call-Control Health | 2/2 | 12min | 6min |
-| 51. Dry-Run Evidence And Rehearsal Feedback | TBD | - | - |
+| 51. Dry-Run Evidence And Rehearsal Feedback | 2/2 | 16min | 8min |
 | Phase 49 P01 | 6min | 2 tasks | 4 files |
 | Phase 49 P02 | 9min | 2 tasks | 4 files |
 | Phase 50-provider-audio-and-call-control-health P01 | 7min | 2 tasks | 5 files |
 | Phase 50-provider-audio-and-call-control-health P02 | 5min | 2 tasks | 2 files |
+| Phase 51-dry-run-evidence-and-rehearsal-feedback P02 | 11min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -94,10 +95,14 @@ Recent decisions affecting current work:
 - [Phase 50-provider-audio-and-call-control-health]: Kept provider/audio dry-run support as optional rerun_command and mode parameters instead of adding a separate diagnostics subsystem.
 - [Phase 50-provider-audio-and-call-control-health]: Preserved call-ready monkeypatch compatibility by sending new provider/audio kwargs only when dry-run context is supported.
 - [Phase 50-provider-audio-and-call-control-health]: Left saymo/analysis/launch_agent.py unchanged because Task 2 RED contracts already passed with existing classification/action wording.
+- [Phase 51-dry-run-evidence-and-rehearsal-feedback]: Kept comparison flat and read-only: explicit --current/--previous, stdout-only machine output, and no directory latest inference.
+- [Phase 51-dry-run-evidence-and-rehearsal-feedback]: Reused the existing launch-readiness artifact schema and LaunchEvidence loader for dry-run evidence everywhere.
+- [Phase 51-dry-run-evidence-and-rehearsal-feedback]: Kept rehearsal artifacts compact by storing path/status/counts/labels/reruns only, never raw launch checks.
+- [Phase 51-dry-run-evidence-and-rehearsal-feedback]: Left safety-soak parser logic unchanged; scorecard fallback supplies launch metrics through the existing path.
 
 ### Pending Todos
 
-- Verify Phase 50 or plan Phase 51 Dry-Run Evidence And Rehearsal Feedback.
+- Verify completed v1.14 milestone or archive milestone if accepted.
 
 ### Blockers/Concerns
 
@@ -109,6 +114,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-07-10T14:06:43.865Z
-Stopped at: Completed 50-provider-audio-and-call-control-health-02-PLAN.md
+Last session: 2026-07-10T14:50:30.545Z
+Stopped at: Completed 51-dry-run-evidence-and-rehearsal-feedback-02-PLAN.md
 Resume file: None
