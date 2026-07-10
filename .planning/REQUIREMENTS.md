@@ -18,24 +18,24 @@ launch path through one operator dry-run flow before starting `saymo auto`.
 
 ### Source Data And Prepared Audio
 
-- [ ] **SRC-01**: User can have the dry-run verify or create the selected
+- [x] **SRC-01**: User can have the dry-run verify or create the selected
   Obsidian daily note for the active profile without overwriting existing note
   content.
-- [ ] **SRC-02**: User can see whether prepared standup audio matches the
+- [x] **SRC-02**: User can see whether prepared standup audio matches the
   selected daily-note/source hash, voice profile, and F5 source-type preset
   metadata.
-- [ ] **SRC-03**: User can get targeted repair commands for missing or stale
+- [x] **SRC-03**: User can get targeted repair commands for missing or stale
   prepared audio, including `saymo prepare -p <profile>` and review guidance
   when needed.
 
 ### Cache And Voice Readiness
 
-- [ ] **CACHE-01**: User can see response-cache coverage and staleness for the
+- [x] **CACHE-01**: User can see response-cache coverage and staleness for the
   active profile using source-aware F5 `response_cache` metadata.
-- [ ] **CACHE-02**: User can get targeted response-cache repair guidance such
+- [x] **CACHE-02**: User can get targeted response-cache repair guidance such
   as `saymo prepare-responses -p <profile>` without automatic rebuilds or
   `--force` by default.
-- [ ] **VOICE-01**: User can verify approved cloned-voice profile readiness and
+- [x] **VOICE-01**: User can verify approved cloned-voice profile readiness and
   stale voice metadata before launch without touching voice training data or
   model checkpoints.
 
@@ -96,12 +96,12 @@ launch path through one operator dry-run flow before starting `saymo auto`.
 | DRY-01 | Phase 48 | Complete |
 | DRY-02 | Phase 48 | Complete |
 | DRY-03 | Phase 48 | Complete |
-| SRC-01 | Phase 49 | Pending |
-| SRC-02 | Phase 49 | Pending |
-| SRC-03 | Phase 49 | Pending |
-| CACHE-01 | Phase 49 | Pending |
-| CACHE-02 | Phase 49 | Pending |
-| VOICE-01 | Phase 49 | Pending |
+| SRC-01 | Phase 49 | Complete |
+| SRC-02 | Phase 49 | Complete |
+| SRC-03 | Phase 49 | Complete |
+| CACHE-01 | Phase 49 | Complete |
+| CACHE-02 | Phase 49 | Complete |
+| VOICE-01 | Phase 49 | Complete |
 | ENV-01 | Phase 50 | Pending |
 | ENV-02 | Phase 50 | Pending |
 | ENV-03 | Phase 50 | Pending |

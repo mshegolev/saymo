@@ -51,9 +51,9 @@ Plans:
   3. User can see response-cache coverage and staleness for the active profile using source-aware F5 `response_cache` metadata.
   4. User can verify approved cloned-voice profile readiness and stale voice metadata without touching training data or model checkpoints.
   5. User can read targeted repair guidance such as `saymo prepare -p <profile>` and `saymo prepare-responses -p <profile>` without automatic rebuilds or default `--force` use.
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 49-01-PLAN.md - RED tests for dry-run source flag, source/prepared/cache/voice metadata, targeted repair guidance, and safety guards.
+- [x] 49-01-PLAN.md - RED tests for dry-run source flag, source/prepared/cache/voice metadata, targeted repair guidance, and safety guards.
 - [ ] 49-02-PLAN.md - GREEN implementation of dry-run source-only preparation, caller-aware readiness routing, and safe metadata/actions.
 
 ### Phase 50: Provider, Audio, And Call-Control Health
@@ -108,6 +108,6 @@ Phases execute in numeric order: 48 -> 49 -> 50 -> 51
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 48. Dry-Run Orchestrator And Result Contract | 2/2 | Complete   | 2026-07-10 |
-| 49. Source, Prepared Audio, Cache, And Voice Readiness | 0/2 | Planned | - |
+| 49. Source, Prepared Audio, Cache, And Voice Readiness | 1/2 | In Progress|  |
 | 50. Provider, Audio, And Call-Control Health | 0/TBD | Not started | - |
 | 51. Dry-Run Evidence And Rehearsal Feedback | 0/TBD | Not started | - |
