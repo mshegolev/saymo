@@ -2,7 +2,22 @@
 
 ## Current
 
-No active milestone. Start the next milestone with `$gsd-new-milestone`.
+### v1.14 Call Dry-Run To Real Call
+
+**Started:** 2026-07-10
+**Status:** Active
+
+Focus: make Saymo reliably prepare, validate, and prove a real standup launch
+path through one operator dry-run flow before starting `saymo auto`.
+
+Planned:
+- One profile/provider dry-run command with a concise ready/not-ready result.
+- Read-only source, prepared-audio, response-cache, and cloned-voice readiness
+  diagnostics with targeted explicit repair commands.
+- Provider, audio-routing, and call-control health checks with no automatic
+  provider repair.
+- Sanitized dry-run evidence that feeds rehearsal, scorecard, safety-soak, and
+  latest-vs-previous readiness comparison.
 
 ## Completed
 

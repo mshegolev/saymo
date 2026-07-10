@@ -93,18 +93,18 @@ launch path through one operator dry-run flow before starting `saymo auto`.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DRY-01 | TBD | Pending |
-| DRY-02 | TBD | Pending |
-| DRY-03 | TBD | Pending |
-| SRC-01 | TBD | Pending |
-| SRC-02 | TBD | Pending |
-| SRC-03 | TBD | Pending |
-| CACHE-01 | TBD | Pending |
-| CACHE-02 | TBD | Pending |
-| VOICE-01 | TBD | Pending |
-| ENV-01 | TBD | Pending |
-| ENV-02 | TBD | Pending |
-| ENV-03 | TBD | Pending |
-| EVID-01 | TBD | Pending |
-| EVID-02 | TBD | Pending |
-| EVID-03 | TBD | Pending |
+| DRY-01 | Phase 48 | Pending |
+| DRY-02 | Phase 48 | Pending |
+| DRY-03 | Phase 48 | Pending |
+| SRC-01 | Phase 49 | Pending |
+| SRC-02 | Phase 49 | Pending |
+| SRC-03 | Phase 49 | Pending |
+| CACHE-01 | Phase 49 | Pending |
+| CACHE-02 | Phase 49 | Pending |
+| VOICE-01 | Phase 49 | Pending |
+| ENV-01 | Phase 50 | Pending |
+| ENV-02 | Phase 50 | Pending |
+| ENV-03 | Phase 50 | Pending |
+| EVID-01 | Phase 51 | Pending |
+| EVID-02 | Phase 51 | Pending |
+| EVID-03 | Phase 51 | Pending |
