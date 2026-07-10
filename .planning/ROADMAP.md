@@ -23,7 +23,7 @@ scorecards, and safety-soak.
 
 - [x] **Phase 48: Dry-Run Orchestrator And Result Contract** - Users can run one non-destructive profile/provider dry-run and see a concise ready/not-ready result. (completed 2026-07-10)
 - [x] **Phase 49: Source, Prepared Audio, Cache, And Voice Readiness** - Users can verify daily notes, prepared audio, response-cache coverage, and cloned-voice metadata with targeted repair guidance. (completed 2026-07-10)
-- [ ] **Phase 50: Provider, Audio, And Call-Control Health** - Users can verify provider, Chrome, BlackHole, audio routing, and LaunchAgent health without automatic provider repair.
+- [x] **Phase 50: Provider, Audio, And Call-Control Health** - Users can verify provider, Chrome, BlackHole, audio routing, and LaunchAgent health without automatic provider repair. (completed 2026-07-10)
 - [ ] **Phase 51: Dry-Run Evidence And Rehearsal Feedback** - Users can save sanitized dry-run evidence, feed it into reliability tools, and compare readiness changes.
 
 ## Phase Details
@@ -65,10 +65,10 @@ Plans:
   2. User can see call-control daemon and LaunchAgent health, including heartbeat freshness, hotkey availability, and stale plist status.
   3. User can get exact restart, probe, and safe remediation commands for provider, audio, and control blockers.
   4. User can trust dry-run diagnostics not to kill apps, change meeting state, switch devices, or automatically repair provider state.
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 50-01-PLAN.md - RED tests for dry-run provider/audio/control diagnostics, exact remediation commands, call-ready compatibility, and no-auto-repair guards.
-- [ ] 50-02-PLAN.md - GREEN implementation for provider/audio dry-run rerun/action routing and call-control action clarity/safety.
+- [x] 50-02-PLAN.md - GREEN implementation for provider/audio dry-run rerun/action routing and call-control action clarity/safety.
 
 ### Phase 51: Dry-Run Evidence And Rehearsal Feedback
 **Goal**: User can inspect sanitized dry-run evidence, reuse it in rehearsal/scorecard/safety-soak gates, and compare readiness changes before the real call.
@@ -112,5 +112,5 @@ Phases execute in numeric order: 48 -> 49 -> 50 -> 51
 |-------|----------------|--------|-----------|
 | 48. Dry-Run Orchestrator And Result Contract | 2/2 | Complete   | 2026-07-10 |
 | 49. Source, Prepared Audio, Cache, And Voice Readiness | 2/2 | Complete   | 2026-07-10 |
-| 50. Provider, Audio, And Call-Control Health | 1/2 | In Progress|  |
+| 50. Provider, Audio, And Call-Control Health | 2/2 | Complete   | 2026-07-10 |
 | 51. Dry-Run Evidence And Rehearsal Feedback | 0/TBD | Not started | - |
