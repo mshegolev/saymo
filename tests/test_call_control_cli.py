@@ -386,3 +386,4 @@ def test_call_control_agent_status_json_is_read_only(tmp_path, monkeypatch):
         for token in {"bootstrap", "bootout", "kickstart"}
     )
     assert not (home / ".saymo" / "live_control" / "daily" / "commands.jsonl").exists()
+    assert not (home / ".saymo" / "live_control" / "daily" / "audit.jsonl").exists()

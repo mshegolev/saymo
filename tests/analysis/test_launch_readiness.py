@@ -1356,6 +1356,271 @@ def test_call_control_hotkey_readiness_uses_permission_category(tmp_path, monkey
     assert hotkeys.rerun == "saymo call-control-agent status -p standup"
 
 
+def test_dry_run_call_control_status_is_read_only_and_actionable(
+    tmp_path,
+    monkeypatch,
+):
+    from saymo.analysis import (
+        control_daemon,
+        launch_agent,
+        launch_cache,
+        launch_sources,
+        provider_audio_readiness,
+    )
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        collect_launch_readiness,
+    )
+
+    config = load_config(config_path=str(_write_config(tmp_path)))
+
+    monkeypatch.setattr(
+        launch_sources,
+        "collect_daily_note_checks",
+        lambda config,
+        profile,
+        *,
+        provider_name,
+        prepare,
+        rerun_command=None,
+        create_note_action=None: (),
+    )
+    monkeypatch.setattr(
+        launch_sources,
+        "collect_prepared_audio_check",
+        lambda config,
+        profile,
+        *,
+        provider_name,
+        team_mode,
+        source_sha256,
+        rerun_command=None: LaunchReadinessCheck(
+            key="prepared_standup_audio",
+            label="prepared standup audio",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_response_cache_check",
+        lambda config,
+        *,
+        profile,
+        provider_name,
+        rerun_command=None: LaunchReadinessCheck(
+            key="response_cache_coverage",
+            label="response cache coverage",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_voice_metadata_check",
+        lambda config,
+        *,
+        profile,
+        provider_name,
+        rerun_command=None: LaunchReadinessCheck(
+            key="cloned_voice_metadata",
+            label="cloned voice metadata",
+            severity="block",
+            ok=True,
+        ),
+    )
+    monkeypatch.setattr(
+        provider_audio_readiness,
+        "collect_provider_audio_checks",
+        lambda config,
+        *,
+        profile,
+        provider_name,
+        rerun_command=None,
+        mode="call-ready": (),
+    )
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("dry-run launch readiness must read status only")
+
+    for name in (
+        "install_launch_agent",
+        "uninstall_launch_agent",
+        "start_launch_agent",
+        "stop_launch_agent",
+        "restart_launch_agent",
+        "bootstrap_argv",
+        "bootout_argv",
+        "kickstart_argv",
+    ):
+        monkeypatch.setattr(launch_agent, name, forbidden)
+    monkeypatch.setattr(control_daemon, "run_handbrake_reachability_probe", forbidden)
+    monkeypatch.setattr(launch_agent, "build_launch_agent_spec", lambda profile: "spec")
+
+    def status(
+        classification,
+        *,
+        installed=True,
+        plist_current=True,
+        loaded=True,
+        heartbeat_fresh=True,
+        running=False,
+        hotkeys_active=False,
+        hotkey_registration_status="unknown",
+        detail="status detail",
+        action="saymo call-control-agent status -p standup",
+    ):
+        return type(
+            "Status",
+            (),
+            {
+                "profile": "standup",
+                "label": "com.saymo.call-control.standup",
+                "plist_path": "/tmp/com.saymo.call-control.standup.plist",
+                "stdout_log_path": "/tmp/standup/logs/out.log",
+                "stderr_log_path": "/tmp/standup/logs/err.log",
+                "installed": installed,
+                "plist_current": plist_current,
+                "loaded": loaded,
+                "heartbeat_fresh": heartbeat_fresh,
+                "running": running,
+                "hotkeys_active": hotkeys_active,
+                "hotkey_registration_status": hotkey_registration_status,
+                "classification": classification,
+                "detail": detail,
+                "action": action,
+                "rerun": "saymo call-control-agent status -p standup",
+                "metadata": {"bindings_count": 3},
+            },
+        )()
+
+    scenarios = [
+        (
+            status(
+                "not_installed",
+                installed=False,
+                plist_current=False,
+                loaded=False,
+                heartbeat_fresh=False,
+                detail="LaunchAgent plist is not installed.",
+                action="saymo call-control-agent install -p standup",
+            ),
+            {
+                "agent_action": "saymo call-control-agent install -p standup",
+                "daemon_action": "saymo call-control-agent install -p standup",
+                "hotkey_action": "saymo call-control-agent install -p standup",
+                "hotkey_category": "call-control",
+            },
+        ),
+        (
+            status(
+                "installed_not_loaded",
+                loaded=False,
+                heartbeat_fresh=False,
+                detail="LaunchAgent plist is installed but not loaded in the GUI domain.",
+                action="saymo call-control-agent start -p standup",
+            ),
+            {
+                "agent_action": "saymo call-control-agent start -p standup",
+                "daemon_action": "saymo call-control-agent start -p standup",
+                "hotkey_action": "saymo call-control-agent start -p standup",
+                "hotkey_category": "call-control",
+            },
+        ),
+        (
+            status(
+                "stale_heartbeat",
+                heartbeat_fresh=False,
+                detail="LaunchAgent is loaded but daemon heartbeat is missing or stale.",
+                action="saymo call-control-agent restart -p standup",
+            ),
+            {
+                "agent_action": "saymo call-control-agent restart -p standup",
+                "daemon_action": "saymo call-control-agent restart -p standup",
+                "hotkey_action": "saymo call-control-agent restart -p standup",
+                "hotkey_category": "call-control",
+            },
+        ),
+        (
+            status(
+                "running",
+                running=True,
+                hotkeys_active=True,
+                hotkey_registration_status="ok",
+                detail="LaunchAgent is loaded and daemon heartbeat is fresh.",
+                action="none",
+            ),
+            {
+                "agent_action": "none",
+                "daemon_action": "saymo call-control probe -p standup",
+                "hotkey_action": "none",
+                "hotkey_category": "call-control",
+            },
+        ),
+        (
+            status(
+                "hotkey_permission_blocked",
+                running=True,
+                hotkeys_active=False,
+                hotkey_registration_status="blocked",
+                detail=(
+                    "Daemon heartbeat reports hotkey registration blocked: "
+                    "Accessibility denied"
+                ),
+                action=(
+                    "grant Accessibility permission, then "
+                    "saymo call-control-agent restart -p standup"
+                ),
+            ),
+            {
+                "agent_action": (
+                    "grant Accessibility permission, then "
+                    "saymo call-control-agent restart -p standup"
+                ),
+                "daemon_action": "saymo call-control probe -p standup",
+                "hotkey_action": (
+                    "grant Accessibility permission, then "
+                    "saymo call-control-agent restart -p standup"
+                ),
+                "hotkey_category": "macos-permission",
+            },
+        ),
+    ]
+
+    pending = [item[0] for item in scenarios]
+    monkeypatch.setattr(
+        launch_agent,
+        "collect_call_control_agent_status",
+        lambda spec: pending.pop(0),
+    )
+
+    for expected_status, expected in scenarios:
+        report = collect_launch_readiness(
+            config,
+            profile="standup",
+            provider_name="glip",
+            mode="dry-run",
+        )
+        agent = _check_by_key(report, "call_control_agent")
+        daemon = _check_by_key(report, "call_control_daemon")
+        hotkeys = _check_by_key(report, "call_control_hotkeys")
+
+        for check in (agent, daemon, hotkeys):
+            assert check.metadata["classification"] == expected_status.classification
+            assert check.metadata["stdout_log_path"].endswith("out.log")
+            assert check.metadata["stderr_log_path"].endswith("err.log")
+
+        assert agent.action == expected["agent_action"]
+        assert agent.rerun == "saymo call-control-agent status -p standup"
+        assert daemon.action == expected["daemon_action"]
+        assert daemon.rerun == "saymo call-control probe -p standup"
+        assert hotkeys.action == expected["hotkey_action"]
+        assert hotkeys.rerun == "saymo call-control-agent status -p standup"
+        assert hotkeys.metadata["category"] == expected["hotkey_category"]
+        if expected_status.hotkey_registration_status == "blocked":
+            assert "Accessibility" in hotkeys.action
+
+
 def test_write_launch_readiness_artifact_adds_phase40_metadata_without_wrapping(
     tmp_path,
 ):

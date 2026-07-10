@@ -328,6 +328,162 @@ def test_status_classifies_status_unavailable_when_diagnostics_error(tmp_path):
     assert "launchctl unavailable" in status.detail
 
 
+def test_status_actions_are_exact_operator_commands(tmp_path):
+    spec = _status_spec(tmp_path)
+    now = _status_now()
+
+    missing = collect_call_control_agent_status(
+        spec,
+        base_dir=tmp_path / "live",
+        now=now,
+        runner=_runner(
+            CommandResult(
+                argv=print_argv(spec),
+                returncode=113,
+                stderr="Could not find service",
+            )
+        ),
+    )
+
+    assert missing.classification == "not_installed"
+    assert missing.action == "saymo call-control-agent install -p daily"
+    assert missing.rerun == "saymo call-control-agent status -p daily"
+
+    _install_expected_plist(spec)
+    installed_not_loaded = collect_call_control_agent_status(
+        spec,
+        base_dir=tmp_path / "live",
+        now=now,
+        runner=_runner(
+            CommandResult(argv=plutil_lint_argv(spec), returncode=0),
+            CommandResult(
+                argv=print_argv(spec),
+                returncode=113,
+                stderr="Could not find service",
+            ),
+        ),
+    )
+
+    assert installed_not_loaded.classification == "installed_not_loaded"
+    assert installed_not_loaded.action == "saymo call-control-agent start -p daily"
+    assert installed_not_loaded.rerun == "saymo call-control-agent status -p daily"
+
+    spec.plist_path.write_bytes(b"outdated plist")
+    drift = collect_call_control_agent_status(
+        spec,
+        base_dir=tmp_path / "live",
+        now=now,
+        runner=_runner(
+            CommandResult(argv=plutil_lint_argv(spec), returncode=0),
+            CommandResult(argv=print_argv(spec), returncode=0),
+        ),
+    )
+
+    assert drift.classification == "plist_drift"
+    assert drift.action == "saymo call-control-agent install -p daily"
+    assert drift.rerun == "saymo call-control-agent status -p daily"
+
+    _install_expected_plist(spec)
+    write_daemon_heartbeat(
+        _heartbeat(spec, now - timedelta(seconds=30)),
+        base_dir=tmp_path / "live",
+    )
+    stale = collect_call_control_agent_status(
+        spec,
+        base_dir=tmp_path / "live",
+        now=now,
+        runner=_runner(
+            CommandResult(argv=plutil_lint_argv(spec), returncode=0),
+            CommandResult(argv=print_argv(spec), returncode=0),
+        ),
+    )
+
+    assert stale.classification == "stale_heartbeat"
+    assert stale.action == "saymo call-control-agent restart -p daily"
+    assert stale.rerun == "saymo call-control-agent status -p daily"
+
+    crash = collect_call_control_agent_status(
+        spec,
+        base_dir=tmp_path / "live",
+        now=now,
+        runner=_runner(
+            CommandResult(argv=plutil_lint_argv(spec), returncode=0),
+            CommandResult(
+                argv=print_argv(spec),
+                returncode=0,
+                stdout="last exit status = 78\nservice throttled by launchd\n",
+            ),
+        ),
+    )
+
+    assert crash.classification == "crash_loop"
+    assert crash.action == (
+        "inspect logs and restart: "
+        f"{spec.stdout_log_path} {spec.stderr_log_path}; "
+        "saymo call-control-agent restart -p daily"
+    )
+    assert crash.rerun == "saymo call-control-agent status -p daily"
+
+    write_daemon_heartbeat(
+        _heartbeat(
+            spec,
+            now,
+            hotkeys_active=False,
+            hotkey_registration_status="blocked",
+            hotkey_registration_detail="Accessibility permission denied",
+        ),
+        base_dir=tmp_path / "live",
+    )
+    blocked = collect_call_control_agent_status(
+        spec,
+        base_dir=tmp_path / "live",
+        now=now,
+        runner=_runner(
+            CommandResult(argv=plutil_lint_argv(spec), returncode=0),
+            CommandResult(argv=print_argv(spec), returncode=0),
+        ),
+    )
+
+    assert blocked.classification == "hotkey_permission_blocked"
+    assert blocked.action == (
+        "grant Accessibility permission, then "
+        "saymo call-control-agent restart -p daily"
+    )
+    assert blocked.rerun == "saymo call-control-agent status -p daily"
+
+    write_daemon_heartbeat(_heartbeat(spec, now), base_dir=tmp_path / "live")
+    running = collect_call_control_agent_status(
+        spec,
+        base_dir=tmp_path / "live",
+        now=now + timedelta(seconds=1),
+        runner=_runner(
+            CommandResult(argv=plutil_lint_argv(spec), returncode=0),
+            CommandResult(argv=print_argv(spec), returncode=0),
+        ),
+    )
+
+    assert running.classification == "running"
+    assert running.action == "none"
+    assert running.rerun == "saymo call-control-agent status -p daily"
+
+    def failing_runner(argv, *, check=False):
+        raise OSError("launchctl unavailable")
+
+    unavailable = collect_call_control_agent_status(
+        spec,
+        base_dir=tmp_path / "live",
+        now=now,
+        runner=failing_runner,
+    )
+
+    assert unavailable.classification == "status_unavailable"
+    assert unavailable.action == (
+        "rerun status after diagnostics are available: "
+        "saymo call-control-agent status -p daily"
+    )
+    assert unavailable.rerun == "saymo call-control-agent status -p daily"
+
+
 def _status_spec(tmp_path):
     return build_launch_agent_spec(
         "daily",
