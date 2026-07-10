@@ -36,17 +36,24 @@ def collect_provider_audio_checks(
     *,
     profile: str,
     provider_name: str,
+    rerun_command: str | None = None,
+    mode: str = "call-ready",
 ) -> tuple[LaunchReadinessCheck, ...]:
     """Collect provider/audio checks for the shared launch gate."""
+    rerun = rerun_command or _rerun(profile, provider_name)
     provider_tab, provider, provider_error = _provider_tab_check_with_context(
         config,
         profile=profile,
         provider_name=provider_name,
+        rerun_command=rerun,
+        mode=mode,
     )
     audio_route_checks = collect_audio_route_checks(
         config,
         profile=profile,
         provider_name=provider_name,
+        rerun_command=rerun,
+        mode=mode,
     )
     return (
         provider_tab,
@@ -56,6 +63,8 @@ def collect_provider_audio_checks(
             profile=profile,
             provider_name=provider_name,
             provider=provider,
+            rerun_command=rerun,
+            mode=mode,
         ),
         *collect_permission_checks(
             config,
@@ -63,6 +72,8 @@ def collect_provider_audio_checks(
             provider_name=provider_name,
             provider_error=provider_error,
             audio_route_checks=audio_route_checks,
+            rerun_command=rerun,
+            mode=mode,
         ),
     )
 
@@ -72,8 +83,12 @@ def collect_audio_route_checks(
     *,
     profile: str,
     provider_name: str,
+    rerun_command: str | None = None,
+    mode: str = "call-ready",
 ) -> tuple[LaunchReadinessCheck, ...]:
     """Check configured audio routes without changing system audio state."""
+    del mode
+    rerun = rerun_command or _rerun(profile, provider_name)
     audio_config = getattr(config, "audio", None)
     capture_name = _config_text(audio_config, "capture_device")
     playback_name = _config_text(audio_config, "playback_device")
@@ -114,7 +129,7 @@ def collect_audio_route_checks(
                 "Run saymo test-devices and set audio.capture_device "
                 "to a visible input device"
             ),
-            rerun=_rerun(profile, provider_name),
+            rerun=rerun,
         ),
         _audio_route_check(
             key="playback_output_device",
@@ -126,7 +141,7 @@ def collect_audio_route_checks(
                 "Run saymo test-devices and set audio.playback_device "
                 "to a visible output device"
             ),
-            rerun=_rerun(profile, provider_name),
+            rerun=rerun,
         ),
         _audio_route_check(
             key="provider_output_blackhole",
@@ -135,7 +150,7 @@ def collect_audio_route_checks(
             kind="output",
             device=provider_output,
             action="Run saymo test-devices and install BlackHole 2ch/16ch if missing",
-            rerun=_rerun(profile, provider_name),
+            rerun=rerun,
         ),
         _audio_route_check(
             key="capture_route_blackhole",
@@ -144,7 +159,7 @@ def collect_audio_route_checks(
             kind="input",
             device=capture_route,
             action="Run saymo test-devices and install BlackHole 2ch/16ch if missing",
-            rerun=_rerun(profile, provider_name),
+            rerun=rerun,
         ),
         _audio_route_check(
             key="recording_microphone_input",
@@ -156,7 +171,7 @@ def collect_audio_route_checks(
                 "Run saymo test-devices and set audio.recording_device "
                 "to the real microphone used for takeover"
             ),
-            rerun=_rerun(profile, provider_name),
+            rerun=rerun,
         ),
     )
 
@@ -166,12 +181,16 @@ def collect_provider_tab_check(
     *,
     profile: str,
     provider_name: str,
+    rerun_command: str | None = None,
+    mode: str = "call-ready",
 ) -> LaunchReadinessCheck:
     """Check whether the configured provider has a meeting tab ready."""
     check, _, _ = _provider_tab_check_with_context(
         config,
         profile=profile,
         provider_name=provider_name,
+        rerun_command=rerun_command,
+        mode=mode,
     )
     return check
 
@@ -182,10 +201,12 @@ def collect_provider_capability_checks(
     profile: str,
     provider_name: str,
     provider: object | None = None,
+    rerun_command: str | None = None,
+    mode: str = "call-ready",
 ) -> tuple[LaunchReadinessCheck, ...]:
     """Report provider capabilities without invoking provider actions."""
     del config
-    rerun = _rerun(profile, provider_name)
+    rerun = rerun_command or _rerun(profile, provider_name)
     if provider is None:
         try:
             provider = provider_factory.get_provider(provider_name)
@@ -197,7 +218,10 @@ def collect_provider_capability_checks(
                     severity="warn",
                     ok=False,
                     detail="provider_capabilities_unavailable",
-                    action="Fix provider configuration, then rerun call-ready.",
+                    action=(
+                        "Fix provider configuration, "
+                        f"{_then_rerun(mode, rerun)}."
+                    ),
                     rerun=rerun,
                     metadata={
                         "category": "provider",
@@ -264,10 +288,12 @@ def collect_permission_checks(
     microphone_permission_blocked: bool = False,
     audio_routing_permission_blocked: bool = False,
     audio_route_checks: tuple[LaunchReadinessCheck, ...] | None = None,
+    rerun_command: str | None = None,
+    mode: str = "call-ready",
 ) -> tuple[LaunchReadinessCheck, ...]:
     """Collect non-destructive macOS permission remediation rows."""
     checks: list[LaunchReadinessCheck] = []
-    rerun = _rerun(profile, provider_name)
+    rerun = rerun_command or _rerun(profile, provider_name)
     if _looks_like_chrome_permission_error(provider_error):
         checks.append(
             _permission_check(
@@ -276,7 +302,7 @@ def collect_permission_checks(
                 detail="chrome_automation_blocked",
                 action=(
                     "Allow Google Chrome automation and terminal Accessibility "
-                    "permissions, then rerun call-ready."
+                    f"permissions, {_then_rerun(mode, rerun)}."
                 ),
                 rerun=rerun,
                 provider_name=provider_name,
@@ -320,7 +346,7 @@ def collect_permission_checks(
                 detail="microphone_capture_permission_blocked",
                 action=(
                     "Allow microphone access for the terminal app running Saymo, "
-                    "then rerun call-ready."
+                    f"{_then_rerun(mode, rerun)}."
                 ),
                 rerun=rerun,
                 provider_name=provider_name,
@@ -335,7 +361,7 @@ def collect_permission_checks(
                 detail="audio_routing_permission_blocked",
                 action=(
                     "Verify BlackHole permissions/routes in macOS Audio MIDI Setup "
-                    "and allow required audio access, then rerun call-ready."
+                    f"and allow required audio access, {_then_rerun(mode, rerun)}."
                 ),
                 rerun=rerun,
                 provider_name=provider_name,
@@ -350,10 +376,12 @@ def _provider_tab_check_with_context(
     *,
     profile: str,
     provider_name: str,
+    rerun_command: str | None = None,
+    mode: str = "call-ready",
 ) -> tuple[LaunchReadinessCheck, object | None, str]:
     """Return provider tab check plus context for follow-on read-only checks."""
     del config
-    rerun = _rerun(profile, provider_name)
+    rerun = rerun_command or _rerun(profile, provider_name)
     try:
         provider = provider_factory.get_provider(provider_name)
     except Exception as exc:
@@ -363,7 +391,10 @@ def _provider_tab_check_with_context(
                     configured_provider=provider_name,
                     provider_name=provider_name,
                     detail="unknown_provider",
-                    action="Use a supported provider name, then rerun saymo call-ready",
+                    action=(
+                        "Use a supported provider name, "
+                        f"{_then_rerun(mode, rerun, call_ready_text='then rerun saymo call-ready')}"
+                    ),
                     rerun=rerun,
                     error_type=type(exc).__name__,
                 ),
@@ -377,7 +408,7 @@ def _provider_tab_check_with_context(
                 detail="provider_check_error",
                 action=(
                     "Open Chrome, allow provider automation permissions, "
-                    "then rerun saymo call-ready"
+                    f"{_then_rerun(mode, rerun, call_ready_text='then rerun saymo call-ready')}"
                 ),
                 rerun=rerun,
                 error_type=type(exc).__name__,
@@ -398,7 +429,7 @@ def _provider_tab_check_with_context(
                 detail="provider_check_error",
                 action=(
                     "Open Chrome, allow provider automation permissions, "
-                    "then rerun saymo call-ready"
+                    f"{_then_rerun(mode, rerun, call_ready_text='then rerun saymo call-ready')}"
                 ),
                 rerun=rerun,
                 error_type=type(exc).__name__,
@@ -757,6 +788,17 @@ def _check_device_settings_blocked(check: LaunchReadinessCheck) -> bool:
 
 def _rerun(profile: str, provider_name: str) -> str:
     return f"saymo call-ready -p {profile} --provider {provider_name}"
+
+
+def _then_rerun(
+    mode: str,
+    rerun: str,
+    *,
+    call_ready_text: str = "then rerun call-ready",
+) -> str:
+    if mode == "dry-run":
+        return f"then rerun {rerun}"
+    return call_ready_text
 
 
 def _config_text(config: Any, field: str) -> str:

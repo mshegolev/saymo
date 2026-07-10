@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import json
+import inspect
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -292,11 +293,18 @@ def _collect_phase36_checks(
             **({"rerun_command": rerun_command} if mode == "dry-run" else {}),
         )
     )
+    provider_audio_kwargs = (
+        {"rerun_command": rerun_command, "mode": mode}
+        if mode == "dry-run"
+        and _accepts_provider_audio_context(collect_provider_audio_checks)
+        else {}
+    )
     checks.extend(
         collect_provider_audio_checks(
             config,
             profile=profile,
             provider_name=provider_name,
+            **provider_audio_kwargs,
         )
     )
     checks.extend(_collect_call_control_checks(profile))
@@ -307,6 +315,16 @@ def _launch_rerun_command(mode: str, profile: str, provider_name: str) -> str:
     if mode == "dry-run":
         return f"saymo dry-run -p {profile} --provider {provider_name}"
     return f"saymo call-ready -p {profile} --provider {provider_name}"
+
+
+def _accepts_provider_audio_context(collector) -> bool:
+    try:
+        params = inspect.signature(collector).parameters
+    except (TypeError, ValueError):
+        return True
+    if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in params.values()):
+        return True
+    return "rerun_command" in params and "mode" in params
 
 
 def _source_prepare_action(mode: str, profile: str, provider_name: str) -> str:
