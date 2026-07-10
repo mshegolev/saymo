@@ -22,7 +22,7 @@ scorecards, and safety-soak.
 - Decimal phases (49.1, 49.2): Urgent insertions, if needed later
 
 - [x] **Phase 48: Dry-Run Orchestrator And Result Contract** - Users can run one non-destructive profile/provider dry-run and see a concise ready/not-ready result. (completed 2026-07-10)
-- [ ] **Phase 49: Source, Prepared Audio, Cache, And Voice Readiness** - Users can verify daily notes, prepared audio, response-cache coverage, and cloned-voice metadata with targeted repair guidance.
+- [x] **Phase 49: Source, Prepared Audio, Cache, And Voice Readiness** - Users can verify daily notes, prepared audio, response-cache coverage, and cloned-voice metadata with targeted repair guidance. (completed 2026-07-10)
 - [ ] **Phase 50: Provider, Audio, And Call-Control Health** - Users can verify provider, Chrome, BlackHole, audio routing, and LaunchAgent health without automatic provider repair.
 - [ ] **Phase 51: Dry-Run Evidence And Rehearsal Feedback** - Users can save sanitized dry-run evidence, feed it into reliability tools, and compare readiness changes.
 
@@ -51,10 +51,10 @@ Plans:
   3. User can see response-cache coverage and staleness for the active profile using source-aware F5 `response_cache` metadata.
   4. User can verify approved cloned-voice profile readiness and stale voice metadata without touching training data or model checkpoints.
   5. User can read targeted repair guidance such as `saymo prepare -p <profile>` and `saymo prepare-responses -p <profile>` without automatic rebuilds or default `--force` use.
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 49-01-PLAN.md - RED tests for dry-run source flag, source/prepared/cache/voice metadata, targeted repair guidance, and safety guards.
-- [ ] 49-02-PLAN.md - GREEN implementation of dry-run source-only preparation, caller-aware readiness routing, and safe metadata/actions.
+- [x] 49-02-PLAN.md - GREEN implementation of dry-run source-only preparation, caller-aware readiness routing, and safe metadata/actions.
 
 ### Phase 50: Provider, Audio, And Call-Control Health
 **Goal**: User can prove provider, Chrome tab, BlackHole routing, playback/capture devices, and call-control LaunchAgent health before joining a call, while repairs remain explicit.
@@ -108,6 +108,6 @@ Phases execute in numeric order: 48 -> 49 -> 50 -> 51
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 48. Dry-Run Orchestrator And Result Contract | 2/2 | Complete   | 2026-07-10 |
-| 49. Source, Prepared Audio, Cache, And Voice Readiness | 1/2 | In Progress|  |
+| 49. Source, Prepared Audio, Cache, And Voice Readiness | 2/2 | Complete   | 2026-07-10 |
 | 50. Provider, Audio, And Call-Control Health | 0/TBD | Not started | - |
 | 51. Dry-Run Evidence And Rehearsal Feedback | 0/TBD | Not started | - |
