@@ -75,8 +75,25 @@ objective speech-rate and pause-distribution metrics, per-source F5 pause
 presets, source-aware cache fingerprints, and sanitized cache-status/readiness
 diagnostics for targeted explicit regeneration.
 
-**Status:** v1.13 F5 Prosody Metrics is shipped and archived. No active
-milestone is currently open.
+**Status:** Active milestone v1.14 Call Dry-Run To Real Call is defining a
+one-command operator path from local readiness checks to safe real-call launch.
+
+## Current Milestone: v1.14 Call Dry-Run To Real Call
+
+**Goal:** Make Saymo reliably prepare, validate, and prove a real standup
+launch path through one operator dry-run flow before starting `saymo auto`.
+
+**Target features:**
+- One profile/provider dry-run command that verifies daily note, prepared audio,
+  response cache, cloned-voice metadata, provider tab, audio routing, and
+  call-control health.
+- Safe source-data repair guidance for Obsidian daily notes and prepared
+  standup audio without overwriting existing notes or touching protected voice
+  assets automatically.
+- Profile-targeted cache repair prompts for prepared audio and response-cache
+  variants, using existing source-aware F5 metadata and no automatic rebuilds.
+- Sanitized dry-run/rehearsal evidence that feeds scorecards and safety-soak so
+  the operator can see whether the next real call is launch-ready.
 
 ## Last Completed Milestone: v1.13 F5 Prosody Metrics
 
@@ -457,4 +474,4 @@ playback, and regression replay.
 | Resolve pause presets by answer source | Prepared notes, response-cache variants, and spontaneous approved answers need different pacing while keeping profile/global fallback clear | Implemented in v1.13 |
 
 ---
-*Last updated: 2026-07-09 after completing milestone v1.13*
+*Last updated: 2026-07-10 after starting milestone v1.14*

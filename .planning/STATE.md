@@ -1,20 +1,20 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.13
-milestone_name: F5 Prosody Metrics
-current_phase: 47 of 47
-current_phase_name: Source-Type Pause Presets
-current_plan: 3
-status: completed
-stopped_at: Completed v1.13 milestone archive
-last_updated: "2026-07-09T21:04:08.363Z"
-last_activity: 2026-07-09
+milestone: v1.14
+milestone_name: Call Dry-Run To Real Call
+current_phase: Not started
+current_phase_name: Defining requirements
+current_plan: —
+status: defining_requirements
+stopped_at: Started v1.14 milestone
+last_updated: "2026-07-10T00:00:00+04:00"
+last_activity: 2026-07-10 - Started milestone v1.14 Call Dry-Run To Real Call.
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,19 +25,19 @@ See: .planning/PROJECT.md (updated 2026-07-09)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** No active milestone; ready to start the next milestone with `$gsd-new-milestone`.
+**Current focus:** Milestone v1.14 Call Dry-Run To Real Call.
 
 ## Current Position
 
-Current Phase: 47 of 47
-Current Phase Name: Source-Type Pause Presets
-Current Plan: 3
-Total Plans in Phase: 3
-Plans: 47-01-PLAN.md, 47-02-PLAN.md, 47-03-PLAN.md
-Status: Complete and archived
-Last Activity: 2026-07-09
+Current Phase: Not started
+Current Phase Name: Defining requirements
+Current Plan: —
+Total Plans in Phase: —
+Plans: —
+Status: Defining requirements
+Last Activity: 2026-07-10 - Started milestone v1.14 Call Dry-Run To Real Call.
 
-Progress: [##########] 100%
+Progress: [----------] 0%
 
 ## Performance Metrics
 
@@ -94,7 +94,7 @@ Recent decisions affecting current work:
 - Deferred manual check: run one non-dry-run F5 corpus preview and listen to
   current/candidate WAVs when the operator explicitly wants to touch local
   approved F5 model assets.
-- Start next milestone with `$gsd-new-milestone` when ready.
+- Define requirements and roadmap for v1.14 Call Dry-Run To Real Call.
 
 ### Blockers/Concerns
 
@@ -108,6 +108,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-07-09T21:04:08.363Z
-Stopped at: Completed v1.13 milestone archive
+Last session: 2026-07-10T00:00:00+04:00
+Stopped at: Started v1.14 milestone
 Resume file: None
