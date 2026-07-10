@@ -35,6 +35,7 @@ FORBIDDEN_DRY_RUN_REFERENCES = (
     "_play_cached_audio",
     "_rotate_audio_cache",
     "_prepare",
+    "_prepare_responses",
     "AudioCapture",
     "LocalWhisper",
     "synthesize",
@@ -43,11 +44,14 @@ FORBIDDEN_DRY_RUN_REFERENCES = (
     "delete",
     "unlink",
     "rmtree",
+    "cache.build",
+    "force=True",
     "activate_meeting",
     "toggle_mute",
     "switch_mic",
     "saymo.audio",
     "saymo.providers",
+    "saymo.tts",
 )
 
 
@@ -170,11 +174,19 @@ def test_dry_run_calls_launch_readiness_without_prepare(tmp_path, monkeypatch):
     config_path = _write_config(tmp_path)
     calls = []
 
-    def fake_collect(config, *, profile: str, provider_name: str | None, prepare: bool):
+    def fake_collect(
+        config,
+        *,
+        profile: str,
+        provider_name: str | None,
+        prepare: bool,
+        mode: str = "call-ready",
+    ):
         assert profile == "standup"
         assert provider_name == "glip"
         assert prepare is False
-        calls.append((profile, provider_name, prepare))
+        assert mode == "dry-run"
+        calls.append((profile, provider_name, prepare, mode))
         return _report(ready=True)
 
     monkeypatch.setattr(dry_run_module, "collect_launch_readiness", fake_collect)
@@ -185,22 +197,82 @@ def test_dry_run_calls_launch_readiness_without_prepare(tmp_path, monkeypatch):
     )
 
     assert result.exit_code == 0
-    assert calls == [("standup", "glip", False)]
+    assert calls == [("standup", "glip", False, "dry-run")]
     assert _dry_run_result_lines(result.output) == ["dry-run: ready"]
     _assert_no_private_text(result.output)
 
 
-def test_dry_run_cli_options_and_registration():
+def test_dry_run_prepare_source_calls_launch_readiness_with_prepare_true(
+    tmp_path,
+    monkeypatch,
+):
+    import saymo.commands.dry_run as dry_run_module
+
+    config_path = _write_config(tmp_path)
+    calls = []
+
+    def fake_collect(
+        config,
+        *,
+        profile: str,
+        provider_name: str | None,
+        prepare: bool,
+        mode: str = "call-ready",
+    ):
+        assert prepare is True
+        assert mode == "dry-run"
+        calls.append((profile, provider_name, prepare, mode))
+        return _report(ready=True)
+
+    monkeypatch.setattr(dry_run_module, "collect_launch_readiness", fake_collect)
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "dry-run",
+            "-p",
+            "standup",
+            "--provider",
+            "glip",
+            "--prepare-source",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert calls == [("standup", "glip", True, "dry-run")]
+    assert _dry_run_result_lines(result.output) == ["dry-run: ready"]
+    _assert_no_private_text(result.output)
+
+
+def test_dry_run_cli_options_and_registration(tmp_path):
     assert "dry-run" in COMMANDS_AT_IMPORT
 
     result = CliRunner().invoke(main, ["dry-run", "--help"])
+    config_path = _write_config(tmp_path)
+    prepare_result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "dry-run",
+            "-p",
+            "standup",
+            "--provider",
+            "glip",
+            "--prepare",
+        ],
+    )
 
     assert result.exit_code == 0
     assert "-p, --profile" in result.output
     assert "--provider" in result.output
     assert "--json" in result.output
     assert "--output" in result.output
-    assert "--prepare" not in result.output
+    assert "--prepare-source" in result.output
+    assert prepare_result.exit_code == 2
+    assert "No such option: --prepare" in prepare_result.output
 
 
 def test_dry_run_prints_top_level_result_and_exit_code(tmp_path, monkeypatch):
@@ -211,7 +283,9 @@ def test_dry_run_prints_top_level_result_and_exit_code(tmp_path, monkeypatch):
     monkeypatch.setattr(
         dry_run_module,
         "collect_launch_readiness",
-        lambda config, *, profile, provider_name, prepare: next(reports),
+        lambda config, *, profile, provider_name, prepare, mode="call-ready": next(
+            reports
+        ),
     )
 
     ready = CliRunner().invoke(
@@ -238,7 +312,9 @@ def test_dry_run_groups_remediation_with_rerun_commands(tmp_path, monkeypatch):
     monkeypatch.setattr(
         dry_run_module,
         "collect_launch_readiness",
-        lambda config, *, profile, provider_name, prepare: _remediation_report(),
+        lambda config, *, profile, provider_name, prepare, mode="call-ready": (
+            _remediation_report()
+        ),
     )
 
     result = CliRunner().invoke(
@@ -266,7 +342,9 @@ def test_dry_run_json_is_sanitized_machine_contract(tmp_path, monkeypatch):
     monkeypatch.setattr(
         dry_run_module,
         "collect_launch_readiness",
-        lambda config, *, profile, provider_name, prepare: _report(ready=True),
+        lambda config, *, profile, provider_name, prepare, mode="call-ready": _report(
+            ready=True
+        ),
     )
 
     result = CliRunner().invoke(
@@ -307,7 +385,9 @@ def test_dry_run_output_artifact_uses_dry_run_mode(tmp_path, monkeypatch):
     monkeypatch.setattr(
         dry_run_module,
         "collect_launch_readiness",
-        lambda config, *, profile, provider_name, prepare: _report(ready=False),
+        lambda config, *, profile, provider_name, prepare, mode="call-ready": _report(
+            ready=False
+        ),
     )
 
     result = CliRunner().invoke(
@@ -345,7 +425,6 @@ def test_dry_run_has_no_prepare_path(tmp_path):
     import saymo.commands.dry_run  # noqa: F401
 
     config_path = _write_config(tmp_path)
-    help_result = CliRunner().invoke(main, ["dry-run", "--help"])
     prepare_result = CliRunner().invoke(
         main,
         [
@@ -360,8 +439,6 @@ def test_dry_run_has_no_prepare_path(tmp_path):
         ],
     )
 
-    assert help_result.exit_code == 0
-    assert "--prepare" not in help_result.output
     assert prepare_result.exit_code == 2
     assert "No such option: --prepare" in prepare_result.output
 
