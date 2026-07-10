@@ -7,12 +7,12 @@ launch path through one operator dry-run flow before starting `saymo auto`.
 
 ### Dry-Run Flow
 
-- [ ] **DRY-01**: User can run one profile/provider dry-run command that
+- [x] **DRY-01**: User can run one profile/provider dry-run command that
   verifies whether Saymo is ready for the next real standup without starting
   realtime mode.
-- [ ] **DRY-02**: User can see one concise `ready` or `not ready` result with
+- [x] **DRY-02**: User can see one concise `ready` or `not ready` result with
   grouped blockers, warnings, exact actions, and rerun commands.
-- [ ] **DRY-03**: User can run the dry-run without synthesizing audio, playing
+- [x] **DRY-03**: User can run the dry-run without synthesizing audio, playing
   audio, deleting cache artifacts, retraining, downloading voice models, or
   mutating protected `.saymo` assets automatically.
 
@@ -93,9 +93,9 @@ launch path through one operator dry-run flow before starting `saymo auto`.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DRY-01 | Phase 48 | Pending |
-| DRY-02 | Phase 48 | Pending |
-| DRY-03 | Phase 48 | Pending |
+| DRY-01 | Phase 48 | Complete |
+| DRY-02 | Phase 48 | Complete |
+| DRY-03 | Phase 48 | Complete |
 | SRC-01 | Phase 49 | Pending |
 | SRC-02 | Phase 49 | Pending |
 | SRC-03 | Phase 49 | Pending |
