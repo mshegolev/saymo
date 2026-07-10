@@ -34,6 +34,7 @@ Archives:
 - `.planning/milestones/v1.14-ROADMAP.md`
 - `.planning/milestones/v1.14-REQUIREMENTS.md`
 - `.planning/milestones/v1.14-MILESTONE-AUDIT.md`
+- `.planning/milestones/v1.14-phases/`
 
 ### v1.13 F5 Prosody Metrics
 
