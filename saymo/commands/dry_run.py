@@ -5,6 +5,11 @@ from pathlib import Path
 
 import click
 
+from saymo.analysis.launch_evidence import (
+    compare_launch_evidence_paths,
+    launch_evidence_comparison_to_json,
+    render_launch_evidence_comparison,
+)
 from saymo.analysis.launch_readiness import (
     collect_launch_readiness,
     render_launch_readiness,
@@ -57,3 +62,37 @@ def dry_run(ctx, profile, provider, prepare_source, json_output, output):
             click.echo(f"artifact: {artifact_path}")
 
     raise click.exceptions.Exit(0 if report.ready else 1)
+
+
+@main.command("dry-run-compare")
+@click.option(
+    "--current",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option(
+    "--previous",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option("--json", "json_output", is_flag=True, help="Print JSON output")
+def dry_run_compare(current, previous, json_output):
+    """Compare two saved dry-run/launch-readiness JSON artifacts."""
+    try:
+        comparison = compare_launch_evidence_paths(current=current, previous=previous)
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        raise click.ClickException(f"launch evidence unreadable: {exc}") from exc
+
+    if json_output:
+        click.echo(
+            json.dumps(
+                launch_evidence_comparison_to_json(comparison),
+                ensure_ascii=False,
+            )
+        )
+    else:
+        console.print(
+            render_launch_evidence_comparison(comparison),
+            markup=False,
+            soft_wrap=True,
+        )

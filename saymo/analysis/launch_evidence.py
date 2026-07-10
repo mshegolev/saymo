@@ -60,6 +60,27 @@ class LaunchEvidence:
     checks: tuple[dict[str, Any], ...] = ()
 
 
+@dataclass(frozen=True)
+class LaunchEvidenceComparison:
+    """Normalized difference between two saved launch-readiness artifacts."""
+
+    current_path: str
+    previous_path: str
+    status: str
+    ready_change: str
+    block_delta: int
+    warn_delta: int
+    resolved_failures: tuple[str, ...] = ()
+    new_failures: tuple[str, ...] = ()
+    blocker_category_deltas: dict[str, int] = field(default_factory=dict)
+    cache_deltas: dict[str, int] = field(default_factory=dict)
+    provider_change: str = "unchanged"
+    daemon_change: str = "unchanged"
+    rerun_commands_added: tuple[str, ...] = ()
+    rerun_commands_removed: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+
+
 def load_launch_evidence(path: str | Path) -> LaunchEvidence:
     """Load one saved launch-readiness artifact without running checks."""
     artifact_path = Path(path).expanduser()
@@ -67,6 +88,178 @@ def load_launch_evidence(path: str | Path) -> LaunchEvidence:
     if not isinstance(data, Mapping):
         data = {}
     return summarize_launch_evidence(data, path=artifact_path)
+
+
+def compare_launch_evidence_paths(
+    *,
+    current: str | Path,
+    previous: str | Path,
+) -> LaunchEvidenceComparison:
+    """Compare two saved launch-readiness artifacts without running checks."""
+    current_path = Path(current).expanduser()
+    previous_path = Path(previous).expanduser()
+    if not current_path.exists():
+        raise ValueError(f"launch evidence not found: {current_path}")
+    if not previous_path.exists():
+        raise ValueError(f"launch evidence not found: {previous_path}")
+    try:
+        current_evidence = load_launch_evidence(current_path)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"launch evidence invalid: {current_path}") from exc
+    try:
+        previous_evidence = load_launch_evidence(previous_path)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"launch evidence invalid: {previous_path}") from exc
+    return compare_launch_evidence(current_evidence, previous_evidence)
+
+
+def compare_launch_evidence(
+    current: LaunchEvidence,
+    previous: LaunchEvidence,
+) -> LaunchEvidenceComparison:
+    """Return normalized readiness deltas for two loaded evidence artifacts."""
+    ready_change = _ready_change(current.ready, previous.ready)
+    block_delta = current.block_count - previous.block_count
+    warn_delta = current.warn_count - previous.warn_count
+    previous_failed = set(previous.failed_labels)
+    current_failed = set(current.failed_labels)
+    resolved_failures = tuple(
+        label for label in previous.failed_labels if label not in current_failed
+    )
+    new_failures = tuple(
+        label for label in current.failed_labels if label not in previous_failed
+    )
+    blocker_category_deltas = _dict_delta(
+        current.blocker_categories,
+        previous.blocker_categories,
+    )
+    cache_deltas = _dict_delta(current.cache_counts, previous.cache_counts)
+    provider_change = _status_change(
+        _bool_state(_provider_ready_from_status(current.provider_status)),
+        _bool_state(_provider_ready_from_status(previous.provider_status)),
+    )
+    daemon_change = _status_change(
+        _bool_state(_daemon_ready_from_status(current.daemon_status)),
+        _bool_state(_daemon_ready_from_status(previous.daemon_status)),
+    )
+    previous_reruns = set(previous.rerun_commands)
+    current_reruns = set(current.rerun_commands)
+    rerun_commands_added = tuple(
+        command for command in current.rerun_commands if command not in previous_reruns
+    )
+    rerun_commands_removed = tuple(
+        command for command in previous.rerun_commands if command not in current_reruns
+    )
+
+    improved = False
+    regressed = False
+
+    if ready_change == "not_ready_to_ready":
+        improved = True
+    elif ready_change == "ready_to_not_ready":
+        regressed = True
+    if block_delta < 0:
+        improved = True
+    elif block_delta > 0:
+        regressed = True
+    if warn_delta < 0:
+        improved = True
+    elif warn_delta > 0:
+        regressed = True
+    if resolved_failures:
+        improved = True
+    if new_failures:
+        regressed = True
+    for delta in blocker_category_deltas.values():
+        if delta < 0:
+            improved = True
+        elif delta > 0:
+            regressed = True
+    for key, delta in cache_deltas.items():
+        if key == "ready":
+            if delta > 0:
+                improved = True
+            elif delta < 0:
+                regressed = True
+        elif key == "missing":
+            if delta < 0:
+                improved = True
+            elif delta > 0:
+                regressed = True
+    for change in (provider_change, daemon_change):
+        if change in {"not_ready_to_ready", "unknown_to_ready", "not_ready_to_unknown"}:
+            improved = True
+        elif change in {"ready_to_not_ready", "unknown_to_not_ready", "ready_to_unknown"}:
+            regressed = True
+    if rerun_commands_removed:
+        improved = True
+    if rerun_commands_added:
+        regressed = True
+
+    return LaunchEvidenceComparison(
+        current_path=current.path,
+        previous_path=previous.path,
+        status=_comparison_status(improved, regressed),
+        ready_change=ready_change,
+        block_delta=block_delta,
+        warn_delta=warn_delta,
+        resolved_failures=resolved_failures,
+        new_failures=new_failures,
+        blocker_category_deltas=blocker_category_deltas,
+        cache_deltas=cache_deltas,
+        provider_change=provider_change,
+        daemon_change=daemon_change,
+        rerun_commands_added=rerun_commands_added,
+        rerun_commands_removed=rerun_commands_removed,
+    )
+
+
+def launch_evidence_comparison_to_json(
+    comparison: LaunchEvidenceComparison,
+) -> dict[str, Any]:
+    """Serialize a comparison without exposing raw check rows."""
+    return {
+        "current_path": comparison.current_path,
+        "previous_path": comparison.previous_path,
+        "status": comparison.status,
+        "ready_change": comparison.ready_change,
+        "block_delta": comparison.block_delta,
+        "warn_delta": comparison.warn_delta,
+        "resolved_failures": list(comparison.resolved_failures),
+        "new_failures": list(comparison.new_failures),
+        "blocker_category_deltas": dict(comparison.blocker_category_deltas),
+        "cache_deltas": dict(comparison.cache_deltas),
+        "provider_change": comparison.provider_change,
+        "daemon_change": comparison.daemon_change,
+        "rerun_commands_added": list(comparison.rerun_commands_added),
+        "rerun_commands_removed": list(comparison.rerun_commands_removed),
+        "warnings": list(comparison.warnings),
+    }
+
+
+def render_launch_evidence_comparison(comparison: LaunchEvidenceComparison) -> str:
+    """Render a compact human-readable readiness comparison."""
+    previous_ready, current_ready = _render_ready_change(comparison.ready_change)
+    return "\n".join(
+        [
+            f"dry-run comparison: {comparison.status}",
+            f"current: {comparison.current_path}",
+            f"previous: {comparison.previous_path}",
+            f"ready: {previous_ready} -> {current_ready}",
+            f"blocks: {comparison.block_delta}",
+            f"warnings: {comparison.warn_delta}",
+            f"resolved: {_render_list(comparison.resolved_failures)}",
+            f"new: {_render_list(comparison.new_failures)}",
+            "blocker category deltas: "
+            + _render_mapping(comparison.blocker_category_deltas),
+            f"cache deltas: {_render_mapping(comparison.cache_deltas)}",
+            f"provider: {comparison.provider_change}",
+            f"daemon: {comparison.daemon_change}",
+            f"rerun commands added: {_render_list(comparison.rerun_commands_added)}",
+            f"rerun commands removed: {_render_list(comparison.rerun_commands_removed)}",
+            f"warnings: {_render_list(comparison.warnings)}",
+        ]
+    )
 
 
 def summarize_launch_evidence(
@@ -310,6 +503,109 @@ def _rerun_commands(checks: tuple[dict[str, Any], ...]) -> tuple[str, ...]:
         for check in checks
         if check.get("rerun")
     )
+
+
+def _ready_change(current_ready: bool | None, previous_ready: bool | None) -> str:
+    if previous_ready is True and current_ready is True:
+        return "unchanged_ready"
+    if previous_ready is False and current_ready is False:
+        return "unchanged_not_ready"
+    if previous_ready is False and current_ready is True:
+        return "not_ready_to_ready"
+    if previous_ready is True and current_ready is False:
+        return "ready_to_not_ready"
+    return _status_change(_bool_state(current_ready), _bool_state(previous_ready))
+
+
+def _bool_state(value: bool | None) -> str:
+    if value is True:
+        return "ready"
+    if value is False:
+        return "not_ready"
+    return "unknown"
+
+
+def _status_change(current_state: str, previous_state: str) -> str:
+    if current_state == previous_state:
+        return "unchanged"
+    return f"{previous_state}_to_{current_state}"
+
+
+def _dict_delta(current: Mapping[str, Any], previous: Mapping[str, Any]) -> dict[str, int]:
+    keys = sorted(set(current) | set(previous))
+    return {
+        _sanitize_text(key): _int_value(current.get(key)) - _int_value(previous.get(key))
+        for key in keys
+    }
+
+
+def _comparison_status(improved: bool, regressed: bool) -> str:
+    if improved and regressed:
+        return "mixed"
+    if improved:
+        return "improved"
+    if regressed:
+        return "regressed"
+    return "unchanged"
+
+
+def _provider_ready_from_status(status: Mapping[str, Any]) -> bool | None:
+    values = [
+        status[key]
+        for key in ("meeting_tab_ok", "capabilities_ok", "meeting_found")
+        if isinstance(status.get(key), bool)
+    ]
+    if not values:
+        return None
+    return all(values)
+
+
+def _daemon_ready_from_status(status: Mapping[str, Any]) -> bool | None:
+    ok_values = [
+        value
+        for key, value in status.items()
+        if str(key).endswith("_ok") and isinstance(value, bool)
+    ]
+    if ok_values:
+        return all(ok_values)
+    values = [
+        status[key]
+        for key in ("daemon_ok", "running", "heartbeat_fresh")
+        if isinstance(status.get(key), bool)
+    ]
+    if not values:
+        return None
+    return all(values)
+
+
+def _render_ready_change(value: str) -> tuple[str, str]:
+    if value == "unchanged_ready":
+        return "yes", "yes"
+    if value == "unchanged_not_ready":
+        return "no", "no"
+    if value == "not_ready_to_ready":
+        return "no", "yes"
+    if value == "ready_to_not_ready":
+        return "yes", "no"
+    if value == "unknown_to_ready":
+        return "unknown", "yes"
+    if value == "unknown_to_not_ready":
+        return "unknown", "no"
+    if value == "ready_to_unknown":
+        return "yes", "unknown"
+    if value == "not_ready_to_unknown":
+        return "no", "unknown"
+    return "unknown", "unknown"
+
+
+def _render_list(values: tuple[str, ...]) -> str:
+    return ", ".join(values) if values else "none"
+
+
+def _render_mapping(values: Mapping[str, int]) -> str:
+    if not values:
+        return "none"
+    return ", ".join(f"{key}={value}" for key, value in sorted(values.items()))
 
 
 def _check_by_key(
