@@ -79,7 +79,10 @@ Plans:
   2. User can confirm dry-run artifacts exclude raw meeting text, prompt text, response text, audio bytes, secrets, voice samples, training data, and protected local assets.
   3. User can feed dry-run evidence into rehearsal, session scorecard, and safety-soak for a repeatable launch-readiness signal.
   4. User can compare the latest dry-run result with the previous result to see readiness improvements or regressions before joining a call.
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 51-01-PLAN.md - RED tests for dry-run evidence artifacts, comparison contracts, and rehearsal/scorecard/safety-soak reuse.
+- [ ] 51-02-PLAN.md - GREEN implementation of normalized comparison, flat dry-run-compare CLI, and rehearsal evidence wiring.
 
 ## Requirement Coverage
 
@@ -113,4 +116,4 @@ Phases execute in numeric order: 48 -> 49 -> 50 -> 51
 | 48. Dry-Run Orchestrator And Result Contract | 2/2 | Complete   | 2026-07-10 |
 | 49. Source, Prepared Audio, Cache, And Voice Readiness | 2/2 | Complete   | 2026-07-10 |
 | 50. Provider, Audio, And Call-Control Health | 2/2 | Complete   | 2026-07-10 |
-| 51. Dry-Run Evidence And Rehearsal Feedback | 0/TBD | Not started | - |
+| 51. Dry-Run Evidence And Rehearsal Feedback | 0/2 | Not started | - |
