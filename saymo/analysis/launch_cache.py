@@ -20,9 +20,10 @@ def collect_response_cache_check(
     *,
     profile: str,
     provider_name: str,
+    rerun_command: str | None = None,
 ) -> LaunchReadinessCheck:
     """Build a strict, privacy-safe response-cache coverage check."""
-    rerun = _rerun_command(profile, provider_name)
+    rerun = rerun_command or _rerun_command(profile, provider_name)
     advice = response_cache_advice(config, profile=profile)
     cache_dir = Path(config.responses.cache_dir) if config.responses.cache_dir else None
 
@@ -86,8 +87,10 @@ def collect_voice_metadata_check(
     *,
     profile: str,
     provider_name: str,
+    rerun_command: str | None = None,
 ) -> LaunchReadinessCheck:
     """Build a strict, privacy-safe cloned-voice metadata check."""
+    rerun = rerun_command or _rerun_command(profile, provider_name)
     decision = resolve_voice_selector(config, purpose="live_call")
     ok = decision.allowed and decision.is_voice_clone and decision.profile_approved
     blocked_reason = _voice_blocked_reason(decision)
@@ -97,8 +100,8 @@ def collect_voice_metadata_check(
         severity="block",
         ok=ok,
         detail="ready" if ok else blocked_reason,
-        action="" if ok else "Approve a cloned voice profile for live calls",
-        rerun="" if ok else _rerun_command(profile, provider_name),
+        action="" if ok else _voice_action(decision, profile),
+        rerun="" if ok else rerun,
         metadata={
             "selected_engine": decision.selected_engine,
             "voice_profile": decision.profile,
@@ -121,6 +124,14 @@ def _voice_blocked_reason(decision) -> str:
     if not decision.profile_approved:
         return "voice_profile_unapproved"
     return "voice_selector_blocked"
+
+
+def _voice_action(decision, profile: str) -> str:
+    voice_profile = decision.profile or profile
+    return (
+        f"Run saymo voice-profile check --profile {voice_profile}; approve it if "
+        f"acceptable, then run saymo prepare -p {profile}"
+    )
 
 
 def _rerun_command(profile: str, provider_name: str) -> str:
