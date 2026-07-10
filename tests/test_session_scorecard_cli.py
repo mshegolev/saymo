@@ -17,6 +17,16 @@ from saymo.analysis.rehearsal import (
 from saymo.commands import main
 
 
+PRIVATE_SENTINELS = (
+    "PRIVATE_TRANSCRIPT",
+    "PRIVATE_PROMPT_TEXT",
+    "PRIVATE_GENERATED_RESPONSE",
+    "SECRET_TOKEN",
+    "PRIVATE_VOICE_SAMPLE",
+    "PRIVATE_TRAINING_DATA",
+)
+
+
 def _write_config(tmp_path):
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
@@ -74,56 +84,107 @@ def _write_rehearsal(tmp_path):
     return path
 
 
-def _write_launch_evidence(tmp_path):
-    path = tmp_path / "call-ready.json"
+def _write_launch_evidence(
+    tmp_path,
+    *,
+    mode="call-ready",
+    rerun="saymo call-ready -p personal --provider glip",
+    include_provider=False,
+):
+    path = tmp_path / f"{mode}.json"
+    checks = [
+        {
+            "key": "response_cache_coverage",
+            "label": "response cache coverage",
+            "severity": "block",
+            "ok": False,
+            "detail": "missing response cache variants PRIVATE_TRANSCRIPT",
+            "action": "prepare response cache without PRIVATE_PROMPT_TEXT",
+            "rerun": rerun,
+            "metadata": {
+                "category": "source-data",
+                "ready": 1,
+                "total": 3,
+                "missing": 2,
+                "raw_transcript": "PRIVATE_TRANSCRIPT",
+                "prompt_text": "PRIVATE_PROMPT_TEXT",
+                "generated_response_text": "PRIVATE_GENERATED_RESPONSE",
+                "audio_bytes": "PRIVATE_GENERATED_RESPONSE",
+            },
+        },
+        {
+            "key": "call_control_daemon",
+            "label": "call-control daemon",
+            "severity": "warn",
+            "ok": False,
+            "detail": "heartbeat stale SECRET_TOKEN",
+            "action": "restart daemon",
+            "rerun": "" if mode == "dry-run" else "saymo call-control-agent status -p personal",
+            "metadata": {
+                "category": "call-control",
+                "running": False,
+                "heartbeat_fresh": False,
+                "daemon_ok": False,
+                "stdout_log_path": "/tmp/saymo/out.log",
+                "stderr_log_path": "/tmp/saymo/err.log",
+                "voice_sample_path": "PRIVATE_VOICE_SAMPLE",
+                "training_data_path": "PRIVATE_TRAINING_DATA",
+            },
+        },
+    ]
+    if include_provider:
+        checks.insert(
+            1,
+            {
+                "key": "provider_meeting_tab",
+                "label": "provider meeting tab",
+                "severity": "warn",
+                "ok": False,
+                "detail": "provider tab missing SECRET_TOKEN",
+                "action": "open provider tab",
+                "rerun": rerun,
+                "metadata": {"category": "provider", "meeting_found": False},
+            },
+        )
     payload = {
         "schema_version": "1.0",
         "evidence_kind": "launch-readiness",
-        "mode": "call-ready",
+        "mode": mode,
         "artifact_path": str(path),
         "profile": "personal",
         "provider": "glip",
         "ready": False,
-        "check_count": 2,
+        "check_count": len(checks),
         "ready_count": 0,
         "block_count": 1,
         "warn_count": 1,
-        "checks": [
-            {
-                "key": "response_cache_coverage",
-                "label": "response cache coverage",
-                "severity": "block",
-                "ok": False,
-                "detail": "missing response cache variants",
-                "action": "prepare response cache",
-                "rerun": "saymo call-ready -p personal --provider glip",
-                "metadata": {
-                    "category": "source-data",
-                    "ready": 1,
-                    "total": 3,
-                    "missing": 2,
-                },
-            },
-            {
-                "key": "call_control_daemon",
-                "label": "call-control daemon",
-                "severity": "warn",
-                "ok": False,
-                "detail": "heartbeat stale",
-                "action": "restart daemon",
-                "rerun": "saymo call-control-agent status -p personal",
-                "metadata": {
-                    "category": "call-control",
-                    "running": False,
-                    "heartbeat_fresh": False,
-                    "stdout_log_path": "/tmp/saymo/out.log",
-                    "stderr_log_path": "/tmp/saymo/err.log",
-                },
-            },
-        ],
+        "checks": checks,
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path
+
+
+def _write_rehearsal_with_launch_evidence(tmp_path, launch_path):
+    path = _write_rehearsal(tmp_path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["launch_evidence"] = {
+        "path": str(launch_path),
+        "mode": "dry-run",
+        "status": "loaded",
+        "ready": False,
+        "block_count": 1,
+        "warn_count": 1,
+        "failed_labels": ["response cache coverage"],
+        "rerun_commands": ["saymo dry-run -p personal --provider glip"],
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def _assert_no_private_content(value) -> None:
+    rendered = json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value
+    for sentinel in PRIVATE_SENTINELS:
+        assert sentinel not in rendered
 
 
 def _write_realtime_events(tmp_path):
@@ -296,3 +357,78 @@ def test_session_scorecard_cli_accepts_evidence_alias_flags(tmp_path):
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     assert payload["launch_metrics"]["status"] == "loaded"
     assert payload["realtime_metrics"]["status"] == "loaded"
+
+
+def test_session_scorecard_cli_accepts_dry_run_launch_evidence(tmp_path):
+    config_path = _write_config(tmp_path)
+    rehearsal_path = _write_rehearsal(tmp_path)
+    launch_path = _write_launch_evidence(
+        tmp_path,
+        mode="dry-run",
+        rerun="saymo dry-run -p personal --provider glip",
+        include_provider=True,
+    )
+    markdown_path = tmp_path / "dry-run-scorecard.md"
+    json_path = tmp_path / "dry-run-scorecard.json"
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "session-scorecard",
+            "--profile",
+            "personal",
+            "--rehearsal",
+            str(rehearsal_path),
+            "--launch-json",
+            str(launch_path),
+            "--output",
+            str(markdown_path),
+            "--json-output",
+            str(json_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    markdown = markdown_path.read_text(encoding="utf-8")
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    combined = result.output + markdown + json.dumps(payload, ensure_ascii=False)
+
+    assert "launch: loaded ready=no blocks=1 warns=1" in combined
+    assert "launch rerun commands: 1" in combined
+    assert "saymo dry-run -p personal --provider glip" in combined
+    assert payload["launch_metrics"]["status"] == "loaded"
+    assert payload["launch_metrics"]["ready"] is False
+    assert payload["launch_metrics"]["cache_missing"] == 2
+    assert payload["launch_metrics"]["provider_ready"] is False
+    assert payload["launch_metrics"]["daemon_ready"] is False
+    assert payload["launch_metrics"]["rerun_commands"] == [
+        "saymo dry-run -p personal --provider glip"
+    ]
+    _assert_no_private_content(combined)
+
+    recorded_rehearsal_path = _write_rehearsal_with_launch_evidence(tmp_path, launch_path)
+    fallback_json_path = tmp_path / "dry-run-scorecard-fallback.json"
+    fallback = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "session-scorecard",
+            "--profile",
+            "personal",
+            "--rehearsal",
+            str(recorded_rehearsal_path),
+            "--json-output",
+            str(fallback_json_path),
+        ],
+    )
+
+    assert fallback.exit_code == 0
+    fallback_payload = json.loads(fallback_json_path.read_text(encoding="utf-8"))
+    assert fallback_payload["launch_metrics"]["status"] == "loaded"
+    assert fallback_payload["launch_metrics"]["rerun_commands"] == [
+        "saymo dry-run -p personal --provider glip"
+    ]
+    _assert_no_private_content(fallback.output)

@@ -19,6 +19,16 @@ from saymo.analysis.session_scorecard import build_scorecard_from_rehearsal, wri
 from saymo.commands import main
 
 
+PRIVATE_SENTINELS = (
+    "PRIVATE_TRANSCRIPT",
+    "PRIVATE_PROMPT_TEXT",
+    "PRIVATE_GENERATED_RESPONSE",
+    "SECRET_TOKEN",
+    "PRIVATE_VOICE_SAMPLE",
+    "PRIVATE_TRAINING_DATA",
+)
+
+
 def _write_config(tmp_path):
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
@@ -135,6 +145,104 @@ def _write_launch_evidence(tmp_path):
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path
+
+
+def _write_dry_run_launch_evidence(tmp_path):
+    path = tmp_path / "dry-run-launch.json"
+    payload = {
+        "schema_version": "1.0",
+        "evidence_kind": "launch-readiness",
+        "mode": "dry-run",
+        "artifact_path": str(path),
+        "created_at": "2026-07-10T14:40:00Z",
+        "profile": "personal",
+        "provider": "glip",
+        "ready": False,
+        "check_count": 3,
+        "ready_count": 0,
+        "block_count": 3,
+        "warn_count": 0,
+        "checks": [
+            {
+                "key": "response_cache_coverage",
+                "label": "response cache coverage",
+                "severity": "block",
+                "ok": False,
+                "detail": "missing response cache PRIVATE_TRANSCRIPT",
+                "action": "prepare cache without PRIVATE_PROMPT_TEXT",
+                "rerun": "saymo dry-run -p personal --provider glip",
+                "metadata": {
+                    "category": "source-data",
+                    "ready": 1,
+                    "total": 3,
+                    "missing": 2,
+                    "raw_transcript": "PRIVATE_TRANSCRIPT",
+                    "prompt_text": "PRIVATE_PROMPT_TEXT",
+                    "generated_response_text": "PRIVATE_GENERATED_RESPONSE",
+                    "audio_bytes": "PRIVATE_GENERATED_RESPONSE",
+                },
+            },
+            {
+                "key": "provider_meeting_tab",
+                "label": "provider meeting tab",
+                "severity": "block",
+                "ok": False,
+                "detail": "provider tab missing SECRET_TOKEN",
+                "action": "open provider tab",
+                "rerun": "saymo dry-run -p personal --provider glip",
+                "metadata": {"category": "provider", "meeting_found": False},
+            },
+            {
+                "key": "call_control_daemon",
+                "label": "call-control daemon",
+                "severity": "block",
+                "ok": False,
+                "detail": "daemon stale SECRET_TOKEN",
+                "action": "restart daemon without PRIVATE_VOICE_SAMPLE",
+                "rerun": "saymo call-control-agent status -p personal",
+                "metadata": {
+                    "category": "call-control",
+                    "running": False,
+                    "heartbeat_fresh": False,
+                    "daemon_ok": False,
+                    "voice_sample_path": "PRIVATE_VOICE_SAMPLE",
+                    "training_data_path": "PRIVATE_TRAINING_DATA",
+                },
+            },
+        ],
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def _write_rehearsal_with_launch_evidence(tmp_path, launch_path):
+    path = _write_rehearsal(tmp_path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["launch_evidence"] = {
+        "path": str(launch_path),
+        "mode": "dry-run",
+        "status": "loaded",
+        "ready": False,
+        "block_count": 3,
+        "warn_count": 0,
+        "failed_labels": [
+            "response cache coverage",
+            "provider meeting tab",
+            "call-control daemon",
+        ],
+        "rerun_commands": [
+            "saymo dry-run -p personal --provider glip",
+            "saymo call-control-agent status -p personal",
+        ],
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def _assert_no_private_content(value) -> None:
+    rendered = json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value
+    for sentinel in PRIVATE_SENTINELS:
+        assert sentinel not in rendered
 
 
 def _write_realtime_events(tmp_path):
@@ -344,3 +452,38 @@ def test_safety_soak_cli_passes_rehearsal_evidence_paths_into_scorecard_builder(
     assert "status: fail" in result.output
     assert "launch_not_ready" in result.output
     assert "provider_blocked" in result.output
+
+
+def test_safety_soak_cli_uses_dry_run_launch_evidence_from_rehearsal(tmp_path):
+    config_path = _write_config(tmp_path)
+    launch_path = _write_dry_run_launch_evidence(tmp_path)
+    rehearsal_path = _write_rehearsal_with_launch_evidence(tmp_path, launch_path)
+    json_path = tmp_path / "dry-run-soak.json"
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "safety-soak",
+            "--profile",
+            "personal",
+            "--rehearsal",
+            str(rehearsal_path),
+            "--json-output",
+            str(json_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "launch_not_ready" in result.output
+    assert "stale_or_missing_response_cache" in result.output
+    assert "provider_blocked" in result.output
+    assert "call_control_daemon_not_ready" in result.output
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["totals"]["launch_not_ready"] == 1
+    assert payload["totals"]["cache_missing"] == 2
+    assert payload["totals"]["provider_blocks"] >= 1
+    assert payload["totals"]["daemon_not_ready"] == 1
+    _assert_no_private_content(result.output)
+    _assert_no_private_content(payload)

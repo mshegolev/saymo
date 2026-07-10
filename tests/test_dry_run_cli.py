@@ -18,8 +18,12 @@ COMMANDS_AT_IMPORT = frozenset(main.commands)
 PRIVATE_STRINGS = (
     "PRIVATE_DAILY_NOTE",
     "PRIVATE_TRANSCRIPT",
+    "PRIVATE_PROMPT_TEXT",
     "PRIVATE_GENERATED_ANSWER",
+    "PRIVATE_GENERATED_RESPONSE",
     "SECRET_TOKEN",
+    "PRIVATE_VOICE_SAMPLE",
+    "PRIVATE_TRAINING_DATA",
 )
 
 ARTIFACT_ONLY_KEYS = {
@@ -168,6 +172,119 @@ def _remediation_report():
             ),
         ),
     )
+
+
+def _complete_evidence_report():
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        LaunchReadinessReport,
+    )
+
+    return LaunchReadinessReport(
+        profile="standup",
+        provider="glip",
+        checks=(
+            LaunchReadinessCheck(
+                key="response_cache_coverage",
+                label="response cache coverage",
+                severity="block",
+                ok=False,
+                detail="missing response cache PRIVATE_TRANSCRIPT",
+                action="prepare cache without PRIVATE_PROMPT_TEXT",
+                rerun="saymo dry-run -p standup --provider glip",
+                metadata={
+                    "category": "source-data",
+                    "source_sha256": "abc123",
+                    "stale_reason": "source_sha_mismatch",
+                    "ready": 1,
+                    "total": 3,
+                    "missing": 2,
+                    "raw_transcript": "PRIVATE_TRANSCRIPT",
+                    "prompt_text": "PRIVATE_PROMPT_TEXT",
+                    "generated_response_text": "PRIVATE_GENERATED_RESPONSE",
+                    "audio_bytes": "PRIVATE_GENERATED_RESPONSE",
+                    "voice_sample_path": "PRIVATE_VOICE_SAMPLE",
+                    "training_data_path": "PRIVATE_TRAINING_DATA",
+                    "auth_token": "SECRET_TOKEN",
+                },
+            ),
+        ),
+    )
+
+
+def _write_compare_artifact(
+    tmp_path,
+    name,
+    *,
+    ready: bool,
+    block_count: int,
+    warn_count: int,
+    cache_ready: int,
+    cache_total: int,
+    cache_missing: int,
+    provider_ok: bool,
+    daemon_ok: bool,
+) -> Path:
+    path = tmp_path / name
+    payload = {
+        "schema_version": "1.0",
+        "evidence_kind": "launch-readiness",
+        "mode": "dry-run",
+        "artifact_path": str(path),
+        "created_at": "2026-07-10T14:30:00Z",
+        "profile": "personal",
+        "provider": "glip",
+        "ready": ready,
+        "check_count": 3,
+        "ready_count": 3 if ready else 0,
+        "block_count": block_count,
+        "warn_count": warn_count,
+        "checks": [
+            {
+                "key": "response_cache_coverage",
+                "label": "response cache coverage",
+                "severity": "block",
+                "ok": cache_missing == 0,
+                "detail": "cache coverage PRIVATE_TRANSCRIPT",
+                "action": "prepare without PRIVATE_PROMPT_TEXT",
+                "rerun": "" if cache_missing == 0 else "saymo dry-run -p personal --provider glip",
+                "metadata": {
+                    "category": "source-data",
+                    "ready": cache_ready,
+                    "total": cache_total,
+                    "missing": cache_missing,
+                    "prompt_text": "PRIVATE_PROMPT_TEXT",
+                },
+            },
+            {
+                "key": "provider_meeting_tab",
+                "label": "provider meeting tab",
+                "severity": "block",
+                "ok": provider_ok,
+                "detail": "provider tab SECRET_TOKEN",
+                "action": "open tab without PRIVATE_GENERATED_RESPONSE",
+                "rerun": "" if provider_ok else "saymo dry-run -p personal --provider glip",
+                "metadata": {"category": "provider", "meeting_found": provider_ok},
+            },
+            {
+                "key": "call_control_daemon",
+                "label": "call-control daemon",
+                "severity": "block",
+                "ok": daemon_ok,
+                "detail": "daemon heartbeat SECRET_TOKEN",
+                "action": "check daemon without PRIVATE_VOICE_SAMPLE",
+                "rerun": "" if daemon_ok else "saymo call-control-agent status -p personal",
+                "metadata": {
+                    "category": "call-control",
+                    "running": daemon_ok,
+                    "heartbeat_fresh": daemon_ok,
+                    "daemon_ok": daemon_ok,
+                },
+            },
+        ],
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
 
 
 def _assert_no_private_text(output: str) -> None:
@@ -430,6 +547,135 @@ def test_dry_run_output_artifact_uses_dry_run_mode(tmp_path, monkeypatch):
     assert payload["ready"] is False
     _assert_no_private_text(result.output)
     _assert_no_private_text(json.dumps(payload, ensure_ascii=False))
+
+
+def test_dry_run_output_artifact_has_complete_sanitized_evidence_fields(
+    tmp_path,
+    monkeypatch,
+):
+    import saymo.commands.dry_run as dry_run_module
+
+    config_path = _write_config(tmp_path)
+    output_path = tmp_path / "dry-run-complete.json"
+    monkeypatch.setattr(
+        dry_run_module,
+        "collect_launch_readiness",
+        lambda config, *, profile, provider_name, prepare, mode="call-ready": (
+            _complete_evidence_report()
+        ),
+    )
+
+    result = CliRunner().invoke(
+        main,
+        [
+            "--config",
+            str(config_path),
+            "dry-run",
+            "-p",
+            "standup",
+            "--provider",
+            "glip",
+            "--output",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert {
+        "schema_version",
+        "evidence_kind",
+        "mode",
+        "artifact_path",
+        "created_at",
+        "profile",
+        "provider",
+        "ready",
+        "check_count",
+        "ready_count",
+        "block_count",
+        "warn_count",
+        "checks",
+    }.issubset(payload)
+    assert payload["mode"] == "dry-run"
+    assert payload["artifact_path"] == str(output_path)
+    assert payload["check_count"] == 1
+    check = payload["checks"][0]
+    assert {
+        "key",
+        "label",
+        "severity",
+        "ok",
+        "detail",
+        "action",
+        "rerun",
+        "metadata",
+    }.issubset(check)
+    assert check["key"] == "response_cache_coverage"
+    assert check["label"] == "response cache coverage"
+    assert check["severity"] == "block"
+    assert check["ok"] is False
+    assert check["rerun"] == "saymo dry-run -p standup --provider glip"
+    assert check["metadata"]["category"] == "source-data"
+    assert check["metadata"]["source_sha256"] == "abc123"
+    assert check["metadata"]["stale_reason"] == "source_sha_mismatch"
+    assert check["metadata"]["ready"] == 1
+    assert check["metadata"]["total"] == 3
+    assert check["metadata"]["missing"] == 2
+    _assert_no_private_text(result.output)
+    _assert_no_private_text(json.dumps(payload, ensure_ascii=False))
+
+
+def test_dry_run_compare_cli_prints_human_and_json_without_private_content(tmp_path):
+    current = _write_compare_artifact(
+        tmp_path,
+        "current.json",
+        ready=True,
+        block_count=0,
+        warn_count=0,
+        cache_ready=3,
+        cache_total=3,
+        cache_missing=0,
+        provider_ok=True,
+        daemon_ok=True,
+    )
+    previous = _write_compare_artifact(
+        tmp_path,
+        "previous.json",
+        ready=False,
+        block_count=3,
+        warn_count=1,
+        cache_ready=0,
+        cache_total=3,
+        cache_missing=3,
+        provider_ok=False,
+        daemon_ok=False,
+    )
+
+    human = CliRunner().invoke(
+        main,
+        ["dry-run-compare", "--current", str(current), "--previous", str(previous)],
+    )
+    machine = CliRunner().invoke(
+        main,
+        [
+            "dry-run-compare",
+            "--current",
+            str(current),
+            "--previous",
+            str(previous),
+            "--json",
+        ],
+    )
+
+    assert "dry-run-compare" in main.commands
+    assert human.exit_code == 0
+    assert machine.exit_code == 0
+    assert "dry-run comparison: improved" in human.output
+    payload = json.loads(machine.output)
+    assert payload["status"] == "improved"
+    _assert_no_private_text(human.output)
+    _assert_no_private_text(machine.output)
 
 
 def test_dry_run_has_no_prepare_path(tmp_path):
