@@ -161,8 +161,9 @@ def build_scorecard_from_rehearsal(
     )
     audit = _load_live_control_audit(artifact.profile, audit_root=audit_root)
     warnings = _warnings_from_audit(audit)
+    effective_launch_json = launch_json or _launch_json_from_rehearsal(artifact)
     launch_metrics, realtime_metrics, evidence_warnings = _load_evidence_metrics(
-        launch_json=launch_json,
+        launch_json=effective_launch_json,
         realtime_jsonl=realtime_jsonl,
     )
     warnings.extend(evidence_warnings)
@@ -181,6 +182,12 @@ def build_scorecard_from_rehearsal(
         launch_metrics=launch_metrics,
         realtime_metrics=realtime_metrics,
     )
+
+
+def _launch_json_from_rehearsal(artifact: RehearsalArtifact) -> str | None:
+    value = artifact.launch_evidence.get("path") if artifact.launch_evidence else ""
+    text = " ".join(str(value or "").replace("\r", " ").replace("\n", " ").split())
+    return text or None
 
 
 def build_scorecard_from_regression(

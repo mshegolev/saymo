@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -46,6 +46,7 @@ class RehearsalArtifact:
     decision: RehearsalDecision
     live_control_state: dict[str, Any]
     hotkey_status: str
+    launch_evidence: dict[str, Any] = field(default_factory=dict)
     created_at: str = ""
 
     def __post_init__(self) -> None:
@@ -66,6 +67,7 @@ def rehearsal_artifact_to_json(artifact: RehearsalArtifact) -> dict[str, Any]:
     data["checks"] = [asdict(check) for check in artifact.checks]
     data["decision"] = asdict(artifact.decision)
     data["live_control_state"] = _sanitized_live_control_state(artifact.live_control_state)
+    data["launch_evidence"] = _sanitized_launch_evidence_reference(artifact.launch_evidence)
     return data
 
 
@@ -99,6 +101,9 @@ def rehearsal_artifact_from_json(data: Mapping[str, Any]) -> RehearsalArtifact:
         ),
         live_control_state=dict(data.get("live_control_state") or {}),
         hotkey_status=str(data.get("hotkey_status") or ""),
+        launch_evidence=_sanitized_launch_evidence_reference(
+            data.get("launch_evidence") or {}
+        ),
         created_at=str(data.get("created_at") or ""),
     )
 
@@ -153,6 +158,63 @@ def _sanitized_live_control_state(state: Mapping[str, Any]) -> dict[str, bool]:
         for key in allowed
         if key in state and isinstance(state[key], bool)
     }
+
+
+def _sanitized_launch_evidence_reference(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        return {}
+    allowed = (
+        "path",
+        "mode",
+        "status",
+        "ready",
+        "block_count",
+        "warn_count",
+        "failed_labels",
+        "rerun_commands",
+    )
+    data: dict[str, Any] = {}
+    for key in allowed:
+        if key not in value:
+            continue
+        item = value[key]
+        if key in {"path", "mode", "status"}:
+            text = _clean_reference_text(item)
+            if text:
+                data[key] = text
+        elif key == "ready":
+            data[key] = item if isinstance(item, bool) else None
+        elif key in {"block_count", "warn_count"}:
+            data[key] = _safe_int(item)
+        elif key in {"failed_labels", "rerun_commands"}:
+            rows = item if isinstance(item, (list, tuple)) else ()
+            data[key] = [
+                text
+                for text in (_clean_reference_text(row) for row in rows)
+                if text
+            ]
+    return data
+
+
+def _clean_reference_text(value: Any) -> str:
+    text = " ".join(str(value or "").replace("\r", " ").replace("\n", " ").split())
+    for sentinel in (
+        "PRIVATE_TRANSCRIPT",
+        "PRIVATE_PROMPT_TEXT",
+        "PRIVATE_GENERATED_RESPONSE",
+        "PRIVATE_VOICE_SAMPLE",
+        "PRIVATE_TRAINING_DATA",
+        "SECRET_TOKEN",
+    ):
+        text = text.replace(sentinel, "[redacted]")
+    return text
+
+
+def _safe_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _now() -> str:

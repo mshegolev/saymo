@@ -852,13 +852,31 @@ def _cache_status_preset_line(metadata: dict) -> str:
     help="Also write the rehearsal artifact JSON to this exact path",
 )
 @click.option(
+    "--launch-json",
+    "--launch-readiness",
+    "launch_json",
+    default=None,
+    type=click.Path(),
+    help="Optional dry-run or launch-readiness JSON artifact to record with rehearsal",
+)
+@click.option(
     "--hotkey-probe/--no-hotkey-probe",
     default=True,
     show_default=True,
     help="Try to create a global hotkey listener during rehearsal",
 )
 @click.pass_context
-def rehearsal(ctx, profile, text, dry_run, provider, output_dir, json_output, hotkey_probe):
+def rehearsal(
+    ctx,
+    profile,
+    text,
+    dry_run,
+    provider,
+    output_dir,
+    json_output,
+    launch_json,
+    hotkey_probe,
+):
     """Run a local pre-call rehearsal without joining a meeting."""
     if text is None:
         text = click.prompt("Transcript text")
@@ -869,6 +887,7 @@ def rehearsal(ctx, profile, text, dry_run, provider, output_dir, json_output, ho
         dry_run=dry_run,
         provider_name=provider,
         output_dir=output_dir,
+        launch_json=launch_json,
         hotkey_probe=hotkey_probe,
     )
     if json_output:
@@ -892,6 +911,7 @@ def _run_rehearsal(
     dry_run: bool,
     provider_name: str | None,
     output_dir: str | None,
+    launch_json: str | None,
     hotkey_probe: bool,
 ):
     from dataclasses import asdict
@@ -905,6 +925,7 @@ def _run_rehearsal(
         build_hotkey_doctor_report,
         load_live_state,
     )
+    from saymo.analysis.launch_evidence import load_launch_evidence
     from saymo.analysis.rehearsal import (
         RehearsalArtifact,
         RehearsalCheck,
@@ -995,6 +1016,13 @@ def _run_rehearsal(
         would_speak = True
         blocked_reason = ""
 
+    launch_evidence, launch_check = _load_rehearsal_launch_evidence(
+        launch_json,
+        load_launch_evidence=load_launch_evidence,
+    )
+    if launch_check is not None:
+        checks.append(launch_check)
+
     blocking_failures = [check for check in checks if check.status == "fail" and check.blocking]
     if blocking_failures:
         would_speak = False
@@ -1038,9 +1066,66 @@ def _run_rehearsal(
         ),
         live_control_state=live_control_state,
         hotkey_status=hotkey_status,
+        launch_evidence=launch_evidence,
     )
     path = write_rehearsal_artifact(artifact, base_dir=output_dir)
     return artifact, path
+
+
+def _load_rehearsal_launch_evidence(launch_json, *, load_launch_evidence):
+    from saymo.analysis.rehearsal import RehearsalCheck
+
+    if not launch_json:
+        return {}, None
+    path = Path(launch_json).expanduser()
+    base_summary = {
+        "path": str(path),
+        "status": "missing",
+        "ready": None,
+        "block_count": 0,
+        "warn_count": 0,
+        "failed_labels": [],
+        "rerun_commands": [],
+    }
+    if not path.exists():
+        return base_summary, RehearsalCheck(
+            "launch readiness",
+            "warn",
+            "launch evidence missing",
+            blocking=False,
+        )
+    try:
+        evidence = load_launch_evidence(path)
+    except (OSError, json.JSONDecodeError, ValueError):
+        summary = {**base_summary, "status": "invalid"}
+        return summary, RehearsalCheck(
+            "launch readiness",
+            "warn",
+            "launch evidence unreadable",
+            blocking=False,
+        )
+
+    summary = {
+        "path": evidence.path or str(path),
+        "mode": evidence.mode,
+        "status": "loaded",
+        "ready": evidence.ready,
+        "block_count": evidence.block_count,
+        "warn_count": evidence.warn_count,
+        "failed_labels": list(evidence.failed_labels),
+        "rerun_commands": list(evidence.rerun_commands),
+    }
+    ready_text = "yes" if evidence.ready else "no"
+    check = RehearsalCheck(
+        "launch readiness",
+        "pass" if evidence.ready else "fail",
+        (
+            f"dry-run ready={ready_text} "
+            f"blocks={evidence.block_count} warns={evidence.warn_count}"
+        ),
+        blocking=not evidence.ready,
+    )
+    return summary, check
 
 
 def _print_rehearsal(artifact, path: Path) -> None:
@@ -1051,6 +1136,22 @@ def _print_rehearsal(artifact, path: Path) -> None:
     console.print(f"dry-run: {'yes' if artifact.dry_run else 'no'}")
     console.print(f"auto action: {artifact.decision.auto_action}")
     console.print(f"would speak: {'yes' if artifact.decision.would_speak else 'no'}")
+    if artifact.launch_evidence:
+        launch = artifact.launch_evidence
+        ready_value = launch.get("ready")
+        if ready_value is True:
+            ready_text = "yes"
+        elif ready_value is False:
+            ready_text = "no"
+        else:
+            ready_text = "unknown"
+        console.print(
+            "launch evidence: "
+            f"{launch.get('status') or 'unknown'} "
+            f"ready={ready_text} "
+            f"blocks={launch.get('block_count', 0)} "
+            f"warns={launch.get('warn_count', 0)}"
+        )
     if artifact.decision.blocked_reason:
         console.print(f"blocked: {artifact.decision.blocked_reason}")
     for check in artifact.checks:
