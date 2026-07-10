@@ -5,10 +5,10 @@ milestone_name: Call Dry-Run To Real Call
 current_phase: 51
 current_phase_name: Dry-Run Evidence And Rehearsal Feedback
 current_plan: 02
-status: ready_for_verification
-stopped_at: Completed 51-dry-run-evidence-and-rehearsal-feedback-02-PLAN.md
-last_updated: "2026-07-10T14:50:30.549Z"
-last_activity: 2026-07-10 - Completed 51-02 GREEN implementation for dry-run evidence comparison and rehearsal feedback.
+status: verified
+stopped_at: Verified 51-dry-run-evidence-and-rehearsal-feedback
+last_updated: "2026-07-10T14:55:48Z"
+last_activity: 2026-07-10 - Verified Phase 51 dry-run evidence and rehearsal feedback; v1.14 is ready for milestone archive.
 progress:
   total_phases: 4
   completed_phases: 4
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-07-10)
 
 **Core value:** Saymo must reliably catch when the user is expected to answer
 and respond fast enough that the call still feels live.
-**Current focus:** Phase 51 Dry-Run Evidence And Rehearsal Feedback is complete and ready for verification.
+**Current focus:** Phase 51 Dry-Run Evidence And Rehearsal Feedback is verified; v1.14 is ready for milestone archive.
 
 ## Current Position
 
@@ -34,8 +34,8 @@ Current Phase Name: Dry-Run Evidence And Rehearsal Feedback
 Total Phases: 4
 Current Plan: 02
 Total Plans in Phase: 2
-Status: Ready for Phase 51 verification after completing Plan 51-02
-Last activity: 2026-07-10 - Completed 51-02 GREEN implementation for dry-run evidence comparison and rehearsal feedback.
+Status: Phase 51 verified; v1.14 ready for milestone archive
+Last activity: 2026-07-10 - Verified Phase 51 dry-run evidence and rehearsal feedback.
 
 Progress: [██████████] 100%
 
