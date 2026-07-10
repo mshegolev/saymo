@@ -967,6 +967,73 @@ def test_write_launch_readiness_artifact_adds_phase40_metadata_without_wrapping(
     _assert_private_absent(raw)
 
 
+def test_render_and_artifact_support_dry_run_mode_without_breaking_call_ready(
+    tmp_path,
+):
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        LaunchReadinessReport,
+        render_launch_readiness,
+        write_launch_readiness_artifact,
+    )
+
+    report = LaunchReadinessReport(
+        profile="standup",
+        provider="glip",
+        checks=(
+            LaunchReadinessCheck(
+                key="daily_note_source_ready",
+                label="daily note source ready",
+                severity="info",
+                ok=True,
+                detail="ready PRIVATE_DAILY_NOTE",
+                action="Review dry-run output without SECRET_TOKEN",
+                rerun="saymo dry-run -p standup --provider glip",
+                metadata={
+                    "source_sha256": "abc123",
+                    "daily_note_body": "PRIVATE_DAILY_NOTE",
+                    "raw_transcript": "PRIVATE_TRANSCRIPT",
+                    "generated_answer": "PRIVATE_GENERATED_ANSWER",
+                    "auth_token": "SECRET_TOKEN",
+                },
+            ),
+        ),
+    )
+    default_path = tmp_path / "call-ready.json"
+    dry_run_path = tmp_path / "dry-run.json"
+
+    assert render_launch_readiness(report).splitlines()[0] == "call-ready: ready"
+    assert (
+        render_launch_readiness(report, label="dry-run").splitlines()[0]
+        == "dry-run: ready"
+    )
+
+    write_launch_readiness_artifact(report, default_path)
+    write_launch_readiness_artifact(report, dry_run_path, mode="dry-run")
+
+    default_raw = default_path.read_text(encoding="utf-8")
+    dry_run_raw = dry_run_path.read_text(encoding="utf-8")
+    default_payload = json.loads(default_raw)
+    dry_run_payload = json.loads(dry_run_raw)
+
+    assert default_payload["mode"] == "call-ready"
+    assert dry_run_payload["mode"] == "dry-run"
+    assert dry_run_payload["evidence_kind"] == "launch-readiness"
+    assert dry_run_payload["artifact_path"] == str(dry_run_path)
+    assert dry_run_payload["created_at"]
+    assert dry_run_payload["schema_version"] == "1.0"
+    assert dry_run_payload["check_count"] == 1
+    assert dry_run_payload["checks"][0]["key"] == "daily_note_source_ready"
+    report_payload = report.to_dict()
+    assert "mode" not in report_payload
+    assert "artifact_path" not in report_payload
+    assert "schema_version" not in report_payload
+    assert "evidence_kind" not in report_payload
+    assert "created_at" not in report_payload
+    _assert_private_absent(default_raw)
+    _assert_private_absent(dry_run_raw)
+
+
 def test_launch_evidence_loads_enriched_artifact_summary(tmp_path):
     from saymo.analysis.launch_evidence import load_launch_evidence
     from saymo.analysis.launch_readiness import write_launch_readiness_artifact
