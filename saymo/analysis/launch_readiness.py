@@ -126,9 +126,13 @@ def collect_launch_readiness(
     )
 
 
-def render_launch_readiness(report: LaunchReadinessReport) -> str:
+def render_launch_readiness(
+    report: LaunchReadinessReport,
+    *,
+    label: str = "call-ready",
+) -> str:
     """Render concise human-readable launch-readiness output."""
-    lines = [f"call-ready: {'ready' if report.ready else 'not ready'}"]
+    lines = [f"{_sanitize_text(label)}: {'ready' if report.ready else 'not ready'}"]
     for severity in ("block", "warn", "info"):
         grouped = [check for check in report.checks if check.severity == severity]
         if not grouped:
@@ -188,6 +192,8 @@ def render_grouped_launch_remediation(report: LaunchReadinessReport) -> str:
 def write_launch_readiness_artifact(
     report: LaunchReadinessReport,
     output_path: Path,
+    *,
+    mode: str = "call-ready",
 ) -> Path:
     """Write a sanitized launch-readiness artifact as JSON."""
     output_path = Path(output_path)
@@ -196,7 +202,7 @@ def write_launch_readiness_artifact(
         {
             "schema_version": "1.0",
             "evidence_kind": "launch-readiness",
-            "mode": "call-ready",
+            "mode": _sanitize_text(mode),
             "artifact_path": _sanitize_text(str(output_path)),
             "created_at": _utc_now(),
         }
