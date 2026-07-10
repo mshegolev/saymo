@@ -529,6 +529,233 @@ def test_collect_provider_audio_checks_detects_default_permission_blockers(
     _assert_provider_mutators_not_called(provider)
 
 
+def test_provider_audio_checks_accept_dry_run_context_without_breaking_call_ready(
+    tmp_path,
+    monkeypatch,
+):
+    from saymo.analysis.live_control import HotkeyDoctorReport
+    from saymo.analysis.provider_audio_readiness import (
+        collect_provider_audio_checks,
+        collect_provider_tab_check,
+    )
+    import saymo.analysis.live_control as live_control
+    import saymo.audio.devices as audio_devices
+    import saymo.providers.factory as provider_factory
+    import sounddevice as sd
+
+    config = _config(tmp_path)
+    config.audio.capture_device = "Call Capture Device"
+    config.audio.playback_device = "Conference Headphones"
+    config.audio.recording_device = "MacBook Pro Microphone"
+    provider = _provider(
+        status=MeetingStatus(
+            app_running=True,
+            meeting_found=False,
+            tab_info=None,
+        )
+    )
+    found_devices = {
+        ("BlackHole 16ch", "input"): _device(16, "BlackHole 16ch"),
+        ("MacBook Pro Microphone", "input"): _device(
+            4,
+            "MacBook Pro Microphone",
+        ),
+    }
+    input_checks = []
+    output_checks = []
+
+    def fake_find_device(name, kind="input"):
+        return found_devices.get((name, kind))
+
+    def fake_hotkey_report(config_arg, profile, *, probe=True):
+        assert config_arg is config
+        assert profile == "standup"
+        assert probe is True
+        return HotkeyDoctorReport(
+            profile=profile,
+            bindings={"toggle_auto_answer": "<cmd>+<shift>+m"},
+            process_running=False,
+            registration_status="blocked",
+            registration_detail="Accessibility denied",
+        )
+
+    def fake_check_input_settings(*, device=None, samplerate=None):
+        input_checks.append((device, samplerate))
+        if device in {4, 16}:
+            raise RuntimeError("SECRET_TOKEN input permission denied")
+
+    def fake_check_output_settings(*, device=None, samplerate=None):
+        output_checks.append((device, samplerate))
+
+    monkeypatch.setattr(provider_factory, "get_provider", lambda name: provider)
+    monkeypatch.setattr(audio_devices, "find_device", fake_find_device)
+    monkeypatch.setattr(live_control, "build_hotkey_doctor_report", fake_hotkey_report)
+    monkeypatch.setattr(sd, "check_input_settings", fake_check_input_settings)
+    monkeypatch.setattr(sd, "check_output_settings", fake_check_output_settings)
+
+    dry_run_rerun = "saymo dry-run -p standup --provider glip"
+    dry_run_checks = collect_provider_audio_checks(
+        config,
+        profile="standup",
+        provider_name="glip",
+        rerun_command=dry_run_rerun,
+        mode="dry-run",
+    )
+    by_key = {check.key: check for check in dry_run_checks}
+
+    assert [check.key for check in dry_run_checks] == [
+        "provider_meeting_tab",
+        "capture_input_device",
+        "playback_output_device",
+        "provider_output_blackhole",
+        "capture_route_blackhole",
+        "recording_microphone_input",
+        "provider_capabilities",
+        "hotkey_accessibility_permission",
+        "microphone_capture_permission",
+        "audio_routing_permission",
+    ]
+    assert by_key["provider_meeting_tab"].action == (
+        "Open the glip meeting in Chrome"
+    )
+    assert by_key["provider_meeting_tab"].rerun == dry_run_rerun
+    assert by_key["provider_meeting_tab"].metadata == {
+        "category": "provider",
+        "provider_name": "glip",
+        "configured_provider": "glip",
+        "url_pattern": "app.glip.com",
+        "meeting_found": False,
+        "app_running": True,
+        "tab_info": None,
+    }
+
+    for key in (
+        "capture_input_device",
+        "playback_output_device",
+        "provider_output_blackhole",
+    ):
+        check = by_key[key]
+        assert check.ok is False
+        assert check.rerun == dry_run_rerun
+        assert "saymo test-devices" in check.action
+        assert "switch" not in check.action.lower()
+        assert check.metadata["category"] == "audio-device"
+        assert check.metadata["device_name"]
+        assert check.metadata["kind"] in {"input", "output"}
+        assert check.metadata["required"] is True
+        assert check.metadata["found"] is False
+
+    capture_route = by_key["capture_route_blackhole"]
+    assert capture_route.ok is True
+    assert capture_route.metadata == {
+        "category": "audio-device",
+        "device_name": "BlackHole 16ch",
+        "kind": "input",
+        "required": True,
+        "found": True,
+        "device": {
+            "index": 16,
+            "name": "BlackHole 16ch",
+            "max_input_channels": 2,
+            "max_output_channels": 2,
+            "default_samplerate": 48000.0,
+        },
+    }
+    recording = by_key["recording_microphone_input"]
+    assert recording.ok is True
+    assert recording.metadata["device"]["index"] == 4
+
+    capabilities = by_key["provider_capabilities"]
+    assert capabilities.metadata["category"] == "provider"
+    assert capabilities.metadata["provider_name"] == "glip"
+    assert capabilities.metadata["configured_provider"] == "glip"
+    assert capabilities.rerun == dry_run_rerun
+    assert "switch" in capabilities.action.lower()
+
+    for key in (
+        "hotkey_accessibility_permission",
+        "microphone_capture_permission",
+        "audio_routing_permission",
+    ):
+        check = by_key[key]
+        assert check.metadata["category"] == "macos-permission"
+        assert check.rerun == dry_run_rerun
+        assert "automatically" not in check.action.lower()
+        assert "switch" not in check.action.lower()
+        assert "call-ready" not in check.action
+
+    assert input_checks == [(16, 48000.0), (4, 48000.0)]
+    assert output_checks == []
+    assert "SECRET_TOKEN" not in json.dumps(
+        [check.to_dict() for check in dry_run_checks],
+        ensure_ascii=False,
+    )
+
+    error_provider = _provider()
+    error_provider.check_ready.side_effect = RuntimeError(
+        "SECRET_TOKEN provider denied"
+    )
+    monkeypatch.setattr(
+        provider_factory,
+        "get_provider",
+        lambda name: error_provider,
+    )
+
+    provider_error = collect_provider_tab_check(
+        config,
+        profile="standup",
+        provider_name="glip",
+        rerun_command=dry_run_rerun,
+        mode="dry-run",
+    )
+
+    assert provider_error.detail == "provider_check_error"
+    assert provider_error.metadata["error_type"] == "RuntimeError"
+    assert provider_error.rerun == dry_run_rerun
+    assert "dry-run" in provider_error.action
+    assert "call-ready" not in provider_error.action
+    assert "SECRET_TOKEN" not in json.dumps(provider_error.to_dict(), ensure_ascii=False)
+
+    def raise_unknown(name):
+        raise ValueError("Unknown provider: unknown. SECRET_TOKEN")
+
+    monkeypatch.setattr(provider_factory, "get_provider", raise_unknown)
+
+    unknown = collect_provider_tab_check(
+        config,
+        profile="standup",
+        provider_name="unknown",
+        rerun_command="saymo dry-run -p standup --provider unknown",
+        mode="dry-run",
+    )
+
+    assert unknown.detail == "unknown_provider"
+    assert unknown.metadata["error_type"] == "ValueError"
+    assert unknown.rerun == "saymo dry-run -p standup --provider unknown"
+    assert "dry-run" in unknown.action
+    assert "call-ready" not in unknown.action
+    assert "SECRET_TOKEN" not in json.dumps(unknown.to_dict(), ensure_ascii=False)
+
+    monkeypatch.setattr(provider_factory, "get_provider", lambda name: provider)
+    call_ready_checks = collect_provider_audio_checks(
+        config,
+        profile="standup",
+        provider_name="glip",
+    )
+    call_ready = {check.key: check for check in call_ready_checks}
+
+    assert call_ready["provider_meeting_tab"].rerun == (
+        "saymo call-ready -p standup --provider glip"
+    )
+    assert call_ready["capture_input_device"].rerun == (
+        "saymo call-ready -p standup --provider glip"
+    )
+    assert call_ready["hotkey_accessibility_permission"].rerun == (
+        "saymo call-ready -p standup --provider glip"
+    )
+    _assert_provider_mutators_not_called(provider)
+
+
 def test_collect_provider_audio_checks_is_non_destructive(tmp_path, monkeypatch):
     from saymo.analysis.provider_audio_readiness import collect_provider_audio_checks
     import saymo.audio.devices as audio_devices

@@ -546,6 +546,167 @@ def test_collect_launch_readiness_dry_run_reruns_point_to_dry_run_without_breaki
     )
 
 
+def test_collect_launch_readiness_passes_dry_run_context_to_provider_audio(
+    tmp_path,
+    monkeypatch,
+):
+    from saymo.analysis import (
+        launch_agent,
+        launch_cache,
+        launch_sources,
+        provider_audio_readiness,
+    )
+    from saymo.analysis.launch_readiness import (
+        LaunchReadinessCheck,
+        collect_launch_readiness,
+    )
+
+    config = load_config(config_path=str(_write_config(tmp_path)))
+    calls = []
+
+    monkeypatch.setattr(
+        launch_sources,
+        "collect_daily_note_checks",
+        lambda config,
+        profile,
+        *,
+        provider_name,
+        prepare,
+        rerun_command=None,
+        create_note_action=None: (),
+    )
+    monkeypatch.setattr(
+        launch_sources,
+        "collect_prepared_audio_check",
+        lambda config,
+        profile,
+        *,
+        provider_name,
+        team_mode,
+        source_sha256,
+        rerun_command=None: LaunchReadinessCheck(
+            key="prepared_standup_audio",
+            label="prepared standup audio",
+            severity="block",
+            ok=True,
+            rerun=rerun_command or "",
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_response_cache_check",
+        lambda config,
+        *,
+        profile,
+        provider_name,
+        rerun_command=None: LaunchReadinessCheck(
+            key="response_cache_coverage",
+            label="response cache coverage",
+            severity="block",
+            ok=True,
+            rerun=rerun_command or "",
+        ),
+    )
+    monkeypatch.setattr(
+        launch_cache,
+        "collect_voice_metadata_check",
+        lambda config,
+        *,
+        profile,
+        provider_name,
+        rerun_command=None: LaunchReadinessCheck(
+            key="cloned_voice_metadata",
+            label="cloned voice metadata",
+            severity="block",
+            ok=True,
+            rerun=rerun_command or "",
+        ),
+    )
+
+    def fake_provider_audio(
+        config,
+        *,
+        profile,
+        provider_name,
+        rerun_command=None,
+        mode="call-ready",
+    ):
+        calls.append((profile, provider_name, rerun_command, mode))
+        return (
+            LaunchReadinessCheck(
+                key="provider_meeting_tab",
+                label="provider meeting tab",
+                severity="block",
+                ok=False,
+                rerun=rerun_command
+                or f"saymo call-ready -p {profile} --provider {provider_name}",
+                metadata={"category": "provider"},
+            ),
+        )
+
+    monkeypatch.setattr(
+        provider_audio_readiness,
+        "collect_provider_audio_checks",
+        fake_provider_audio,
+    )
+    monkeypatch.setattr(launch_agent, "build_launch_agent_spec", lambda profile: "spec")
+    monkeypatch.setattr(
+        launch_agent,
+        "collect_call_control_agent_status",
+        lambda spec: type(
+            "Status",
+            (),
+            {
+                "profile": "standup",
+                "label": "com.saymo.call-control.standup",
+                "plist_path": "/tmp/standup.plist",
+                "stdout_log_path": "/tmp/standup.out.log",
+                "stderr_log_path": "/tmp/standup.err.log",
+                "installed": True,
+                "plist_current": True,
+                "loaded": True,
+                "heartbeat_fresh": True,
+                "running": True,
+                "hotkeys_active": True,
+                "hotkey_registration_status": "ok",
+                "classification": "running",
+                "detail": "LaunchAgent is loaded and daemon heartbeat is fresh.",
+                "action": "none",
+                "rerun": "saymo call-control-agent status -p standup",
+                "metadata": {},
+            },
+        )(),
+    )
+
+    dry_run = collect_launch_readiness(
+        config,
+        profile="standup",
+        provider_name="glip",
+        mode="dry-run",
+    )
+
+    assert calls[-1] == (
+        "standup",
+        "glip",
+        "saymo dry-run -p standup --provider glip",
+        "dry-run",
+    )
+    assert _check_by_key(dry_run, "provider_meeting_tab").rerun == (
+        "saymo dry-run -p standup --provider glip"
+    )
+
+    call_ready = collect_launch_readiness(
+        config,
+        profile="standup",
+        provider_name="glip",
+    )
+
+    assert calls[-1] == ("standup", "glip", None, "call-ready")
+    assert _check_by_key(call_ready, "provider_meeting_tab").rerun == (
+        "saymo call-ready -p standup --provider glip"
+    )
+
+
 def test_prepared_audio_requires_current_metadata_and_source_digest(tmp_path):
     from saymo.analysis.launch_readiness import collect_launch_readiness
 
