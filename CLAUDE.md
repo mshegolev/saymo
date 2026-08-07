@@ -41,6 +41,11 @@ saymo train-status                 # dataset & model status
 # OR: ~/.saymo/run_applio.sh       # Web UI at http://127.0.0.1:6969 if you prefer clicking
 # saymo train-voice now also offers RVC training as a follow-up prompt
 
+# Live meeting subtitles — STT + EN→RU translation (scripts/live_translate.py)
+# Needs `ollama pull aya-expanse:8b`, or the Argos EN→RU pair; see the
+# script docstring for both. Not a saymo CLI command — a standalone script.
+.venv/bin/python scripts/live_translate.py --vocab "Oozie,Impala,staging"
+
 # Misc
 saymo dashboard                    # interactive TUI
 saymo test-devices                 # list audio devices

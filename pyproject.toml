@@ -65,13 +65,18 @@ apple = [
 stt = [
     "faster-whisper>=1.0.0",
 ]
+translate = [
+    # Offline EN→RU for scripts/live_translate.py --translator argos.
+    # The language pair itself is a separate ~187MB download, see the script.
+    "argostranslate>=1.11.0",
+]
 cloud = [
     "anthropic>=0.43.0",
     "deepgram-sdk>=3.0.0",
     "aiohttp>=3.9.0",
 ]
 all = [
-    "saymo[tts,stt,cloud,apple]",
+    "saymo[tts,stt,cloud,apple,translate]",
 ]
 
 [project.scripts]
