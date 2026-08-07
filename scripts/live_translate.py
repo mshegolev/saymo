@@ -34,6 +34,12 @@ Output goes to the console and to a Markdown transcript. With --overlay it
 also goes to a translucent always-on-top window you can park over the call;
 close it or press Escape to stop the session.
 
+--record additionally saves your own microphone to a wav beside the
+transcript (~110MB/hour). Only your microphone: the remote side is not
+recorded. Use it when the live transcript is not good enough — a recording
+can be re-transcribed afterwards with a larger Whisper model, which has no
+latency budget to respect and is markedly more accurate on Russian.
+
 Usage:
     .venv/bin/python scripts/live_translate.py --vocab "Oozie,Impala,staging"
     .venv/bin/python scripts/live_translate.py --overlay --translator argos
@@ -62,6 +68,7 @@ from pathlib import Path
 
 import numpy as np
 import sounddevice as sd
+import soundfile as sf
 
 from saymo.audio.devices import find_device
 
@@ -132,9 +139,13 @@ class Segmenter:
     """Turns a raw audio stream into utterances, cutting on silence."""
 
     def __init__(self, speaker: str, out_queue: "queue.Queue[Utterance]",
-                 threshold: float | None, stop: threading.Event):
+                 threshold: float | None, stop: threading.Event,
+                 recorder: "sf.SoundFile | None" = None):
         self.speaker = speaker
         self.out_queue = out_queue
+        # Written from the segmenter thread, never from the audio callback —
+        # disk I/O inside a CoreAudio callback would drop frames.
+        self.recorder = recorder
         self.threshold: float = threshold if threshold is not None else 0.0
         self.stop = stop
         self.blocks: "queue.Queue[np.ndarray]" = queue.Queue(maxsize=200)
@@ -173,6 +184,9 @@ class Segmenter:
                 block = self.blocks.get(timeout=0.5)
             except queue.Empty:
                 continue
+
+            if self.recorder is not None:
+                self.recorder.write(block)
 
             rms = float(np.sqrt(np.mean(np.square(block))))
             if not self._calibrated:
@@ -728,6 +742,9 @@ def parse_args() -> argparse.Namespace:
                         help="Ollama server address")
     parser.add_argument("--translate-model", default=TRANSLATE_MODEL,
                         help="Anthropic model, when --translator anthropic")
+    parser.add_argument("--record", action="store_true",
+                        help="also save your microphone to a wav next to the "
+                             "transcript, for later re-transcription or review")
     parser.add_argument("--overlay", action="store_true",
                         help="float a subtitle window on top of the call app")
     parser.add_argument("--font-size", type=int, default=15,
@@ -813,10 +830,26 @@ def main() -> int:
     segmenters: list[Segmenter] = []
     streams: list[sd.InputStream] = []
     threads: list[threading.Thread] = []
+    recording: sf.SoundFile | None = None
+
+    if args.record and not args.no_mic:
+        recording_path = transcript.with_name(transcript.stem + "-you.wav")
+        recording = sf.SoundFile(
+            str(recording_path), mode="w", samplerate=SAMPLE_RATE,
+            channels=1, subtype="PCM_16",
+        )
+        print(f"{DIM}Recording your microphone to {recording_path}{RESET}",
+              flush=True)
+    elif args.record:
+        print(f"{ERR_COLOR}--record needs the microphone; it does nothing "
+              f"together with --no-mic.{RESET}", file=sys.stderr)
 
     try:
         for speaker, device_name, _ in sources:
-            segmenter = Segmenter(speaker, utterances, args.threshold, stop)
+            segmenter = Segmenter(
+                speaker, utterances, args.threshold, stop,
+                recorder=recording if speaker == "YOU" else None,
+            )
             streams.append(open_stream(device_name, segmenter))
             segmenters.append(segmenter)
     except RuntimeError as exc:
@@ -825,6 +858,8 @@ def main() -> int:
             stream.stop()
             stream.close()
         printer.close()
+        if recording is not None:
+            recording.close()
         return 1
 
     print(f"{DIM}Transcript: {transcript}{RESET}", flush=True)
@@ -871,6 +906,11 @@ def main() -> int:
         for thread in threads:
             thread.join(timeout=10.0)
         printer.close()
+        if recording is not None:
+            frames = len(recording)
+            recording.close()
+            print(f"{DIM}Recording saved: {recording.name} "
+                  f"({frames / SAMPLE_RATE:.0f}s){RESET}", flush=True)
         if overlay is not None:
             overlay.root.destroy()
         print(f"{DIM}Transcript saved: {transcript}{RESET}", flush=True)
