@@ -30,9 +30,13 @@ Setup (once, per translator you intend to use):
     .venv/bin/python -c "import argostranslate.package as p; \
         p.install_from_path('/tmp/en_ru.argosmodel')"
 
+Output goes to the console and to a Markdown transcript. With --overlay it
+also goes to a translucent always-on-top window you can park over the call;
+close it or press Escape to stop the session.
+
 Usage:
     .venv/bin/python scripts/live_translate.py --vocab "Oozie,Impala,staging"
-    .venv/bin/python scripts/live_translate.py --translator argos
+    .venv/bin/python scripts/live_translate.py --overlay --translator argos
 
 Audio routing (do this before the call):
     Audio MIDI Setup → create a Multi-Output Device containing your headset
@@ -471,11 +475,88 @@ class InFlight:
             return self._count > 0
 
 
+class OverlayWindow:
+    """A borderless always-on-top subtitle strip, drawn over the call app.
+
+    Tk must own the main thread on macOS, so the workers never touch it:
+    they push rows onto a queue and Tk drains that queue on a timer.
+    """
+
+    POLL_MS = 100
+    MAX_LINES = 200
+
+    def __init__(self, font_size: int, opacity: float, width: int, height: int):
+        import tkinter as tk
+
+        self.tk = tk
+        self.rows: "queue.Queue[tuple[str, str, str]]" = queue.Queue()
+        self.root = tk.Tk()
+        self.root.title("Saymo subtitles")
+        self.root.configure(bg="#101014")
+        self.root.attributes("-topmost", True)
+        self.root.attributes("-alpha", opacity)
+
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        x = max(0, (screen_w - width) // 2)
+        y = max(0, screen_h - height - 120)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+
+        self.text = tk.Text(
+            self.root, bg="#101014", fg="#e8e8ea", bd=0, highlightthickness=0,
+            wrap="word", font=("Menlo", font_size), padx=12, pady=8,
+            state="disabled", cursor="arrow",
+        )
+        self.text.pack(fill="both", expand=True)
+        self.text.tag_configure("stamp", foreground="#6b6b76")
+        self.text.tag_configure("THEM", foreground="#57c7ff")
+        self.text.tag_configure("YOU", foreground="#f3d06a")
+        self.text.tag_configure("source", foreground="#c8c8d0")
+        self.text.tag_configure("ru", foreground="#ffffff",
+                                font=("Menlo", font_size, "bold"))
+        self.text.tag_configure("err", foreground="#ff6b6b")
+
+        self.root.bind("<Escape>", lambda _event: self.root.quit())
+        self.root.protocol("WM_DELETE_WINDOW", self.root.quit)
+        self.root.after(self.POLL_MS, self._drain)
+        # Keeps the interpreter reachable for Ctrl+C while Tk owns the loop.
+        self._tick()
+
+    def push(self, kind: str, stamp: str, body: str) -> None:
+        self.rows.put((kind, stamp, body))
+
+    def _tick(self) -> None:
+        self.root.after(200, self._tick)
+
+    def _drain(self) -> None:
+        while True:
+            try:
+                kind, stamp, body = self.rows.get_nowait()
+            except queue.Empty:
+                break
+            self.text.configure(state="normal")
+            if kind in ("THEM", "YOU"):
+                self.text.insert("end", f"{stamp} ", "stamp")
+                self.text.insert("end", f"{kind} ", kind)
+                self.text.insert("end", f"{body}\n", "source")
+            else:
+                self.text.insert("end", f"{stamp}    → ", "stamp")
+                self.text.insert("end", f"{body}\n",
+                                 "err" if kind == "error" else "ru")
+            excess = int(self.text.index("end-1c").split(".")[0]) - self.MAX_LINES
+            if excess > 0:
+                self.text.delete("1.0", f"{excess}.0")
+            self.text.configure(state="disabled")
+            self.text.see("end")
+        self.root.after(self.POLL_MS, self._drain)
+
+
 class Printer:
     """Serializes console output and the transcript file across threads."""
 
-    def __init__(self, transcript: Path):
+    def __init__(self, transcript: Path, overlay: "OverlayWindow | None" = None):
         self.lock = threading.Lock()
+        self.overlay = overlay
         self.file = transcript.open("a", encoding="utf-8")
         header = datetime.now().strftime("%Y-%m-%d %H:%M")
         self.file.write(f"\n# Meeting {header}\n\n")
@@ -489,6 +570,8 @@ class Printer:
                   flush=True)
             self.file.write(f"**{stamp} {line.speaker}:** {line.source}\n\n")
             self.file.flush()
+        if self.overlay:
+            self.overlay.push(line.speaker, stamp, line.source)
 
     def translation(self, line: Line, russian: str) -> None:
         stamp = datetime.fromtimestamp(line.started_at).strftime("%H:%M:%S")
@@ -496,6 +579,8 @@ class Printer:
             print(f"{DIM}{stamp}{RESET}      {RU_COLOR}→ {russian}{RESET}", flush=True)
             self.file.write(f"> → {russian}\n\n")
             self.file.flush()
+        if self.overlay:
+            self.overlay.push("ru", stamp, russian)
 
     def error(self, line: Line, message: str) -> None:
         stamp = datetime.fromtimestamp(line.started_at).strftime("%H:%M:%S")
@@ -504,6 +589,8 @@ class Printer:
                   f"{message}]{RESET}", flush=True)
             self.file.write(f"> → _[перевод не удался: {message}]_\n\n")
             self.file.flush()
+        if self.overlay:
+            self.overlay.push("error", stamp, f"[перевод не удался: {message}]")
 
     def close(self) -> None:
         with self.lock:
@@ -641,6 +728,14 @@ def parse_args() -> argparse.Namespace:
                         help="Ollama server address")
     parser.add_argument("--translate-model", default=TRANSLATE_MODEL,
                         help="Anthropic model, when --translator anthropic")
+    parser.add_argument("--overlay", action="store_true",
+                        help="float a subtitle window on top of the call app")
+    parser.add_argument("--font-size", type=int, default=15,
+                        help="overlay font size")
+    parser.add_argument("--opacity", type=float, default=0.88,
+                        help="overlay opacity, 0.3 (ghostly) to 1.0 (solid)")
+    parser.add_argument("--overlay-width", type=int, default=900)
+    parser.add_argument("--overlay-height", type=int, default=220)
     parser.add_argument("--no-mask", action="store_true",
                         help="translate --vocab terms instead of protecting "
                              "them with placeholders")
@@ -693,11 +788,20 @@ def main() -> int:
         print(f"{ERR_COLOR}{exc}{RESET}", file=sys.stderr)
         return 1
 
+    overlay: OverlayWindow | None = None
+    if args.overlay:
+        try:
+            overlay = OverlayWindow(args.font_size, args.opacity,
+                                    args.overlay_width, args.overlay_height)
+        except Exception as exc:  # noqa: BLE001 — Tk missing must not be fatal
+            print(f"{ERR_COLOR}Не удалось создать окно ({exc}); "
+                  f"остаюсь в консоли.{RESET}", file=sys.stderr)
+
     stop = threading.Event()
     inflight = InFlight()
     utterances: "queue.Queue[Utterance]" = queue.Queue(maxsize=50)
     to_translate: "queue.Queue[tuple[Line, str]]" = queue.Queue(maxsize=50)
-    printer = Printer(transcript)
+    printer = Printer(transcript, overlay)
 
     sources: list[tuple[str, str, str]] = [
         ("THEM", args.them_device, args.them_lang)
@@ -741,8 +845,12 @@ def main() -> int:
         thread.start()
 
     try:
-        while not stop.is_set():
-            time.sleep(0.3)
+        if overlay is not None:
+            # Tk owns the main thread; closing the window or Escape ends it.
+            overlay.root.mainloop()
+        else:
+            while not stop.is_set():
+                time.sleep(0.3)
     except KeyboardInterrupt:
         print(f"\n{DIM}Stopping — draining queues...{RESET}", flush=True)
     finally:
@@ -763,6 +871,8 @@ def main() -> int:
         for thread in threads:
             thread.join(timeout=10.0)
         printer.close()
+        if overlay is not None:
+            overlay.root.destroy()
         print(f"{DIM}Transcript saved: {transcript}{RESET}", flush=True)
 
     return 0
