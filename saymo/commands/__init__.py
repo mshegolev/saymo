@@ -393,4 +393,4 @@ def setup(ctx):
 
 
 # Register command submodules (their @main.command() decorators fire on import).
-from saymo.commands import core, tests, voice_train, voice_clone, call_ready, dry_run, call_control  # noqa: E402, F401
+from saymo.commands import core, tests, voice_train, voice_clone, call_ready, dry_run, call_control, dictation  # noqa: E402, F401

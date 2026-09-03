@@ -7,6 +7,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- `saymo dictation` — speak into the mic and insert punctuated text into the
+  active window. Silence-segmented utterance capture (adapted from
+  `scripts/live_translate.py`), faster-whisper STT with auto RU/EN language
+  detection, Ollama-based punctuation restoration via the new
+  `saymo/speech/punctuator.py`, then paste into the frontmost app via
+  `pbcopy` + `Cmd+V`. Options: `--once` (one phrase, then exit), `--no-paste`
+  (print instead), `-w/--model-size`, `-m/--ollama-model`, `-d/--device`.
+  Prompt templates are user-configurable under `config.prompts.punctuate_ru`
+  / `punctuate_en`.
 - `saymo trigger-capture` captures live call-audio windows into
   `~/.saymo/trigger_samples/<profile>/` as WAV plus JSON metadata, classified
   into `asked_to_speak`, `mentioned_me`, `question`, `speech`, and optional
