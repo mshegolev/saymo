@@ -4,9 +4,9 @@
 
 **Branch:** `feat/live-translate`
 
-**State:** daily-prep and BMAD-source work is merged to `main` through
-`e5406a1`; the S1.1 wizard fix is on `feat/live-translate`, pending the planned
-merge/release. No release tag has been created.
+**State:** merged to `main` and released as `v0.13.0` on 2026-10-24.
+Release commit: `2644a08`.
+GitHub Release: https://github.com/mshegolev/saymo/releases/tag/v0.13.0
 
 ## Completed work
 
@@ -43,14 +43,18 @@ merge/release. No release tag has been created.
   `bmad/workflow-status.yaml`.
 - The Click-runner test drives all six steps with isolated device/Ollama
   adapters, checks the generated YAML, and reloads it through `load_config`.
-- Story implementation is included in the current `feat/live-translate` branch.
+- Commit: `23bd6eb fix(cli): honor config path in setup wizard`.
 
 ## Verification
 
 - `uv run pytest`: **644 passed, 1 skipped**.
+- `uv lock --check`: passed.
+- `uv build`: built `saymo-0.13.0` sdist and wheel.
 - `uv run saymo list-plugins`: lists `bmad`.
 - `uv run saymo speak --help` and `uv run saymo prepare --help`: both show
   `bmad` as a source option.
+- GitHub CI passed for release commit `2644a08`.
+- GitHub Release `v0.13.0` was published successfully.
 - The skipped test is the existing MLX test; pytest reports that the installed
   MLX binary is arm64 while this Python process is x86_64.
 

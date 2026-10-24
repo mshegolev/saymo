@@ -318,12 +318,14 @@ metrics:
   estimated_stories: 38
   completed_stories: 2
 
-# Recent implementation handoff. Commits were merged to main and pushed;
-# no release tag has been created.
+# Recent implementation handoff. The work is merged to main and released as v0.13.0.
 handoff:
   updated_at: "2026-10-24"
   document: "docs/bmad/implementation-handoff.md"
-  branch: "feat/live-translate"
+  branch: "main"
+  release: "v0.13.0"
   recent_commits:
     - "30d9ff7 feat: add scheduled meeting prep workflow"
     - "60f48d7 feat(plugins): add BMAD sprint status source"
+    - "23bd6eb fix(cli): honor config path in setup wizard"
+    - "2644a08 chore(release): prepare v0.13.0"
