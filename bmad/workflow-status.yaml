@@ -316,3 +316,13 @@ metrics:
   progress_percentage: 83
   estimated_stories: 38
   completed_stories: 1
+
+# Recent implementation handoff. These commits are pushed to the feature branch;
+# they have not been merged into main or tagged as a release.
+handoff:
+  updated_at: "2026-10-24"
+  document: "docs/bmad/implementation-handoff.md"
+  branch: "feat/live-translate"
+  recent_commits:
+    - "30d9ff7 feat: add scheduled meeting prep workflow"
+    - "60f48d7 feat(plugins): add BMAD sprint status source"
