@@ -274,6 +274,14 @@ class ObsidianConfig:
 
 
 @dataclass
+class BmadConfig:
+    project_path: str = "."
+    sprint_status_file: str = "bmad/sprint-status.yaml"
+    workflow_status_file: str = "bmad/workflow-status.yaml"
+    max_stories: int = 5
+
+
+@dataclass
 class OllamaConfig:
     url: str = "http://localhost:11434"
     model: str = "qwen2.5-coder:7b"
@@ -283,7 +291,7 @@ class OllamaConfig:
 class SpeechConfig:
     style: str = "concise"
     language: str = "ru"
-    source: str = "obsidian"  # "obsidian" or "jira"
+    source: str = "obsidian"  # obsidian, jira, confluence, file, or bmad
     composer: str = "ollama"  # "ollama" or "anthropic"
 
 
@@ -380,6 +388,7 @@ class SaymoConfig:
     voice_selector: VoiceSelectorConfig = field(default_factory=VoiceSelectorConfig)
     jira: JiraConfig = field(default_factory=JiraConfig)
     obsidian: ObsidianConfig = field(default_factory=ObsidianConfig)
+    bmad: BmadConfig = field(default_factory=BmadConfig)
     ollama: OllamaConfig = field(default_factory=OllamaConfig)
     speech: SpeechConfig = field(default_factory=SpeechConfig)
     safety: SafetyConfig = field(default_factory=SafetyConfig)

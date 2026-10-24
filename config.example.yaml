@@ -150,8 +150,15 @@ jira:
 speech:
   style: concise
   language: ru
-  source: obsidian            # `obsidian` | `jira` | `confluence` | `file`
+  source: obsidian            # `obsidian` | `jira` | `confluence` | `file` | `bmad`
   composer: ollama            # `ollama` | `anthropic`
+
+# BMAD Method project status source (`speech.source: bmad`)
+bmad:
+  project_path: "."                       # project root containing the bmad/ folder
+  sprint_status_file: "bmad/sprint-status.yaml"
+  workflow_status_file: "bmad/workflow-status.yaml"
+  max_stories: 5
 
 safety:
   require_confirmation: true          # require a second trigger mention before auto-speaking

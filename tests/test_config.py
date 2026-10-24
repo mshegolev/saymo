@@ -7,6 +7,7 @@ import pytest
 
 from saymo.config import (
     AudioConfig,
+    BmadConfig,
     DiarizationConfig,
     MeetingMemoryConfig,
     SaymoConfig,
@@ -98,6 +99,21 @@ def test_load_config_no_file_returns_defaults(tmp_path, monkeypatch):
 def test_load_config_returns_saymo_config_instance():
     cfg = load_config(config_path="/nonexistent/path/does_not_exist.yaml")
     assert isinstance(cfg, SaymoConfig)
+    assert isinstance(cfg.bmad, BmadConfig)
+
+
+def test_load_config_populates_bmad_section(tmp_path):
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(
+        "bmad:\n  project_path: /work/project\n  max_stories: 3\n",
+        encoding="utf-8",
+    )
+
+    cfg = load_config(config_path=str(cfg_file))
+
+    assert cfg.bmad.project_path == "/work/project"
+    assert cfg.bmad.sprint_status_file == "bmad/sprint-status.yaml"
+    assert cfg.bmad.max_stories == 3
 
 
 # ---------------------------------------------------------------------------

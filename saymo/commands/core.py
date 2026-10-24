@@ -1376,7 +1376,10 @@ def live_control_action(profile, action_name, base_dir):
 
 @main.command()
 @click.option("--profile", "-p", default=None, help="Meeting profile: standup, scrum, retro")
-@click.option("--source", "-s", default=None, help="Source: obsidian, confluence, or jira")
+@click.option(
+    "--source", "-s", default=None,
+    help="Source: obsidian, confluence, jira, file, or bmad",
+)
 @click.option("--composer", default=None, help="Composer: ollama or anthropic")
 @click.option("--provider", default=None, help="Call provider: glip, mts-link, zoom, teams, etc.")
 @click.option("--glip", is_flag=True, help="Shortcut for --provider glip")
@@ -1745,7 +1748,10 @@ async def _quick_expand(config, brief: str, duration: int):
 
 @main.command()
 @click.option("--profile", "-p", default=None, help="Meeting profile: standup, scrum, retro")
-@click.option("--source", "-s", default=None, help="Source: obsidian, confluence, jira, file")
+@click.option(
+    "--source", "-s", default=None,
+    help="Source: obsidian, confluence, jira, file, or bmad",
+)
 @click.option("--save/--no-save", default=True, help="Save summary to Obsidian daily note")
 @click.option("--team", is_flag=True, help="Team scrum mode (report on all team members)")
 @click.option("--skip-responses", is_flag=True, help="Skip Tier-A response-cache rebuild")

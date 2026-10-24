@@ -302,7 +302,10 @@ def run_wizard(config_path: str | None = None):
             existing = meetings.get(mname, {})
             desc = click.prompt("  Description", default=existing.get("description", ""))
             is_team = click.confirm("  Team report? (includes all members)", default=existing.get("team", False))
-            source = click.prompt("  Task source (confluence/obsidian/jira)", default=existing.get("source", "confluence"))
+            source = click.prompt(
+                "  Task source (confluence/obsidian/jira/file/bmad)",
+                default=existing.get("source", "confluence"),
+            )
             provider = click.prompt(
                 "  Call provider (glip/zoom/google_meet/ms_teams/telegram/telemost/vk_teams/mts_link)",
                 default=existing.get("provider", "glip"),
