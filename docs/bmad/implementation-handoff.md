@@ -4,7 +4,8 @@
 
 **Branch:** `feat/live-translate`
 
-**State:** committed and pushed; not merged to `main` and not tagged as a release.
+**State:** merged and pushed; no release tag created. The remote `main` contains
+commit `e5406a1` (verified against GitHub on 2026-10-24).
 
 ## Completed work
 
@@ -43,6 +44,8 @@
 
 ## Follow-up for the next session
 
+- Start by reading this handoff and `docs/BMAD-PLUGIN.md`; the implementation
+  commits are already in `main`.
 - Try `saymo prepare --source bmad --no-save` with a BMAD project whose story
   statuses are populated; verify the composed speech and adjust parsing if
   that project uses a different BMAD status-file layout.

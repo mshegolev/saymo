@@ -317,8 +317,8 @@ metrics:
   estimated_stories: 38
   completed_stories: 1
 
-# Recent implementation handoff. These commits are pushed to the feature branch;
-# they have not been merged into main or tagged as a release.
+# Recent implementation handoff. Commits were merged to main and pushed;
+# no release tag has been created.
 handoff:
   updated_at: "2026-10-24"
   document: "docs/bmad/implementation-handoff.md"
