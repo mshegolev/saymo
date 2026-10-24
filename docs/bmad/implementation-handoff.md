@@ -4,8 +4,9 @@
 
 **Branch:** `feat/live-translate`
 
-**State:** merged and pushed; no release tag created. The remote `main` contains
-commit `e5406a1` (verified against GitHub on 2026-10-24).
+**State:** daily-prep and BMAD-source work is merged to `main` through
+`e5406a1`; the S1.1 wizard fix is on `feat/live-translate`, pending the planned
+merge/release. No release tag has been created.
 
 ## Completed work
 
@@ -33,9 +34,20 @@ commit `e5406a1` (verified against GitHub on 2026-10-24).
 - The plugin is discoverable with `saymo list-plugins`.
 - Commit: `60f48d7 feat(plugins): add BMAD sprint status source`.
 
+### BMAD story S1.1: setup wizard end-to-end
+
+- `saymo setup` now forwards the global `--config` path to the wizard, so setup
+  can write to an explicit config file instead of always targeting the repo
+  default.
+- Added `docs/stories/STORY-S1.1.md` and recorded the story as completed in
+  `bmad/workflow-status.yaml`.
+- The Click-runner test drives all six steps with isolated device/Ollama
+  adapters, checks the generated YAML, and reloads it through `load_config`.
+- Story implementation is included in the current `feat/live-translate` branch.
+
 ## Verification
 
-- `uv run pytest`: **643 passed, 1 skipped**.
+- `uv run pytest`: **644 passed, 1 skipped**.
 - `uv run saymo list-plugins`: lists `bmad`.
 - `uv run saymo speak --help` and `uv run saymo prepare --help`: both show
   `bmad` as a source option.

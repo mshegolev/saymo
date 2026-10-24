@@ -398,7 +398,7 @@ def main(ctx, config_path, verbose):
 def setup(ctx):
     """Interactive setup wizard — configure name, meetings, devices, TTS."""
     from saymo.wizard import run_wizard
-    run_wizard()
+    run_wizard(ctx.obj.get("config_path"))
 
 
 # Register command submodules (their @main.command() decorators fire on import).

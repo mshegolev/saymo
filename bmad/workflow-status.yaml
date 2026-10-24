@@ -78,7 +78,7 @@ phases:
         completed_at: "2026-08-21T16:37:37Z"
       stories:
         total: 38
-        completed: 1
+        completed: 2
         in_progress: 0
         story_list:
           - id: "S1.1"
@@ -86,7 +86,8 @@ phases:
             sprint: 1
             area: "CLI"
             points: 3
-            status: "planned"
+            status: "completed"
+            updated_at: "2026-10-24"
           - id: "S1.2"
             title: "test-devices detects BlackHole"
             sprint: 1
@@ -315,7 +316,7 @@ metrics:
   completed_workflows: 5
   progress_percentage: 83
   estimated_stories: 38
-  completed_stories: 1
+  completed_stories: 2
 
 # Recent implementation handoff. Commits were merged to main and pushed;
 # no release tag has been created.
