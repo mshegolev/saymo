@@ -6,7 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-10-24
+
 ### Added
+- Scheduled meeting preparation with `saymo daily-prep` and per-profile
+  LaunchAgents; the Play/Stop window can record the local microphone and produce
+  offline transcription plus local speech-coaching feedback.
+- A read-only BMAD source plugin for sprint/workflow status, configurable via
+  `speech.source: bmad`.
+- Live-call readiness and rehearsal flows, call-control handbrake/daemon,
+  session reliability scorecards, voice-profile approval gates, and sanitized
+  launch evidence across the v1.7–v1.14 milestones.
 - `saymo dictation` — speak into the mic and insert punctuated text into the
   active window. Silence-segmented utterance capture (adapted from
   `scripts/live_translate.py`), faster-whisper STT with auto RU/EN language
@@ -31,6 +41,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   model state, and final guarded action.
 
 ### Changed
+- `saymo setup` now honors the global `--config` option and can save a complete
+  six-step setup to an explicitly selected config file.
 - Local trigger classifier behavior can now be promoted from shadow diagnostics
   to guarded live assist after readiness passes and a trained model fingerprint
   matches the current artifact.
