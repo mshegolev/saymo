@@ -293,6 +293,9 @@ class MeetingProfile:
     provider: str = "glip"
     team: bool = False
     source: str = "confluence"
+    # Optional per-profile override of config.ollama.model — e.g. a model
+    # that follows first/third-person instructions better for team reports.
+    ollama_model: str = ""
     # Optional per-profile voice overrides, including F5 pause preset choices.
     voice: dict = field(default_factory=dict)
     trigger_phrases: list[str] = field(default_factory=list)
@@ -303,6 +306,14 @@ class MeetingProfile:
     # `handoff_patterns` and `mention_only_patterns`; each pattern may use the
     # `{trigger}` placeholder.
     addressing: dict = field(default_factory=dict)
+    # URL opened (via `open`) by `saymo daily-prep` before showing the prep
+    # window, so the call app/tab is already up when the meeting starts.
+    meeting_url: str = ""
+    # Optional auto-run schedule for `saymo daily-prep-agent install`.
+    # Keys: `time` ("HH:MM", 24h local time) and `days` (list of
+    # "mon".."sun"; defaults to weekdays). No schedule means the LaunchAgent
+    # cannot be installed for this profile.
+    schedule: dict = field(default_factory=dict)
 
 
 @dataclass

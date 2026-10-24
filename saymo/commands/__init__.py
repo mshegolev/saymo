@@ -51,6 +51,15 @@ def _get_cached_audio_path(team: bool = False):
     return cache_dir / f"{date.today().isoformat()}{suffix}.wav"
 
 
+def _get_cached_text_path(team: bool = False):
+    """Path to today's pre-generated prepared-speech text sidecar."""
+    from datetime import date
+    from pathlib import Path
+    cache_dir = Path.home() / ".saymo" / "audio_cache"
+    suffix = "-team" if team else ""
+    return cache_dir / f"{date.today().isoformat()}{suffix}.txt"
+
+
 def _rotate_audio_cache(max_days: int = 7):
     """Delete audio cache files older than max_days."""
     from datetime import date, timedelta

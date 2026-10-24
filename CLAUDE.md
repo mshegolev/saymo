@@ -23,6 +23,10 @@ saymo record-voice -d 300          # Record 5-minute voice sample
 saymo prepare -p <profile>
 saymo review                       # review generated audio sentence-by-sentence
 
+# Scheduled prep — see docs/DAILY-PREP.md
+saymo daily-prep -p <profile>              # prepare + open call app + Play/Stop window
+saymo daily-prep-agent install -p <profile>  # LaunchAgent, fires at meeting.schedule.time
+
 # During the call
 saymo speak --glip                 # instant playback
 saymo speak -p <profile> --glip

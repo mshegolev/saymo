@@ -1,0 +1,318 @@
+# BMAD Workflow Status
+# Tracks progress through all 4 phases
+
+project:
+  name: "saymo"
+  level: 4
+  initialized: "2026-08-21T16:37:32Z"
+  last_updated: "2026-08-21T16:37:37Z"
+
+current_phase: 4
+current_workflow: sprint_planning
+
+phases:
+  phase_1_analysis:
+    name: "Analysis"
+    status: "completed"
+    workflows:
+      product_brief:
+        status: "required"
+        completed: true
+        output_file: "docs/bmad/product-brief.md"
+        completed_at: "2026-08-21T16:37:32Z"
+      research:
+        status: "optional"
+        completed: false
+        output_file: null
+        completed_at: null
+      brainstorm:
+        status: "optional"
+        completed: false
+        output_file: null
+        completed_at: null
+
+  phase_2_planning:
+    name: "Planning"
+    status: "completed"
+    workflows:
+      prd:
+        status: "required"
+        completed: true
+        output_file: "docs/bmad/prd.md"
+        completed_at: "2026-08-21T16:37:33Z"
+      tech_spec:
+        status: "optional"
+        completed: false
+        output_file: null
+        completed_at: null
+      ux_design:
+        status: "recommended"
+        completed: true
+        output_file: "docs/bmad/ux-design.md"
+        completed_at: "2026-08-21T16:37:34Z"
+
+  phase_3_solutioning:
+    name: "Solutioning"
+    status: "completed"
+    workflows:
+      architecture:
+        status: "required"
+        completed: true
+        output_file: "docs/bmad/architecture.md"
+        completed_at: "2026-08-21T16:37:35Z"
+      gate_check:
+        status: "recommended"
+        completed: true
+        passed: true
+        output_file: "docs/bmad/gate-check.md"
+        completed_at: "2026-08-21T16:37:36Z"
+
+  phase_4_implementation:
+    name: "Implementation"
+    status: "in_progress"
+    workflows:
+      sprint_planning:
+        status: "required"
+        completed: true
+        output_file: "docs/bmad/sprint-plan.md"
+        completed_at: "2026-08-21T16:37:37Z"
+      stories:
+        total: 38
+        completed: 1
+        in_progress: 0
+        story_list:
+          - id: "S1.1"
+            title: "Verify saymo setup wizard end-to-end"
+            sprint: 1
+            area: "CLI"
+            points: 3
+            status: "planned"
+          - id: "S1.2"
+            title: "test-devices detects BlackHole"
+            sprint: 1
+            area: "Audio"
+            points: 2
+            status: "completed"
+          - id: "S1.3"
+            title: "test-tts with macos_say plays audio"
+            sprint: 1
+            area: "TTS"
+            points: 2
+            status: "planned"
+          - id: "S1.4"
+            title: "Piper TTS engine loads and synthesizes"
+            sprint: 1
+            area: "TTS"
+            points: 3
+            status: "planned"
+          - id: "S1.5"
+            title: "XTTS v2 model downloads and caches"
+            sprint: 1
+            area: "TTS"
+            points: 5
+            status: "planned"
+          - id: "S1.6"
+            title: "Config env-var interpolation"
+            sprint: 1
+            area: "Config"
+            points: 2
+            status: "planned"
+          - id: "S1.7"
+            title: "Meeting profile overlay"
+            sprint: 1
+            area: "Config"
+            points: 2
+            status: "planned"
+          - id: "S1.8"
+            title: "record-voice saves valid WAV"
+            sprint: 1
+            area: "Audio"
+            points: 3
+            status: "planned"
+          - id: "S1.9"
+            title: "Config validation at startup"
+            sprint: 1
+            area: "Config"
+            points: 2
+            status: "planned"
+          - id: "S2.1"
+            title: "TurnDetector regex matching + cooldown"
+            sprint: 2
+            area: "Analysis"
+            points: 3
+            status: "planned"
+          - id: "S2.2"
+            title: "Addressing classifier 13 patterns"
+            sprint: 2
+            area: "Analysis"
+            points: 5
+            status: "planned"
+          - id: "S2.3"
+            title: "Double-trigger confirmation"
+            sprint: 2
+            area: "Analysis"
+            points: 3
+            status: "planned"
+          - id: "S2.4"
+            title: "ResponseCache pre-synth + lookup"
+            sprint: 2
+            area: "Analysis"
+            points: 4
+            status: "planned"
+          - id: "S2.5"
+            title: "Chrome provider detects Glip tab"
+            sprint: 2
+            area: "Providers"
+            points: 3
+            status: "planned"
+          - id: "S2.6"
+            title: "Unmute -> Speak -> Mute sequence"
+            sprint: 2
+            area: "Providers"
+            points: 4
+            status: "planned"
+          - id: "S2.7"
+            title: "BlackHole audio capture"
+            sprint: 2
+            area: "Audio"
+            points: 3
+            status: "planned"
+          - id: "S2.8"
+            title: "faster-whisper STT <3s on CPU"
+            sprint: 2
+            area: "STT"
+            points: 3
+            status: "planned"
+          - id: "S2.9"
+            title: "Prepare fetches + composes + caches"
+            sprint: 2
+            area: "Pipeline"
+            points: 4
+            status: "planned"
+          - id: "S3.1"
+            title: "Handbrake TUI live state"
+            sprint: 3
+            area: "Safety"
+            points: 3
+            status: "planned"
+          - id: "S3.2"
+            title: "Global hotkeys listener"
+            sprint: 3
+            area: "Safety"
+            points: 3
+            status: "planned"
+          - id: "S3.3"
+            title: "LaunchAgent daemon"
+            sprint: 3
+            area: "Safety"
+            points: 3
+            status: "planned"
+          - id: "S3.4"
+            title: "Rehearsal mode dry-run"
+            sprint: 3
+            area: "Safety"
+            points: 3
+            status: "planned"
+          - id: "S3.5"
+            title: "Session scorecard"
+            sprint: 3
+            area: "Safety"
+            points: 2
+            status: "planned"
+          - id: "S3.6"
+            title: "Safety soak gate"
+            sprint: 3
+            area: "Safety"
+            points: 2
+            status: "planned"
+          - id: "S3.7"
+            title: "Voice profile lifecycle"
+            sprint: 3
+            area: "TTS"
+            points: 3
+            status: "planned"
+          - id: "S3.8"
+            title: "Voice profile approve/reject"
+            sprint: 3
+            area: "TTS"
+            points: 2
+            status: "planned"
+          - id: "S3.9"
+            title: "Dataset builder metadata.csv"
+            sprint: 3
+            area: "Training"
+            points: 3
+            status: "planned"
+          - id: "S3.10"
+            title: "Qwen3 LoRA fine-tuning"
+            sprint: 3
+            area: "Training"
+            points: 5
+            status: "planned"
+          - id: "S3.11"
+            title: "Blind A/B evaluation"
+            sprint: 3
+            area: "Training"
+            points: 3
+            status: "planned"
+          - id: "S3.12"
+            title: "F5-TTS natural pacing presets"
+            sprint: 3
+            area: "TTS"
+            points: 2
+            status: "planned"
+          - id: "S4.1"
+            title: "Error handling for common failures"
+            sprint: 4
+            area: "CLI"
+            points: 3
+            status: "planned"
+          - id: "S4.2"
+            title: "Cache-status command"
+            sprint: 4
+            area: "Analysis"
+            points: 2
+            status: "planned"
+          - id: "S4.3"
+            title: "Call-ready readiness matrix"
+            sprint: 4
+            area: "Diagnostics"
+            points: 2
+            status: "planned"
+          - id: "S4.4"
+            title: "Mic-check audio calibration"
+            sprint: 4
+            area: "Audio"
+            points: 3
+            status: "planned"
+          - id: "S4.5"
+            title: "Provider latency measurement"
+            sprint: 4
+            area: "Diagnostics"
+            points: 2
+            status: "planned"
+          - id: "S4.6"
+            title: "Full pytest suite green"
+            sprint: 4
+            area: "QA"
+            points: 4
+            status: "planned"
+          - id: "S4.7"
+            title: "README and docs update"
+            sprint: 4
+            area: "Docs"
+            points: 2
+            status: "planned"
+          - id: "S4.8"
+            title: "v1.0-beta release"
+            sprint: 4
+            area: "Release"
+            points: 1
+            status: "planned"
+
+metrics:
+  total_workflows: 6
+  completed_workflows: 5
+  progress_percentage: 83
+  estimated_stories: 38
+  completed_stories: 1

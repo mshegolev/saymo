@@ -1866,7 +1866,13 @@ async def _prepare(config, save: bool, *, profile_name: str = "standup"):
     else:
         console.print("[yellow]Audio pre-generation failed, will generate on speak[/]")
 
+    from saymo.commands import _get_cached_text_path
+    text_path = _get_cached_text_path()
+    text_path.parent.mkdir(parents=True, exist_ok=True)
+    text_path.write_text(text, encoding="utf-8")
+
     console.print("\n[dim]Run 'saymo speak' — instant playback from cache![/]")
+    return text
 
 
 async def _prepare_team(config, save: bool, *, profile_name: str = "standup"):
@@ -1901,12 +1907,16 @@ async def _prepare_team(config, save: bool, *, profile_name: str = "standup"):
         console.print("[bold red]Ollama not running! Start with: ollama serve[/]")
         return
 
+    meeting = config.get_meeting(profile_name)
+    model = meeting.ollama_model if meeting and meeting.ollama_model else config.ollama.model
+
     text = await compose_standup_ollama(
         notes,
-        model=config.ollama.model,
+        model=model,
         ollama_url=config.ollama.url,
         language=config.speech.language,
         prompt_override=DEFAULT_TEAM_SCRUM_PROMPT_RU,
+        user_name=config.user.name,
     )
 
     console.print(f"\n[bold green]Team scrum report:[/]\n\n{text}\n")
@@ -1968,7 +1978,13 @@ async def _prepare_team(config, save: bool, *, profile_name: str = "standup"):
         )
         console.print(f"[green]Audio cached: {audio_path} ({len(audio_bytes) // 1024} KB)[/]")
 
+    from saymo.commands import _get_cached_text_path
+    text_path = _get_cached_text_path(team=True)
+    text_path.parent.mkdir(parents=True, exist_ok=True)
+    text_path.write_text(text, encoding="utf-8")
+
     console.print("\n[dim]Run 'saymo speak --team' for instant playback![/]")
+    return text
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,36 @@
+# BMAD Sprint Status
+# Tracks sprint progress and story completion
+
+project:
+  name: "saymo"
+  level: 4
+
+sprint:
+  number: 1
+  start_date: "2026-08-21"
+  end_date: "2026-09-04"
+  goal: "Initial baseline sprint"
+  capacity_points: 20
+  committed_points: 0
+
+velocity:
+  current_sprint: 0
+  rolling_average: 0
+  history: []
+
+epics: []
+
+stories: []
+
+burndown: []
+
+metrics:
+  total_stories: 0
+  completed_stories: 0
+  in_progress_stories: 0
+  blocked_stories: 0
+  total_points: 0
+  completed_points: 0
+  completion_percentage: 0
+
+last_updated: "2026-08-21T16:37:32Z"

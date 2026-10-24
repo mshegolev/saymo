@@ -176,6 +176,27 @@ DEFAULT_EXPAND_PROMPT_RU = """\
 """
 
 
+DEFAULT_SPEECH_COACHING_PROMPT_RU = """\
+Ты — тренер по устной речи. Тебе дали транскрипт того, как человек говорил
+на встрече ({meeting_description}). Разбери манеру речи и дай рекомендации.
+
+Транскрипт:
+---
+{transcript}
+---
+
+ПРАВИЛА:
+- Пиши на русском языке, обращайся на «ты».
+- Отметь конкретные повторяющиеся слова-паразиты и слова-заполнители
+  ("э-э", "как бы", "в общем", "короче" и т.п.), если они есть в транскрипте.
+- Отметь темп речи, длину предложений, самоповторы — только если это видно
+  из транскрипта, не выдумывай.
+- Дай 3-5 конкретных советов, как говорить точнее и увереннее.
+- Не пересказывай содержание встречи — фокус только на манере речи.
+- Короткие абзацы или маркированный список, без лишних вступлений.
+"""
+
+
 def _resolve_prompt(config, key: str, default: str) -> str:
     """Load a prompt template from config (``prompts.<key>``) with fallback to default."""
     if config is None:
@@ -197,6 +218,7 @@ async def compose_standup_ollama(
     language: str = "ru",
     prompt_override: str | None = None,
     config=None,
+    user_name: str = "",
 ) -> str:
     """Compose spoken text from notes using local Ollama.
 
@@ -209,6 +231,10 @@ async def compose_standup_ollama(
         config: Optional config — when provided, prompts are loaded from
             ``config.prompts.standup_ru`` / ``standup_en`` before falling back
             to the built-in defaults.
+        user_name: Speaker's display name — fills ``{user_name}`` in team
+            prompts (e.g. DEFAULT_TEAM_SCRUM_PROMPT_RU) so the composer knows
+            whose tasks to phrase in first person. Ignored by templates that
+            don't reference it.
     """
     yesterday_notes = notes.get("yesterday") or "(нет заметок)"
     today_notes = notes.get("today") or "(нет заметок)"
@@ -226,6 +252,7 @@ async def compose_standup_ollama(
         today_notes=today_notes,
         yesterday_date=yesterday_date,
         today_date=today_date,
+        user_name=user_name,
     )
 
     logger.info(f"Composing with Ollama ({model})")
@@ -245,6 +272,49 @@ async def compose_standup_ollama(
 
     text = data.get("response", "").strip()
     logger.info(f"Composed: {len(text)} chars")
+    return text
+
+
+async def compose_speech_coaching(
+    transcript: str,
+    model: str = "qwen2.5-coder:7b",
+    ollama_url: str = "http://localhost:11434",
+    meeting_description: str = "",
+    config=None,
+) -> str:
+    """Analyze a meeting transcript and return spoken-delivery recommendations.
+
+    Args:
+        transcript: Local mic transcript for the meeting (own speech only).
+        model: Ollama model name.
+        ollama_url: Ollama API endpoint.
+        meeting_description: Optional profile description, e.g. "Daily standup".
+        config: Optional config — loads ``config.prompts.speech_coaching_ru``
+            before falling back to ``DEFAULT_SPEECH_COACHING_PROMPT_RU``.
+    """
+    template = _resolve_prompt(config, "speech_coaching_ru", DEFAULT_SPEECH_COACHING_PROMPT_RU)
+    prompt = template.format(
+        transcript=transcript or "(пусто)",
+        meeting_description=meeting_description or "встреча",
+    )
+
+    logger.info(f"Composing speech coaching with Ollama ({model})")
+
+    async with httpx.AsyncClient(timeout=120.0, proxy=None) as client:
+        response = await client.post(
+            f"{ollama_url}/api/generate",
+            json={
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.5, "num_predict": 500},
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+    text = data.get("response", "").strip()
+    logger.info(f"Speech coaching composed: {len(text)} chars")
     return text
 
 

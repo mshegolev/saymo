@@ -199,6 +199,13 @@ meetings:
     #   chunk_seconds: 3.0
     #   overlap_seconds: 1.0
     #   trigger_cooldown_seconds: 25.0
+    # Optional: auto-run `saymo daily-prep -p personal` before the meeting via
+    # a LaunchAgent (`saymo daily-prep-agent install -p personal`). Opens
+    # meeting_url (if set) and shows the prep window with Play/Stop.
+    # schedule:
+    #   time: "09:45"                    # HH:MM, 24h, local time
+    #   days: [mon, tue, wed, thu, fri]   # defaults to weekdays if omitted
+    # meeting_url: "https://meet.google.com/xxx-xxxx-xxx"
   # standup:
   #   description: "Standup with per-source F5 timing"
   #   provider: glip
@@ -244,6 +251,12 @@ prompts:
   #   Ты — {user_name}, {user_role}...
   # expand_ru: |
   #   Тебе дали заметки. Перепиши в устную речь...
+  # speech_coaching_ru: |
+  #   Ты — тренер по устной речи. Разбери транскрипт выступления...
+  #   Транскрипт:
+  #   ---
+  #   {transcript}
+  #   ---
 
 # Project-specific vocabulary — merged on top of the default abbreviation map
 # in saymo/tts/text_normalizer.py. Use this instead of editing source.
